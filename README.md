@@ -1,2 +1,2 @@
 # DimensionalUnits.jl
-Fast, Flexible, Type-Stable quantities
+Fast, flexible, type-stable quantities
