@@ -1,0 +1,9 @@
+This package should basically behave like DynamicQuantities, but slightly closer to Uniful.jl with some exceptions
+
+1.  Quantity does not subtype to a number. Quanties are not just numbers, they're numbers with context
+2.  Quantities can contain anything inside their "val" field, it only needs to support basic arithmetic (can be matrices)
+3.  Multiplying a number with units constructs a Quantity *(x::Number, u::AbstractUnits) = Quantity(x, u)
+4.  u"..." string macros should return units, not quantities
+5.  us"..." and ua"..." assign the expression as their symbol, (operations tend to eliminate symbols, but you can restore them with a uconvert)
+6.  Dimension outputs need to be parseable, units with symbols will have parseable output by virtue that the expression worked
+
