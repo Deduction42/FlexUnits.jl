@@ -4,6 +4,7 @@ module DimensionalUnits
 include("fixed_rational.jl")
 include("types.jl")
 include("math.jl")
+include("units.jl")
 
 export SIDims, ScalarUnits, AffineUnits
 

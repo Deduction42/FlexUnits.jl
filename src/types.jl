@@ -1,8 +1,9 @@
 const DEFAULT_PWR_TYPE = FixedRational{DEFAULT_NUMERATOR_TYPE,DEFAULT_DENOM}
+const DEFAULT_SYMBOL = :_
 
 abstract type AbstractUnitLike end
 abstract type AbstractDimensions{P} <: AbstractUnitLike end
-abstract type AbstractUnits{D<:AbstractDimensions} end
+abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
 abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
 abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D} end
 
@@ -23,7 +24,7 @@ DEFAULT_DIMENSONS = SIDims{DEFAULT_PWR_TYPE}
 uscale(u::AbstractDimensions) = 1
 uoffset(u::AbstractDimensions) = 0
 dimension(u::AbstractDimensions) = u
-usymbol(u::AbstractDimensions) = :nothing
+usymbol(u::AbstractDimensions) = DEFAULT_SYMBOL
 
 
 
@@ -42,12 +43,12 @@ end
 
 
 @kwdef struct ScalarUnits{D} <: AbstractScalarUnits{D}
-    scale::Float64
+    scale::Float64 = 1
     dims::D
-    symbol::Symbol=:nothing
+    symbol::Symbol=DEFAULT_USYMBOL
 end
 
-ScalarUnits(scale, dims::D, symbol=:nothing) where {D} = ScalarUnits{D}(scale, dims, symbol)
+ScalarUnits(scale, dims::D, symbol=DEFAULT_SYMBOL) where {D} = ScalarUnits{D}(scale, dims, symbol)
 
 uscale(u::ScalarUnits) = u.scale
 uoffset(u::AbstractScalarUnits) = 0
@@ -56,13 +57,13 @@ usymbol(u::ScalarUnits) = u.symbol
 
 
 @kwdef struct AffineUnits{D} <: AbstractAffineUnits{D}
-    scale::Float64
-    offset::Float64
+    scale::Float64 = 1
+    offset::Float64 = 0
     dims::D
-    symbol::Symbol=:nothing 
+    symbol::Symbol=DEFAULT_SYMBOL 
 end
 
-AffineUnits(scale, offset, dims::D, symbol=:nothing) where {D<:AbstractDimensions} = AffineUnits{D}(scale, offset, dims, symbol)
+AffineUnits(scale, offset, dims::D, symbol=DEFAULT_SYMBOL) where {D<:AbstractDimensions} = AffineUnits{D}(scale, offset, dims, symbol)
 
 uscale(u::AffineUnits) = u.scale
 uoffset(u::AffineUnits) = u.offset 
@@ -81,6 +82,18 @@ ustrip(q::Quantity) = q.value
 unit(q::Quantity) = q.units
 dimension(q::Quantity) = dimension(unit(q))
 
+"""
+    constructorof(::Type{T}) where T = Base.typename(T).wrapper
+
+Return the constructor of a type T{PS...} by default it only returns T (i.e. removes type parameters)
+This function can be overloaded if custom behaviour is needed
+"""
+constructorof(::Type{T}) where T = Base.typename(T).wrapper
+constructorof(::Type{<:SIDims}) = SIDims
+constructorof(::Type{<:ScalarUnits}) = ScalarUnits
+constructorof(::Type{<:AffineUnits}) = AffineUnits
+constructorof(::Type{<:Quantity}) = Quantity
+
 
 """
     DimensionError{D} <: Exception
@@ -98,13 +111,13 @@ Base.showerror(io::IO, e::DimensionError) = print(io, "DimensionError: ", e.q1, 
 Base.showerror(io::IO, e::DimensionError{<:Any,Nothing}) = print(io, "DimensionError: ", e.q1, " is not dimensionless")
 
 """
-    AffineOffsetError{D} <: Exception
+    ScalarUnitError{D} <: Exception
 
-Error thrown when an operation is invalid on affine units (with an offset)
+Error thrown for non-scalar units when the operation is only valid for scalar units
 """
-struct AffineOffsetError{D} <: Exception
+struct ScalarUnitError{D} <: Exception
     dim::D
-    AffineOffsetError(dim) = new{typeof(dim)}(dim)
+    ScalarUnitError(dim) = new{typeof(dim)}(dim)
 end
 
-Base.showerror(io::IO, e::AffineOffsetError) = print(io, "AffineOffsetError: ", e.dim, " has a non-zero offset, operation not allowed on affine units. Consider using `baseunits(x)` to explicitly convert")
+Base.showerror(io::IO, e::ScalarUnitError) = print(io, "ScalarUnitError: ", e.dim, " cannot be treated as scalar, operation only valid for scalar units")
