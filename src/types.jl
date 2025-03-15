@@ -1,11 +1,12 @@
 const DEFAULT_PWR_TYPE = FixedRational{DEFAULT_NUMERATOR_TYPE,DEFAULT_DENOM}
 
-abstract type AbstractUnits{D} end
-abstract type AbstractAffineUnits{D} <: AbstractUnits{D} end 
-abstract type AbstractScalarUnits{D} <: AbstractAffineUnits{D} end
-abstract type AbstractDimensions{P}  <: AbstractScalarUnits{AbstractDimensions{P}}  end
+abstract type AbstractUnitLike end
+abstract type AbstractDimensions{P} <: AbstractUnitLike end
+abstract type AbstractUnits{D<:AbstractDimensions} end
+abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
+abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D} end
 
-@kwdef struct Dimensions{P} <: AbstractDimensions{P}
+@kwdef struct SIDims{P} <: AbstractDimensions{P}
     length::P = 0
     mass::P = 0
     time::P = 0
@@ -15,13 +16,13 @@ abstract type AbstractDimensions{P}  <: AbstractScalarUnits{AbstractDimensions{P
     amount::P = 0
 end
 
-Dimensions(;kwargs...) = Dimensions{DEFAULT_PWR_TYPE}(;kwargs...)
-Dimensions(args...) = Dimensions{DEFAULT_PWR_TYPE}(args...)
-DEFAULT_DIMENSONS = Dimensions{DEFAULT_PWR_TYPE}
+SIDims(;kwargs...) = SIDims{DEFAULT_PWR_TYPE}(;kwargs...)
+SIDims(args...) = SIDims{DEFAULT_PWR_TYPE}(args...)
+DEFAULT_DIMENSONS = SIDims{DEFAULT_PWR_TYPE}
 
 uscale(u::AbstractDimensions) = 1
 uoffset(u::AbstractDimensions) = 0
-udims(u::AbstractDimensions) = u
+dimension(u::AbstractDimensions) = u
 usymbol(u::AbstractDimensions) = :nothing
 
 
@@ -50,10 +51,8 @@ ScalarUnits(scale, dims::D, symbol=:nothing) where {D} = ScalarUnits{D}(scale, d
 
 uscale(u::ScalarUnits) = u.scale
 uoffset(u::AbstractScalarUnits) = 0
-udims(u::ScalarUnits) = u.dims
+dimension(u::ScalarUnits) = u.dims
 usymbol(u::ScalarUnits) = u.symbol
-
-
 
 
 @kwdef struct AffineUnits{D} <: AbstractAffineUnits{D}
@@ -67,19 +66,20 @@ AffineUnits(scale, offset, dims::D, symbol=:nothing) where {D<:AbstractDimension
 
 uscale(u::AffineUnits) = u.scale
 uoffset(u::AffineUnits) = u.offset 
-udims(u::ScalarUnits) = u.dims 
+dimension(u::ScalarUnits) = u.dims 
 usymbol(u::ScalarUnits) = u.symbol
 
 
-abstract type AbstractQuantity{T,U<:AbstractUnits} end
+abstract type AbstractQuantity{T,U<:AbstractUnits} <: Number end
 
-struct Quantity{T,U}
+struct Quantity{T<:Number,U<:AbstractUnitLike}
     value :: T
     units :: U 
 end
 
 ustrip(q::Quantity) = q.value
-vstrip(q::Quantity) = q.units
+unit(q::Quantity) = q.units
+dimension(q::Quantity) = dimension(unit(q))
 
 
 """
