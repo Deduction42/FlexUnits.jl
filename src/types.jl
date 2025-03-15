@@ -1,7 +1,9 @@
 const DEFAULT_PWR_TYPE = FixedRational{DEFAULT_NUMERATOR_TYPE,DEFAULT_DENOM}
 
-abstract type AbstractUnits end
-abstract type AbstractDimensions{P} <: AbstractUnits end
+abstract type AbstractUnits{D} end
+abstract type AbstractAffineUnits{D} <: AbstractUnits{D} end 
+abstract type AbstractScalarUnits{D} <: AbstractAffineUnits{D} end
+abstract type AbstractDimensions{P}  <: AbstractScalarUnits{AbstractDimensions{P}}  end
 
 @kwdef struct Dimensions{P} <: AbstractDimensions{P}
     length::P = 0
@@ -38,9 +40,6 @@ Can use this to overload the default "fieldnames" behaviour
 end
 
 
-
-abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractUnits end
-
 @kwdef struct ScalarUnits{D} <: AbstractScalarUnits{D}
     scale::Float64
     dims::D
@@ -55,7 +54,7 @@ udims(u::ScalarUnits) = u.dims
 usymbol(u::ScalarUnits) = u.symbol
 
 
-abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits end 
+
 
 @kwdef struct AffineUnits{D} <: AbstractAffineUnits{D}
     scale::Float64
