@@ -1,7 +1,7 @@
 module DimensionalUnits
 
 # Write your package code here.
-include("_FixedRational.jl")
+include("fixed_rational.jl")
 include("types.jl")
 include("math.jl")
 
