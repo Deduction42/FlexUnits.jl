@@ -1,9 +1,13 @@
 This package should basically behave like DynamicQuantities, but slightly closer to Uniful.jl with some exceptions
 
-1.  Quantity does not subtype to a number. Quanties are not just numbers, they're numbers with context
-2.  Quantities can contain anything inside their "val" field, it only needs to support basic arithmetic (can be matrices)
-3.  Multiplying a number with units constructs a Quantity *(x::Number, u::AbstractUnits) = Quantity(x, u)
-4.  u"..." string macros should return units, not quantities
+1.  Quantities are Numbers (follow Unitful.jl standard)
+2.  Multiplying a number with units constructs a Quantity i.e. *(x::Number, u::AbstractUnits) = Quantity(x, u)
+3.  There is one registry, which is a dict. It contains AffineUnits macros and functions convert AffineUnits to their desired type
+4.  u"..." string macro should return a Quantity{Float64, Dimension{DEFAULT_PWR_TYPE}} to eagerly evaluate SI units
+        us"..." string macro returns a ScaledUnits{Dimension{DEFAULT_PWR_TYPE}}
+        ua"..." string macro returns an AffineUnits{Dimension{DEFAULT_PWR_TYPE}}
 5.  us"..." and ua"..." assign the expression as their symbol, (operations tend to eliminate symbols, but you can restore them with a uconvert)
 6.  Dimension outputs need to be parseable, units with symbols will have parseable output by virtue that the expression worked
+7.  You can feed a dictionary to uparse(str, dict), usparse(str, dict), uaparse(str, dict) to use custom unit registries
+        the dict will have have elements of AffineUnits{D} where D is a dimension object
 

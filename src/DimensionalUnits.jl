@@ -6,6 +6,6 @@ include("types.jl")
 include("math.jl")
 include("units.jl")
 
-export SIDims, ScalarUnits, AffineUnits
+export Dimensions, ScalarUnits, AffineUnits
 
 end

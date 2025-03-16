@@ -7,7 +7,7 @@ abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
 abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
 abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D} end
 
-@kwdef struct SIDims{P} <: AbstractDimensions{P}
+@kwdef struct Dimensions{P} <: AbstractDimensions{P}
     length::P = 0
     mass::P = 0
     time::P = 0
@@ -17,9 +17,9 @@ abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{
     amount::P = 0
 end
 
-SIDims(;kwargs...) = SIDims{DEFAULT_PWR_TYPE}(;kwargs...)
-SIDims(args...) = SIDims{DEFAULT_PWR_TYPE}(args...)
-DEFAULT_DIMENSONS = SIDims{DEFAULT_PWR_TYPE}
+Dimensions(;kwargs...) = Dimensions{DEFAULT_PWR_TYPE}(;kwargs...)
+Dimensions(args...) = Dimensions{DEFAULT_PWR_TYPE}(args...)
+DEFAULT_DIMENSONS = Dimensions{DEFAULT_PWR_TYPE}
 
 uscale(u::AbstractDimensions) = 1
 uoffset(u::AbstractDimensions) = 0
@@ -89,7 +89,7 @@ Return the constructor of a type T{PS...} by default it only returns T (i.e. rem
 This function can be overloaded if custom behaviour is needed
 """
 constructorof(::Type{T}) where T = Base.typename(T).wrapper
-constructorof(::Type{<:SIDims}) = SIDims
+constructorof(::Type{<:Dimensions}) = Dimensions
 constructorof(::Type{<:ScalarUnits}) = ScalarUnits
 constructorof(::Type{<:AffineUnits}) = AffineUnits
 constructorof(::Type{<:Quantity}) = Quantity
