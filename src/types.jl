@@ -21,8 +21,8 @@ Dimensions(;kwargs...) = Dimensions{DEFAULT_PWR_TYPE}(;kwargs...)
 Dimensions(args...) = Dimensions{DEFAULT_PWR_TYPE}(args...)
 DEFAULT_DIMENSONS = Dimensions{DEFAULT_PWR_TYPE}
 
-uscale(u::AbstractDimensions) = 1
-uoffset(u::AbstractDimensions) = 0
+uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
+uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
 dimension(u::AbstractDimensions) = u
 usymbol(u::AbstractDimensions) = DEFAULT_SYMBOL
 
@@ -51,7 +51,7 @@ end
 ScalarUnits(scale, dims::D, symbol=DEFAULT_SYMBOL) where {D} = ScalarUnits{D}(scale, dims, symbol)
 
 uscale(u::ScalarUnits) = u.scale
-uoffset(u::AbstractScalarUnits) = 0
+uoffset(u::AbstractScalarUnits) = 0 # All AbstractScalarUnits have no offset
 dimension(u::ScalarUnits) = u.dims
 usymbol(u::ScalarUnits) = u.symbol
 
