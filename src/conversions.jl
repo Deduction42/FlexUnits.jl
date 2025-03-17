@@ -11,7 +11,7 @@ end
 function AffineTransformation(target::AbstractUnitLike, current::AbstractUnitLike)
     return AffineTransformation(
         scale  = uscale(current)/uscale(target),
-        offset = (offset(current) - offset(target))/scale(target)
+        offset = (uoffset(current) - uoffset(target))/uscale(target)
     )
 end
 
