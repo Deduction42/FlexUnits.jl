@@ -1,36 +1,139 @@
 """
-    AffineTransformation(target::AbstractUnitLike, current::AbstractUnitLike)
+    AffineTransform
 
-Calculates the affine transformation to convert a value from the current units to the target units
+A type representing an affine transfomration that can be
+used to convert values from one unit to another. This is the
+output type of `uconvert(u1::AbstractAffineUnits, u2::AbstractAffineUnits)`
+
+# Fields
+- scale :: Float64
+- offset :: Float64
+
+# Constructors
+- AffineTransform(scale::Real, offset::Real)
+- AffineTransform(; scale, offset)
 """
-@kwdef struct AffineTransformation
+struct AffineTransform
     scale :: Float64
     offset :: Float64
 end
+AffineTransform(;scale, offset) = AffineTransform(scale, offset)
 
-function AffineTransformation(target::AbstractUnitLike, current::AbstractUnitLike)
-    return AffineTransformation(
-        scale  = uscale(current)/uscale(target),
-        offset = (uoffset(current) - uoffset(target))/uscale(target)
+Base.broadcastable(trans::AffineTransform) = Ref(trans)
+transform(x, trans::AffineTransform) = muladd(x, trans.scale, trans.offset)
+transform(x::AbstractArray, trans::AffineTransform) = transform.(x, trans)
+
+"""
+    |>(u1::AbstractUnitLike, u2::Union{AbstractUnitLike, UnionQuantity})
+
+Using `q |> qout` is an alias for `uconvert(u, q)`.
+"""
+Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
+Base.:(|>)(q::UnionQuantity, u::AbstractUnitLike,) = uconvert(u, q)
+
+"""
+    uconvert(utarget::AbstractUnitLike, ucurrent::AbstractUnitLike)
+
+Produces an AffineTransform that can convert a quantity with `current`
+units to a quantity with `target` units
+"""
+function uconvert(utarget::AbstractUnitLike, ucurrent::AbstractUnitLike)
+    dimension(utarget) == dimension(ucurrent) || throw(DimensionError(first(args), Base.tail(args)))
+    return AffineTransform(
+        scale  = uscale(ucurrent)/uscale(utarget),
+        offset = (uoffset(ucurrent) - uoffset(utarget))/uscale(utarget)
     )
 end
 
-Base.muladd(x, affine::AffineTransformation) = muladd(x, affine.scale, affine.offset)
+"""
+    uconvert(u::AbstractUnitLike, q::UnionQuantity)
 
-convert(::Type{<:Quantity}, q::UnionQuantity) = Quantity(q)
-convert(::Type{<:NumberQuantity}, q::UnionQuantity) = NumberQuantity(q)
-convert(::Type{<:RealQuantity}, q::UnionQuantity) = RealQuantity(q)
+Converts quantity `q` to the equivalent quantity having units `u`
+"""
+function uconvert(u::AbstractUnitLike, q::UnionQuantity)
+    newval = transform(ustrip(q), uconvert(u, unit(q)))
+    return quantity(newval, u)
+end
+
+"""
+    ubase(q::UnionQuantity)
+
+Converts quantity `q` to its raw dimensional equivalent (such as SI units)
+"""
+ubase(q::UnionQuantity) = uconvert(dimension(q), q)
+ubase(q::UnionQuantity{<:Any,<:AbstractDimensions}) = q
+ubase(q::Number) = NoDims()
+
+"""
+    ustrip(u::AbstractUnitLike, q::UnionQuantity)
+
+Converts quantity `q` to units `q`` equivalent and removes units
+"""
+ustrip(u::AbstractUnitLike, q::UnionQuantity) = transform(ustrip(q), uconvert(u, unit(q)))
+
+"""
+    basestrip(q::UnionQuantity)
+
+Converts quantity `q` to its raw dimensional equivalent and removes units
+"""
+ustrip_base(q::UnionQuantity) = ustrip(dimension(q), q)
+
+"""
+    ustrip_dimensionless(q::UnionQuantity)
+
+Converts quantity `q` to its raw dimensional equivalent, asserts 
+a dimensionless result, and then removes units
+"""
+ustrip_dimensionless(q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q)))
+
+#=================================================================================================
+Conversion and Promotion
+
+The conversion/promotion strategy works according to the engineering workflow:
+convert units to SI => do calculations => convert to desired units
+
+The main reason behind this is that Dimensions are the fastest to compute around and easiest to work with.
+Moreover, only defining calculations for dimenional units also greatly simplifies the code, thus all operations 
+will promote to dimensional units (such as SI). WARNING:: This also means that Affine Units will auto-convert
+this can yield potentially unintuitive results like 2°C/1°C = 1.0036476381542951
+
+=================================================================================================#
+function Base.convert(::Type{Quantity{T,U}}, q::UnionQuantity) where {T, U<:AbstractUnitLike}
+    u = closest_unit(U, unit(q))
+    v = transform(ustrip(q), uconvert(u, unit(q)))
+    return Quantity{T,U}(v,u)
+end
+
+function Base.convert(::Type{Q}, q::UnionQuantity) where {T, U<:AbstractUnitLike, Q<:UnionQuantity{T,U}}
+    return Q{T,U}(convert(Quantity{T,U}, q))
+end
+
+Base.convert(::Type{Quantity{T,U}}, q::Quantity{T,U}) where {T, U<:AbstractUnitLike} = q # Remove potential ambiguities
 
 
+Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
+Base.promote_rule(::Type{D}, ::Type{<:NoDims}) where D<:AbstractDimensions = D
+Base.promote_rule(::Type{<:NoDims}, ::Type{D}) where D<:AbstractDimensions = D
+
+closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractDimensions  = constructorof(U)(dimension(u))
+closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractScalarUnits = constructorof(U)(scale=uscale(u), dims=dimension(u))
+closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u))
 
 #=
-uconvert(u::Units, q::UnionQuantity) will calculate the affine transformation, apply it and return the narrowest quantity in new units
+Preliminary test code
+K  = Dimensions(temperature=1)
+°C = AffineUnits(scale=1, offset=273.15, dims=K, symbol=:°C)
+°F = AffineUnits(scale=5/9, offset=(273.15-32*5/9), dims=K, symbol=:°F)
 
-convert(::Quantity{Dimensions}, q::UnionQuantity) will uconvert(dimension(q), q) then apply Quantity
-convert(::Quantity{ScalarUnits}, q::UnionQuantity) will unconvert(ScalarUnits(scale=scale(q), dims=dimmension(q)), q), then apply Quantity
-convert(::Quantity{AffineUnits}, q::UnionQuantity) will ....
-convert(::Quantity{Dimensions}, q::AffineUnits) will fail if offset is not zero
 
-can potentially define:
-convert(::Type{Q}, q::UnionQuantity) where {U<:Dimensions,Q<:UnionQuantity{U}} = Q(uconvert(dimension(U), q)
+uconvert(°F, Quantity(-40, °C))
+uconvert(K, Quantity(0, °F))
+uconvert(°C, Quantity(-0, °F))
+
+
+convert(Quantity{Float64, ScalarUnits}, RealQuantity(-0, °F))
+convert(NumberQuantity{Float64, Dimensions}, Quantity(-0, °F))
+convert(Quantity{Float64, AffineUnits}, Quantity(-0, °F))
+convert(RealQuantity{Float64, AffineUnits}, RealQuantity(-0, °F))
+convert(RealQuantity{Float64, AffineUnits}, RealQuantity(-0.0, °F))
 =#

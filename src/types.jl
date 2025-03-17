@@ -1,5 +1,5 @@
 const DEFAULT_PWR_TYPE = FixedRational{DEFAULT_NUMERATOR_TYPE,DEFAULT_DENOM}
-const DEFAULT_SYMBOL = :_
+const DEFAULT_USYMBOL = :_
 
 abstract type AbstractUnitLike end
 abstract type AbstractDimensions{P} <: AbstractUnitLike end
@@ -18,14 +18,30 @@ abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{
 end
 
 Dimensions(args...) = Dimensions{DEFAULT_PWR_TYPE}(args...)
+Dimensions(;kwargs...) = Dimensions{DEFAULT_PWR_TYPE}(;kwargs...)
+Dimensions(d::Dimensions) = d
 DEFAULT_DIMENSONS = Dimensions{DEFAULT_PWR_TYPE}
 
 uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
 uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
 dimension(u::AbstractDimensions) = u
-usymbol(u::AbstractDimensions) = DEFAULT_SYMBOL
+usymbol(u::AbstractDimensions) = DEFAULT_USYMBOL
 
 
+
+"""
+    NoDims{R}
+
+A unitless dimension, compatible with any other dimension
+
+Calling `getproperty` will always return `zero(R)`
+promote(Type{<:NoDims}, D<:AbstractDimension) will return D 
+convert(Type{D}, NoDims) where D<:AbstractDimensions will return D()
+"""
+struct NoDims{P} <: AbstractDimensions{P} 
+end
+NoDims() = NoDims{DEFAULT_PWR_TYPE}()
+Base.getproperty(::NoDims{R}, ::Symbol) where {R} = zero(R)
 
 Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
 
@@ -41,13 +57,14 @@ Can use this to overload the default "fieldnames" behaviour
 end
 
 
-@kwdef struct ScalarUnits{D} <: AbstractScalarUnits{D}
+@kwdef struct ScalarUnits{D<:AbstractDimensions} <: AbstractScalarUnits{D}
     scale::Float64 = 1
     dims::D
     symbol::Symbol=DEFAULT_USYMBOL
 end
 
-ScalarUnits(scale, dims::D, symbol=DEFAULT_SYMBOL) where {D} = ScalarUnits{D}(scale, dims, symbol)
+ScalarUnits(scale, dims::D, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = ScalarUnits{D}(scale, dims, symbol)
+ScalarUnits(s::ScalarUnits) = s
 
 uscale(u::ScalarUnits) = u.scale
 uoffset(u::AbstractScalarUnits) = 0 # All AbstractScalarUnits have no offset
@@ -55,21 +72,21 @@ dimension(u::ScalarUnits) = u.dims
 usymbol(u::ScalarUnits) = u.symbol
 
 
-@kwdef struct AffineUnits{D} <: AbstractAffineUnits{D}
+@kwdef struct AffineUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D}
     scale::Float64 = 1
     offset::Float64 = 0
     dims::D
-    symbol::Symbol=DEFAULT_SYMBOL 
+    symbol::Symbol=DEFAULT_USYMBOL 
 end
 
-AffineUnits(scale, offset, dims::D, symbol=DEFAULT_SYMBOL) where {D<:AbstractDimensions} = AffineUnits{D}(scale, offset, dims, symbol)
+AffineUnits(scale, offset, dims::D, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = AffineUnits{D}(scale, offset, dims, symbol)
+AffineUnits(u::AffineUnits) = u
 
 uscale(u::AffineUnits) = u.scale
 uoffset(u::AffineUnits) = u.offset 
-dimension(u::ScalarUnits) = u.dims 
-usymbol(u::ScalarUnits) = u.symbol
+dimension(u::AffineUnits) = u.dims 
+usymbol(u::AffineUnits) = u.symbol
 remove_offset(u::U) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=0, dims=dimension(u))
-
 
 #=================================================================================================
 Quantity types
@@ -96,14 +113,21 @@ end
 narrowest_quantity(x::Real) = RealQuantity
 
 const UnionQuantity{T,U} = Union{Quantity{T,U}, NumberQuantity{T,U}, RealQuantity{T,U}}
+const UnionNumberOrQuantity = Union{Number, UnionQuantity}
 
 ustrip(q::UnionQuantity) = q.value
 unit(q::UnionQuantity) = q.units
 dimension(q::UnionQuantity) = dimension(unit(q))
 
 Quantity(q::UnionQuantity) = Quantity(ustrip(q), unit(q))
+Quantity{T,U}(q::UnionQuantity) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
+
 NumberQuantity(q::UnionQuantity) = NumberQuantity(ustrip(q), unit(q))
+NumberQuantity{T,U}(q::UnionQuantity) where {T,U} = NumberQuantity{T,U}(ustrip(q), unit(q))
+
 RealQuantity(q::UnionQuantity) = RealQuantity(ustrip(q), unit(q))
+RealQuantity{T,U}(q::UnionQuantity) where {T,U} = RealQuantity{T,U}(ustrip(q), unit(q))
+
 
 
 """
@@ -172,7 +196,7 @@ struct NotDimensionError{D} <: Exception
     dim::D
     NotDimensionError(dim) = new{typeof(dim)}(dim)
 end
-Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim, " cannot be treated as scalar, operation only valid for scalar units")
+Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim, " cannot be treated as dimension, operation only valid for dimension units")
 
 
 assert_scalar(u::AbstractDimensions)  = u
@@ -181,6 +205,14 @@ assert_scalar(u::AbstractAffineUnits) = iszero(uoffset(u)) ? u : throw(NotScalar
 scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
 
 assert_dimension(u::AbstractDimensions) =  u
-assert_dimension(u::AbstractScalarUnits) = isone(scale(u)) ? u : throw(NotDimensionError(u))
-assert_dimension(u::AbstractAffineUnits) = isone(scale(u)) & iszero(offset(u)) ? u : throw(NotDimensionError(u))
-as_dimension(u::AbstractUnitLike) = dimension(assert_dimension(u))
+assert_dimension(u::AbstractScalarUnits) = isone(uscale(u)) ? u : throw(NotDimensionError(u))
+assert_dimension(u::AbstractAffineUnits) = isone(uscale(u)) & iszero(uoffset(u)) ? u : throw(NotDimensionError(u))
+
+assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : DimensionError(u)
+assert_dimensionless(q::UnionQuantity) = isdimensionless(unit(q)) ? q : DimensionError(q)
+
+function isdimensionless(u::U) where U<:AbstractDimensions
+    zero_dimension(obj::AbstractDimensions, fn::Symbol) = iszero(getproperty(obj, fn))
+    return all(Base.Fix1(zero_dimension, u), dimension_names(U)) 
+end
+isdimensionless(u::AbstractUnitLike) = isdimensionless(dimension(u))
