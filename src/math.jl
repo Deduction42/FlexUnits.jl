@@ -105,7 +105,7 @@ Base.:inv(q::UnionQuantity) = apply2quantities(inv, q)
 for NT in (Number, Integer, Rational) #Address potential ambiguities
     @eval Base.:^(q::UnionQuantity, p::$NT) = apply2quantities(Base.Fix2(^, p), q)
 end
-Base.literal_pow(::typeof(^), q::UnionQuantity, ::Val{p}) where {p} = apply2quantities(x->Base.literal_pow(^, x, Val(p)), q)
+@inline Base.literal_pow(::typeof(^), q::UnionQuantity, ::Val{p}) where {p} = apply2quantities(x->Base.literal_pow(^, x, Val(p)), q)
 
 Base.sqrt(q::UnionQuantity) = apply2quantities(sqrt, q)
 Base.cbrt(q::UnionQuantity) = apply2quantities(cbrt, q)
