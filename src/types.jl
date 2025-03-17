@@ -17,7 +17,6 @@ abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{
     amount::P = 0
 end
 
-Dimensions(;kwargs...) = Dimensions{DEFAULT_PWR_TYPE}(;kwargs...)
 Dimensions(args...) = Dimensions{DEFAULT_PWR_TYPE}(args...)
 DEFAULT_DIMENSONS = Dimensions{DEFAULT_PWR_TYPE}
 
@@ -69,18 +68,58 @@ uscale(u::AffineUnits) = u.scale
 uoffset(u::AffineUnits) = u.offset 
 dimension(u::ScalarUnits) = u.dims 
 usymbol(u::ScalarUnits) = u.symbol
+remove_offset(u::U) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=0, dims=dimension(u))
 
 
-abstract type AbstractQuantity{T,U<:AbstractUnits} <: Number end
+#=================================================================================================
+Quantity types
+The basic type is Quantity, which belongs to <:Any (hence it has no real hierarchy)
+Other types are "narrower" in order to slot into different parts of the number hierarchy
+=================================================================================================#
 
-struct Quantity{T<:Number,U<:AbstractUnitLike}
+struct Quantity{T<:Any,U<:AbstractUnitLike}
     value :: T
     units :: U 
 end
+narrowest_quantity(x::Any) = Quantity
 
-ustrip(q::Quantity) = q.value
-unit(q::Quantity) = q.units
-dimension(q::Quantity) = dimension(unit(q))
+struct NumberQuantity{T<:Number,U<:AbstractUnitLike} <: Number
+    value :: T
+    units :: U 
+end
+narrowest_quantity(x::Number) = NumberQuantity
+
+struct RealQuantity{T<:Real,U<:AbstractUnitLike} <: Real
+    value :: T
+    units :: U 
+end
+narrowest_quantity(x::Real) = RealQuantity
+
+const UnionQuantity{T,U} = Union{Quantity{T,U}, NumberQuantity{T,U}, RealQuantity{T,U}}
+
+ustrip(q::UnionQuantity) = q.value
+unit(q::UnionQuantity) = q.units
+dimension(q::UnionQuantity) = dimension(unit(q))
+
+Quantity(q::UnionQuantity) = Quantity(ustrip(q), unit(q))
+NumberQuantity(q::UnionQuantity) = NumberQuantity(ustrip(q), unit(q))
+RealQuantity(q::UnionQuantity) = RealQuantity(ustrip(q), unit(q))
+
+
+"""
+    quantity(x, u::AbstractUnitLike)
+
+Constructs a quantity based on the narrowest quantity type that accepts x as an agument
+"""
+quantity(x, u::AbstractUnitLike) = narrowest_quantity(x)(x, u)
+
+"""
+    narrowest(q::UnionQuantity)
+
+Returns the narrowest quantity type of `q`
+"""
+narrowest(q::UnionQuantity) = quantity(ustrip(q), unit(q))
+widest(q::UnionQuantity) = Quantity(ustrip(q), unit(q))
 
 """
     constructorof(::Type{T}) where T = Base.typename(T).wrapper
@@ -92,8 +131,11 @@ constructorof(::Type{T}) where T = Base.typename(T).wrapper
 constructorof(::Type{<:Dimensions}) = Dimensions
 constructorof(::Type{<:ScalarUnits}) = ScalarUnits
 constructorof(::Type{<:AffineUnits}) = AffineUnits
-constructorof(::Type{<:Quantity}) = Quantity
+constructorof(::Type{<:NumberQuantity}) = NumberQuantity
 
+#=============================================================================================
+Errors and assertion functions
+=============================================================================================#
 
 """
     DimensionError{D} <: Exception
@@ -106,18 +148,39 @@ struct DimensionError{Q1,Q2} <: Exception
     DimensionError(q1::Q1, q2::Q2) where {Q1,Q2} = new{Q1,Q2}(q1, q2)
     DimensionError(q1) = DimensionError(q1, nothing)
 end
-
 Base.showerror(io::IO, e::DimensionError) = print(io, "DimensionError: ", e.q1, " and ", e.q2, " have incompatible dimensions")
 Base.showerror(io::IO, e::DimensionError{<:Any,Nothing}) = print(io, "DimensionError: ", e.q1, " is not dimensionless")
 
 """
-    ScalarUnitError{D} <: Exception
+    NotScalarError{D} <: Exception
 
 Error thrown for non-scalar units when the operation is only valid for scalar units
 """
-struct ScalarUnitError{D} <: Exception
+struct NotScalarError{D} <: Exception
     dim::D
-    ScalarUnitError(dim) = new{typeof(dim)}(dim)
+    NotScalarError(dim) = new{typeof(dim)}(dim)
 end
+Base.showerror(io::IO, e::NotScalarError) = print(io, "NotScalarError: ", e.dim, " cannot be treated as scalar, operation only valid for scalar units")
 
-Base.showerror(io::IO, e::ScalarUnitError) = print(io, "ScalarUnitError: ", e.dim, " cannot be treated as scalar, operation only valid for scalar units")
+
+"""
+    NotDimensionError{D} <: Exception
+
+Error thrown for non-dimensional units (scaled or affine) when the operation is only valid for dimensional units
+"""
+struct NotDimensionError{D} <: Exception
+    dim::D
+    NotDimensionError(dim) = new{typeof(dim)}(dim)
+end
+Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim, " cannot be treated as scalar, operation only valid for scalar units")
+
+
+assert_scalar(u::AbstractDimensions)  = u
+assert_scalar(u::AbstractScalarUnits) = u
+assert_scalar(u::AbstractAffineUnits) = iszero(uoffset(u)) ? u : throw(NotScalarError(u))
+scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
+
+assert_dimension(u::AbstractDimensions) =  u
+assert_dimension(u::AbstractScalarUnits) = isone(scale(u)) ? u : throw(NotDimensionError(u))
+assert_dimension(u::AbstractAffineUnits) = isone(scale(u)) & iszero(offset(u)) ? u : throw(NotDimensionError(u))
+as_dimension(u::AbstractUnitLike) = dimension(assert_dimension(u))

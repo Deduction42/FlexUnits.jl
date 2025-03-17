@@ -13,6 +13,8 @@ end
 #=============================================================================================
  Operations on dimensions
 =============================================================================================#
+Base.:+(args::AbstractDimensions...) = firstequal(args...)
+Base.:-(args::AbstractDimensions...) = firstequal(args...)
 Base.:*(args::AbstractDimensions...) = map_dimensions(+, args...)
 Base.:/(args::AbstractDimensions...) = map_dimensions(-, args...)
 Base.inv(arg::AbstractDimensions) = map_dimensions(-, arg)
@@ -26,6 +28,16 @@ Base.adjoint(d::AbstractDimensions) = d
 #=============================================================================================
  Operations on units
 =============================================================================================#
+function Base.:+(u::U...) where U <: AbstractUnits
+    return firstequalscalar(u)
+end
+function Base.:-(u1::U, u2::U) where U <: AbstractUnits
+    return firstequalscalar((u1, u2))
+end
+function Base.:-(u1::U, u2::U) where U <: AbstractAffineUnits
+    return remove_offset(firstequal((u1, u2)))
+end
+Base.:-(u::AbstractUnits) = u 
 function Base.:*(u::U...) where U <: AbstractUnits
     return constructorof(U)(scale=*(map(uscale, u)...), dims=*(map(scalar_dimension, u)...))
 end
@@ -46,14 +58,8 @@ Base.adjoint(u::AbstractUnits) = u
 Base.:(==)(u1::AbstractUnits, u2::AbstractUnits) = (uscale(u1) == uscale(u2)) & (uoffset(u1) == uoffset(u2)) & (dimension(u1) == dimension(u2))
 Base.:(==)(u1::AbstractScalarUnits, u2::AbstractScalarUnits) = (uscale(u1) == uscale(u2)) & (dimension(u1) == dimension(u2))
 
-#=============================================================================================
- Utility functions
-=============================================================================================#
-assert_scalar(u::AbstractDimensions)  = u
-assert_scalar(u::AbstractScalarUnits) = u
-assert_scalar(u::AbstractAffineUnits) = iszero(uoffset(u)) ? u : throw(ScalarUnitError(u))
-scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
-
+firstequal(args::AbstractUnitLike...) = allequal(args) ? first(args) : throw(DimensionError(first(args), tail(args)))
+firstequalscalar(args::AbstractUnitLike...) = firstequal(map(assert_scalar, args))
 
 #Test code
 #=

@@ -1,21 +1,24 @@
 This package should basically behave like DynamicQuantities, but slightly closer to Uniful.jl with some exceptions
 
-1.  AbstractQuantity <: Number (follow Unitful.jl standard) for additional types, you have two options after this:
-        (1) Not enforcing that Quantity is a number
-        (2) Enforcing multiple Base hierarcy entry points (GenericQuantity, RealQuantity, ArrayQuantity)
-                Then the Holy Traits pattern to define the QuantityTrait that we can dispatch all these on
-2.  Multiplying a number with units constructs a Quantity i.e. *(x::Number, u::AbstractUnits) = Quantity(x, u)
+0.  Define all mathematical functions for dimensions/units
+1.  Defining AbstractQuantity as root prevents you from using Quantity in algorithms that require Real, to tie into other algorithms,
+        (1) Use the Holy Traits pattern to define the QuantityTrait that we can dispatch multiple Quantity types on
+                - Defining and enforcing multiple Base hierarcy entry points (GenericQuantity<:Any, NumericQuantity<:Number, RealQuantity<:Real, ArrayQuantity)
+                - Define narrowest_quantity_type(x) such as narrowest_quantity_type(x<:Real) = RealQuantity
+                - Define quantity(x,d) = constructorof(narrowest_quantity_type(x))(x, d)
+                - Holy Traits may enable users defining their own Quantity types to tie into the base hierarchy wherever they want
+        (2) Use AbstractQuantity <: Number and not enforcing that Quantity is a number (fallback, kludgy)
+2.  Multiplying a number with units constructs a Quantity i.e. *(x, u::AbstractUnits) = quantity(x, u)
 3.  There is one registry, which is a dict. It contains AffineUnits macros and functions convert AffineUnits to their desired type
 4.  String macros ({x}"...") and parse macros ({x}parse("...")) need the following versions:
         d: produce a dimension (very restrictive)
         q: produce a Quantity{Float64, Dimensions} (si quantity representation, scale-restrictive)
-        u: produce a ScaledUnits{Dimensions} (scaled unit representation, scale-restrictive)
-        ua: produce an AffineInits{Dimensions} (affine unit represntation, least restrictive)
+        u: produce a ScalarUnits{Dimensions} (scaled unit representation, scale-restrictive)
+        ua: produce an AffineUnits{Dimensions} (affine unit represntation, least restrictive)
 5.  "u" and "ua" variants assign the expression as their symbol, (operations tend to eliminate symbols, but you can restore them with a uconvert)
 6.  Dimension outputs need to be parseable, units with symbols will have parseable output by virtue that the expression worked
 7.  You can feed a dictionary to {x}parse(str, dict), to use custom unit registries
         The dict will have have elements of AffineUnits{D} where D is a dimension object
         Build an {x}expression(str, dict) as well for easily building string macros
-8.  Consier commutative macro for promote_rule 
+8.  Consider commutative macro for promote_rule to prevent repetition
         https://discourse.julialang.org/t/techniques-for-defining-commutative-functions/113406/5
-
