@@ -5,6 +5,7 @@ include("fixed_rational.jl")
 include("types.jl")
 include("conversions.jl")
 include("math.jl")
+include("registry.jl")
 
 export Dimensions, ScalarUnits, AffineUnits
 

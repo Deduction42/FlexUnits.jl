@@ -3,7 +3,7 @@
 
 A type representing an affine transfomration that can be
 used to convert values from one unit to another. This is the
-output type of `uconvert(u1::AbstractAffineUnits, u2::AbstractAffineUnits)`
+output type of `uconvert(u::AbstractUnitLike, u0::AbstractUnitLike)`
 
 # Fields
 - scale :: Float64
@@ -114,6 +114,13 @@ Base.convert(::Type{Quantity{T,U}}, q::Quantity{T,U}) where {T, U<:AbstractUnitL
 Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
 Base.promote_rule(::Type{D}, ::Type{<:NoDims}) where D<:AbstractDimensions = D
 Base.promote_rule(::Type{<:NoDims}, ::Type{D}) where D<:AbstractDimensions = D
+
+Base.convert(::Type{U}, u0::AbstractDimensions) where U<:AbstractAffineUnits = U(dims=u0)
+Base.convert(::Type{U}, u0::AbstractScalarUnits) where {U<:AbstractAffineUnits} = U(scale=uscale(u0), dims=dimension(u0), symbol=usymbol(u0))
+
+function Base.convert(::Type{U}, u0::AbstractDimensions{D0}) where {D,D0,U<:AffineUnits{D}}
+    return constructorof(U)(dims=convert(D, dimension(u0)))
+end
 
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractDimensions  = constructorof(U)(dimension(u))
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractScalarUnits = constructorof(U)(scale=uscale(u), dims=dimension(u))
