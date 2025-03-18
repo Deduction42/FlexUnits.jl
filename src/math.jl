@@ -79,26 +79,23 @@ end
 
 Base.:*(v::Number, u::AbstractUnitLike) = quantity(v, u)
 
-Base.:+(q::UnionQuantity, n::Number) = ustrip(assert_dimensionless(q)) + n 
-Base.:+(n::Number, q::UnionQuantity) = ustrip(assert_dimensionless(q)) + n
-Base.:+(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(+, q1, q2)
+Base.:+(q::UnionQuantity, n::Number) = ustrip(assert_dimensionless(ubase(q))) + n 
+Base.:+(n::Number, q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q))) + n
+Base.:+(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(+, ubase(q1), ubase(q2))
 Base.:+(q::UnionQuantity...) = apply2quantities(+, q...)
 
-Base.:-(q::UnionQuantity, n::Number) = ustrip(assert_dimensionless(q)) - n 
-Base.:-(n::Number, q::UnionQuantity) = n - ustrip(assert_dimensionless(q))
-Base.:-(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(-, q1, q2)
-Base.:-(q1::UnionQuantity) = apply2quantities(-, q1)
+Base.:-(q::UnionQuantity, n::Number) = ustrip(assert_dimensionless(ubase(q))) - n 
+Base.:-(n::Number, q::UnionQuantity) = n - ustrip(assert_dimensionless(ubase(q)))
+Base.:-(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(-, ubase(q1), ubase(q2))
+Base.:-(q1::UnionQuantity) = apply2quantities(-, ubase(q1))
 
-Base.:*(q::UnionQuantity, n::Number) = ubase(quantity(ustrip(q)*n, unit(q)))
-Base.:*(n::Number, q::UnionQuantity) = ubase(quantity(ustrip(q)*n, unit(q)))
+Base.:*(q0::UnionQuantity, n::Number) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
+Base.:*(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
 Base.:*(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(*, q1, q2)
 Base.:*(q::UnionQuantity...) = apply2quantities(*, q...)
 
-Base.:/(q::UnionQuantity, n::Number) = ubase(quantity(ustrip(q)/n, unit(q)))
-function Base.:/(n::Number, q::UnionQuantity)
-    qbase = ubase(q)
-    return quantity(n/ustrip(qbase), inv(unit(qbase)))
-end
+Base.:/(q0::UnionQuantity, n::Number) = (q = ubase(q0); quantity(ustrip(q)/n, unit(q)))
+Base.:/(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(n/ustrip(q), inv(unit(q))))
 Base.:/(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(/, q1, q2)
 Base.:inv(q::UnionQuantity) = apply2quantities(inv, q)
 

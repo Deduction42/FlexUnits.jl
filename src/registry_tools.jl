@@ -105,6 +105,38 @@ function dimensional_defaults!(reg::AbstractDict{AffineUnits{Dims}}) where Dims 
     register_unit!(reg, :T => N/(A*m))
     register_unit!(reg, :Wb => V*s)
 
+    #!!! Register more common units later
+
 end
 
+#=================================================================================================
+Design Decisions:
+- Registry-agnostic parsing functions live in RegistryTools module 
+    uparse(str, reg::Dict) parses `str` and fills in units according to `reg`, returning units
+        variants will convert to appropriate type
+    uparse_expr(str, reg::Dict) parses `str` like {x} and returns an expression
+        variants add the conversion expression
+    macros rely on the module environment for `reg`
+        makes uparse_expr calls underneath
+
+- RegistryTools should import all neccessary functions/types from the environment, and exports them
+    using ..RegistryTools
+    This simplifies the task of creating a new registry
+
+- Registry-internal parsing functions live inside the Registry module (they are not automatically exported)
+    uparse(str::String) (and variants)
+    @u_str (and variaents)
+    register_unit(p::Pair{Symbol, <:AbstractUnitLike})
+
+- Parsing will have three variants (not automatically exported, )
+    uparse will return whatever units are in the dictionary (AffineUnits{D})
+        u"..." is the equivalent macro
+    suparse will convert uparse results into ScalarUnits{D}
+        su"..." is the 
+    qparse will convert uparse results into RealQuantity{Float64, D}
+        q"..." is the equivalent macro
+
+- Registry-internal registering function will need to have a ReentrantLock applied
+
+=================================================================================================#
 

@@ -91,7 +91,7 @@ ustrip_dimensionless(q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q)))
 
 Convert quantity `q` into a unit of the same magnitude
 """
-asunit(q::UnionQuantity{<:Number, <:D})   = ScalarUnits(scale=ustrip(q), dims=dimension(q))
+asunit(q::UnionQuantity{<:Number, <:Dimensions})   = ScalarUnits(scale=ustrip(q), dims=dimension(q))
 asunit(q::UnionQuantity{<:Number, <:ScalarUnits}) = ScalarUnits(scale=ustrip(q)*uscale(q), dims=dimension(q))
 asunit(q::UnionQuantity{<:Number, <:AffineUnits}) = AffineUnits(scale=ustrip(q)*uscale(q), offset=uoffset(q), dims=dimension(q))
 
@@ -114,7 +114,7 @@ function Base.convert(::Type{Quantity{T,U}}, q::UnionQuantity) where {T, U<:Abst
 end
 
 function Base.convert(::Type{Q}, q::UnionQuantity) where {T, U<:AbstractUnitLike, Q<:UnionQuantity{T,U}}
-    return Q{T,U}(convert(Quantity{T,U}, q))
+    return constructorof(Q){T,U}(convert(Quantity{T,U}, q))
 end
 
 Base.convert(::Type{Quantity{T,U}}, q::Quantity{T,U}) where {T, U<:AbstractUnitLike} = q # Remove potential ambiguities

@@ -7,7 +7,9 @@ abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
 abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
 abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D} end
 
-@kwdef struct D{P} <: AbstractDimensions{P}
+Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
+
+@kwdef struct Dimensions{P} <: AbstractDimensions{P}
     length::P = 0
     mass::P = 0
     time::P = 0
@@ -17,33 +19,37 @@ abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{
     amount::P = 0
 end
 
-D(args...) = D{DEFAULT_PWR_TYPE}(args...)
-D(;kwargs...) = D{DEFAULT_PWR_TYPE}(;kwargs...)
-D(d::D) = d
-DEFAULT_DIMENSONS = D{DEFAULT_PWR_TYPE}
+Dimensions(args...) = Dimensions{DEFAULT_PWR_TYPE}(args...)
+Dimensions(;kwargs...) = Dimensions{DEFAULT_PWR_TYPE}(;kwargs...)
+Dimensions(d::Dimensions) = d
+DEFAULT_DIMENSONS = Dimensions{DEFAULT_PWR_TYPE}
 
 uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
 uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
 dimension(u::AbstractDimensions) = u
 usymbol(u::AbstractDimensions) = DEFAULT_USYMBOL
+Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
 
-
+function unit_symbols(::Type{<:Dimensions})
+    return Dimensions{Symbol}(
+        length=:m, mass=:kg, time=:s, current=:A, temperature=:K, luminosity=:cd, amount=:mol
+    )
+end
 
 """
-    NoDims{R}
+    NoDims{P}
 
 A unitless dimension, compatible with any other dimension
 
-Calling `getproperty` will always return `zero(R)`
+Calling `getproperty` will always return `zero(P)`
 promote(Type{<:NoDims}, D<:AbstractDimension) will return D 
 convert(Type{D}, NoDims) where D<:AbstractDimensions will return D()
 """
-struct NoDims{P} <: AbstractDimensions{P} 
-end
+struct NoDims{P} <: AbstractDimensions{P} end
 NoDims() = NoDims{DEFAULT_PWR_TYPE}()
-Base.getproperty(::NoDims{R}, ::Symbol) where {R} = zero(R)
+Base.getproperty(::NoDims{P}, ::Symbol) where {P} = zero(P)
+unit_symbols(::Type{<:NoDims}) = NoDims{Symbol}()
 
-Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
 
 """
     dimension_names(::Type{<:AbstractDimensions})
@@ -55,7 +61,6 @@ Can use this to overload the default "fieldnames" behaviour
 @inline function dimension_names(::Type{D}) where {D<:AbstractDimensions}
     return static_fieldnames(D)
 end
-
 
 @kwdef struct ScalarUnits{D<:AbstractDimensions} <: AbstractScalarUnits{D}
     scale::Float64 = 1
@@ -152,9 +157,11 @@ Return the constructor of a type T{PS...} by default it only returns T (i.e. rem
 This function can be overloaded if custom behaviour is needed
 """
 constructorof(::Type{T}) where T = Base.typename(T).wrapper
-constructorof(::Type{<:D}) = D
+constructorof(::Type{<:Dimensions})  = Dimensions
 constructorof(::Type{<:ScalarUnits}) = ScalarUnits
 constructorof(::Type{<:AffineUnits}) = AffineUnits
+constructorof(::Type{<:Quantity}) = Quantity
+constructorof(::Type{<:RealQuantity}) = RealQuantity
 constructorof(::Type{<:NumberQuantity}) = NumberQuantity
 
 #=============================================================================================
