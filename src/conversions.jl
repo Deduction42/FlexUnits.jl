@@ -86,6 +86,15 @@ a dimensionless result, and then removes units
 """
 ustrip_dimensionless(q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q)))
 
+"""
+    asunit(q::UnionQuantity{<:Number})
+
+Convert quantity `q` into a unit of the same magnitude
+"""
+asunit(q::UnionQuantity{<:Number, <:D})   = ScalarUnits(scale=ustrip(q), dims=dimension(q))
+asunit(q::UnionQuantity{<:Number, <:ScalarUnits}) = ScalarUnits(scale=ustrip(q)*uscale(q), dims=dimension(q))
+asunit(q::UnionQuantity{<:Number, <:AffineUnits}) = AffineUnits(scale=ustrip(q)*uscale(q), offset=uoffset(q), dims=dimension(q))
+
 #=================================================================================================
 Conversion and Promotion
 

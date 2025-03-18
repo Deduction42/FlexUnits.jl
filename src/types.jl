@@ -7,7 +7,7 @@ abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
 abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
 abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D} end
 
-@kwdef struct Dimensions{P} <: AbstractDimensions{P}
+@kwdef struct D{P} <: AbstractDimensions{P}
     length::P = 0
     mass::P = 0
     time::P = 0
@@ -17,10 +17,10 @@ abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{
     amount::P = 0
 end
 
-Dimensions(args...) = Dimensions{DEFAULT_PWR_TYPE}(args...)
-Dimensions(;kwargs...) = Dimensions{DEFAULT_PWR_TYPE}(;kwargs...)
-Dimensions(d::Dimensions) = d
-DEFAULT_DIMENSONS = Dimensions{DEFAULT_PWR_TYPE}
+D(args...) = D{DEFAULT_PWR_TYPE}(args...)
+D(;kwargs...) = D{DEFAULT_PWR_TYPE}(;kwargs...)
+D(d::D) = d
+DEFAULT_DIMENSONS = D{DEFAULT_PWR_TYPE}
 
 uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
 uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
@@ -152,7 +152,7 @@ Return the constructor of a type T{PS...} by default it only returns T (i.e. rem
 This function can be overloaded if custom behaviour is needed
 """
 constructorof(::Type{T}) where T = Base.typename(T).wrapper
-constructorof(::Type{<:Dimensions}) = Dimensions
+constructorof(::Type{<:D}) = D
 constructorof(::Type{<:ScalarUnits}) = ScalarUnits
 constructorof(::Type{<:AffineUnits}) = AffineUnits
 constructorof(::Type{<:NumberQuantity}) = NumberQuantity

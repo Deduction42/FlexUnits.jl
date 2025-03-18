@@ -15,10 +15,16 @@ Base.iterate(d::PermanentDict) = iterate(d.data)
 Base.iterate(d::PermanentDict, n::Integer) = iterate(d.data, n)
 Base.length(d::PermanentDict)  = length(d.data)
 
+"""
+    PermanentDictError
+
+An error class that specializes in illegal operations on PermanentDict
+"""
 struct PermanentDictError <: Exception
     msg::String
 end
 Base.showerror(io::IO, e::PermanentDictError) = print(io, "PermanentDictError: ", e.msg)
+
 
 Base.get(d::PermanentDict, k, v) = get(d.data, k, v)
 Base.getindex(d::PermanentDict, k) = d.data[k]
@@ -31,8 +37,6 @@ function Base.setindex!(d::PermanentDict, v, k)
     return d
 end
 Base.delete!(d, k) = throw(PermanentDictError("Removing entries is prohibited"))
-
-const PREFIXES = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
 
 function register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol,<:AbstractDimensions})
     (k,v) = p
@@ -55,18 +59,52 @@ function add_prefixes!(reg::AbstractDict{Symbol,<:AffineUnits{D}}, u::Symbol, pr
 end
 
 
+function dimensional_defaults!(reg::AbstractDict{AffineUnits{Dims}}) where Dims <: AbstractDimensions
+    #reg = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
+    si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
 
-function fill_default_units!(reg::AbstractDict{AffineUnits{D}}) where D <: AbstractDimensions
-    reg = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
-    register_unit!(reg, :m => Dimensions(mass=1))
-    register_unit!(reg, :g => ScalarUnits(scale=0.001, dims=Dimensions(mass=1)))
-    register_unit!(reg, :s => Dimensions(time=1))
-    register_unit!(reg, :A => Dimensions(current=1))
-    register_unit!(reg, :K => Dimensions(temperature=1))
-    register_unit!(reg, :cd => Dimensions(luminosity=1))
-    register_unit!(reg, :mol => Dimensions(amount=1))
+    #SI dimensional units
+    register_unit!(reg, :m => Dims(length=1))
+    register_unit!(reg, :g => asunit(0.001*Dims(mass=1)))
+    register_unit!(reg, :t => asunit(1000*Dims(mass=1)))
+    register_unit!(reg, :s => Dims(time=1))
+    register_unit!(reg, :A => Dims(current=1))
+    register_unit!(reg, :K => Dims(temperature=1))
+    register_unit!(reg, :cd => Dims(luminosity=1))
+    register_unit!(reg, :mol => Dims(amount=1))
+    
+    add_prefixes!(reg, :m, si_prefixes[( :f, :p, :n, :μ, :u, :m, :c, :d, :k, :M, :G )])
+    add_prefixes!(reg, :g, si_prefixes[( :n, :μ, :u, :m, :k)])
+    add_prefixes!(reg, :t, si_prefixes[( :k, :M, :G)])
+    add_prefixes!(reg, :s, si_prefixes[( :f, :p, :n, :μ, :m)])
+    add_prefixes!(reg, :A, si_prefixes[( :n, :μ, :u, :m, :k)])
+    add_prefixes!(reg, :K, si_prefixes[( :m, )])
+    add_prefixes!(reg, :cd, si_prefixes[( :m, )])
+    add_prefixes!(reg, :mol, si_prefixes[( :p, :n, :μ, :u, :m, :k )])
 
-    add_prefixes!(reg, :m, PREFIXES[( :f, :p, :n, :μ, :u, :c, :d, :k, :M, :G )])
+    #SI derived units
+    m = reg[:m]
+    kg = reg[:kg]
+    s = reg[:s]
+    A = reg[:A]
+    mol = reg[:mol]
+
+    register_unit!(reg, :L => reg[:dm]^3)
+    register_unit!(reg, :Hz => inv(s))
+    register_unit!(reg, :N => kg*m/s^2); N = reg[:N]
+    register_unit!(reg, :Pa => N/m^2);
+    register_unit!(reg, :J => N*m); J = reg[:J]
+    register_unit!(reg, :W => J/s); W = reg[:W]
+    register_unit!(reg, :C => A*s); C = reg[:C]
+    register_unit!(reg, :V => W/A); V = reg[:V]
+    register_unit!(reg, :Ω => V/A); Ω = reg[:Ω]
+    register_unit!(reg, :F => C/V) 
+    register_unit!(reg, :ohm => Ω) 
+    register_unit!(reg, :S => A/V)
+    register_unit!(reg, :H => N*m/A^2)
+    register_unit!(reg, :T => N/(A*m))
+    register_unit!(reg, :Wb => V*s)
+
 end
 
 

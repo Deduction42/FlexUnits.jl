@@ -41,7 +41,7 @@ function Base.:inv(arg::U) where U <: AbstractUnits
     return constructorof(U)(scale=inv(uscale(arg)), dims=inv(scalar_dimension(arg)))
 end
 function Base.:^(u::U, p::Number) where U <:AbstractUnits
-    return constructorof(U)(scale=uscale(u)^p, scalar_dimension(u)^p)
+    return constructorof(U)(scale=uscale(u)^p, dims=scalar_dimension(u)^p)
 end
 Base.sqrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 2))
 Base.cbrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 3))
