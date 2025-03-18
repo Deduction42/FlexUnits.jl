@@ -1,3 +1,16 @@
+
+module RegistryTools
+
+import ..AbstractUnitLike, ..AbstractUnits, ..AbstractAffineUnits, ..AbstractScalarUnits, ..AbstractDimensions
+import ..AffineUnits, ..ScalarUnits, ..Dimensions, ..RealQuantity, ..UnionQuantity
+import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit, ..constructorof
+
+export 
+    AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractScalarUnits, AbstractDimensions,
+    AffineUnits, ScalarUnits, Dimensions, RealQuantity, UnionQuantity, uscale, uoffset, dimension, usymbol,
+    PermanentDict, register_unit!, registry_defaults!, uparse, usparse, qparse, uparse_expr
+
+
 """
     PermanentDict{K,T}
 
@@ -129,9 +142,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
 end
 
 function uparse(str::String, reg::AbstractDict{Symbol, <:AbstractUnitLike})
-    ex = Meta.parse(str)
-    u = eval(uparse_expr(ex, reg))
-    return change_symbol(u, Symbol(str))
+    return eval(uparse_expr(str, reg))
 end
 
 function usparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnits}
@@ -142,6 +153,11 @@ end
 function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnits}
     u = uparse(str, reg)
     return convert(Quantity{Float64, dimtype(U)}, u)
+end
+
+function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    ex = uparse_expr(Meta.parse(str), reg)
+    return :($change_symbol($(ex), $(str)))
 end
 
 function uparse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
@@ -172,12 +188,16 @@ end
 
 lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Any) = ex
 
+change_symbol(u::AbstractUnitLike, s::String) = change_symbol(u, Symbol(s))
+
 function change_symbol(u::U, s::Symbol) where U<:AbstractAffineUnits
     return constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=s)
 end
 
 function change_symbol(u::U, s::Symbol) where U<:AbstractScalarUnits
     return constructorof(U)(scale=uscale(u), dims=dimension(u), symbol=s)
+end
+
 end
 
 
@@ -212,6 +232,9 @@ Design Decisions:
 
 =================================================================================================#
 
-reg = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
-registry_defaults!(reg)
-5*uparse("°C", reg)*1
+#=
+#Test code
+reg = RegistryTools.PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
+RegistryTools.registry_defaults!(reg)
+5*RegistryTools.uparse("°C", reg)
+=#
