@@ -59,7 +59,7 @@ function add_prefixes!(reg::AbstractDict{Symbol,<:AffineUnits{D}}, u::Symbol, pr
 end
 
 
-function dimensional_defaults!(reg::AbstractDict{AffineUnits{Dims}}) where Dims <: AbstractDimensions
+function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where Dims <: AbstractDimensions
     #reg = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
 
@@ -108,6 +108,43 @@ function dimensional_defaults!(reg::AbstractDict{AffineUnits{Dims}}) where Dims 
     #!!! Register more common units later
 
 end
+
+function uparse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    if ex.head != :call
+        throw(ArgumentError("Unexpected expression: $ex. Only `:call` is expected."))
+    end
+    ex.args[2:end] = map(Base.Fix1(lookup_unit_expr, reg), ex.args[2:end])
+    #ex = :($check_uexpr_element($U, $ex))
+
+    return ex
+end
+
+function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, name::Symbol)
+    if !haskey(reg, name)
+        throw(ArgumentError("Symbol $sym not found in the provided unit registry."))
+    else
+        return reg[name]
+    end
+end
+
+function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Expr)
+    return uparse_expr(ex, reg)
+end
+
+lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Any) = ex
+
+function change_symbol(u::U, s::Symbol) where U<:AbstractAffineUnits
+    return constructorof(u)(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=s)
+end
+
+function change_symbol(u::U, s::Symbol) where U<:AbstractScalarUnits
+    return constructorof(u)(scale=uscale(u), dims=dimension(u), symbol=s)
+end
+
+#check_uexpr_element(::Type{Q}, x::Q) where {D,Q<:AbstractAffineUnits{D}} = x
+#check_uexpr_element(::Type{Q}, x::Number) where {D,Q<:AbstractAffineUnits{D}} = constructorof(Q)(scale=x, dims=constructorof(D)())
+#check_uexpr_element(::Type{Q}, x) where Q<:AbstractAffineUnits = error("Unexpected type evaluated: $(typeof(x))")
+
 
 #=================================================================================================
 Design Decisions:

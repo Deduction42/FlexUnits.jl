@@ -31,18 +31,28 @@ Base.abs2(d::AbstractDimensions) = d^2
 #=============================================================================================
  Mathematical operations on abstract units (mostly for parsing)
 =============================================================================================#
+Base.:*(n::Number, u::AbstractUnitLike) = quantity(n, u)
+Base.:/(n::Number, u::AbstractUnitLike) = quantity(n, inv(u))
+
+Base.:*(q::UnionQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)*u)
+Base.:/(q::UnionQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)/u)
+
 function Base.:*(u::U...) where U <: AbstractUnits
     return constructorof(U)(scale=*(map(uscale, u)...), dims=*(map(scalar_dimension, u)...))
 end
+
 function Base.:/(u1::U, u2::U) where U <: AbstractUnits
     return constructorof(U)(scale=/(map(uscale, (u1, u2))...), dims=/(map(scalar_dimension, (u1, u2))...))
 end
+
 function Base.:inv(arg::U) where U <: AbstractUnits
     return constructorof(U)(scale=inv(uscale(arg)), dims=inv(scalar_dimension(arg)))
 end
+
 function Base.:^(u::U, p::Number) where U <:AbstractUnits
     return constructorof(U)(scale=uscale(u)^p, dims=scalar_dimension(u)^p)
 end
+
 Base.sqrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 2))
 Base.cbrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 3))
 
@@ -76,8 +86,6 @@ function apply2quantities(f, args::UnionQuantity...)
     basedims = map(unit, baseargs)
     return quantity(f(basevals...), f(basedims...))
 end
-
-Base.:*(v::Number, u::AbstractUnitLike) = quantity(v, u)
 
 Base.:+(q::UnionQuantity, n::Number) = ustrip(assert_dimensionless(ubase(q))) + n 
 Base.:+(n::Number, q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q))) + n
