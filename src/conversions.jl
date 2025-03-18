@@ -127,10 +127,17 @@ Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
 Base.promote_rule(::Type{D}, ::Type{<:NoDims}) where D<:AbstractDimensions = D
 Base.promote_rule(::Type{<:NoDims}, ::Type{D}) where D<:AbstractDimensions = D
 
-# Converting specialized units to more generic ones ==============================================================
-Base.convert(::Type{U}, u0::AbstractDimensions) where U<:AbstractAffineUnits = U(dims=u0)
-Base.convert(::Type{U}, u0::AbstractScalarUnits) where {U<:AbstractAffineUnits} = U(scale=uscale(u0), dims=dimension(u0), symbol=usymbol(u0))
+# Converting between unit types ==============================================================
+Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AffineUnits = U(scale=uscale(u0), offset=uoffset(u0), dims=dimension(u0), symbol=usymbol(u0))
+Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:ScalarUnits = (assert_scalar(u0); U(scale=uscale(u0), dims=dimension(u0), symbol=usymbol(u0)))
+Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AbstractDimensions = (assert_dimension(u0); dims=dimension(u0))
+
+# Converting between units and quantities ====================================================
 Base.convert(::Type{U}, q::UnionQuantity) where U<:AbstractUnits = convert(U, asunit(q))
+function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:UnionQuantity{<:Any, <:AbstractDimensions}}
+    assert_scalar(u)
+    return Q(uscale(u), dimension(u))
+end
 
 # Switching dimension types on affine units (for registries) ======================================================
 function Base.convert(::Type{U}, u0::AbstractDimensions{D0}) where {D,D0,U<:AffineUnits{D}}

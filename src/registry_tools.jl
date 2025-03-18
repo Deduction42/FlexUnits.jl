@@ -38,12 +38,30 @@ function Base.setindex!(d::PermanentDict, v, k)
 end
 Base.delete!(d, k) = throw(PermanentDictError("Removing entries is prohibited"))
 
-function register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol,<:AbstractDimensions})
+"""
+    register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{String,<:AbstractUnitLike})
+
+Registers a unit into the dictionary. This version should be used instead of the "Symbol" versions as 
+it will validate whether or not the proposed name can be parsed.
+"""
+function register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{String,<:AbstractUnitLike})
+    (k,v) = p
+    name = Meta.parse(k)
+
+    if name isa Symbol
+        return _register_unit!(reg, name => v)
+    else
+        throw(ArgumentError("Invalid unit registration name for $(k), it did not parse as a Symbol"))
+    end
+end
+
+
+function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol,<:AbstractDimensions})
     (k,v) = p
     return setindex!(reg, AffineUnits(dims=v, symbol=k), k)
 end
 
-function register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol,<:AbstractUnitLike})
+function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol,<:AbstractUnitLike})
     (k,v) = p
     vn = AffineUnits(scale=uscale(v), offset=uoffset(v), dims=dimension(v), symbol=k)
     return setindex!(reg, vn, k)
@@ -64,14 +82,14 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
 
     #SI dimensional units
-    register_unit!(reg, :m => Dims(length=1))
-    register_unit!(reg, :g => asunit(0.001*Dims(mass=1)))
-    register_unit!(reg, :t => asunit(1000*Dims(mass=1)))
-    register_unit!(reg, :s => Dims(time=1))
-    register_unit!(reg, :A => Dims(current=1))
-    register_unit!(reg, :K => Dims(temperature=1))
-    register_unit!(reg, :cd => Dims(luminosity=1))
-    register_unit!(reg, :mol => Dims(amount=1))
+    _register_unit!(reg, :m => Dims(length=1))
+    _register_unit!(reg, :g => asunit(0.001*Dims(mass=1)))
+    _register_unit!(reg, :t => asunit(1000*Dims(mass=1)))
+    _register_unit!(reg, :s => Dims(time=1))
+    _register_unit!(reg, :A => Dims(current=1))
+    _register_unit!(reg, :K => Dims(temperature=1))
+    _register_unit!(reg, :cd => Dims(luminosity=1))
+    _register_unit!(reg, :mol => Dims(amount=1))
     
     add_prefixes!(reg, :m, si_prefixes[( :f, :p, :n, :μ, :u, :m, :c, :d, :k, :M, :G )])
     add_prefixes!(reg, :g, si_prefixes[( :n, :μ, :u, :m, :k)])
@@ -88,41 +106,56 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     s = reg[:s]
     A = reg[:A]
     mol = reg[:mol]
+    K = reg[:K]
 
-    register_unit!(reg, :L => reg[:dm]^3)
-    register_unit!(reg, :Hz => inv(s))
-    register_unit!(reg, :N => kg*m/s^2); N = reg[:N]
-    register_unit!(reg, :Pa => N/m^2);
-    register_unit!(reg, :J => N*m); J = reg[:J]
-    register_unit!(reg, :W => J/s); W = reg[:W]
-    register_unit!(reg, :C => A*s); C = reg[:C]
-    register_unit!(reg, :V => W/A); V = reg[:V]
-    register_unit!(reg, :Ω => V/A); Ω = reg[:Ω]
-    register_unit!(reg, :F => C/V) 
-    register_unit!(reg, :ohm => Ω) 
-    register_unit!(reg, :S => A/V)
-    register_unit!(reg, :H => N*m/A^2)
-    register_unit!(reg, :T => N/(A*m))
-    register_unit!(reg, :Wb => V*s)
+    _register_unit!(reg, :L => reg[:dm]^3)
+    _register_unit!(reg, :Hz => inv(s))
+    _register_unit!(reg, :N => kg*m/s^2); N = reg[:N]
+    _register_unit!(reg, :Pa => N/m^2);
+    _register_unit!(reg, :J => N*m); J = reg[:J]
+    _register_unit!(reg, :W => J/s); W = reg[:W]
+    _register_unit!(reg, :C => A*s); C = reg[:C]
+    _register_unit!(reg, :V => W/A); V = reg[:V]
+    _register_unit!(reg, :Ω => V/A); Ω = reg[:Ω]
+    _register_unit!(reg, :F => C/V) 
+    _register_unit!(reg, :ohm => Ω) 
+    _register_unit!(reg, :S => A/V)
+    _register_unit!(reg, :H => N*m/A^2)
+    _register_unit!(reg, :T => N/(A*m))
+    _register_unit!(reg, :Wb => V*s)
 
-    #!!! Register more common units later
+    _register_unit!(reg, :°C => AffineUnits(offset=273.15, dims=dimension(K)))    
 
 end
 
-function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+function uparse(str::String, reg::AbstractDict{Symbol, <:AbstractUnitLike})
     ex = Meta.parse(str)
+    u = eval(uparse_expr(ex, reg))
+    return change_symbol(u, Symbol(str))
+end
+
+function usparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnits}
+    u = uparse(str, reg)
+    return convert(ScalarUnits{dimtype(U)}, u)
+end
+
+function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnits}
+    u = uparse(str, reg)
+    return convert(Quantity{Float64, dimtype(U)}, u)
+end
+
+function uparse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     if ex.head != :call
         throw(ArgumentError("Unexpected expression: $ex. Only `:call` is expected."))
     end
     ex.args[2:end] = map(Base.Fix1(lookup_unit_expr, reg), ex.args[2:end])
-    
+
     #Make sure the return type is the same as the registry
     return :($convert($U, $ex))
 end
 
-function uparse(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    u = eval(uparse_expr(str, reg))
-    return change_symbol(u, Symbol(str))
+function uparse_expr(ex::Symbol, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    return lookup_unit_expr(reg, ex)
 end
 
 function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Expr)
@@ -179,3 +212,6 @@ Design Decisions:
 
 =================================================================================================#
 
+reg = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
+registry_defaults!(reg)
+5*uparse("°C", reg)*1

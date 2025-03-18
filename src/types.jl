@@ -29,6 +29,8 @@ uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
 dimension(u::AbstractDimensions) = u
 usymbol(u::AbstractDimensions) = DEFAULT_USYMBOL
 Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
+dimtype(::Type{<:AbstractUnits{D}}) where D = D
+dimtype(::Type{D}) where D<:AbstractDimensions = D
 
 function unit_symbols(::Type{<:Dimensions})
     return Dimensions{Symbol}(
@@ -75,6 +77,7 @@ uscale(u::ScalarUnits) = u.scale
 uoffset(u::AbstractScalarUnits) = 0 # All AbstractScalarUnits have no offset
 dimension(u::ScalarUnits) = u.dims
 usymbol(u::ScalarUnits) = u.symbol
+
 
 
 @kwdef struct AffineUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D}
