@@ -20,7 +20,7 @@ Design Decisions:
 3.  Registry is a module containing a single dict for a registry (AffineUnits because they are the most general)
         Users can easily create their own registries with the RegistryTools module that exports everythign you need
 4.  String macros ({x}"...") and parse macros ({x}parse("...")) need the following versions:
-        q: produce a Quantity{Float64, Dimensions} (si quantity representation, general)
+        q: produce a Quantity{Float64, Dimensions} (si quantity representation, scale-restrictive)
         us: produce a ScalarUnits{Dimensions} (scaled unit representation, scale-restrictive)
         u: produce an AffineUnits{Dimensions} (affine unit represntation, general)
 5.  Macros and parsers ARE NOT EXPORTED BY DEFAULT

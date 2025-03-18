@@ -91,9 +91,10 @@ ustrip_dimensionless(q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q)))
 
 Convert quantity `q` into a unit of the same magnitude
 """
-asunit(q::UnionQuantity{<:Number, <:Dimensions})   = ScalarUnits(scale=ustrip(q), dims=dimension(q))
-asunit(q::UnionQuantity{<:Number, <:ScalarUnits}) = ScalarUnits(scale=ustrip(q)*uscale(q), dims=dimension(q))
-asunit(q::UnionQuantity{<:Number, <:AffineUnits}) = AffineUnits(scale=ustrip(q)*uscale(q), offset=uoffset(q), dims=dimension(q))
+asunit(q::UnionQuantity{<:Number, <:Dimensions})  = ScalarUnits(scale=ustrip(q), dims=dimension(q))
+asunit(q::UnionQuantity{<:Number, <:ScalarUnits}) = ( u = unit(q); ScalarUnits(scale=ustrip(q)*uscale(u), dims=dimension(q)) )
+asunit(q::UnionQuantity{<:Number, <:AffineUnits}) = ( u = unit(q); AffineUnits(scale=ustrip(q)*uscale(u), offset=uoffset(u), dims=dimension(q)) )
+asunit(u::AbstractUnitLike) = u
 
 #=================================================================================================
 Conversion and Promotion
@@ -105,8 +106,10 @@ The main reason behind this is that Dimensions are the fastest to compute around
 Moreover, only defining calculations for dimenional units also greatly simplifies the code, thus all operations 
 will promote to dimensional units (such as SI). WARNING:: This also means that Affine Units will auto-convert
 this can yield potentially unintuitive results like 2°C/1°C = 1.0036476381542951
-
 =================================================================================================#
+
+
+#================================ Conversion between quantity types =======================================#
 function Base.convert(::Type{Quantity{T,U}}, q::UnionQuantity) where {T, U<:AbstractUnitLike}
     u = closest_unit(U, unit(q))
     v = transform(ustrip(q), uconvert(u, unit(q)))
@@ -119,14 +122,17 @@ end
 
 Base.convert(::Type{Quantity{T,U}}, q::Quantity{T,U}) where {T, U<:AbstractUnitLike} = q # Remove potential ambiguities
 
-
+# NoDims handling ==============================================================================================
 Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
 Base.promote_rule(::Type{D}, ::Type{<:NoDims}) where D<:AbstractDimensions = D
 Base.promote_rule(::Type{<:NoDims}, ::Type{D}) where D<:AbstractDimensions = D
 
+# Converting specialized units to more generic ones ==============================================================
 Base.convert(::Type{U}, u0::AbstractDimensions) where U<:AbstractAffineUnits = U(dims=u0)
 Base.convert(::Type{U}, u0::AbstractScalarUnits) where {U<:AbstractAffineUnits} = U(scale=uscale(u0), dims=dimension(u0), symbol=usymbol(u0))
+Base.convert(::Type{U}, q::UnionQuantity) where U<:AbstractUnits = convert(U, asunit(q))
 
+# Switching dimension types on affine units (for registries) ======================================================
 function Base.convert(::Type{U}, u0::AbstractDimensions{D0}) where {D,D0,U<:AffineUnits{D}}
     return constructorof(U)(dims=convert(D, dimension(u0)))
 end

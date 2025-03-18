@@ -109,14 +109,24 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
 
 end
 
-function uparse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    ex = Meta.parse(str)
     if ex.head != :call
         throw(ArgumentError("Unexpected expression: $ex. Only `:call` is expected."))
     end
     ex.args[2:end] = map(Base.Fix1(lookup_unit_expr, reg), ex.args[2:end])
-    #ex = :($check_uexpr_element($U, $ex))
+    
+    #Make sure the return type is the same as the registry
+    return :($convert($U, $ex))
+end
 
-    return ex
+function uparse(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    u = eval(uparse_expr(str, reg))
+    return change_symbol(u, Symbol(str))
+end
+
+function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Expr)
+    return uparse_expr(ex, reg)
 end
 
 function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, name::Symbol)
@@ -127,23 +137,15 @@ function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, name::Sy
     end
 end
 
-function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Expr)
-    return uparse_expr(ex, reg)
-end
-
 lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Any) = ex
 
 function change_symbol(u::U, s::Symbol) where U<:AbstractAffineUnits
-    return constructorof(u)(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=s)
+    return constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=s)
 end
 
 function change_symbol(u::U, s::Symbol) where U<:AbstractScalarUnits
-    return constructorof(u)(scale=uscale(u), dims=dimension(u), symbol=s)
+    return constructorof(U)(scale=uscale(u), dims=dimension(u), symbol=s)
 end
-
-#check_uexpr_element(::Type{Q}, x::Q) where {D,Q<:AbstractAffineUnits{D}} = x
-#check_uexpr_element(::Type{Q}, x::Number) where {D,Q<:AbstractAffineUnits{D}} = constructorof(Q)(scale=x, dims=constructorof(D)())
-#check_uexpr_element(::Type{Q}, x) where Q<:AbstractAffineUnits = error("Unexpected type evaluated: $(typeof(x))")
 
 
 #=================================================================================================
