@@ -1,13 +1,13 @@
 
 module RegistryTools
 
-import ..AbstractUnitLike, ..AbstractUnits, ..AbstractAffineUnits, ..AbstractScalarUnits, ..AbstractDimensions
-import ..AffineUnits, ..ScalarUnits, ..Dimensions, ..RealQuantity, ..UnionQuantity, ..DEFAULT_DIMENSONS
+import ..AbstractUnitLike, ..AbstractUnits, ..AbstractAffineUnits, ..AbstractDimensions
+import ..AffineUnits, ..Dimensions, ..RealQuantity, ..UnionQuantity, ..DEFAULT_DIMENSONS
 import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit, ..constructorof, ..dimtype
 
 export 
-    AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractScalarUnits, AbstractDimensions, DEFAULT_DIMENSONS,
-    AffineUnits, ScalarUnits, Dimensions, RealQuantity, UnionQuantity, uscale, uoffset, dimension, usymbol,
+    AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractDimensions, DEFAULT_DIMENSONS,
+    AffineUnits, Dimensions, RealQuantity, UnionQuantity, uscale, uoffset, dimension, usymbol,
     PermanentDict, register_unit!, registry_defaults!, uparse, usparse, qparse, uparse_expr, dimtype
 
 
@@ -146,14 +146,9 @@ function uparse(str::String, reg::AbstractDict{Symbol, <:AbstractUnitLike})
     return eval(uparse_expr(str, reg))
 end
 
-function usparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnits}
-    u = uparse(str, reg)
-    return convert(ScalarUnits{dimtype(U)}, u)
-end
-
 function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnits}
     u = uparse(str, reg)
-    return convert(Quantity{Float64, dimtype(U)}, u)
+    return convert(RealQuantity{Float64, dimtype(U)}, u)
 end
 
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
@@ -181,7 +176,7 @@ end
 
 function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, name::Symbol)
     if !haskey(reg, name)
-        throw(ArgumentError("Symbol $sym not found in the provided unit registry."))
+        throw(ArgumentError("Symbol $(name) not found in the provided unit registry."))
     else
         return reg[name]
     end
@@ -193,10 +188,6 @@ change_symbol(u::AbstractUnitLike, s::String) = change_symbol(u, Symbol(s))
 
 function change_symbol(u::U, s::Symbol) where U<:AbstractAffineUnits
     return constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=s)
-end
-
-function change_symbol(u::U, s::Symbol) where U<:AbstractScalarUnits
-    return constructorof(U)(scale=uscale(u), dims=dimension(u), symbol=s)
 end
 
 end

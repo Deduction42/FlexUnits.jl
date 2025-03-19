@@ -101,8 +101,7 @@ ustrip_dimensionless(q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q)))
 
 Convert quantity `q` into a unit of the same magnitude
 """
-asunit(q::UnionQuantity{<:Number, <:Dimensions})  = ScalarUnits(scale=ustrip(q), dims=dimension(q))
-asunit(q::UnionQuantity{<:Number, <:ScalarUnits}) = ( u = unit(q); ScalarUnits(scale=ustrip(q)*uscale(u), dims=dimension(q)) )
+asunit(q::UnionQuantity{<:Number, <:Dimensions})  = AffineUnits(scale=ustrip(q), dims=dimension(q))
 asunit(q::UnionQuantity{<:Number, <:AffineUnits}) = ( u = unit(q); AffineUnits(scale=ustrip(q)*uscale(u), offset=uoffset(u), dims=dimension(q)) )
 asunit(u::AbstractUnitLike) = u
 
@@ -139,7 +138,6 @@ Base.promote_rule(::Type{<:NoDims}, ::Type{D}) where D<:AbstractDimensions = D
 
 # Converting between unit types ==============================================================
 Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AffineUnits = U(scale=uscale(u0), offset=uoffset(u0), dims=dimension(u0), symbol=usymbol(u0))
-Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:ScalarUnits = (assert_scalar(u0); U(scale=uscale(u0), dims=dimension(u0), symbol=usymbol(u0)))
 Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AbstractDimensions = (assert_dimension(u0); dims=dimension(u0))
 
 # Converting between units and quantities ====================================================
@@ -155,13 +153,12 @@ function Base.convert(::Type{U}, u0::AbstractDimensions{D0}) where {D,D0,U<:Affi
 end
 
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractDimensions  = constructorof(U)(dimension(u))
-closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractScalarUnits = constructorof(U)(scale=uscale(u), dims=dimension(u))
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u))
 
 
 # Promotion rules ======================================================
-function Base.promote_rule(::D{P1}, ::D{P2}) where {D<:AbstractDimension, P1, P2}
-    return D{promote_type(P1,P2)}
+function Base.promote_rule(::Dimensions{P1}, ::Dimensions{P2}) where {P1, P2}
+    return Dimensions{promote_type(P1,P2)}
 end
 
 #=

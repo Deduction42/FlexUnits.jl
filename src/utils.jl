@@ -2,7 +2,7 @@ function Base.show(io::IO, d::D) where D<: AbstractDimensions
     dimnames = collect(static_fieldnames(D))
     dimunits = unit_symbols(D)
 
-    abs_dim_pwr(dim::Symbol) = pretty_unit_pwr(dimunits[dim], abs(d[dim]))
+    abs_dim_pwr(dim::Symbol) = concise_unit_pwr(dimunits[dim], abs(d[dim]))
 
     function print_dim_series(series_io::IO, dims)
         if length(dims) == 1
@@ -31,27 +31,20 @@ function Base.show(io::IO, d::D) where D<: AbstractDimensions
     return nothing
 end
 
-function Base.show(io::IO, u::U) where U<:AbstractScalarUnits
-    if usymbol(u) != DEFAULT_USYMBOL
-        print(io, usymbol(u))
-    else
-        ustring = "$(uscale(u))*{$(dimension(u)))"
-        print(io, ustring)
-    end
-
-    return nothing
-end
-
 function Base.show(io::IO, u::U) where U<:AbstractAffineUnits
     if usymbol(u) != DEFAULT_USYMBOL
         print(io, usymbol(u))
     else
         offset = uoffset(u)
-        sgn = ifelse(offset >= 0, '+', '-')
-        ustring = "$(uscale(u))*{$(dimension(u)) $(sgn) $(offset)}"
-        print(io, ustring)
+        if iszero(offset)
+            ustring = "$(uscale(u))$(dimension(u))"
+            print(io, ustring)        
+        else
+            sgn = ifelse(offset >= 0, '+', '-')
+            ustring = "(($(uscale(u)) x) $(sgn) $(offset))$(dimension(u))"
+            print(io, ustring)
+        end
     end
-
     return nothing
 end
 
@@ -66,13 +59,31 @@ function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractUnits})
     else
         print(io, ubase(q)) #Print SI version (emphesizes that units are treated as SI quantities)
     end
+    return nothing
+end
 
+function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractUnits})
+    u = unit(q)
+    x = ustrip(q)
+    if usymbol(u) != DEFAULT_USYMBOL
+        qstring = "$(x) $(usymbol(u))"
+        print(io, qstring)
+    else
+        offset = uoffset(u)
+        if iszero(offset)
+            qstring = "( $(x) )$(uscale(u))$(dimension(u))"
+            print(io, qstring)        
+        else
+            sgn = ifelse(offset >= 0, '+', '-')
+            qstring = "(( $(x) )*$(uscale(u)) $(sgn) $(offset))$(dimension(u))"
+            print(io, qstring)
+        end
+    end
     return nothing
 end
 
 
-
-function pretty_unit_pwr(u::Symbol, p::Real)
+function concise_unit_pwr(u::Symbol, p::Real)
     if iszero(p)
         return ""
     elseif isone(p)

@@ -5,7 +5,6 @@ abstract type AbstractUnitLike end
 abstract type AbstractDimensions{P} <: AbstractUnitLike end
 abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
 abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
-abstract type AbstractScalarUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D} end
 
 Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
 
@@ -63,21 +62,6 @@ Can use this to overload the default "fieldnames" behaviour
 @inline function dimension_names(::Type{D}) where {D<:AbstractDimensions}
     return static_fieldnames(D)
 end
-
-@kwdef struct ScalarUnits{D<:AbstractDimensions} <: AbstractScalarUnits{D}
-    scale::Float64 = 1
-    dims::D
-    symbol::Symbol=DEFAULT_USYMBOL
-end
-
-ScalarUnits(scale, dims::D, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = ScalarUnits{D}(scale, dims, symbol)
-ScalarUnits(s::ScalarUnits) = s
-
-uscale(u::ScalarUnits) = u.scale
-uoffset(u::AbstractScalarUnits) = 0 # All AbstractScalarUnits have no offset
-dimension(u::ScalarUnits) = u.dims
-usymbol(u::ScalarUnits) = u.symbol
-
 
 
 @kwdef struct AffineUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D}
@@ -161,7 +145,6 @@ This function can be overloaded if custom behaviour is needed
 """
 constructorof(::Type{T}) where T = Base.typename(T).wrapper
 constructorof(::Type{<:Dimensions})  = Dimensions
-constructorof(::Type{<:ScalarUnits}) = ScalarUnits
 constructorof(::Type{<:AffineUnits}) = AffineUnits
 constructorof(::Type{<:Quantity}) = Quantity
 constructorof(::Type{<:RealQuantity}) = RealQuantity
@@ -210,12 +193,10 @@ Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", 
 
 
 assert_scalar(u::AbstractDimensions)  = u
-assert_scalar(u::AbstractScalarUnits) = u
 assert_scalar(u::AbstractAffineUnits) = iszero(uoffset(u)) ? u : throw(NotScalarError(u))
 scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
 
 assert_dimension(u::AbstractDimensions) =  u
-assert_dimension(u::AbstractScalarUnits) = isone(uscale(u)) ? u : throw(NotDimensionError(u))
 assert_dimension(u::AbstractAffineUnits) = isone(uscale(u)) & iszero(uoffset(u)) ? u : throw(NotDimensionError(u))
 
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : DimensionError(u)
