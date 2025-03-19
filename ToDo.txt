@@ -1,16 +1,29 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-1.  Build out unit parser and expression builders
-2.  Build out RegistryTools 
-3.  Build the first Registry with RegistryTools 
-4.  Finish promotion schema if it's even needed, 
-     -  May need it for AbstractUnits which favor AffineUnits 
-     -  May be less needed for Quantities (which favor AbstractDimensions) 
-        this package eagerly converts to SI
-5.  Finish mathematical functions 
-6.  Build basic tests
-7.  Consider using DispatchDoctor
+1. Remove ScaledUnits and AbstractScaledUnits 
+    - They add promotion complexity and provide no benefit, all calculations are done in Dimensions
+        - assert_scalar(u::AbstractUnits) asserts offset(u)==0
+2. Finish promotion schema 
+    - Promotion rules for units go from Dimensions -> AffineUnits (no information lost)
+    - Promotion rules for quantity units ALWAYS YIELD AbstractDimensions
+        - Converting from AffineUnits to Dimensions loses no information with quantities
+        - Get the promote_type of the two dimensions, to get resulting one
+        - Make sure "dimtype" is defined for quantities, units, and dimensions (both types and values)
+        - This requires a quantity_promote_rule() function that is differnet from promote_rule()
+    - Promotion rules for quantities are determined by internal quantity type 
+        - Lean on "narrowest_quantity" of the promoted value type
+        - "narrowest_quantity" needs to apply PRIMARILY to types with fallback to instances
+3. Consider adding a new error type called UnitConversionError
+    - Provide a dimensional difference between units (recommend multiplying target units by $(units))
+4. Finish mathematical functions
+5. Add global constant "PARSABLE_DIMENSION_OUTPUT = Base.Ref(False)" for pretty-printing dimensions
+    - AffineUnits from macros are always parsable, so pretty-printing dimesnions should be default
+6. AffineUnits without symbols can be made parsable
+    - Use parentheses around values to make sure they take priority (complex numbers have a `+` which can mess things up without brackets)
+    - "(1.0(ustrip(u)) + 273.15)K"
+7. Build basic tests
+9. Consider using DispatchDoctor
 
 
 Design Decisions:
