@@ -6,8 +6,8 @@ Tasks:
         - assert_scalar(u::AbstractUnits) asserts offset(u)==0
 2. Finish promotion schema 
     - Promotion rules for units go from Dimensions -> AffineUnits (no information lost)
-    - Promotion rules for quantity units ALWAYS YIELD AbstractDimensions
-        - Converting from AffineUnits to Dimensions loses no information with quantities
+    - Promotion rules for UnionQuantity{T, U<:AbstractUnitLike} ALWAYS YIELD dimtype{U}
+        - Converting from AbstractUnitLike to Dimensions loses no information with quantities
         - Get the promote_type of the two dimensions, to get resulting one
         - Make sure "dimtype" is defined for quantities, units, and dimensions (both types and values)
         - This requires a quantity_promote_rule() function that is differnet from promote_rule()
