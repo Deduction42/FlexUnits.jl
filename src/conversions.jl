@@ -1,3 +1,13 @@
+#============================================================================================
+Unit Transforms are the backbone of the conversion process
+    uconvert(u1::AbstractUnit, u2::AbstractUnit) produces a kind of unit transform 
+    unit transforms can be applied directly to quantities to do the conversion 
+Currently, only conversions between affine units are supported, 
+    but other conversions (such as log units) are conceivably possible but they would
+    require a separate unit registry (which is why I made separate registries easier)
+============================================================================================#
+abstract type AbstractUnitTransform end
+
 """
     AffineTransform
 
@@ -13,7 +23,7 @@ output type of `uconvert(u::AbstractUnitLike, u0::AbstractUnitLike)`
 - AffineTransform(scale::Real, offset::Real)
 - AffineTransform(; scale, offset)
 """
-struct AffineTransform
+struct AffineTransform <: AbstractUnitTransform
     scale :: Float64
     offset :: Float64
 end
