@@ -119,7 +119,7 @@ Base.cbrt(q::UnionQuantity) = apply2quantities(cbrt, q)
 #Functions that return the same unit
 for f in (
         :float, :abs, :real, :imag, :conj, :adjoint, :unsigned,
-        :nextfloat, :prevfloat, :transpose, :significand
+        :nextfloat, :prevfloat, :transpose, :significand, :zero, :one
     )
     @eval Base.$f(q::UnionQuantity) = quantity($f(ustrip(q)), unit(q))
 end

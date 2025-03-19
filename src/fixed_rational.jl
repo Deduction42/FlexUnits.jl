@@ -141,3 +141,24 @@ tryrationalize(::Type{F}, x::Number) where {F<:FixedRational} = unsafe_fixed_rat
 
 # Fix method ambiguities
 Base.round(::Type{T}, x::F, r::RoundingMode=RoundNearest) where {T>:Missing, F<:FixedRational} = round(Base.nonmissingtype_checked(T), x, r)
+
+
+# Promotion ambiguities
+function Base.promote_rule(::Type{F}, ::Type{Bool}) where {F<:FixedRational}
+    return F
+end
+function Base.promote_rule(::Type{Bool}, ::Type{F}) where {F<:FixedRational}
+    return F
+end
+function Base.promote_rule(::Type{F}, ::Type{BigFloat}) where {F<:FixedRational}
+    return promote_type(Rational{eltype(F)}, BigFloat)
+end
+function Base.promote_rule(::Type{BigFloat}, ::Type{F}) where {F<:FixedRational}
+    return promote_type(Rational{eltype(F)}, BigFloat)
+end
+function Base.promote_rule(::Type{F}, ::Type{T}) where {F<:FixedRational,T<:AbstractIrrational}
+    return promote_type(Rational{eltype(F)}, T)
+end
+function Base.promote_rule(::Type{T}, ::Type{F}) where {F<:FixedRational,T<:AbstractIrrational}
+    return promote_type(Rational{eltype(F)}, T)
+end

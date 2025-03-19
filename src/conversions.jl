@@ -148,6 +148,64 @@ closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractDimensions  = cons
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractScalarUnits = constructorof(U)(scale=uscale(u), dims=dimension(u))
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u))
 
+
+# Promotion rules ======================================================
+function Base.promote_rule(::D{P1}, ::D{P2}) where {D<:AbstractDimension, P1, P2}
+    return D{promote_type(P1,P2)}
+end
+
+#=
+function Base.promote_rule(::D1, ::ScalarUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+    return ScalarUnits{promote_type(D1, D2)}
+end
+
+function Base.promote_rule(::ScalarUnits{D1}, ::D2) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+    return ScalarUnits{promote_type(D1, D2)}
+end
+
+function Base.promote_rule(::ScalarUnits{D1}, ::ScalarUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+    return ScalarUnits{promote_type(D1, D2)}
+end
+
+function Base.promote_rule(::D1, ::AffineUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+    return AffineUnits{promote_type(D1, D2)}
+end
+
+function Base.promote_rule(::AffineUnits{D1}, ::D2) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+    return AffineUnits{promote_type(D1, D2)}
+end
+
+function Base.promote_rule(::AffineUnits{D1}, ::ScalarUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+    return AffineUnits{promote_type(D1, D2)}
+end
+
+function Base.promote_rule(::ScalarUnits{D1}, ::AffineUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+    return AffineUnits{promote_type(D1, D2)}
+end
+
+function Base.promote_rule(::AffineUnits{D1}, ::AffineUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+    return AffineUnits{promote_type(D1, D2)}
+end
+
+# Generate promotion rules for affine dimensions
+let priority_nums = (Dimensions=0, ScalarUnits=1, AffineUnits=2)
+    max_priority(D1::Type, D2::Type) = (priority_nums[Symbol(D1)] >= priority_nums[Symbol(D2)]) ? D1 : D2
+
+    for D1 in (:Dimensions, :ScalarUnits, :AffineUnits), D2 in (:AffineDimensions, :Dimensions, :SymbolicDimensions)
+        # Skip if both are not affine dimensions
+        (D1 != :AffineDimensions && D2 != :AffineDimensions) && continue
+
+        # Determine the output type
+        OUT_D = (D1 == :AffineDimensions == D2) ? :AffineDimensions : :Dimensions
+
+        @eval function Base.promote_rule(::Type{$D1{R1}}, ::Type{$D2{R2}}) where {R1,R2}
+            return $OUT_D{promote_type(R1,R2)}
+        end
+    end
+end
+=#
+
+
 #=
 Preliminary test code
 K  = Dimensions(temperature=1)
