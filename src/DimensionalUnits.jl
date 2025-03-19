@@ -7,6 +7,7 @@ include("utils.jl")
 include("conversions.jl")
 include("math.jl")
 include("registry_tools.jl")
+include("registry.jl")
 
 export D, ScalarUnits, AffineUnits
 

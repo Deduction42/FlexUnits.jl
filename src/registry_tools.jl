@@ -2,13 +2,13 @@
 module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits, ..AbstractAffineUnits, ..AbstractScalarUnits, ..AbstractDimensions
-import ..AffineUnits, ..ScalarUnits, ..Dimensions, ..RealQuantity, ..UnionQuantity
-import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit, ..constructorof
+import ..AffineUnits, ..ScalarUnits, ..Dimensions, ..RealQuantity, ..UnionQuantity, ..DEFAULT_DIMENSONS
+import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit, ..constructorof, ..dimtype
 
 export 
-    AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractScalarUnits, AbstractDimensions,
+    AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractScalarUnits, AbstractDimensions, DEFAULT_DIMENSONS,
     AffineUnits, ScalarUnits, Dimensions, RealQuantity, UnionQuantity, uscale, uoffset, dimension, usymbol,
-    PermanentDict, register_unit!, registry_defaults!, uparse, usparse, qparse, uparse_expr
+    PermanentDict, register_unit!, registry_defaults!, uparse, usparse, qparse, uparse_expr, dimtype
 
 
 """
@@ -139,6 +139,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
 
     _register_unit!(reg, :°C => AffineUnits(offset=273.15, dims=dimension(K)))    
 
+    return reg
 end
 
 function uparse(str::String, reg::AbstractDict{Symbol, <:AbstractUnitLike})
