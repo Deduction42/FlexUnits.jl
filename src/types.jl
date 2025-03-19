@@ -91,21 +91,25 @@ struct Quantity{T<:Any,U<:AbstractUnitLike}
     units :: U 
 end
 narrowest_quantity(x::Any) = Quantity
+narrowest_quantity(::Type{<:Any}) = Quantity
 
 struct NumberQuantity{T<:Number,U<:AbstractUnitLike} <: Number
     value :: T
     units :: U 
 end
 narrowest_quantity(x::Number) = NumberQuantity
+narrowest_quantity(::Type{<:Number}) = NumberQuantity
 
 struct RealQuantity{T<:Real,U<:AbstractUnitLike} <: Real
     value :: T
     units :: U 
 end
 narrowest_quantity(x::Real) = RealQuantity
+narrowest_quantity(::Type{<:Real}) = RealQuantity
+
 
 const UnionQuantity{T,U} = Union{Quantity{T,U}, NumberQuantity{T,U}, RealQuantity{T,U}}
-const UnionNumberOrQuantity = Union{Number, UnionQuantity}
+#const UnionNumberOrQuantity = Union{Number, UnionQuantity}
 
 ustrip(q::UnionQuantity) = q.value
 unit(q::UnionQuantity) = q.units

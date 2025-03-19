@@ -133,8 +133,7 @@ Base.convert(::Type{Quantity{T,U}}, q::Quantity{T,U}) where {T, U<:AbstractUnitL
 
 # NoDims handling ==============================================================================================
 Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
-Base.promote_rule(::Type{D}, ::Type{<:NoDims}) where D<:AbstractDimensions = D
-Base.promote_rule(::Type{<:NoDims}, ::Type{D}) where D<:AbstractDimensions = D
+
 
 # Converting between unit types ==============================================================
 Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AffineUnits = U(scale=uscale(u0), offset=uoffset(u0), dims=dimension(u0), symbol=usymbol(u0))
@@ -157,60 +156,26 @@ closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractAffineUnits = cons
 
 
 # Promotion rules ======================================================
-function Base.promote_rule(::Dimensions{P1}, ::Dimensions{P2}) where {P1, P2}
+
+#We assume dimension types match except for NoDims
+Base.promote_rule(::Type{D}, ::Type{<:NoDims}) where D<:AbstractDimensions = D
+function Base.promote_rule(::Type{<:Dimensions{P1}}, ::Type{<:Dimensions{P2}}) where {P1, P2}
     return Dimensions{promote_type(P1,P2)}
 end
 
-#=
-function Base.promote_rule(::D1, ::ScalarUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
-    return ScalarUnits{promote_type(D1, D2)}
+#Unit promotion (favors AffineDimensiosn due to information loss)
+function Base.promote_rule(::Type{D1}, ::Type{AffineUnits{D2}}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+    return AffineUnits{promote_type(D1, D2)}
 end
-
-function Base.promote_rule(::ScalarUnits{D1}, ::D2) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
-    return ScalarUnits{promote_type(D1, D2)}
-end
-
-function Base.promote_rule(::ScalarUnits{D1}, ::ScalarUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
-    return ScalarUnits{promote_type(D1, D2)}
-end
-
-function Base.promote_rule(::D1, ::AffineUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+function Base.promote_rule(::Type{AffineUnits{D1}}, ::Type{AffineUnits{D2}}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
     return AffineUnits{promote_type(D1, D2)}
 end
 
-function Base.promote_rule(::AffineUnits{D1}, ::D2) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
-    return AffineUnits{promote_type(D1, D2)}
+#Quantity promotion (favors Dimensions, as converting quantities to SI does not result in information loss)
+function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, D1, D2, Q1<:UnionQuantity{T1,D1}, Q2<:UnionQuantity{T2,D2}}
+    T = promote_type(T1, T2)
+    return narrowest_quantity(T){T, promote_type(D1, D2)}
 end
-
-function Base.promote_rule(::AffineUnits{D1}, ::ScalarUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
-    return AffineUnits{promote_type(D1, D2)}
-end
-
-function Base.promote_rule(::ScalarUnits{D1}, ::AffineUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
-    return AffineUnits{promote_type(D1, D2)}
-end
-
-function Base.promote_rule(::AffineUnits{D1}, ::AffineUnits{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
-    return AffineUnits{promote_type(D1, D2)}
-end
-
-# Generate promotion rules for affine dimensions
-let priority_nums = (Dimensions=0, ScalarUnits=1, AffineUnits=2)
-    max_priority(D1::Type, D2::Type) = (priority_nums[Symbol(D1)] >= priority_nums[Symbol(D2)]) ? D1 : D2
-
-    for D1 in (:Dimensions, :ScalarUnits, :AffineUnits), D2 in (:AffineDimensions, :Dimensions, :SymbolicDimensions)
-        # Skip if both are not affine dimensions
-        (D1 != :AffineDimensions && D2 != :AffineDimensions) && continue
-
-        # Determine the output type
-        OUT_D = (D1 == :AffineDimensions == D2) ? :AffineDimensions : :Dimensions
-
-        @eval function Base.promote_rule(::Type{$D1{R1}}, ::Type{$D2{R2}}) where {R1,R2}
-            return $OUT_D{promote_type(R1,R2)}
-        end
-    end
-end
-=#
 
 
 #=

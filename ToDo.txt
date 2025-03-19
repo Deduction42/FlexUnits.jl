@@ -1,9 +1,6 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-1. Remove ScaledUnits and AbstractScaledUnits 
-    - They add promotion complexity and provide no benefit, all calculations are done in Dimensions
-        - assert_scalar(u::AbstractUnits) asserts offset(u)==0
 2. Finish promotion schema 
     - Promotion rules for units go from Dimensions -> AffineUnits (no information lost)
     - Promotion rules for UnionQuantity{T, U<:AbstractUnitLike} ALWAYS YIELD dimtype{U}
