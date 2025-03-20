@@ -217,7 +217,7 @@ function Base.showerror(io::IO, e::ConversionError{<:AbstractUnitLike, <:Abstrac
     pretty_str(x) = (_print_pretty_unit(io_tmp, x); String(take!(io_tmp)))
 
     uΔ = dimension(e.u0)/dimension(e.u)
-    return print(io, "ConversionError: Cannot convert unit '", pretty_str(e.u0), "' to target unit '", pretty_str(e.u), "'. Consider multiplying the target unit by '", pretty_str(uΔ), "' or similar.")
+    return print(io, "ConversionError: Cannot convert unit '", pretty_str(e.u0), "' to target unit '", pretty_str(e.u), "'. Consider multiplying '", pretty_str(e.u), "' by '", pretty_str(uΔ), "' or similar.")
 end
 
 """
