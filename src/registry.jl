@@ -1,5 +1,5 @@
 
-module Registry
+module UnitRegistry
 
 #RegistryTools contains all you need to build a registry in one simple import
 using ..RegistryTools
