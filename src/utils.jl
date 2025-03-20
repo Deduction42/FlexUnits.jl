@@ -1,14 +1,42 @@
-function Base.show(io::IO, d::D) where D<: AbstractDimensions
+
+
+function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractDimensions}; pretty=PRETTY_DIM_OUTPUT[])
+    if pretty
+        return _print_pretty_space(io, q)
+    else
+        return _print_string_macro(io, q)
+    end
+end
+
+function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractUnits}; pretty=PRETTY_DIM_OUTPUT[])
+    if usymbol(unit(q)) != DEFAULT_USYMBOL #Print the unit symbol if it exists (not default)
+        if pretty
+            return _print_pretty_space(io, q)
+        else
+            return _print_string_macro(io, q)
+        end 
+    else
+        return Base.show(io, ubase(q), pretty=pretty) #Print SI version (emphesizes that units are treated as SI quantities)
+    end
+end
+
+#Fallback for showing pure units (don't pretty print)
+function Base.show(io::IO, u::AbstractUnits; pretty=PRETTY_DIM_OUTPUT[])
+    return Base.show_default(io, u)
+end
+    
+function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions
     dimnames = collect(static_fieldnames(D))
     dimunits = unit_symbols(D)
 
-    abs_dim_pwr(dim::Symbol) = concise_unit_pwr(dimunits[dim], abs(d[dim]))
+    usep = ifelse(pretty, " ", "*")
+    abs_dim_pwr(dim::Symbol) = _unit_pwr_string(dimunits[dim], abs(d[dim]), pretty=pretty)
 
     function print_dim_series(series_io::IO, dims)
         if length(dims) == 1
             print(series_io, abs_dim_pwr(dims[1]))
         elseif length(dims) > 1
-            series_str = "(" * join(abs_dim_pwr.(dims), "*") * ")"
+            series_str = "(" * join(abs_dim_pwr.(dims), usep) * ")"
             print(series_io, series_str)
         end
     end
@@ -31,59 +59,39 @@ function Base.show(io::IO, d::D) where D<: AbstractDimensions
     return nothing
 end
 
-function Base.show(io::IO, u::U) where U<:AbstractAffineUnits
-    if usymbol(u) != DEFAULT_USYMBOL
-        print(io, usymbol(u))
-    else
-        offset = uoffset(u)
-        if iszero(offset)
-            ustring = "$(uscale(u))$(dimension(u))"
-            print(io, ustring)        
-        else
-            sgn = ifelse(offset >= 0, '+', '-')
-            ustring = "(($(uscale(u)) x) $(sgn) $(offset))$(dimension(u))"
-            print(io, ustring)
-        end
-    end
-    return nothing
-end
-
-function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractDimensions})
-    return print(io, ustrip(q), " ", unit(q))
-end
-
-function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractUnits})
-    symb = usymbol(unit(q))
-    if symb != DEFAULT_USYMBOL
-        print(io, ustrip(q), " ", unit(q))
-    else
-        print(io, ubase(q)) #Print SI version (emphesizes that units are treated as SI quantities)
-    end
-    return nothing
-end
-
-function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractUnits})
+function _print_string_macro(io::IO, q::UnionQuantity)
     u = unit(q)
-    x = ustrip(q)
-    if usymbol(u) != DEFAULT_USYMBOL
-        qstring = "$(x) $(usymbol(u))"
-        print(io, qstring)
+    usymb = usymbol(u)
+    print("(", ustrip(q), ")")
+    print(io, "u\"")
+
+    if usymb == DEFAULT_USYMBOL
+        Base.show(io, u, pretty=false)
     else
-        offset = uoffset(u)
-        if iszero(offset)
-            qstring = "( $(x) )$(uscale(u))$(dimension(u))"
-            print(io, qstring)        
-        else
-            sgn = ifelse(offset >= 0, '+', '-')
-            qstring = "(( $(x) )*$(uscale(u)) $(sgn) $(offset))$(dimension(u))"
-            print(io, qstring)
-        end
+        Base.print(io, usymb)
     end
-    return nothing
+    return print(io, "\"")
+end
+
+function _print_pretty_space(io::IO, q::UnionQuantity)
+    u = unit(q)
+    usymb = usymbol(u)
+    print(io, ustrip(q), " ")
+
+    if usymb == DEFAULT_USYMBOL
+        return Base.show(io, u, pretty=true)
+    else
+        return print(io, usymb)
+    end
 end
 
 
-function concise_unit_pwr(u::Symbol, p::Real)
+
+function _unit_pwr_string(u::Symbol, p::Real; pretty=PRETTY_DIM_OUTPUT[])
+    return PRETTY_DIM_OUTPUT[] ? _pretty_unit_pwr(u, p) : _parsable_unit_pwr(u, p)
+end
+
+function _parsable_unit_pwr(u::Symbol, p::Real)
     if iszero(p)
         return ""
     elseif isone(p)
@@ -94,3 +102,27 @@ function concise_unit_pwr(u::Symbol, p::Real)
         return string(u)*"^("*string(Rational(p))*")"
     end
 end
+
+function _pretty_unit_pwr(u::Symbol, p::Real)
+    SUPERSCRIPT_MAPPING = ('⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹')
+    INTCHARS = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
+
+    if iszero(p)
+        return ""
+    elseif isone(p)
+        return string(u)
+    else
+        s = isinteger(p) ? string(Int(p)) : string(Rational(p))
+        chars = map(replace(s, "//" => "ᐟ")) do c
+            if c ∈ INTCHARS
+                SUPERSCRIPT_MAPPING[parse(Int, c)+1]
+            elseif c == '-'
+                '⁻'
+            else
+                c
+            end
+        end
+        return string(u)*join(chars)
+    end
+end
+

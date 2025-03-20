@@ -1,5 +1,6 @@
 const FAST_RATIONAL = FixedRational{DEFAULT_NUMERATOR_TYPE,DEFAULT_DENOM}
 const DEFAULT_USYMBOL = :_
+const PRETTY_DIM_OUTPUT = Ref(true)
 
 abstract type AbstractUnitLike end
 abstract type AbstractDimensions{P} <: AbstractUnitLike end
@@ -63,7 +64,26 @@ Can use this to overload the default "fieldnames" behaviour
     return static_fieldnames(D)
 end
 
+"""
+    AffineUnits{D<:AbstractDimensions}(scale::Float64, offset::Float64, dims::D, symbol::Symbol)
 
+Affine-dimensional unit (treated as a scalar when offset=0). Quantities with this unit are eagerly
+converted to dimmensional quantities for any operation, WHICH MAY BE UNITUITIVE because operations
+do not happen directly on values if there is an offset. If you want operations on the quantity 
+values directly, simply use "ustrip" and convert back.
+
+julia> 1*(5u"°C") #Operations convert to Kelvin
+278.15 K
+
+julia> 1*(5u"°C") |> u"°C" #Converts operation results back to Celsius
+5.0 °C
+
+julia> (5u"°C" + 2u"°C") |> u"°C" #Operation adds values in Kelvin, results converted back to Celsius
+280.15 °C
+
+julia> (ustrip(5u"°C") + ustrip(2u"°C"))*u"°C" #Strips, adds raw quantity values, converts raw number to Celsius
+7 °C
+"""
 @kwdef struct AffineUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D}
     scale::Float64 = 1
     offset::Float64 = 0
@@ -72,13 +92,27 @@ end
 end
 
 AffineUnits(scale, offset, dims::D, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = AffineUnits{D}(scale, offset, dims, symbol)
-AffineUnits(u::AffineUnits) = u
+AffineUnits(scale, offset, dims::U, symbol=DEFAULT_USYMBOL) where {D,U<:AbstractUnits{D}} = AffineUnits{D}(scale, offset, dims, symbol)
+#AffineUnits(u::AffineUnits) = u
 
 uscale(u::AffineUnits) = u.scale
 uoffset(u::AffineUnits) = u.offset 
 dimension(u::AffineUnits) = u.dims 
 usymbol(u::AffineUnits) = u.symbol
 remove_offset(u::U) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=0, dims=dimension(u))
+
+function Base.show(io::IO, d::AffineUnits; pretty=PRETTY_DIM_OUTPUT[])
+    print(io, "AffineUnits(scale=", uscale(d), ", offset=", uoffset(d), ", dims=")
+    if pretty
+        show(io, dimension(d), pretty=true)
+    else
+        print("u\"")
+        show(io, dimension(d), pretty=false)
+        print("\"")
+    end
+    return print(io, ")")
+end
+
 
 #=================================================================================================
 Quantity types

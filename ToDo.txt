@@ -1,20 +1,15 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-3. Consider adding a new error type called UnitConversionError
+1. Consider adding a new error type called UnitConversionError
     - Provide a dimensional difference between units (recommend multiplying target units by $(units))
-4. Finish mathematical functions
-5. Add global constant "PARSABLE_DIMENSION_OUTPUT = Base.Ref(False)" for pretty-printing dimensions
-    - AffineUnits from macros are always parsable, so pretty-printing dimesnions should be default
-6. AffineUnits without symbols can be made parsable
-    - Use parentheses around values to make sure they take priority (complex numbers have a `+` which can mess things up without brackets)
-    - "(1.0(ustrip(u)) + 273.15)K"
-7. Build basic tests
-9. Consider using DispatchDoctor
+2. Finish mathematical functions
+3. Build basic tests
+4. Consider using DispatchDoctor
 
 
 Design Decisions:
-1.  Unit/Quantity outputs should be clean and parsable with the uparse/qparse functions
+1.  Unit outputs should be clean and parsable (dimensions don't have to be but should be convertable)
 2.  All quantity operations (even affine units) eagerly convert to base dimensional units 
         Displaying quantities with units not having symbol will convert to SI to emphasize this fact
 3.  Registry is a module containing a single dict for a registry (AffineUnits because they are the most general)
