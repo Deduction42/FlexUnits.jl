@@ -1,4 +1,4 @@
-const DEFAULT_PWR_TYPE = FixedRational{DEFAULT_NUMERATOR_TYPE,DEFAULT_DENOM}
+const FAST_RATIONAL = FixedRational{DEFAULT_NUMERATOR_TYPE,DEFAULT_DENOM}
 const DEFAULT_USYMBOL = :_
 
 abstract type AbstractUnitLike end
@@ -18,10 +18,10 @@ Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
     amount::P = 0
 end
 
-Dimensions(args...) = Dimensions{DEFAULT_PWR_TYPE}(args...)
-Dimensions(;kwargs...) = Dimensions{DEFAULT_PWR_TYPE}(;kwargs...)
+Dimensions(args...) = Dimensions{FAST_RATIONAL}(args...)
+Dimensions(;kwargs...) = Dimensions{FAST_RATIONAL}(;kwargs...)
 Dimensions(d::Dimensions) = d
-DEFAULT_DIMENSONS = Dimensions{DEFAULT_PWR_TYPE}
+DEFAULT_DIMENSONS = Dimensions{FAST_RATIONAL}
 
 uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
 uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
@@ -47,7 +47,7 @@ promote(Type{<:NoDims}, D<:AbstractDimension) will return D
 convert(Type{D}, NoDims) where D<:AbstractDimensions will return D()
 """
 struct NoDims{P} <: AbstractDimensions{P} end
-NoDims() = NoDims{DEFAULT_PWR_TYPE}()
+NoDims() = NoDims{FAST_RATIONAL}()
 Base.getproperty(::NoDims{P}, ::Symbol) where {P} = zero(P)
 unit_symbols(::Type{<:NoDims}) = NoDims{Symbol}()
 
@@ -90,23 +90,21 @@ struct Quantity{T<:Any,U<:AbstractUnitLike}
     value :: T
     units :: U 
 end
-narrowest_quantity(x::Any) = Quantity
 narrowest_quantity(::Type{<:Any}) = Quantity
 
 struct NumberQuantity{T<:Number,U<:AbstractUnitLike} <: Number
     value :: T
     units :: U 
 end
-narrowest_quantity(x::Number) = NumberQuantity
 narrowest_quantity(::Type{<:Number}) = NumberQuantity
 
 struct RealQuantity{T<:Real,U<:AbstractUnitLike} <: Real
     value :: T
     units :: U 
 end
-narrowest_quantity(x::Real) = RealQuantity
 narrowest_quantity(::Type{<:Real}) = RealQuantity
 
+narrowest_quantity(x::Any) = narrowest_quantity(typeof(x))
 
 const UnionQuantity{T,U} = Union{Quantity{T,U}, NumberQuantity{T,U}, RealQuantity{T,U}}
 #const UnionNumberOrQuantity = Union{Number, UnionQuantity}

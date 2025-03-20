@@ -172,9 +172,10 @@ function Base.promote_rule(::Type{AffineUnits{D1}}, ::Type{AffineUnits{D2}}) whe
 end
 
 #Quantity promotion (favors Dimensions, as converting quantities to SI does not result in information loss)
-function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, D1, D2, Q1<:UnionQuantity{T1,D1}, Q2<:UnionQuantity{T2,D2}}
+function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1, U2, Q1<:UnionQuantity{T1,U1}, Q2<:UnionQuantity{T2,U2}}
+    D = promote_type(dimtype(U1), dimtype(U2))
     T = promote_type(T1, T2)
-    return narrowest_quantity(T){T, promote_type(D1, D2)}
+    return narrowest_quantity(T){T, D}
 end
 
 

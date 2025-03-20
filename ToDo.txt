@@ -1,16 +1,6 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-2. Finish promotion schema 
-    - Promotion rules for units go from Dimensions -> AffineUnits (no information lost)
-    - Promotion rules for UnionQuantity{T, U<:AbstractUnitLike} ALWAYS YIELD dimtype{U}
-        - Converting from AbstractUnitLike to Dimensions loses no information with quantities
-        - Get the promote_type of the two dimensions, to get resulting one
-        - Make sure "dimtype" is defined for quantities, units, and dimensions (both types and values)
-        - This requires a quantity_promote_rule() function that is differnet from promote_rule()
-    - Promotion rules for quantities are determined by internal quantity type 
-        - Lean on "narrowest_quantity" of the promoted value type
-        - "narrowest_quantity" needs to apply PRIMARILY to types with fallback to instances
 3. Consider adding a new error type called UnitConversionError
     - Provide a dimensional difference between units (recommend multiplying target units by $(units))
 4. Finish mathematical functions
