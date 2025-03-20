@@ -60,9 +60,18 @@ function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractD
 end
 
 function _print_string_macro(io::IO, q::UnionQuantity)
-    u = unit(q)
-    usymb = usymbol(u)
     print("(", ustrip(q), ")")
+    print(io, "u\"")
+    return _print_unit_macro(io, unit(q))
+end
+
+function _print_pretty_space(io::IO, q::UnionQuantity)
+    print(io, ustrip(q), " ")
+    return _print_pretty_unit(io, unit(q))
+end
+
+function _print_unit_macro(io::IO, u::AbstractUnitLike)
+    usymb = usymbol(u)
     print(io, "u\"")
 
     if usymb == DEFAULT_USYMBOL
@@ -73,18 +82,14 @@ function _print_string_macro(io::IO, q::UnionQuantity)
     return print(io, "\"")
 end
 
-function _print_pretty_space(io::IO, q::UnionQuantity)
-    u = unit(q)
+function _print_pretty_unit(io::IO, u::AbstractUnitLike)
     usymb = usymbol(u)
-    print(io, ustrip(q), " ")
-
     if usymb == DEFAULT_USYMBOL
         return Base.show(io, u, pretty=true)
     else
         return print(io, usymb)
     end
 end
-
 
 
 function _unit_pwr_string(u::Symbol, p::Real; pretty=PRETTY_DIM_OUTPUT[])

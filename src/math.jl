@@ -61,7 +61,7 @@ Base.:(==)(u1::AbstractAffineUnits, u2::AbstractAffineUnits) = (uscale(u1) == us
 
 function firstequal(args::AbstractUnitLike...) 
     newargs = promote(args...)
-    return allequal(newargs) ? first(newargs) : throw(DimensionError(first(args), Base.tail(args)))
+    return allequal(newargs) ? first(newargs) : throw(DimensionError(args))
 end
 
 #=============================================================================================

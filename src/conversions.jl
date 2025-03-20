@@ -48,7 +48,7 @@ Produces an AffineTransform that can convert a quantity with `current`
 units to a quantity with `target` units
 """
 function uconvert(utarget::AbstractUnitLike, ucurrent::AbstractUnitLike)
-    dimension(utarget) == dimension(ucurrent) || throw(DimensionError(first(args), Base.tail(args)))
+    dimension(utarget) == dimension(ucurrent) || throw(ConversionError(utarget, ucurrent))
     return AffineTransform(
         scale  = uscale(ucurrent)/uscale(utarget),
         offset = (uoffset(ucurrent) - uoffset(utarget))/uscale(utarget)

@@ -195,14 +195,30 @@ Errors and assertion functions
 
 Error thrown when an operation is dimensionally invalid given the arguments
 """
-struct DimensionError{Q1,Q2} <: Exception
-    q1::Q1
-    q2::Q2
-    DimensionError(q1::Q1, q2::Q2) where {Q1,Q2} = new{Q1,Q2}(q1, q2)
-    DimensionError(q1) = DimensionError(q1, nothing)
+struct DimensionError{T} <: Exception
+    items :: T
 end
-Base.showerror(io::IO, e::DimensionError) = print(io, "DimensionError: ", e.q1, " and ", e.q2, " have incompatible dimensions")
-Base.showerror(io::IO, e::DimensionError{<:Any,Nothing}) = print(io, "DimensionError: ", e.q1, " is not dimensionless")
+Base.showerror(io::IO, e::DimensionError{<:Tuple}) = print(io, "DimensionError: ", e.items, " have incompatible dimensions")
+Base.showerror(io::IO, e::DimensionError{<:UnionQuantity}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
+Base.showerror(io::IO, e::DimensionError{<:AbstractUnitLike}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
+
+"""
+    ConversionError{U, U0} <: Exception 
+
+Error thrown when trying to convert u0 to u, offers hint on how to make u compatible
+"""
+struct ConversionError{U<:AbstractUnitLike, U0<:AbstractUnitLike} <: Exception
+    u::U
+    u0::U0
+end
+
+function Base.showerror(io::IO, e::ConversionError{<:AbstractUnitLike, <:AbstractUnitLike})
+    io_tmp = IOBuffer()
+    pretty_str(x) = (_print_pretty_unit(io_tmp, x); String(take!(io_tmp)))
+
+    uΔ = dimension(e.u0)/dimension(e.u)
+    return print(io, "ConversionError: Cannot convert unit '", pretty_str(e.u0), "' to target unit '", pretty_str(e.u), "'. Consider multiplying the target unit by '", pretty_str(uΔ), "' or similar.")
+end
 
 """
     NotScalarError{D} <: Exception
