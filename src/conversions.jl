@@ -135,7 +135,7 @@ Base.convert(::Type{Quantity{T,U}}, q::Quantity{T,U}) where {T, U<:AbstractUnitL
 Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
 
 
-# Converting between unit types ==============================================================
+# Converting UnitLike values ==============================================================
 Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AffineUnits = U(scale=uscale(u0), offset=uoffset(u0), dims=dimension(u0), symbol=usymbol(u0))
 Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AbstractDimensions = (assert_dimension(u0); dims=dimension(u0))
 
@@ -147,9 +147,9 @@ function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:UnionQuantity{<:
 end
 
 # Switching dimension types on affine units (for registries) ======================================================
-function Base.convert(::Type{U}, u0::AbstractDimensions{D0}) where {D,D0,U<:AffineUnits{D}}
-    return constructorof(U)(dims=convert(D, dimension(u0)))
-end
+#function Base.convert(::Type{U}, u0::AbstractDimensions{D0}) where {D,D0,U<:AffineUnits{D}}
+#    return constructorof(U)(dims=convert(D, dimension(u0)))
+#end
 
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractDimensions  = constructorof(U)(dimension(u))
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u))

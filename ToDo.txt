@@ -1,11 +1,17 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-1. Consider adding a new error type called UnitConversionError
-    - Provide a dimensional difference between units (recommend multiplying target units by $(units))
-2. Finish mathematical functions
-3. Build basic tests
-4. Consider using DispatchDoctor
+0. Finish adding the rest of the units
+1. Build basic tests
+2. Migrate to TankMonitor module and run
+3. Publish version v0.0.1
+4. Register package (including branch protection etc)
+5. Consider using DispatchDoctor
+6. Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
+    - Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
+    - This can be done without documentation 
+        - Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
+        - Iterate over registry and list other units that match the query dimension
 
 
 Design Decisions:

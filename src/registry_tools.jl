@@ -93,8 +93,9 @@ end
 function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where Dims <: AbstractDimensions
     #reg = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
-
+    
     #SI dimensional units
+    _register_unit!(reg, :NoDims => Dims())
     _register_unit!(reg, :m => Dims(length=1))
     _register_unit!(reg, :g => asunit(0.001*Dims(mass=1)))
     _register_unit!(reg, :t => asunit(1000*Dims(mass=1)))
@@ -114,12 +115,12 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     add_prefixes!(reg, :mol, si_prefixes[( :p, :n, :μ, :u, :m, :k )])
 
     #SI derived units
-    m = reg[:m]
-    kg = reg[:kg]
-    s = reg[:s]
-    A = reg[:A]
-    mol = reg[:mol]
-    K = reg[:K]
+    m = dimension(reg[:m])
+    kg = dimension(reg[:kg])
+    s = dimension(reg[:s])
+    A = dimension(reg[:A])
+    mol = dimension(reg[:mol])
+    K = dimension(reg[:K])
 
     _register_unit!(reg, :L => reg[:dm]^3)
     _register_unit!(reg, :Hz => inv(s))
@@ -137,7 +138,9 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     _register_unit!(reg, :T => N/(A*m))
     _register_unit!(reg, :Wb => V*s)
 
-    _register_unit!(reg, :°C => AffineUnits(offset=273.15, dims=dimension(K)))    
+
+    _register_unit!(reg, :°C => AffineUnits(offset=273.15, dims=K))    
+    _register_unit!(reg, :°F => AffineUnits(scale=5/9, offset=(273.15-32*5/9), dims=K))
 
     return reg
 end

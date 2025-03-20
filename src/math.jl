@@ -53,6 +53,9 @@ function Base.:^(u::U, p::Number) where U <:AbstractUnits
     return constructorof(U)(scale=uscale(u)^p, dims=scalar_dimension(u)^p)
 end
 
+Base.:*(args::AbstractUnitLike...) = *(promote(args...)...)
+Base.:/(u1::AbstractUnitLike, u2::AbstractUnitLike) = /(promote(u1,u2)...)
+
 Base.sqrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 2))
 Base.cbrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 3))
 
@@ -122,6 +125,15 @@ for f in (
     )
     @eval Base.$f(q::UnionQuantity) = quantity($f(ustrip(q)), unit(q))
 end
+Base.round(q::UnionQuantity, r::RoundingMode=RoundNearest) = quantity(round(ustrip(q), r), unit(q))
+Base.round(::Type{Ti}, q::UnionQuantity, r::RoundingMode=RoundNearest) where {Ti<:Integer} = quantity(round(ustrip(q), r), unit(q))
+for f in (:floor, :trunc, :ceil)
+    @eval begin
+        Base.$f(q::UnionQuantity) = quantity($f(ustrip(q)), unit(q))
+        Base.$f(::Type{Ti}, q::UnionQuantity) where {Ti<:Integer} = quantity($f(Ti, ustrip(q)), unit(q))
+    end
+end
+
 
 #Functions that strip dimensional units
 for f in (:angle,)
@@ -138,6 +150,8 @@ for f in (
 )
     @eval Base.$f(q::UnionQuantity) = $f(ustrip_dimensionless(q))
 end
+
+
 
 #=
 #Preliminary test code
