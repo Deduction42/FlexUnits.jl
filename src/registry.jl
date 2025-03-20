@@ -18,18 +18,10 @@ end
 
 #Parsing functions that don't require adding a dictionary
 uparse(str::String) = RegistryTools.uparse(str, UNITS)
-qparse(str::String) = RegistryTools.qparse(str, UNITS)
 
 #String macros are possible now that we are internally referring to UNITS
 macro u_str(str)
     return esc(uparse_expr(str, UNITS))
-end
-
-macro q_str(str)
-    Q = RealQuantity{Float64, DIMS}
-    ex = uparse_expr(str, UNITS)
-    ex = :($convert($Q, $ex))
-    return esc(ex)
 end
 
 #Registry is exported but these functions/macros are not (in case user wants their own verison)
