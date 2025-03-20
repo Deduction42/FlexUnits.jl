@@ -26,6 +26,6 @@ end
 
 #Registry is exported but these functions/macros are not (in case user wants their own verison)
 #You can import these by invoking `using .Registry`
-export @u_str, @q_str, uparse, qparse, register_unit
+export @u_str, uparse, register_unit
 
 end
