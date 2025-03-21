@@ -214,7 +214,7 @@ function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: Abstr
     return :($change_symbol($(ex), $(str)))
 end
 
-function uparse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+function uparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     ex = _uparse_expr(ex, reg)
     return :($convert($U, $ex))
 end
