@@ -49,6 +49,7 @@ units to a quantity with `target` units
 """
 function uconvert(utarget::AbstractUnitLike, ucurrent::AbstractUnitLike)
     dimension(utarget) == dimension(ucurrent) || throw(ConversionError(utarget, ucurrent))
+
     return AffineTransform(
         scale  = uscale(ucurrent)/uscale(utarget),
         offset = (uoffset(ucurrent) - uoffset(utarget))/uscale(utarget)
@@ -137,9 +138,12 @@ Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
 
 # Converting UnitLike values ==============================================================
 Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AffineUnits = U(scale=uscale(u0), offset=uoffset(u0), dims=dimension(u0), symbol=usymbol(u0))
-Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AbstractDimensions = (assert_dimension(u0); dims=dimension(u0))
+Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AbstractDimensions = (assert_dimension(u0); U(dimension(u0)))
+Base.convert(::Type{D}, d0::D0) where {D<:AbstractUnitLike, D0<:D} = d0
 
 # Converting between units and quantities ====================================================
+Base.convert(::Type{Q}, q0::Q0) where {Q<:UnionQuantity, Q0<:Q} = q0
+Base.convert(::Type{Q}, q::UnionQuantity) where {T, Q<:UnionQuantity{T}} = Q(convert(T, ustrip(q)), unit(q))
 Base.convert(::Type{U}, q::UnionQuantity) where U<:AbstractUnits = convert(U, asunit(q))
 function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:UnionQuantity{<:Any, <:AbstractDimensions}}
     assert_scalar(u)

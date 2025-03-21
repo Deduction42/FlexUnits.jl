@@ -9,6 +9,10 @@ abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end
 
 Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
 
+function (::Type{D})(x::AbstractDimensions) where {P, D<:AbstractDimensions{P}}
+    return D(map(Base.Fix1(getproperty, x), static_fieldnames(D))...)
+end
+
 @kwdef struct Dimensions{P} <: AbstractDimensions{P}
     length::P = 0
     mass::P = 0
@@ -20,7 +24,7 @@ Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
 end
 
 Dimensions(args...) = Dimensions{FAST_RATIONAL}(args...)
-Dimensions(d::Dimensions) = d
+Dimensions(d::AbstractDimensions) = Dimensions{FAST_RATIONAL}(d)
 DEFAULT_DIMENSONS = Dimensions{FAST_RATIONAL}
 
 uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
@@ -123,18 +127,21 @@ struct Quantity{T<:Any,U<:AbstractUnitLike}
     value :: T
     units :: U 
 end
+Quantity{T}(v,u::AbstractUnitLike) where T = Quantity(convert(T,v), u)
 narrowest_quantity(::Type{<:Any}) = Quantity
 
 struct NumberQuantity{T<:Number,U<:AbstractUnitLike} <: Number
     value :: T
     units :: U 
 end
+NumberQuantity{T}(v,u::AbstractUnitLike) where T = NumberQuantity(convert(T,v), u)
 narrowest_quantity(::Type{<:Number}) = NumberQuantity
 
 struct RealQuantity{T<:Real,U<:AbstractUnitLike} <: Real
     value :: T
     units :: U 
 end
+RealQuantity{T}(v,u::AbstractUnitLike) where T = RealQuantity(convert(T,v), u)
 narrowest_quantity(::Type{<:Real}) = RealQuantity
 
 narrowest_quantity(x::Any) = narrowest_quantity(typeof(x))
@@ -147,14 +154,16 @@ unit(q::UnionQuantity) = q.units
 dimension(q::UnionQuantity) = dimension(unit(q))
 
 Quantity(q::UnionQuantity) = Quantity(ustrip(q), unit(q))
+Quantity{T}(q::UnionQuantity) where T = Quantity{T,typeof(unit(q))}(ustrip(q), unit(q))
 Quantity{T,U}(q::UnionQuantity) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
 
 NumberQuantity(q::UnionQuantity) = NumberQuantity(ustrip(q), unit(q))
+NumberQuantity{T}(q::UnionQuantity) where {T} = NumberQuantity{T,typeof(unit(q))}(ustrip(q), unit(q))
 NumberQuantity{T,U}(q::UnionQuantity) where {T,U} = NumberQuantity{T,U}(ustrip(q), unit(q))
 
 RealQuantity(q::UnionQuantity) = RealQuantity(ustrip(q), unit(q))
+RealQuantity{T}(q::UnionQuantity) where {T} = RealQuantity{T,typeof(unit(q))}(ustrip(q), unit(q))
 RealQuantity{T,U}(q::UnionQuantity) where {T,U} = RealQuantity{T,U}(ustrip(q), unit(q))
-
 
 
 """
