@@ -1,6 +1,5 @@
 const FAST_RATIONAL = FixedRational{DEFAULT_NUMERATOR_TYPE,DEFAULT_DENOM}
 const DEFAULT_USYMBOL = :_
-const PRETTY_DIM_OUTPUT = Ref(true)
 
 abstract type AbstractUnitLike end
 abstract type AbstractDimensions{P} <: AbstractUnitLike end
@@ -9,6 +8,7 @@ abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end
 
 Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
 
+#Dimension constructor from other types of dimensions
 function (::Type{D})(x::AbstractDimensions) where {P, D<:AbstractDimensions{P}}
     return D(map(Base.Fix1(getproperty, x), static_fieldnames(D))...)
 end
@@ -154,15 +154,15 @@ unit(q::UnionQuantity) = q.units
 dimension(q::UnionQuantity) = dimension(unit(q))
 
 Quantity(q::UnionQuantity) = Quantity(ustrip(q), unit(q))
-Quantity{T}(q::UnionQuantity) where T = Quantity{T,typeof(unit(q))}(ustrip(q), unit(q))
+Quantity{T}(q::UnionQuantity) where T = Quantity{T}(ustrip(q), unit(q))
 Quantity{T,U}(q::UnionQuantity) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
 
 NumberQuantity(q::UnionQuantity) = NumberQuantity(ustrip(q), unit(q))
-NumberQuantity{T}(q::UnionQuantity) where {T} = NumberQuantity{T,typeof(unit(q))}(ustrip(q), unit(q))
+NumberQuantity{T}(q::UnionQuantity) where {T} = NumberQuantity{T}(ustrip(q), unit(q))
 NumberQuantity{T,U}(q::UnionQuantity) where {T,U} = NumberQuantity{T,U}(ustrip(q), unit(q))
 
 RealQuantity(q::UnionQuantity) = RealQuantity(ustrip(q), unit(q))
-RealQuantity{T}(q::UnionQuantity) where {T} = RealQuantity{T,typeof(unit(q))}(ustrip(q), unit(q))
+RealQuantity{T}(q::UnionQuantity) where {T} = RealQuantity{T}(ustrip(q), unit(q))
 RealQuantity{T,U}(q::UnionQuantity) where {T,U} = RealQuantity{T,U}(ustrip(q), unit(q))
 
 

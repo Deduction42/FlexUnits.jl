@@ -1,4 +1,30 @@
+#=============================================================================================
+Broadcasting
+=============================================================================================#
 
+Base.BroadcastStyle(::Type{UnionQuantity{T}}) where T = Base.BroadcastStyle(T)
+Base.broadcastable(u::AbstractUnitLike) = Ref(u)
+
+for f in (:size, :length, :axes, :ndims)
+    @eval Base.$f(q::UnionQuantity) = $f(ustrip(q))
+end
+Base.iterate(q::Q, maybe_state...) where Q<:UnionQuantity = 
+    let subiterate = iterate(ustrip(q), maybe_state...)
+        subiterate === nothing && return nothing
+        return Q(subiterate[1], unit(q)), subiterate[2]
+    end
+Base.ndims(::Type{<:UnionQuantity{T}}) where {T} = ndims(T)
+Base.broadcastable(q::Q) where Q<:UnionQuantity = Q(Base.broadcastable(ustrip(q)), dimension(q))
+Base.getindex(q::Q) where Q<:UnionQuantity = Q(getindex(ustrip(q)), unit(q))
+Base.getindex(q::Q, inds...) where Q<:UnionQuantity = Q(getindex(ustrip(q), inds...), unit(q))
+
+
+#=============================================================================================
+Displaying output
+=============================================================================================#
+#A global setting that can toggle "pretty printing" vs "parsable printing" 
+#This value to "false" makes output parsable by default
+const PRETTY_DIM_OUTPUT = Ref(true)
 
 function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractDimensions}; pretty=PRETTY_DIM_OUTPUT[])
     if pretty

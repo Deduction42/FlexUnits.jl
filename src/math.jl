@@ -92,6 +92,7 @@ function apply2quantities(f, args::UnionQuantity...)
     return quantity(f(basevals...), f(basedims...))
 end
 
+
 function Base.:(==)(q1::UnionQuantity, q2::UnionQuantity)
     qb1 = ubase(q1)
     qb2 = ubase(q2)
@@ -154,7 +155,7 @@ for f in (
     @eval Base.$f(q::UnionQuantity) = ustrip(apply2quantities($f, q))
 end
 
-#Single-argument functions that return booleans 
+#Single-argument functions that only operate on values
 for f in (:isfinite, :isinf, :isnan, :isreal, :isempty)
     @eval Base.$f(q::UnionQuantity) = $f(ustrip(q))
 end

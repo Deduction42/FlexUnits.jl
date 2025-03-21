@@ -11,6 +11,7 @@ include("registry_tools.jl")
 include("registry.jl")
 
 export AbstractUnitLike, AbstractDimensions, AbstractUnits, AbstractAffineUnits, AbstractUnitTransform
+export ConversionError, DimensionError, NotDimensionError, NotScalarError
 export Dimensions, NoDims, AffineUnits, Quantity, RealQuantity, NumberQuantity, UnionQuantity, AffineTransform
 export RegistryTools, UnitRegistry
 export static_fieldnames, uscale, uoffset, dimension
