@@ -32,13 +32,60 @@ using .UnitRegistry
             @test string(x) == "0.2 (m kg⁵ᐟ²)/s"
             @test string(inv(x)) == "5.0 s/(m kg⁵ᐟ²)"
         end
+
+        y = x - x
+        @test iszero(x) == false
+        @test iszero(y) == true
+        @test iszero(dimension(y)) == false
+    
+        y = -x
+        @test ustrip(y) == -ustrip(x)
+        @test dimension(y) == dimension(x)
+    
+        y = x / x
+        @test iszero(dimension(x)) == false
+        @test iszero(dimension(y)) == true
+    
+        y = x * Inf32
+        @test typeof(y).parameters[1] == promote_type(T, Float32)
+        @test typeof(y).parameters[2] == D
+        @test isfinite(x)
+        @test !isfinite(y)
+       
+        u = Dimensions(length=2//5)
+        x = RealQuantity(-1.2, u)
+
+        @test typemax(x) == RealQuantity(typemax(-1.2), u)
+    
+        @test abs(x) == RealQuantity(1.2, u)
+        @test abs(x) == abs(RealQuantity(1.2, u))
+        @test abs2(x) == RealQuantity(abs2(-1.2), u^2)
+    
+        @test copy(x) == x
+    
+        @test iszero(x) == false
+        @test iszero(x * 0) == true
+        @test isfinite(x) == true
+        @test isfinite(x * Inf) == false
+        @test isfinite(x * NaN) == false
+        @test isinf(x * Inf) == true
+        @test isnan(x) == false
+        @test isnan(x * NaN) == true
+        @test isreal(x) == true
+        @test isreal(x * (1 + 2im)) == false
+        @test signbit(x) == true
+        @test signbit(-x) == false
+        @test isempty(x) == false
+        @test isempty(Quantity([0.0, 1.0], u)) == false
+        @test isempty(Quantity(Float64[], u)) == true 
+
     end
+
 
     #Test parsing of non-pretty unit output
     x = quantity(0.2, Dimensions(length=1, mass=2.5, time=-1))
     show(tmp_io, unit(x), pretty=false)
     xp = ustrip(x)*uparse(String(take!(tmp_io)))
     @test ubase(xp) ≈ ubase(x)
-
 end
 

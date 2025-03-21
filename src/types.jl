@@ -252,8 +252,8 @@ assert_dimension(u::AbstractAffineUnits) = isone(uscale(u)) & iszero(uoffset(u))
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : DimensionError(u)
 assert_dimensionless(q::UnionQuantity) = isdimensionless(unit(q)) ? q : DimensionError(q)
 
-function isdimensionless(u::U) where U<:AbstractDimensions
+function Base.iszero(u::U) where U<:AbstractDimensions
     zero_dimension(obj::AbstractDimensions, fn::Symbol) = iszero(getproperty(obj, fn))
     return all(Base.Fix1(zero_dimension, u), dimension_names(U)) 
 end
-isdimensionless(u::AbstractUnitLike) = isdimensionless(dimension(u))
+isdimensionless(u::AbstractUnitLike) = iszero(dimension(u))

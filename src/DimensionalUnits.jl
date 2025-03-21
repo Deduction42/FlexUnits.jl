@@ -6,6 +6,7 @@ include("types.jl")
 include("utils.jl")
 include("conversions.jl")
 include("math.jl")
+include("ambiguities.jl")
 include("registry_tools.jl")
 include("registry.jl")
 

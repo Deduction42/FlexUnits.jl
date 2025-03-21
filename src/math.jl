@@ -132,15 +132,10 @@ Base.cbrt(q::UnionQuantity) = apply2quantities(cbrt, q)
 #Functions that return the same unit
 for f in (
         :float, :abs, :real, :imag, :conj, :adjoint, :unsigned,
-        :nextfloat, :prevfloat, :transpose, :significand, :zero, :one
+        :transpose, :significand, :zero, :one, :typemax
     )
     @eval Base.$f(u::AbstractDimensions) = u
     @eval Base.$f(q::UnionQuantity) = apply2quantities($f, q)
-end
-
-#Functions that strip dimensional units
-for f in (:angle,)
-    @eval Base.$f(q::UnionQuantity) = f(ustrip_base(q))
 end
 
 #Single-argument funtions that require dimensionless input and produce dimensionless output
@@ -152,10 +147,18 @@ for f in (
         :expm1, :frexp, :exponent,
     )
     @eval Base.$f(u::AbstractDimensions) = assert_dimensionless(u)
-    @eval Base.$f(q::UnionQuantity) = apply2quantities($f, q)
+    @eval Base.$f(q::UnionQuantity) = ustrip(apply2quantities($f, q))
 end
 
+#Single-argument functions that return booleans 
+for f in (:isfinite, :isinf, :isnan, :isreal, :isempty)
+    @eval Base.$f(q::UnionQuantity) = $f(ustrip(q))
+end
 
+#Single-argument functions with dimensionless output that don't work with non-scalar units
+for f in (:iszero, :signbit, :angle)
+    @eval Base.$f(q::UnionQuantity) = $f(ustrip_base(q))
+end
 
 #=
 #Preliminary test code
