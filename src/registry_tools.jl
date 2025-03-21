@@ -68,16 +68,14 @@ function register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{String,
     end
 end
 
-
-function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol,<:AbstractDimensions})
-    (k,v) = p
-    return setindex!(reg, AffineUnits(dims=v, symbol=k), k)
-end
-
 function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol,<:AbstractUnitLike})
     (k,v) = p
     vn = AffineUnits(scale=uscale(v), offset=uoffset(v), dims=dimension(v), symbol=k)
     return setindex!(reg, vn, k)
+end
+
+function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol, <:UnionQuantity})
+    return _register_unit!(reg, p[1]=>asunit(p[2]))
 end
 
 function add_prefixes!(reg::AbstractDict{Symbol,<:AffineUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
@@ -94,25 +92,28 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     #reg = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
     
+    _register_unit(p::Pair) = _register_unit!(reg, p)
+    add_prefixes(symb::Symbol, prfx::NamedTuple) = add_prefixes!(reg, symb, prfx)
+
     #SI dimensional units
-    _register_unit!(reg, :NoDims => Dims())
-    _register_unit!(reg, :m => Dims(length=1))
-    _register_unit!(reg, :g => asunit(0.001*Dims(mass=1)))
-    _register_unit!(reg, :t => asunit(1000*Dims(mass=1)))
-    _register_unit!(reg, :s => Dims(time=1))
-    _register_unit!(reg, :A => Dims(current=1))
-    _register_unit!(reg, :K => Dims(temperature=1))
-    _register_unit!(reg, :cd => Dims(luminosity=1))
-    _register_unit!(reg, :mol => Dims(amount=1))
+    _register_unit(:NoDims => Dims())
+    _register_unit(:m => Dims(length=1))
+    _register_unit(:g => 0.001*Dims(mass=1))
+    _register_unit(:t => 1000*Dims(mass=1))
+    _register_unit(:s => Dims(time=1))
+    _register_unit(:A => Dims(current=1))
+    _register_unit(:K => Dims(temperature=1))
+    _register_unit(:cd => Dims(luminosity=1))
+    _register_unit(:mol => Dims(amount=1))
     
-    add_prefixes!(reg, :m, si_prefixes[( :f, :p, :n, :μ, :u, :m, :c, :d, :k, :M, :G )])
-    add_prefixes!(reg, :g, si_prefixes[( :n, :μ, :u, :m, :k)])
-    add_prefixes!(reg, :t, si_prefixes[( :k, :M, :G)])
-    add_prefixes!(reg, :s, si_prefixes[( :f, :p, :n, :μ, :m)])
-    add_prefixes!(reg, :A, si_prefixes[( :n, :μ, :u, :m, :k)])
-    add_prefixes!(reg, :K, si_prefixes[( :m, )])
-    add_prefixes!(reg, :cd, si_prefixes[( :m, )])
-    add_prefixes!(reg, :mol, si_prefixes[( :p, :n, :μ, :u, :m, :k )])
+    add_prefixes(:m, si_prefixes[( :f, :p, :n, :μ, :u, :m, :c, :d, :k, :M, :G )])
+    add_prefixes(:g, si_prefixes[( :n, :μ, :u, :m, :k)])
+    add_prefixes(:t, si_prefixes[( :k, :M, :G)])
+    add_prefixes(:s, si_prefixes[( :f, :p, :n, :μ, :m)])
+    add_prefixes(:A, si_prefixes[( :n, :μ, :u, :m, :k)])
+    add_prefixes(:K, si_prefixes[( :m, )])
+    add_prefixes(:cd, si_prefixes[( :m, )])
+    add_prefixes(:mol, si_prefixes[( :μ, :u, :m, :k )])
 
     #SI derived units
     m = dimension(reg[:m])
@@ -122,25 +123,63 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     mol = dimension(reg[:mol])
     K = dimension(reg[:K])
 
-    _register_unit!(reg, :L => reg[:dm]^3)
-    _register_unit!(reg, :Hz => inv(s))
-    _register_unit!(reg, :N => kg*m/s^2); N = reg[:N]
-    _register_unit!(reg, :Pa => N/m^2);
-    _register_unit!(reg, :J => N*m); J = reg[:J]
-    _register_unit!(reg, :W => J/s); W = reg[:W]
-    _register_unit!(reg, :C => A*s); C = reg[:C]
-    _register_unit!(reg, :V => W/A); V = reg[:V]
-    _register_unit!(reg, :Ω => V/A); Ω = reg[:Ω]
-    _register_unit!(reg, :F => C/V) 
-    _register_unit!(reg, :ohm => Ω) 
-    _register_unit!(reg, :S => A/V)
-    _register_unit!(reg, :H => N*m/A^2)
-    _register_unit!(reg, :T => N/(A*m))
-    _register_unit!(reg, :Wb => V*s)
+    _register_unit(:L => reg[:dm]^3)
+    _register_unit(:Hz => inv(s))
+    _register_unit(:N => kg*m/s^2); N = reg[:N]
+    _register_unit(:Pa => N/m^2);
+    _register_unit(:J => N*m); J = reg[:J]
+    _register_unit(:W => J/s); W = reg[:W]
+    _register_unit(:C => A*s); C = reg[:C]
+    _register_unit(:V => W/A); V = reg[:V]
+    _register_unit(:Ω => V/A); Ω = reg[:Ω]
+    _register_unit(:F => C/V) 
+    _register_unit(:ohm => Ω) 
+    _register_unit(:S => A/V)
+    _register_unit(:H => N*m/A^2)
+    _register_unit(:T => N/(A*m))
+    _register_unit(:Wb => V*s)
 
+    add_prefixes(:L, si_prefixes[(:μ, :u, :m)])
+    add_prefixes(:Hz, si_prefixes[(:n, :μ, :u, :m, :k, :M, :G)])
+    add_prefixes(:N, si_prefixes[(:μ, :u, :m, :k)])
+    add_prefixes(:Pa, si_prefixes[(:k,:M, :G)])
+    add_prefixes(:J, si_prefixes[(:k,:M,:G)])
+    add_prefixes(:W, si_prefixes[(:m, :k, :M, :G)])
+    add_prefixes(:V, si_prefixes[(:p, :n, :μ, :u, :m, :k, :M, :G)])
+    add_prefixes(:F, si_prefixes[(:f, :p, :n, :μ, :u, :m)])
+    add_prefixes(:Ω, si_prefixes[(:n, :μ, :u, :m, :k, :M, :G)])
+    add_prefixes(:ohm, si_prefixes[(:n, :μ, :u, :m, :k, :M, :G)])
+    add_prefixes(:S, si_prefixes[(:n, :μ, :u, :m, :k, :M, :G)])
+    add_prefixes(:Wb, si_prefixes[(:n, :μ, :u, :m)])
 
-    _register_unit!(reg, :°C => AffineUnits(offset=273.15, dims=K))    
-    _register_unit!(reg, :°F => AffineUnits(scale=5/9, offset=(273.15-32*5/9), dims=K))
+    #Common time units
+    _register_unit(:min => 60*s); minute=reg[:min]
+    _register_unit(:minute => minute)
+    _register_unit(:h => 60*minute); h = reg[:h]
+    _register_unit(:hr => h);
+    _register_unit(:day => 24*h); day = reg[:day]
+    _register_unit(:d => day); 
+    _register_unit(:wk => 7*day);
+    _register_unit(:yr => 365.25*day);
+
+    #Common imperial units
+    _register_unit(:inch => 2.54*reg[:cm]); inch = reg[:inch]
+    _register_unit(:ft => 12*inch); ft = reg[:ft]
+    _register_unit(:mi => 5280*ft)
+    _register_unit(:lb => 0.453592*kg); lb = reg[:lb]
+    _register_unit(:oz => (1/16)*lb)
+    _register_unit(:psi => lb/inch^2)
+    _register_unit(:lbf => 4.44822*N)
+    _register_unit(:fl_oz => 29.5735*reg[:mL])
+    _register_unit(:cup => 8*reg[:fl_oz])
+    _register_unit(:pint => 2*reg[:cup])
+    _register_unit(:quart => 2*reg[:pint])
+
+    #Strictly affine temperature measurements
+    _register_unit(:°C => AffineUnits(offset=273.15, dims=K))    
+    _register_unit(:°F => AffineUnits(scale=5/9, offset=(273.15 - 32*5/9), dims=K))
+    _register_unit(:degC => reg[:°C])
+    _register_unit(:degF => reg[:°F])
 
     return reg
 end
