@@ -24,7 +24,6 @@ Base.:^(d::AbstractDimensions{R}, p::Number) where {R} = map_dimensions(Base.Fix
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{p}) where {p} = map_dimensions(Base.Fix1(*, p), d)
 Base.sqrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 2))
 Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
-Base.adjoint(d::AbstractDimensions) = d
 Base.abs2(d::AbstractDimensions) = d^2
 
 
@@ -89,6 +88,18 @@ function apply2quantities(f, args::UnionQuantity...)
     return quantity(f(basevals...), f(basedims...))
 end
 
+function Base.:(==)(q1::UnionQuantity, q2::UnionQuantity)
+    qb1 = ubase(q1)
+    qb2 = ubase(q2)
+    return (ustrip(qb1) == ustrip(qb2)) && (unit(qb1) == unit(qb2))
+end
+
+function Base.:(≈)(q1::UnionQuantity, q2::UnionQuantity)
+    qb1 = ubase(q1)
+    qb2 = ubase(q2)
+    return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
+end
+
 Base.:+(q::UnionQuantity, n::Number) = ustrip(assert_dimensionless(ubase(q))) + n 
 Base.:+(n::Number, q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q))) + n
 Base.:+(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(+, ubase(q1), ubase(q2))
@@ -123,32 +134,25 @@ for f in (
         :float, :abs, :real, :imag, :conj, :adjoint, :unsigned,
         :nextfloat, :prevfloat, :transpose, :significand, :zero, :one
     )
-    @eval Base.$f(q::UnionQuantity) = quantity($f(ustrip(q)), unit(q))
+    @eval Base.$f(u::AbstractDimensions) = u
+    @eval Base.$f(q::UnionQuantity) = apply2quantities($f, q)
 end
-Base.round(q::UnionQuantity, r::RoundingMode=RoundNearest) = quantity(round(ustrip(q), r), unit(q))
-Base.round(::Type{Ti}, q::UnionQuantity, r::RoundingMode=RoundNearest) where {Ti<:Integer} = quantity(round(ustrip(q), r), unit(q))
-for f in (:floor, :trunc, :ceil)
-    @eval begin
-        Base.$f(q::UnionQuantity) = quantity($f(ustrip(q)), unit(q))
-        Base.$f(::Type{Ti}, q::UnionQuantity) where {Ti<:Integer} = quantity($f(Ti, ustrip(q)), unit(q))
-    end
-end
-
 
 #Functions that strip dimensional units
 for f in (:angle,)
     @eval Base.$f(q::UnionQuantity) = f(ustrip_base(q))
 end
 
-#Single-argument funtions that require dimensionless input
+#Single-argument funtions that require dimensionless input and produce dimensionless output
+#Note that dimensionless input for angles are "radians" so functiosn like "sind" don't apply 
 for f in (
-    :sin, :cos, :tan, :sinh, :cosh, :tanh, :asin, :acos,
-    :asinh, :acosh, :atanh, :sec, :csc, :cot, :asec, :acsc, :acot, :sech, :csch,
-    :coth, :asech, :acsch, :acoth, :sinc, :cosc, :cosd, :cotd, :cscd, :secd,
-    :sinpi, :cospi, :sind, :tand, :acosd, :acotd, :acscd, :asecd, :asind,
-    :log, :log2, :log10, :log1p, :exp, :exp2, :exp10, :expm1, :frexp, :exponent,
-)
-    @eval Base.$f(q::UnionQuantity) = $f(ustrip_dimensionless(q))
+        :sin, :cos, :tan, :sinh, :cosh, :tanh, :asin, :acos,
+        :asinh, :acosh, :atanh, :sec, :csc, :cot, :asec, :acsc, :acot, :sech, :csch,
+        :coth, :asech, :acsch, :acoth, :log, :log2, :log10, :log1p, :exp, :exp2, :exp10, 
+        :expm1, :frexp, :exponent,
+    )
+    @eval Base.$f(u::AbstractDimensions) = assert_dimensionless(u)
+    @eval Base.$f(q::UnionQuantity) = apply2quantities($f, q)
 end
 
 

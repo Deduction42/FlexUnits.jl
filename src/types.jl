@@ -20,7 +20,6 @@ Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
 end
 
 Dimensions(args...) = Dimensions{FAST_RATIONAL}(args...)
-Dimensions(;kwargs...) = Dimensions{FAST_RATIONAL}(;kwargs...)
 Dimensions(d::Dimensions) = d
 DEFAULT_DIMENSONS = Dimensions{FAST_RATIONAL}
 
@@ -171,7 +170,6 @@ quantity(x, u::AbstractUnitLike) = narrowest_quantity(x)(x, u)
 Returns the narrowest quantity type of `q`
 """
 narrowest(q::UnionQuantity) = quantity(ustrip(q), unit(q))
-widest(q::UnionQuantity) = Quantity(ustrip(q), unit(q))
 
 """
     constructorof(::Type{T}) where T = Base.typename(T).wrapper

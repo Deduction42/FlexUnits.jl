@@ -60,8 +60,7 @@ function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractD
 end
 
 function _print_string_macro(io::IO, q::UnionQuantity)
-    print("(", ustrip(q), ")")
-    print(io, "u\"")
+    print(io, "(", ustrip(q), ")")
     return _print_unit_macro(io, unit(q))
 end
 
@@ -93,7 +92,7 @@ end
 
 
 function _unit_pwr_string(u::Symbol, p::Real; pretty=PRETTY_DIM_OUTPUT[])
-    return PRETTY_DIM_OUTPUT[] ? _pretty_unit_pwr(u, p) : _parsable_unit_pwr(u, p)
+    return pretty ? _pretty_unit_pwr(u, p) : _parsable_unit_pwr(u, p)
 end
 
 function _parsable_unit_pwr(u::Symbol, p::Real)

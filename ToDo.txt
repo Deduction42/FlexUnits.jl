@@ -1,6 +1,8 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
+0. Register percent/rad/deg/rpm (can overwrite if not PermanentDict)
+0. Make sure even dimensionless functions support f(u::AbstractDimensions) = assert_dimensionless(u)
 1. Build basic tests
 2. Migrate to TankMonitor module and run
 3. Publish version v0.0.1
@@ -11,6 +13,7 @@ Tasks:
     - This can be done without documentation 
         - Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         - Iterate over registry and list other units that match the query dimension
+7. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
 
 
 Design Decisions:

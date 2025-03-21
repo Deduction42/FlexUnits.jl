@@ -10,12 +10,12 @@ const UNITS = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
 #Fill the UNITS registry with default values
 registry_defaults!(UNITS)
 
-#Ueses a ReentrantLock() to prevent race conditions when multithreading
+#Ueses a ReentrantLock() on register_unit to prevent race conditions when multithreading
 register_unit(p::Pair{String,<:AbstractUnitLike}) = lock(UNIT_LOCK) do 
     register_unit!(UNITS, p)
 end
 
-#Parsing functions that don't require adding a dictionary
+#Parsing functions that don't require a dictionary argument
 uparse(str::String) = RegistryTools.uparse(str, UNITS)
 
 #String macros are possible now that we are internally referring to UNITS

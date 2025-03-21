@@ -123,6 +123,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     mol = dimension(reg[:mol])
     K = dimension(reg[:K])
 
+    _register_unit(:percent => 0.01*reg[:NoDims])
     _register_unit(:L => reg[:dm]^3)
     _register_unit(:Hz => inv(s))
     _register_unit(:N => kg*m/s^2); N = reg[:N]
@@ -181,6 +182,21 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     _register_unit(:degC => reg[:°C])
     _register_unit(:degF => reg[:°F])
 
+    #Angled units: For the SI system, considers "degrees/radians" to be dimensionless 
+    _register_unit(:rad => reg[:NoDims])
+    _register_unit(:deg => (2*π/360)*reg[:NoDims])
+    _register_unit(:rpm => (2*π/60)*(reg[:Hz]))
+
+    #If you want to add "angle" as a dimension, you can overload the appropriate function
+
+    #function apply_trig_func(f, q::UnionQuantity{<:Any, <:RadDimensions{T}}) where T
+    #   baseq = ubase(q)
+    #   assert_radians(unit(baseq))
+    #   return quantity(f(ustrip(baseq)), RadDimensions{T}())
+    #end
+
+    #sin(q::UnionQuantity{<:RadDimensions}) = apply_trig_func(sin, q)
+
     return reg
 end
 
@@ -199,21 +215,24 @@ function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: Abstr
 end
 
 function uparse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    ex = _uparse_expr(ex, reg)
+    return :($convert($U, $ex))
+end
+
+function _uparse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     if ex.head != :call
         throw(ArgumentError("Unexpected expression: $ex. Only `:call` is expected."))
     end
     ex.args[2:end] = map(Base.Fix1(lookup_unit_expr, reg), ex.args[2:end])
-
-    #Make sure the return type is the same as the registry
-    return :($convert($U, $ex))
+    return ex
 end
 
-function uparse_expr(ex::Symbol, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+function _uparse_expr(ex::Symbol, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     return lookup_unit_expr(reg, ex)
 end
 
 function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Expr)
-    return uparse_expr(ex, reg)
+    return _uparse_expr(ex, reg)
 end
 
 function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, name::Symbol)
