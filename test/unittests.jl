@@ -85,10 +85,8 @@ end
 @testset "Basic unit functionality" begin
 
     #Test parsability of non-pretty output of units
-    tmp_io = IOBuffer()
     x = quantity(0.2, Dimensions(length=1, mass=2.5, time=-1))
-    show(tmp_io, unit(x), pretty=false)
-    xp = ustrip(x)*uparse(String(take!(tmp_io)))
+    xp = ustrip(x)*uparse(string(unit(x), pretty=false))
     @test ubase(xp) ≈ ubase(x)
 
     x = 1.3u"km/s^2"

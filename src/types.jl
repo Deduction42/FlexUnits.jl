@@ -104,16 +104,18 @@ dimension(u::AffineUnits) = u.dims
 usymbol(u::AffineUnits) = u.symbol
 remove_offset(u::U) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=0, dims=dimension(u))
 
-function Base.show(io::IO, d::AffineUnits; pretty=PRETTY_DIM_OUTPUT[])
-    print(io, "AffineUnits(scale=", uscale(d), ", offset=", uoffset(d), ", dims=")
-    if pretty
-        show(io, dimension(d), pretty=true)
+function Base.show(io::IO, u::AffineUnits; pretty=PRETTY_DIM_OUTPUT[])
+    if usymbol(u) != DEFAULT_USYMBOL
+        return print(io, usymbol(u))
     else
-        print("u\"")
-        show(io, dimension(d), pretty=false)
-        print("\"")
+        print(io, "AffineUnits(scale=", uscale(u), ", offset=", uoffset(u), ", dims=")
+        if pretty
+            show(io, dimension(u), pretty=true)
+        else
+            show(io, dimension(u), pretty=false)
+        end
+        return print(io, ")")
     end
-    return print(io, ")")
 end
 
 

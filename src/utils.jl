@@ -26,20 +26,31 @@ Displaying output
 #This value to "false" makes output parsable by default
 const PRETTY_DIM_OUTPUT = Ref(true)
 
+function Base.string(x::Union{AbstractUnitLike, UnionQuantity}; pretty=PRETTY_DIM_OUTPUT[])
+    tmp_io = IOBuffer()
+    show(tmp_io, x, pretty=pretty)
+    return String(take!(tmp_io))
+end
+
+function pretty_print_units(x::Bool) 
+    PRETTY_DIM_OUTPUT[] = x 
+    return x 
+end
+
 function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractDimensions}; pretty=PRETTY_DIM_OUTPUT[])
     if pretty
-        return _print_pretty_space(io, q)
+        return _pretty_print_quantity(io, q)
     else
-        return _print_string_macro(io, q)
+        return _parsable_print_quantity(io, q)
     end
 end
 
 function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractUnits}; pretty=PRETTY_DIM_OUTPUT[])
     if usymbol(unit(q)) != DEFAULT_USYMBOL #Print the unit symbol if it exists (not default)
         if pretty
-            return _print_pretty_space(io, q)
+            return _pretty_print_quantity(io, q)
         else
-            return _print_string_macro(io, q)
+            return _parsable_print_quantity(io, q)
         end 
     else
         return Base.show(io, ubase(q), pretty=pretty) #Print SI version (emphesizes that units are treated as SI quantities)
@@ -85,26 +96,23 @@ function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractD
     return nothing
 end
 
-function _print_string_macro(io::IO, q::UnionQuantity)
+function _parsable_print_quantity(io::IO, q::UnionQuantity)
     print(io, "(", ustrip(q), ")")
-    return _print_unit_macro(io, unit(q))
+    return _parsable_print_unit(io, unit(q))
 end
 
-function _print_pretty_space(io::IO, q::UnionQuantity)
+function _pretty_print_quantity(io::IO, q::UnionQuantity)
     print(io, ustrip(q), " ")
     return _print_pretty_unit(io, unit(q))
 end
 
-function _print_unit_macro(io::IO, u::AbstractUnitLike)
+function _parsable_print_unit(io::IO, u::AbstractUnitLike)
     usymb = usymbol(u)
-    print(io, "u\"")
-
     if usymb == DEFAULT_USYMBOL
-        Base.show(io, u, pretty=false)
+        return Base.show(io, u, pretty=false)
     else
-        Base.print(io, usymb)
+        return Base.print(io, usymb)
     end
-    return print(io, "\"")
 end
 
 function _print_pretty_unit(io::IO, u::AbstractUnitLike)
