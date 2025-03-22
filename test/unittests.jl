@@ -77,6 +77,12 @@ using .UnitRegistry
         @test isempty(x) == false
         @test isempty(Quantity([0.0, 1.0], u)) == false
         @test isempty(Quantity(Float64[], u)) == true 
+        @test sin(5u"rad") == sin(5) 
+        @test sin(30u"deg") ≈ 0.5
+
+        #Cannot check iszero on non-affine units 
+        @test_throws NotScalarError iszero(5u"°C")
+
     end
 
 end
@@ -127,6 +133,42 @@ end
     @test_throws "Unexpected expression" uparse("import ..Units")
     @test_throws "Unexpected expression" uparse("(m, m)")
     @test_throws LoadError eval(:(us"x"))
+
+
+    #Basic mathematical operations
+    xp = 1u"percent"
+    xv = 1u"m/s"
+
+    @test xp + 1 == 1.01
+    @test 1 + xp == 1.01
+    @test xv + xv == 2u"m/s"
+    @test (xv + xv) isa RealQuantity{Float64, <:Dimensions}
+
+    @test 1 - xp == 0.99 
+    @test xp - 1 == -0.99
+    @test xv - xv == 0u"m/s"
+    @test (xv - xv) isa RealQuantity{Float64, <:Dimensions}
+
+    @test_throws DimensionError xv + 1
+    @test_throws DimensionError 1 + xv
+
+    @test xv*1 == 1u"m/s"
+    @test xv*1 !== 1u"m/s"
+    @test xv*1 === ubase(1u"m/s")
+    @test xp*1 == 0.01*Dimensions()
+    @test xv*xv == 1u"m^2/s^2"
+
+    @test xv/1 == 1u"m/s"
+    @test xp/1 == 0.01*Dimensions()
+    @test xv/xv == 1u"NoDims"
+
+    @test sqrt(4*xv) == 2u"m^0.5/s^0.5"
+    @test (4*xv)^0.5 == 2u"m^0.5/s^0.5"
+    @test (2*xv)^2 == 4u"m^2/s^2"
+
+    @test_throws DimensionError 2^(1u"m/s")
+    @test_throws DimensionError (1u"m/s")^(1u"m/s")
+
 end
 
 

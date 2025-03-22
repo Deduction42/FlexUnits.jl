@@ -20,7 +20,7 @@ Base.:*(args::AbstractDimensions...) = map_dimensions(+, args...)
 Base.:/(args::AbstractDimensions...) = map_dimensions(-, args...)
 Base.inv(arg::AbstractDimensions) = map_dimensions(-, arg)
 Base.:^(d::AbstractDimensions, p::Integer) = map_dimensions(Base.Fix1(*, p), d)
-Base.:^(d::AbstractDimensions{R}, p::Number) where {R} = map_dimensions(Base.Fix1(*, tryrationalize(R, p)), d)
+Base.:^(d::AbstractDimensions{R}, p::Number) where {R} = map_dimensions(Base.Fix1(*, tryrationalize(R, dimensionless(p))), d)
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{p}) where {p} = map_dimensions(Base.Fix1(*, p), d)
 Base.sqrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 2))
 Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
@@ -53,7 +53,8 @@ function Base.:inv(arg::U) where U <: AbstractUnits
 end
 
 function Base.:^(u::U, p::Number) where U <:AbstractUnits
-    return constructorof(U)(scale=uscale(u)^p, dims=scalar_dimension(u)^p)
+    pn = dimensionless(p)
+    return constructorof(U)(scale=uscale(u)^pn, dims=scalar_dimension(u)^pn)
 end
 
 Base.:*(args::AbstractUnitLike...) = *(promote(args...)...)
@@ -105,13 +106,13 @@ function Base.:(≈)(q1::UnionQuantity, q2::UnionQuantity)
     return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
 end
 
-Base.:+(q::UnionQuantity, n::Number) = ustrip(assert_dimensionless(ubase(q))) + n 
-Base.:+(n::Number, q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q))) + n
+Base.:+(q::UnionQuantity, n::Number) = dimensionless(q) + n 
+Base.:+(n::Number, q::UnionQuantity) = dimensionless(q) + n
 Base.:+(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(+, ubase(q1), ubase(q2))
 Base.:+(q::UnionQuantity...) = apply2quantities(+, q...)
 
-Base.:-(q::UnionQuantity, n::Number) = ustrip(assert_dimensionless(ubase(q))) - n 
-Base.:-(n::Number, q::UnionQuantity) = n - ustrip(assert_dimensionless(ubase(q)))
+Base.:-(q::UnionQuantity, n::Number) = dimensionless(q) - n 
+Base.:-(n::Number, q::UnionQuantity) = n - dimensionless(q)
 Base.:-(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(-, ubase(q1), ubase(q2))
 Base.:-(q1::UnionQuantity) = apply2quantities(-, ubase(q1))
 
@@ -125,10 +126,12 @@ Base.:/(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(n/ustrip(q), in
 Base.:/(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(/, q1, q2)
 Base.:inv(q::UnionQuantity) = apply2quantities(inv, q)
 
-for NT in (Number, Integer, Rational) #Address potential ambiguities
-    @eval Base.:^(q::UnionQuantity, p::$NT) = apply2quantities(Base.Fix2(^, p), q)
+for NT in (UnionQuantity, Number, Integer, Rational) #Address potential ambiguities
+    @eval Base.:^(q::UnionQuantity, p::$NT) = apply2quantities(Base.Fix2(^, dimensionless(p)), q)
 end
-@inline Base.literal_pow(::typeof(^), q::UnionQuantity, ::Val{p}) where {p} = apply2quantities(x->Base.literal_pow(^, x, Val(p)), q)
+Base.:^(q::Number, p::UnionQuantity) = apply2quantities(Base.Fix2(^, dimensionless(p)), q)
+
+@inline Base.literal_pow(::typeof(^), q::UnionQuantity, ::Val{p}) where {p} = apply2quantities(x->Base.literal_pow(^, x, Val(dimensionless(p))), q)
 
 Base.sqrt(q::UnionQuantity) = apply2quantities(sqrt, q)
 Base.cbrt(q::UnionQuantity) = apply2quantities(cbrt, q)
@@ -136,7 +139,7 @@ Base.cbrt(q::UnionQuantity) = apply2quantities(cbrt, q)
 
 #Functions that return the same unit
 for f in (
-        :float, :abs, :real, :imag, :conj, :adjoint, :unsigned,
+        :float, :abs, :real, :imag, :conj, :adjoint,
         :transpose, :significand, :zero, :one, :typemax
     )
     @eval Base.$f(u::AbstractDimensions) = u
@@ -151,8 +154,8 @@ for f in (
         :coth, :asech, :acsch, :acoth, :log, :log2, :log10, :log1p, :exp, :exp2, :exp10, 
         :expm1, :frexp, :exponent,
     )
-    @eval Base.$f(u::AbstractDimensions) = assert_dimensionless(u)
-    @eval Base.$f(q::UnionQuantity) = ustrip(apply2quantities($f, q))
+    @eval Base.$f(u::AbstractDimensions) = dimensionless(u)
+    @eval Base.$f(q::UnionQuantity) = apply2quantities($f, q)
 end
 
 #Single-argument functions that only operate on values
@@ -162,7 +165,7 @@ end
 
 #Single-argument functions with dimensionless output that don't work with non-scalar units
 for f in (:iszero, :signbit, :angle)
-    @eval Base.$f(q::UnionQuantity) = $f(ustrip_base(q))
+    @eval Base.$f(q::UnionQuantity) = (assert_scalar(unit(q)); $f(ustrip_base(q)))
 end
 
 #=

@@ -171,9 +171,11 @@ RealQuantity{T,U}(q::UnionQuantity) where {T,U} = RealQuantity{T,U}(ustrip(q), u
 """
     quantity(x, u::AbstractUnitLike)
 
-Constructs a quantity based on the narrowest quantity type that accepts x as an agument
+Constructs a quantity based on the narrowest quantity type that accepts x as an agument.
+If "NoDims" is passed, only x is returned
 """
 quantity(x, u::AbstractUnitLike) = narrowest_quantity(x)(x, u)
+quantity(x, u::NoDims) = x
 
 """
     narrowest(q::UnionQuantity)
@@ -260,8 +262,11 @@ scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
 assert_dimension(u::AbstractDimensions) =  u
 assert_dimension(u::AbstractAffineUnits) = isone(uscale(u)) & iszero(uoffset(u)) ? u : throw(NotDimensionError(u))
 
-assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : DimensionError(u)
-assert_dimensionless(q::UnionQuantity) = isdimensionless(unit(q)) ? q : DimensionError(q)
+assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
+assert_dimensionless(q::UnionQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
+dimensionless(u::AbstractUnitLike) = (assert_dimensionless(u); NoDims())
+dimensionless(q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q)))
+dimensionless(n::Number) = n
 
 function Base.iszero(u::U) where U<:AbstractDimensions
     zero_dimension(obj::AbstractDimensions, fn::Symbol) = iszero(getproperty(obj, fn))

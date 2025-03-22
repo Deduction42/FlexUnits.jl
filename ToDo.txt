@@ -1,8 +1,7 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-0. Make sure unit output is parsable by "uparse" u"m/s^(2)" should print "m/s^(s)"
-        add appropriate methods with "pretty" option to string(x::Union{AbstractUnitLike, UnionQuantity}) as well
+0. Make "quantity(v, u::NoDims) = v", so that dimension functions that return "NoDims" result in scalars
 1. Build basic tests
 2. Migrate to TankMonitor module and run
 3. Publish version v0.0.1
