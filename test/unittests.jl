@@ -1,7 +1,7 @@
 using Revise
 using Test
 using DimensionalUnits
-using DimensionalUnits: FAST_RATIONAL, FixedRational, DEFAULT_DIM_TYPE
+using DimensionalUnits: FAST_RATIONAL, FixedRational
 using .UnitRegistry
 
 @testset "Basic utilities" begin
@@ -83,11 +83,11 @@ end
 
 
 @testset "Basic unit functionality" begin
-
-    #Test parsability of non-pretty output of units
     x = quantity(0.2, Dimensions(length=1, mass=2.5, time=-1))
-    xp = ustrip(x)*uparse(string(unit(x), pretty=false))
-    @test ubase(xp) ≈ ubase(x)
+    u = ustrip(x)
+
+    #Test round-trip parsing
+    @test ubase(x) ≈ ustrip(x)*uparse(string(unit(x), pretty=false))
 
     #Test toggling pretty-print
     pretty_print_units(false)
