@@ -89,6 +89,13 @@ end
     xp = ustrip(x)*uparse(string(unit(x), pretty=false))
     @test ubase(xp) ≈ ubase(x)
 
+    #Test toggling pretty-print
+    pretty_print_units(false)
+    xp = ustrip(x)*uparse(string(unit(x)))
+    pretty_print_units(true)
+    @test ubase(xp) ≈ ubase(x)
+
+
     x = 1.3u"km/s^2"
     @test ustrip(x) == 1.3
     @test ustrip_base(x) == 1300  # SI base units
