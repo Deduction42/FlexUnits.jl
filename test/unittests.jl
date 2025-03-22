@@ -172,7 +172,7 @@ end
 end
 
 
-@testset "uconvert" begin
+@testset "Unit conversions (uconvert)" begin
     U = typeof(first(values(UnitRegistry.UNITS)))
     @test uconvert(u"nm", 5e-9u"m") ≈ (5e-9u"m" |> u"nm") ≈ 5u"nm"
     @test_throws ConversionError uconvert(u"nm*J", 5e-9u"m")
@@ -191,7 +191,7 @@ end
         # Broadcasting conversions over Arrays
         x = [1.0, 2.0, 3.0] .* Q(1, u"kg")
         x2 = x .|> u"g"
-        @test typeof(xs) <: Vector{<:RealQuantity{Float64,<:AffineUnits{<:Any}}}
+        @test typeof(x2) <: Vector{<:RealQuantity{Float64,<:AffineUnits{<:Any}}}
         @test x2[2] ≈ Q(2000u"g")
     end
 end
