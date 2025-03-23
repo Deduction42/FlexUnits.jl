@@ -81,7 +81,7 @@ const DEFAULT_DIM_TYPE  = DimensionalUnits.dimtype(DEFAULT_UNIT_TYPE)
         @test isempty(Quantity([0.0, 1.0], u)) == false
         @test isempty(Quantity(Float64[], u)) == true 
         @test sin(5u"rad") == sin(5) 
-        @test sin(30u"deg") ≈ 0.5
+        @test cos(60u"deg") ≈ 0.5
 
         #Cannot check iszero on non-affine units 
         @test_throws NotScalarError iszero(5u"°C")
@@ -211,8 +211,9 @@ end
 
     # Type conversions
     @test convert(Quantity{Float64, AffineUnits}, ubase(1u"kg")) isa Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}
-    @test convert(Quantity{Float64, AffineUnits{Float64}}, u"kg") isa Quantity{Float64, AffineUnits{Float64}}
-    @test convert(Quantity{Float64, Dimensions}, u"kg") isa Quantity{Float64, Dimensions{DynamicQuantities.DEFAULT_DIM_BASE_TYPE}}
+    @test convert(Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}, 1u"kg") isa Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}
+    @test convert(Quantity{Float64, Dimensions}, u"kg") isa Quantity{Float64, Dimensions{FAST_RATIONAL}}
+
     
     # Test conversions
     @test 1°C |> K isa RealQuantity{<:Real, <:AffineUnits}

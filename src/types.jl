@@ -127,21 +127,39 @@ Other types are "narrower" in order to slot into different parts of the number h
 
 struct Quantity{T<:Any,U<:AbstractUnitLike}
     value :: T
-    units :: U 
+    units :: U
+    function Quantity{T,U}(v0::T0, u0::U0) where {T,U,T0,U0}
+        u = u0 isa U ? u0 : convert(U, u0)
+        v = v0 isa T ? v0 : convert(T, v0)
+        return new{typeof(v), typeof(u)}(v,u)
+    end
+    Quantity(v,u) = new{typeof(v), typeof(u)}(v,u)
 end
 Quantity{T}(v,u::AbstractUnitLike) where T = Quantity(convert(T,v), u)
 narrowest_quantity(::Type{<:Any}) = Quantity
 
 struct NumberQuantity{T<:Number,U<:AbstractUnitLike} <: Number
     value :: T
-    units :: U 
+    units :: U
+    function NumberQuantity{T,U}(v0::T0, u0::U0) where {T,U,T0,U0}
+        u = u0 isa U ? u0 : convert(U, u0)
+        v = v0 isa T ? v0 : convert(T, v0)
+        return new{typeof(v), typeof(u)}(v,u)
+    end
+    NumberQuantity(v,u) = new{typeof(v), typeof(u)}(v,u)
 end
 NumberQuantity{T}(v,u::AbstractUnitLike) where T = NumberQuantity(convert(T,v), u)
 narrowest_quantity(::Type{<:Number}) = NumberQuantity
 
 struct RealQuantity{T<:Real,U<:AbstractUnitLike} <: Real
     value :: T
-    units :: U 
+    units :: U
+    function RealQuantity{T,U}(v0::T0, u0::U0) where {T,U,T0,U0}
+        u = u0 isa U ? u0 : convert(U, u0)
+        v = v0 isa T ? v0 : convert(T, v0)
+        return new{typeof(v), typeof(u)}(v,u)
+    end
+    RealQuantity(v,u) = new{typeof(v), typeof(u)}(v,u)
 end
 RealQuantity{T}(v,u::AbstractUnitLike) where T = RealQuantity(convert(T,v), u)
 narrowest_quantity(::Type{<:Real}) = RealQuantity

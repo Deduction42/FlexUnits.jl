@@ -120,30 +120,26 @@ this can yield potentially unintuitive results like 2°C/1°C = 1.00364763815429
 
 
 #================================ Conversion between quantity types =======================================#
+Base.convert(::Type{Q}, q::UnionQuantity) where Q <: UnionQuantity = q isa Q ? q : Q(ustrip(q), unit(q))
+
+#=
+Base.convert(::Type{Quantity{T,U}}, q::Quantity{T,U}) where {T, U<:AbstractUnitLike} = q # Remove potential ambiguities
 function Base.convert(::Type{Quantity{T,U}}, q::UnionQuantity) where {T, U<:AbstractUnitLike}
     u = closest_unit(U, unit(q))
     v = transform(ustrip(q), uconvert(u, unit(q)))
     return Quantity{T,U}(v,u)
 end
-
-function Base.convert(::Type{Q}, q::UnionQuantity) where {T, U<:AbstractUnitLike, Q<:UnionQuantity{T,U}}
-    return constructorof(Q){T,U}(convert(Quantity{T,U}, q))
-end
-
-Base.convert(::Type{Quantity{T,U}}, q::Quantity{T,U}) where {T, U<:AbstractUnitLike} = q # Remove potential ambiguities
+=#
 
 # NoDims handling ==============================================================================================
 Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
 
 
 # Converting UnitLike values ==============================================================
-Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AffineUnits = U(scale=uscale(u0), offset=uoffset(u0), dims=dimension(u0), symbol=usymbol(u0))
-Base.convert(::Type{U}, u0::AbstractUnitLike) where U<:AbstractDimensions = (assert_dimension(u0); U(dimension(u0)))
-Base.convert(::Type{D}, d0::D0) where {D<:AbstractUnitLike, D0<:D} = d0
+Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = u isa U ? u : U(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=usymbol(u))
+Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (assert_dimension(u); D(dimension(u)))
 
 # Converting between units and quantities ====================================================
-Base.convert(::Type{Q}, q0::Q0) where {Q<:UnionQuantity, Q0<:Q} = q0
-Base.convert(::Type{Q}, q::UnionQuantity) where {T, Q<:UnionQuantity{T}} = Q(convert(T, ustrip(q)), unit(q))
 Base.convert(::Type{U}, q::UnionQuantity) where U<:AbstractUnits = convert(U, asunit(q))
 function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:UnionQuantity{<:Any, <:AbstractDimensions}}
     assert_scalar(u)
