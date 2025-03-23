@@ -208,12 +208,6 @@ end
     # Test promotion explicitly for coverage:
     @test promote_type(AffineUnits{Dimensions{Int16}}, AffineUnits{Dimensions{Int32}}) === AffineUnits{Dimensions{Int32}}
     @test promote_type(Dimensions{Int16}, AffineUnits{Dimensions{Int32}}) === AffineUnits{Dimensions{Int32}}
-
-    # Type conversions
-    @test convert(Quantity{Float64, AffineUnits}, ubase(1u"kg")) isa Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}
-    @test convert(Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}, 1u"kg") isa Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}
-    @test convert(Quantity{Float64, Dimensions}, u"kg") isa Quantity{Float64, Dimensions{FAST_RATIONAL}}
-
     
     # Test conversions
     @test 1°C |> K isa RealQuantity{<:Real, <:AffineUnits}

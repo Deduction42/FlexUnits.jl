@@ -120,24 +120,14 @@ this can yield potentially unintuitive results like 2°C/1°C = 1.00364763815429
 
 
 #================================ Conversion between quantity types =======================================#
-Base.convert(::Type{Q}, q::UnionQuantity) where Q <: UnionQuantity = q isa Q ? q : Q(ustrip(q), unit(q))
-
-#=
-Base.convert(::Type{Quantity{T,U}}, q::Quantity{T,U}) where {T, U<:AbstractUnitLike} = q # Remove potential ambiguities
-function Base.convert(::Type{Quantity{T,U}}, q::UnionQuantity) where {T, U<:AbstractUnitLike}
-    u = closest_unit(U, unit(q))
-    v = transform(ustrip(q), uconvert(u, unit(q)))
-    return Quantity{T,U}(v,u)
-end
-=#
+Base.convert(::Type{Q}, q::UnionQuantity) where Q <: UnionQuantity = (q isa Q) ? q : Q(ustrip(q), unit(q))
 
 # NoDims handling ==============================================================================================
 Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
 
-
 # Converting UnitLike values ==============================================================
-Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = u isa U ? u : U(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=usymbol(u))
-Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (assert_dimension(u); D(dimension(u)))
+Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = (u isa U) ? u : U(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=usymbol(u))
+Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : (assert_dimension(u); D(dimension(u)))
 
 # Converting between units and quantities ====================================================
 Base.convert(::Type{U}, q::UnionQuantity) where U<:AbstractUnits = convert(U, asunit(q))
