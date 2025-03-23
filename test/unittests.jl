@@ -1,8 +1,11 @@
 using Revise
 using Test
 using DimensionalUnits
-using DimensionalUnits: FAST_RATIONAL, FixedRational
+using DimensionalUnits: FAST_RATIONAL, FixedRational, map_dimensions
 using .UnitRegistry
+
+const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
+const DEFAULT_DIM_TYPE  = DimensionalUnits.dimtype(DEFAULT_UNIT_TYPE)
 
 @testset "Basic utilities" begin
 
@@ -169,6 +172,81 @@ end
     @test_throws DimensionError 2^(1u"m/s")
     @test_throws DimensionError (1u"m/s")^(1u"m/s")
 
+    @test_throws ArgumentError uparse("s[1]")
+    @test_throws ArgumentError uparse("pounds_per_hour")
+
+
+    #Tests on truly affine units
+    °C  = u"°C"
+    °F  = u"°F"
+    K   = u"K"
+    @test dimension(°C).temperature == 1
+    @test dimension(°C).length == 0
+    @test °C == u"degC"
+    @test °F == u"degF"
+    @test 5°C - 4°C == 1K
+    @test 5°C + 4°C == 282.15°C
+    @test 5°C + 4°C - 0°C == 9°C
+
+    # Constructors
+    kelvin  = AffineUnits(dims=u"K")
+    @test 1*kelvin == 1K
+
+    rankine = AffineUnits(scale=5/9, offset=0.0, dims=K)
+    @test 1*rankine == (5/9)K
+
+    fahrenheit = AffineUnits(scale=5/9, offset=(273.15-32*5/9), dims=K)
+    @test 1*fahrenheit ≈ 1°F
+
+    celsius = AffineUnits(offset=273.15, dims=K)
+    @test 1*celsius ≈ 1°C
+
+    # Round-trip sanity checks
+    @test -40°C ≈ -40°F
+    @test -40.0*celsius ≈ -40.0*fahrenheit
+    
+    # Test promotion explicitly for coverage:
+    @test promote_type(AffineUnits{Dimensions{Int16}}, AffineUnits{Dimensions{Int32}}) === AffineUnits{Dimensions{Int32}}
+    @test promote_type(Dimensions{Int16}, AffineUnits{Dimensions{Int32}}) === AffineUnits{Dimensions{Int32}}
+
+    # Type conversions
+    @test convert(Quantity{Float64, AffineUnits}, ubase(1u"kg")) isa Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}
+    @test convert(Quantity{Float64, AffineUnits{Float64}}, u"kg") isa Quantity{Float64, AffineUnits{Float64}}
+    @test convert(Quantity{Float64, Dimensions}, u"kg") isa Quantity{Float64, Dimensions{DynamicQuantities.DEFAULT_DIM_BASE_TYPE}}
+    
+    # Test conversions
+    @test 1°C |> K isa RealQuantity{<:Real, <:AffineUnits}
+    @test 1°C |> unit(ubase(1K)) isa RealQuantity{<:Real, <:Dimensions}
+    @test  °C |> unit(ubase(1K)) isa AffineTransform
+
+    @test 0°C |> u"K" == 273.15u"K"
+    @test 1u"K" |> °C isa RealQuantity{<:Real, <:AffineUnits}
+    @test 0u"K" |> °C  == -273.15°C
+    @test °C |> °F isa AffineTransform
+    @test 0°C |> °F == 32°F
+
+
+    # Test display against errors
+    celsius = AffineUnits(offset=273.15, dims=u"K")
+    psi = DimensionalUnits.asunit(6.89476u"kPa")
+    io = IOBuffer()
+    @test isnothing(show(io, (dimension(°F), dimension(u"K"), psi, celsius, fahrenheit)))
+
+    # Test updating affine units
+    @test register_unit("°C" => °C) isa AbstractDict # Updating the same value does nothing for unit
+    @test register_unit("K" => Dimensions(temperature=1)) isa AbstractDict # same value yields nothing for dimension
+    @test_throws MethodError register_unit(u"K") # cannot register only a unit
+
+    # Cannot re-register a unit if its value changes
+    @test_throws RegistryTools.PermanentDictError register_unit("°C"=>u"°F")
+
+    # Cannot register non-parsable unit
+    @test_throws ArgumentError register_unit("m/s"=>u"m/s")
+
+    # Test map_dimensions
+    @test map_dimensions(+, dimension(u"m/s"), dimension(u"m/s")) == Dimensions(length=2, time=-2)
+    @test map_dimensions(-, dimension(u"m"), dimension(u"s"))     == Dimensions(length=1, time=-1)
+    @test map_dimensions(Base.Fix1(*,2), dimension(u"m/s"))       == Dimensions(length=2, time=-2)
 end
 
 
@@ -242,125 +320,6 @@ end
         @test x2[2] ≈ Q(2000u"g")
     end
 end
-
-#=
-@testset "AffineUnits" begin
-    °C  = ua"°C"
-    °F  = ua"°F"
-    mps = ua"m/s"
-    
-    import DynamicQuantities.AffineUnits
-    import DynamicQuantities.affine_base_dim
-
-    @test °C == AffineUnits.°C
-    @test °C == AffineUnits.°C
-
-    @test aff_uparse("m/(s^2.5)") == ua"m/(s^2.5)"
-    @test_throws ArgumentError aff_uparse("s[1]")
-    @test_throws ArgumentError aff_uparse("pounds_per_hour")
-    @test °C isa Quantity{T,AffineDimensions{R}} where {T,R}
-    @test dimension(°C) isa AffineDimensions
-    @test dimension(°C) isa AbstractAffineDimensions
-
-    @test affine_base_dim(dimension(°C)).temperature == 1
-    @test affine_base_dim(dimension(°C)).length == 0
-
-    @test inv(mps) == us"s/m"
-    @test inv(mps) == u"s/m"
-    @test mps^2 == u"m^2/s^2"
-
-    @test °C == ua"degC"
-    @test °F == ua"degF"
-    @test dimension(°C) == dimension(ua"degC")
-    @test_throws AffineOffsetError 5.0ua"°C" - 4.0ua"°C"
-
-    # Constructors
-    @test with_type_parameters(AffineDimensions, Float64) == AffineDimensions{Float64}
-    @test constructorof(AffineDimensions) == AffineDimensions
-    @test constructorof(AffineDimensions{Float64}) == AffineDimensions
-    @test Quantity(1.0, AffineDimensions(dimension(u"K"))) == u"K"
-    @test AffineDimensions(scale=1, offset=0, basedim=dimension(u"K")) == AffineDimensions(basedim=dimension(u"K"))
-    @test AffineDimensions(scale=1, offset=0, basedim=u"K") == AffineDimensions(basedim=dimension(ua"K"))
-    @test AffineDimensions(scale=1.0, offset=273.15u"K", basedim=dimension(u"K")) == AffineDimensions(basedim=ua"°C")
-
-    kelvin  = AffineDimensions(basedim=u"K")
-    @test Quantity(1.0, kelvin) == u"K"
-
-    rankine = AffineDimensions(scale=5/9, offset=0.0, basedim=dimension(u"K"))
-    @test Quantity(1.0, rankine) == (5/9)u"K"
-
-    fahrenheit = AffineDimensions(scale=1.0, offset=Quantity(459.67, rankine), basedim=rankine)
-    @test Quantity(1.0, fahrenheit) ≈ °F
-
-    celsius = AffineDimensions(scale=9/5, offset=Quantity(32.0, rankine), basedim=°F)
-    @test Quantity(1.0, celsius) ≈ °C
-
-    # Round-trip sanity checks
-    @test -40°C ≈ -40°F
-    @test Quantity(-40.0, celsius) ≈ Quantity(-40.0, fahrenheit)
-    
-    # Test promotion explicitly for coverage:
-    @test promote_type(AffineDimensions{Int16}, AffineDimensions{Int32}) === AffineDimensions{Int32}
-    @test promote_type(Dimensions{Int16}, AffineDimensions{Int32}) === Dimensions{Int32}
-    @test promote_type(AffineDimensions{Int16}, Dimensions{Int32}) === Dimensions{Int32}
-    @test promote_type(SymbolicDimensions{Int16}, AffineDimensions{Int32}) === Dimensions{Int32}
-    @test promote_type(AffineDimensions{Int16}, SymbolicDimensions{Int32}) === Dimensions{Int32}
-
-    # Type conversions
-    @test convert(Quantity{Float64, AffineDimensions}, u"kg") isa Quantity{Float64, AffineDimensions{DynamicQuantities.DEFAULT_DIM_BASE_TYPE}}
-    @test convert(Quantity{Float64, AffineDimensions{Float64}}, u"kg") isa Quantity{Float64, AffineDimensions{Float64}}
-    @test convert(Quantity{Float64, Dimensions}, ua"kg") isa Quantity{Float64, Dimensions{DynamicQuantities.DEFAULT_DIM_BASE_TYPE}}
-    
-    # Test uncovered operations
-    @test (2.0ua"m")^2 == (2.0u"m")^2
-    @test dimension(ua"m")^Int32(2) == dimension(ua"m^2")
-    @test 2.0u"m" + 2.0ua"m" === 4.0u"m"
-    @test 2.0ua"m" + 2.0ua"m" === 4.0u"m"
-    @test 2.0u"m" - 2.0ua"m" === 0.0u"m"
-    @test 2.0ua"m" - 2.0ua"cm" === 1.98u"m"
-    @test mod(2.0u"m", 2.0ua"m") === 0.0u"m"
-    @test mod(2.0ua"m", 2.0ua"m") === 0.0u"m"
-    @test_throws AffineOffsetError mod(2.0ua"°C", 2.0ua"°C")
-
-    @test 2.0u"K" ≈ 2.0ua"K"
-    @test 2.0ua"K" ≈ 2.0ua"K"
-    @test 2.0ua"K" ≈ 2.0u"K"
-    @test_throws AffineOffsetError (2ua"°C")^2
-    @test uexpand(2ua"°C") == 275.15u"K"
-
-    # Test conversions
-    @test °C |> us"K" isa Quantity{<:Real, <:SymbolicDimensions}
-    @test 0°C |> us"K" == 273.15us"K"
-    @test us"K" |> °C isa Quantity{<:Real, <:AffineDimensions}
-    @test 0us"K" |> °C  == -273.15°C
-    @test °C |> °F isa Quantity{<:Real, <:AffineDimensions}
-    @test 0°C |> °F == 32°F
-
-    @test QuantityArray([0,1]°C) |> °F isa QuantityArray{T, <:Any, AffineDimensions{R}} where {T,R}
-
-    # Test display against errors
-    celsius = AffineDimensions(offset=273.15, basedim=u"K")
-    psi = AffineDimensions(basedim=6.89476us"kPa")
-    io = IOBuffer()
-    @test isnothing(show(io, (dimension(°F), dimension(ua"K"), psi, celsius, fahrenheit)))
-
-    # Test updating affine units
-    @test isnothing(DynamicQuantities.update_external_affine_unit(:°C, °C)) # same value yields nothing for quantity
-    @test isnothing(DynamicQuantities.update_external_affine_unit(:°C, dimension(°C))) # same value yields nothing for dimension with symbol
-    @test isnothing(DynamicQuantities.update_external_affine_unit(dimension(°C))) # same value yields for dimension
-    @test_throws "Cannot register an affine dimension without symbol declared" DynamicQuantities.update_external_affine_unit(celsius) # cannot register :nothing
-
-    # Cannot re-register a unit if its value changes
-    @test_throws "Unit `°C` already exists as `(scale = 1.0, offset = 273.15, basedim = K)`, its value cannot be changed to `(scale = 2.0, offset = 273.15, basedim = K)`" DynamicQuantities.update_external_affine_unit(:°C, 2*°C)
-
-    # Test map_dimensions
-    @test map_dimensions(+, dimension(ua"m/s"), dimension(ua"m/s")) == AffineDimensions(Dimensions(length=2, time=-2))
-    @test map_dimensions(-, dimension(ua"m"), dimension(ua"s"))     == AffineDimensions(Dimensions(length=1, time=-1))
-    @test map_dimensions(Base.Fix1(*,2), dimension(ua"m/s"))        == AffineDimensions(Dimensions(length=2, time=-2))
-
-end
-
-=#
 
 
 
