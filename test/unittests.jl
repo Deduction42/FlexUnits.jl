@@ -1,11 +1,11 @@
 using Revise
 using Test
-using DimensionalUnits
-using DimensionalUnits: FAST_RATIONAL, FixedRational, map_dimensions
+using FlexUnits
+using FlexUnits: FAST_RATIONAL, FixedRational, map_dimensions
 using .UnitRegistry
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
-const DEFAULT_DIM_TYPE  = DimensionalUnits.dimtype(DEFAULT_UNIT_TYPE)
+const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
 
 @testset "Basic utilities" begin
 
@@ -30,7 +30,7 @@ const DEFAULT_DIM_TYPE  = DimensionalUnits.dimtype(DEFAULT_UNIT_TYPE)
         @test ustrip(y) ≈ T(0.04)
 
         if R <: Rational
-            DimensionalUnits.PRETTY_DIM_OUTPUT[] = true    
+            FlexUnits.PRETTY_DIM_OUTPUT[] = true    
             @test string(x) == "0.2 (m kg⁵ᐟ²)/s"
             @test string(inv(x)) == "5.0 s/(m kg⁵ᐟ²)"
         end
@@ -232,7 +232,7 @@ end
 
     # Test display against errors
     celsius = AffineUnits(offset=273.15, dims=u"K")
-    psi = DimensionalUnits.asunit(6.89476u"kPa")
+    psi = FlexUnits.asunit(6.89476u"kPa")
     io = IOBuffer()
     @test isnothing(show(io, (dimension(°F), dimension(u"K"), psi, celsius, fahrenheit)))
 

@@ -1,4 +1,4 @@
-module DimensionalUnits
+module FlexUnits
 
 # Write your package code here.
 include("fixed_rational.jl")
@@ -7,8 +7,8 @@ include("utils.jl")
 include("conversions.jl")
 include("math.jl")
 include("ambiguities.jl")
-include("registry_tools.jl")
-include("registry.jl")
+include("RegistryTools.jl")
+include("UnitRegistry.jl")
 
 export AbstractUnitLike, AbstractDimensions, AbstractUnits, AbstractAffineUnits, AbstractUnitTransform
 export ConversionError, DimensionError, NotDimensionError, NotScalarError

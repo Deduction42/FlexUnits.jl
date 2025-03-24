@@ -1,4 +1,4 @@
-using DimensionalUnits
+using FlexUnits
 using TestItems: @testitem
 using TestItemRunner
 
