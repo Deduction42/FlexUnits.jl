@@ -24,27 +24,27 @@ import DynamicQuantities
 import Unitful
 using BenchmarkTools
 
-v1flex = ubase.([1u"m/s", 1u"J/kg", 1u"A/V"])
-v1uni  = [1*Unitful.u"m/s", 1*Unitful.u"J/kg", 1*Unitful.u"A/V"]
-v1dyn  = [1*DynamicQuantities.u"m/s", 1*DynamicQuantities.u"J/kg", 1*DynamicQuantities.u"A/V"]
+v1flex = ubase.([1.0u"m/s", 1.0u"J/kg", 1.0u"A/V"])
+v1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"J/kg", 1.0*Unitful.u"A/V"]
+v1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"J/kg", 1.0*DynamicQuantities.u"A/V"]
 
 @btime sum(x->x^0.0, v1uni)
   7.375 μs (86 allocations: 3.92 KiB)
 @btime sum(x->x^0.0, v1flex)
   135.057 ns (1 allocation: 48 bytes)
 @btime sum(x->x^0.0, v1dyn)
-  99.258 ns (1 allocation: 48 bytes)
+  107.281 ns (1 allocation: 48 bytes)
 ```
-Notice the 'μ' instead of the 'n' on the Unitful result, FlexUnits offers a 50x speedup in this case (DynamicQuantities does a bit better, with a 74x speedup). In the case where all values can be inferred, performance is more or less the same.
+Notice the 'μ' instead of the 'n' on the Unitful result, FlexUnits offers a 50x speedup in this case (DynamicQuantities does a bit better, with a 68x speedup). In the case where all values can be inferred, performance is more or less the same.
 ```
-t1flex = ubase.((1u"m/s", 1u"J/kg", 1u"A/V"))
-t1uni  = (1*Unitful.u"m/s", 1*Unitful.u"J/kg", 1*Unitful.u"A/V")
-t1dyn  = (1*DynamicQuantities.u"m/s", 1*DynamicQuantities.u"J/kg", 1*DynamicQuantities.u"A/V")
+t1flex = ubase.((1.0u"m/s", 1.0u"J/kg", 1.0u"A/V"))
+t1uni  = (1.0*Unitful.u"m/s", 1.0*Unitful.u"J/kg", 1.0*Unitful.u"A/V")
+t1dyn  = (1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"J/kg", 1.0*DynamicQuantities.u"A/V")
 
 @btime sum(x->x^0, t1uni)
   88.518 ns (2 allocations: 64 bytes)
 @btime sum(x->x^0, t1flex)
   131.771 ns (3 allocations: 304 bytes)
 @btime sum(x->x^0, t1dyn)
-  82.658 ns (2 allocations: 256 bytes)
+  85.328 ns (2 allocations: 256 bytes)
 ```
