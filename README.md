@@ -9,7 +9,7 @@ The flexible units package. FlexUnits was heavily inspired by DynamicQuantities.
 5. More closely resembles the Unitful.jl API in many ways
 
 #### Major differences between FlexUnits.jl and Unitufl.jl
-1. Units are not specialized (u"m/s" retgurns the same concrete type as u"°C") which is much faster when units cannot be inferred
+1. Units are not specialized (u"m/s" returns the same concrete type as u"°C") which is much faster when units cannot be inferred
 2. Units are automatically converted to dimensional form (SI) for any mathematical manipulations and tracked at the dimension level
 3. Operations on affine units do not produce errors (due to automatic conversion to dimensional form). **This may may yield unituitive (but more consistent) results**.
 4. Unit registries are much simpler. A registry is simply a dict of units, all of the same type, living inside a module.
