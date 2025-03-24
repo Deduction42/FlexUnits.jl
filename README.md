@@ -16,7 +16,6 @@ The flexible units package. FlexUnits was heavily inspired by DynamicQuantities.
 
 ## Benchmarks
 FlexUnits.jl and DynamicQuantities.jl both greatly outperform Unitful.jl when the compiler cannot infer the units.
-
 ```
 using FlexUnits
 using .UnitRegistry
@@ -35,7 +34,7 @@ v1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"J/kg", 1.0*Dynam
 @btime sum(x->x^0.0, v1dyn)
   107.281 ns (1 allocation: 48 bytes)
 ```
-Notice the 'μ' instead of the 'n' on the Unitful result, FlexUnits offers a 50x speedup in this case (DynamicQuantities does a bit better, with a 68x speedup). In the case where all values can be inferred, performance is more or less the same.
+Notice the 'μ' instead of the 'n' on the Unitful result, FlexUnits offers a 50x speedup in this case (DynamicQuantities does a bit better, with a 68x speedup). In the case where all types can be inferred, performance is more or less the same, with FlexUnits being slightly worse than the others.
 ```
 t1flex = ubase.((1.0u"m/s", 1.0u"J/kg", 1.0u"A/V"))
 t1uni  = (1.0*Unitful.u"m/s", 1.0*Unitful.u"J/kg", 1.0*Unitful.u"A/V")
