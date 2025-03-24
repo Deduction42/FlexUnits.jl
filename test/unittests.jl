@@ -108,12 +108,15 @@ end
     x = 1.3u"km/s^2"
     @test ustrip(x) == 1.3
     @test ustrip_base(x) == 1300  # SI base units
+    @test x == q"1.3km/s^2"
+    @test x !== q"1.3km/s^2"
+    @test abs(x) === q"1.3km/s^2"
 
     y = 0.9u"sqrt(mΩ)"
     @test typeof(y) == RealQuantity{Float64, AffineUnits{Dimensions{FAST_RATIONAL}}}
     @test typeof(ubase(y)) == RealQuantity{Float64, Dimensions{FAST_RATIONAL}}
     @test ustrip_base(y) ≈ 0.02846049894151541
-
+    @test y ≈ q"(0.9*sqrt(mΩ))"
 
     y = BigFloat(0.3) * u"mΩ"
     @test typeof(y) == RealQuantity{BigFloat, AffineUnits{Dimensions{FAST_RATIONAL}}}
@@ -125,6 +128,9 @@ end
     z = 1*u"yr"
     @test ustrip_base(z) ≈ 60 * 60 * 24 * 365.25
     @test z == 1*uparse("yr")
+    @test z == qparse("1yr")
+    @test 1/z == qparse("1/yr")
+    @test_throws MethodError qparse("yr")
 
     # Test type stability of extreme range of units
     U = typeof(first(values(UnitRegistry.UNITS)))
@@ -187,6 +193,9 @@ end
     @test 5°C - 4°C == 1K
     @test 5°C + 4°C == 282.15°C
     @test 5°C + 4°C - 0°C == 9°C
+    @test qparse("0°C") == 0°C
+    @test 0*uparse("°C") == 0°C
+
 
     # Constructors
     kelvin  = AffineUnits(dims=u"K")

@@ -3,12 +3,12 @@ module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits, ..AbstractAffineUnits, ..AbstractDimensions
 import ..AffineUnits, ..Dimensions, ..RealQuantity, ..UnionQuantity, ..DEFAULT_DIMENSONS
-import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit, ..constructorof, ..dimtype
+import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit,  ..ubase, ..constructorof, ..dimtype
 
 export 
     AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractDimensions, DEFAULT_DIMENSONS,
     AffineUnits, Dimensions, RealQuantity, UnionQuantity, uscale, uoffset, dimension, usymbol,
-    PermanentDict, register_unit!, registry_defaults!, uparse, usparse, qparse, uparse_expr, dimtype
+    PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, dimtype
 
 
 """
@@ -205,8 +205,7 @@ function uparse(str::String, reg::AbstractDict{Symbol, <:AbstractUnitLike})
 end
 
 function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnits}
-    u = uparse(str, reg)
-    return convert(RealQuantity{Float64, dimtype(U)}, u)
+    return eval(qparse_expr(str, reg))
 end
 
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
@@ -219,12 +218,26 @@ function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: Abstr
     end
 end
 
+function qparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    parsed = Meta.parse(str)
+    if !(parsed isa Union{Expr,Symbol})
+        throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as an Expr or Symbol"))
+    else
+        return qparse_expr(parsed, reg)
+    end
+end
+
 function uparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    ex = _uparse_expr(ex, reg)
+    ex = _parse_expr(ex, reg)
     return :($convert($U, $ex))
 end
 
-function _uparse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+function qparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where U
+    ex = _parse_expr(ex, reg)
+    return :(ubase($ex))
+end
+
+function _parse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     if ex.head != :call
         throw(ArgumentError("Unexpected expression: $ex. Only `:call` is expected."))
     end
@@ -232,12 +245,12 @@ function _uparse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: Abstrac
     return ex
 end
 
-function _uparse_expr(ex::Symbol, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+function _parse_expr(ex::Symbol, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     return lookup_unit_expr(reg, ex)
 end
 
 function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Expr)
-    return _uparse_expr(ex, reg)
+    return _parse_expr(ex, reg)
 end
 
 function lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, name::Symbol)
