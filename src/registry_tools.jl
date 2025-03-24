@@ -200,12 +200,12 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     return reg
 end
 
-function uparse(str::String, reg::AbstractDict{Symbol, <:AbstractUnitLike})
-    return eval(uparse_expr(str, reg))
+function uparse(str::String, reg::AbstractDict{Symbol, U}) where {U<:AbstractUnitLike}
+    return eval(uparse_expr(str, reg)) :: U
 end
 
-function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnits}
-    return eval(qparse_expr(str, reg))
+function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnitLike}
+    return eval(qparse_expr(str, reg)) :: RealQuantity{Float64, dimtype(U)}
 end
 
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
@@ -233,8 +233,9 @@ function uparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where
 end
 
 function qparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where U
+    Q  = RealQuantity{Float64, dimtype(U)}
     ex = _parse_expr(ex, reg)
-    return :(ubase($ex))
+    return :($convert($Q, ubase($ex)))
 end
 
 function _parse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike

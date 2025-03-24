@@ -1,7 +1,8 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-1. Fixed "broad" conversion errors (see unittests.jl lines 213-215)
+1. Consider renaming this to FlexUnits.jl (the flexible unit package)
+    Flexible dimensions, units, and registries
 2. Migrate to TankMonitor module and run
 3. Publish version v0.0.1
 4. Register package (including branch protection etc)
