@@ -265,6 +265,7 @@ end
     @test dimension(q32_32) == dimension(q)
     @test typeof(convert(Quantity{Float16}, q)) == Quantity{Float16,Dimensions{Rational{Int16}}}
     @test convert(Quantity, q) === q
+    @test convert(Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}, ubase(1u"kg")) isa Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}
 
     # Test that regular type promotion applies:
     q = Quantity(2, d)

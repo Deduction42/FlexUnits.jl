@@ -119,15 +119,11 @@ this can yield potentially unintuitive results like 2°C/1°C = 1.00364763815429
 =================================================================================================#
 
 
-#================================ Conversion between quantity types =======================================#
+# General conversion train ====================================================
 Base.convert(::Type{Q}, q::UnionQuantity) where Q <: UnionQuantity = (q isa Q) ? q : Q(ustrip(q), unit(q))
-
-# NoDims handling ==============================================================================================
-Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
-
-# Converting UnitLike values ==============================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = (u isa U) ? u : U(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=usymbol(u))
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : (assert_dimension(u); D(dimension(u)))
+Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
 
 # Converting between units and quantities ====================================================
 Base.convert(::Type{U}, q::UnionQuantity) where U<:AbstractUnits = convert(U, asunit(q))
@@ -135,11 +131,6 @@ function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:UnionQuantity{<:
     assert_scalar(u)
     return Q(uscale(u), dimension(u))
 end
-
-# Switching dimension types on affine units (for registries) ======================================================
-#function Base.convert(::Type{U}, u0::AbstractDimensions{D0}) where {D,D0,U<:AffineUnits{D}}
-#    return constructorof(U)(dims=convert(D, dimension(u0)))
-#end
 
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractDimensions  = constructorof(U)(dimension(u))
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u))
