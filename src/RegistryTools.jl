@@ -7,9 +7,10 @@ import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit,  ..ubase, ..constr
 
 export 
     AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractDimensions, DEFAULT_DIMENSONS,
-    AffineUnits, Dimensions, RealQuantity, UnionQuantity, uscale, uoffset, dimension, usymbol,
+    AffineUnits, Dimensions, RealQuantity, UnionQuantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
     PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, dimtype
 
+const UnitOrQuantity = Union{AbstractUnitLike, UnionQuantity}
 
 """
     PermanentDict{K,T}
@@ -57,7 +58,7 @@ Base.delete!(d, k) = throw(PermanentDictError("Removing entries is prohibited"))
 Registers a unit into the dictionary. This version should be used instead of the "Symbol" versions as 
 it will validate whether or not the proposed name can be parsed.
 """
-function register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{String,<:AbstractUnitLike})
+function register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{String,<:UnitOrQuantity})
     (k,v) = p
     name = Meta.parse(k)
 
