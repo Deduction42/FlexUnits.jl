@@ -41,7 +41,25 @@ Design Decisions:
         The dict will have have elements of AffineUnits{D} where D is a dimension object
         Build an {x}expression(str, dict) as well for easily building string macros
 
+import DynamicQuantities
+import Unitful
+using BenchmarkTools
 
+v1flex = ubase.([1u"m/s", 1u"J/kg", 1u"A/V"])
+v1uni  = [1*Unitful.u"m/s", 1*Unitful.u"J/kg", 1*Unitful.u"A/V"]
+v1dyn  = [1*DynamicQuantities.u"m/s", 1*DynamicQuantities.u"J/kg", 1*DynamicQuantities.u"A/V"]
+
+@btime sum(x->x^0.0, v1uni)
+@btime sum(x->x^0.0, v1flex)
+@btime sum(x->x^0.0, v1dyn)
+
+t1flex = ubase.((1u"m/s", 1u"J/kg", 1u"A/V"))
+t1uni  = (1*Unitful.u"m/s", 1*Unitful.u"J/kg", 1*Unitful.u"A/V")
+t1dyn  = (1*DynamicQuantities.u"m/s", 1*DynamicQuantities.u"J/kg", 1*DynamicQuantities.u"A/V")
+
+@btime sum(x->x^0, t1uni)
+@btime sum(x->x^0, t1flex)
+@btime sum(x->x^0, t1dyn)
 
 Considerations:
 N.  Consider commutative macro for promote_rule to prevent repetition
