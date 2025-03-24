@@ -47,3 +47,37 @@ t1dyn  = (1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"J/kg", 1.0*Dynam
 @btime sum(x->x^0, t1dyn)
   85.328 ns (2 allocations: 256 bytes)
 ```
+
+## General Use
+Much like other unit packages, you can use string macros to build units and quantities. Unlike other packages, you must manually "use" the default registry `UnitRegistry`, this is done so as to not be overly opinionated as to what registry to use (users can create and use their own registries instead).
+```
+julia> using FlexUnits, .UnitRegistry
+
+julia> u = u"J/(mol*K)"
+J/(mol*K)
+
+julia> R = 8.314*u
+8.314 J/(mol*K)
+
+julia> v_satp = R*(25u"°C")/(101.3u"kPa") #Temperature is auto-converted to Kelvin
+0.024470079960513324 m³/mol
+```
+You can register units using other units or quantities as follows:
+```
+julia> register_unit("bbl" => 0.158987*u"m^3")
+FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+  :Ω      => Ω
+  :μs     => μs
+  :μV     => μV
+```
+However, due to the nature of macros, these dictionaries are permanent. You can re-register units with the same values (so that you can re-run scripts) but changing them is not allowed.
+```
+julia> register_unit("bbl" => 0.158987*u"m^3")
+FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+  :Ω      => Ω
+  :μs     => μs
+  :μV     => μV
+
+julia> register_unit("bbl" => 22.5*u"m^3")
+ERROR: PermanentDictError: Key bbl already exists with value bbl, changing it to bbl not allowed
+```

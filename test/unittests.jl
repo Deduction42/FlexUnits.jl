@@ -1,8 +1,7 @@
 using Revise
 using Test
-using FlexUnits
+using FlexUnits, .UnitRegistry
 using FlexUnits: FAST_RATIONAL, FixedRational, map_dimensions
-using .UnitRegistry
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
 const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
