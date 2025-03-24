@@ -119,8 +119,18 @@ this can yield potentially unintuitive results like 2°C/1°C = 1.00364763815429
 =================================================================================================#
 
 
-# General conversion train ====================================================
-Base.convert(::Type{Q}, q::UnionQuantity) where Q <: UnionQuantity = (q isa Q) ? q : Q(ustrip(q), unit(q))
+# Converting quantity types ====================================================
+Base.convert(::Type{Q}, q::UnionQuantity) where Q<:UnionQuantity = (q isa Q) ? q : Q(ustrip(q), unit(q))
+function Base.convert(::Type{Q}, q::UnionQuantity) where Q<:UnionQuantity{<:Any, <:AbstractDimensions}
+    if (q isa Q) 
+        return q 
+    else 
+        qb = ubase(q)
+        return Q(ustrip(qb), unit(qb))
+    end
+end
+
+# Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = (u isa U) ? u : U(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=usymbol(u))
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : (assert_dimension(u); D(dimension(u)))
 Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()

@@ -11,7 +11,7 @@ const UNITS = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
 registry_defaults!(UNITS)
 
 #Ueses a ReentrantLock() on register_unit to prevent race conditions when multithreading
-register_unit(p::Pair{String,<:AbstractUnitLike}) = lock(UNIT_LOCK) do 
+register_unit(p::Pair{String, <:Any}) = lock(UNIT_LOCK) do 
     register_unit!(UNITS, p)
 end
 
