@@ -30,22 +30,22 @@ v1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"J/kg", 1.0*Dynam
 @btime sum(x->x^0.0, v1uni)
   7.375 μs (86 allocations: 3.92 KiB)
 @btime sum(x->x^0.0, v1flex)
-  135.057 ns (1 allocation: 48 bytes)
+  145.192 ns (1 allocation: 48 bytes)
 @btime sum(x->x^0.0, v1dyn)
-  107.281 ns (1 allocation: 48 bytes)
+  105.173 ns (1 allocation: 48 bytes)
 ```
-Notice the 'μ' instead of the 'n' on the Unitful result, FlexUnits offers a 50x speedup in this case (DynamicQuantities does a bit better, with a 68x speedup). In the case where all types can be inferred, performance is more or less the same, with FlexUnits being slightly worse than the others.
+Notice the 'μ' instead of the 'n' on the Unitful result, FlexUnits offers a 50x speedup in this case (DynamicQuantities offers a similar boost). In the case where all types can be inferred, performance is more or less the same, with Unitful being slightly better than the others.
 ```
-t1flex = ubase.((1.0u"m/s", 1.0u"J/kg", 1.0u"A/V"))
-t1uni  = (1.0*Unitful.u"m/s", 1.0*Unitful.u"J/kg", 1.0*Unitful.u"A/V")
-t1dyn  = (1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"J/kg", 1.0*DynamicQuantities.u"A/V")
+t1flex = ubase.([1.0u"m/s", 1.0u"m/s", 1.0u"m/s"])
+t1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s"]
+t1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s"]
 
 @btime sum(x->x^0, t1uni)
   88.518 ns (2 allocations: 64 bytes)
 @btime sum(x->x^0, t1flex)
-  131.771 ns (3 allocations: 304 bytes)
+  137.100 ns (1 allocation: 48 bytes)
 @btime sum(x->x^0, t1dyn)
-  85.328 ns (2 allocations: 256 bytes)
+  115.335 ns (1 allocation: 48 bytes)
 ```
 
 ## General Use

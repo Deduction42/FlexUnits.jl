@@ -7,10 +7,11 @@
 Similar to the `map` function, but specifically iterates over dimensions.
 Useful for defining mathematical operations for dimensions
 """
-function map_dimensions(f::F, args::AbstractDimensions...) where {F<:Function}
+@inline function map_dimensions(f::F, args::AbstractDimensions...) where {F<:Function}
     D = promote_type(typeof(args).parameters...)
+    dnames = dimension_names(D)
     return  D(
-        ( f((getproperty(arg, name) for arg in args)...) for name in dimension_names(D) )...
+        ( f((getproperty(arg, name) for arg in args)...) for name in  dnames)...
     )
 end
 
@@ -66,10 +67,19 @@ Base.cbrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(conve
 #Equality does not compare symbols
 Base.:(==)(u1::AbstractAffineUnits, u2::AbstractAffineUnits) = (uscale(u1) == uscale(u2)) & (uoffset(u1) == uoffset(u2)) & (dimension(u1) == dimension(u2))
 
-function firstequal(args::AbstractUnitLike...) 
+@inline function firstequal(args::AbstractUnitLike...) 
     newargs = promote(args...)
     return allequal(newargs) ? first(newargs) : throw(DimensionError(args))
 end
+
+@inline function firstequal(arg1::AbstractUnitLike, arg2::AbstractUnitLike)
+    (new1, new2) = promote(arg1, arg2)
+    (new1 == new2) || throw(DimensionError((arg1, arg2)))
+    return new1 
+end
+
+@inline firstequal(arg1::AbstractUnitLike) = arg1
+
 
 #=============================================================================================
  Mathematical operations on quantities
@@ -86,7 +96,7 @@ Thus, in order to support `f` for quantities, simply define
 f(dims::AbstractDimensions...)
 f(args::UnionQuantity...) = apply2quantities(f, args...)
 """
-function apply2quantities(f, args::UnionQuantity...)
+@inline function apply2quantities(f, args::UnionQuantity...)
     baseargs = map(ubase, args)
     basevals = map(ustrip, baseargs)
     basedims = map(unit, baseargs)
