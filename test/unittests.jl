@@ -1,5 +1,6 @@
 using Revise
 using Test
+using BenchmarkTools
 using FlexUnits, .UnitRegistry
 using FlexUnits: FAST_RATIONAL, FixedRational, map_dimensions
 
@@ -384,4 +385,9 @@ end
     x = 10u"m"
     user_quantity = Quantity(10.0, Dimensions{FixedRational{Int32,25200}}(1, 0, 0, 0, 0, 0, 0))
     @test x == user_quantity
+end
+
+R = Ref(8.314 * u"J/(mol*K)")
+@benchmark let R=R[]
+    v_satp = R * (25u"°C") / (101.3u"kPa")
 end
