@@ -1,5 +1,6 @@
 #===============================================================================================
- FixedRational was heavily inspired by DynamicQuantities.FixedRational and Base.Rational
+ FixedRational was heavily inspired by DynamicQuantities.FixedRational
+ https://github.com/SymbolicML/DynamicQuantities.jl?tab=Apache-2.0-1-ov-file
 ===============================================================================================#
 """
     Numerator{T<:Integer}
@@ -30,7 +31,8 @@ end
 #Default Rational Base, common factors of prime numbers multiplying to less than sqrt(typemax(Int32))
 const DEFAULT_NUMERATOR_TYPE = Int32
 const DEFAULT_DENOM = 2^4 * 3^2 * 5^2 * 7
-FixedRational(x) = FixedRational{DEFAULT_DENOM}(x)
+FixedRational(x::Number)  = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}(x)
+FixedRational(x::Integer) = FixedRational{DEFAULT_DENOM}(x)
 
 #Julia's Rational API
 Base.numerator(x::FixedRational) = x.num 
@@ -102,3 +104,13 @@ end
 function Base.promote_rule(::Type{FixedRational{B,T}}, ::Type{T2}) where {B,T,T2<:AbstractIrrational}
     return promote_type(Rational{T}, T2)
 end
+
+#Printing/showing
+function Base.string(x::FixedRational{B,T}) where {B,T}
+    if isinteger(x)
+        return string(convert(T, x))
+    end
+    g = gcd(x.num, B)
+    return string(div(x.num, g)) * "//" * string(div(B, g))
+end
+Base.show(io::IO, x::FixedRational) = print(io, string(x))
