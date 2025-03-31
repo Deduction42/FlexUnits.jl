@@ -5,7 +5,8 @@
 """
     Numerator{T<:Integer}
 
-Internal struct that indicates result should be interpreated as a numerator
+Internal struct that indicates the value should be interpreated as a numerator, mainly intended 
+for dispatching FixedRational constructors to directly assign a numerator.
 """
 struct Numerator{T<:Integer}
     val :: T
@@ -15,9 +16,12 @@ end
 """
     FixedRational{B,T<:Integer} <: Real
 
-Rational number type, with fixed base (or denominator) of B
-Faster and simpler than the base rational type, as operations
-can usually convert to integer ops, but precision is limited to 1/B.
+Rational number type, with fixed base (or denominator) of B. FixedRational isFaster and simpler 
+than Julia's Rational type, as operations on FixedRational usually result in simple integer operations, 
+however precision of FixedRational limited to 1/B.
+
+When constructing, FixedRational{B,T}(x::Real) uses integer division to assign a numerator that yields 
+the closest value to "x". To assign a numerator directly, use FixedRational{B,T}(Numerator(x)).
 """
 struct FixedRational{B,T<:Integer} <: Real
     num :: T
@@ -75,9 +79,9 @@ Base.iszero(x::FixedRational) = iszero(numerator(x))
 Base.isone(x::FixedRational)  = (numerator(x) == denominator(x))
 Base.isinteger(x::FixedRational) = iszero(numerator(x) % denominator(x))
 
-function Base.convert(::Type{F}, x::FixedRational{B}) where {B, T, F<:FixedRational{B,T}}
-    return FixedRational{B,T}(Numerator(x.num))
-end
+#Fixed rational conversions
+Base.convert(::Type{F}, x::FixedRational{B}) where {B,F<:FixedRational{B}} = F(Numerator(x)) #Same-base shortcut
+Base.convert(::Type{F}, x::FixedRational) where {F<:FixedRational} = F(numerator(x)/denominator(x))
 
 # Promotion rules with self and other types
 function Base.promote_rule(::Type{FixedRational{B1,T1}}, ::Type{FixedRational{B2,T2}}) where {B1,B2,T1,T2}
