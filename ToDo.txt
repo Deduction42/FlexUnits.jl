@@ -1,19 +1,7 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-1. Consider renaming this to FlexUnits.jl (the flexible unit package)
-    Flexible dimensions, units, and registries
-2. Migrate to TankMonitor module and run
-3. Publish version v0.0.1
-4. Register package (including branch protection etc)
-5. Fix vague convert info 
-    @test convert(Quantity{Float64, AffineUnits}, ubase(1u"kg")) isa Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}
-    @test convert(Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}, 1u"kg") isa Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}
-    @test convert(Quantity{Float64, Dimensions}, u"kg") isa Quantity{Float64, Dimensions{FAST_RATIONAL}}
-    Make it work like:
-        S = Diagonal(rand(5))
-        convert(Array{<:Any,2}, S)     =>    Matrix{Float64}
-        see https://github.com/JuliaLang/julia/blob/056891701e8ec629834def549f565cf80c46ccf9/base/array.jl#L614
+1. Rework FixedRational as RationalBase{N,T}
 6. Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
     - Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
     - This can be done without documentation 

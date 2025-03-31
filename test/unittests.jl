@@ -326,43 +326,23 @@ end
     end
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @testset "Additional tests of FixedRational" begin
     #Tests were basically copied from DynamicQuantities, since FixedRational isn't its own package
-    @test convert(Int64, FixedRational{Int64,1000}(2 // 1)) == 2
-    @test convert(Int32, FixedRational{Int64,1000}(3 // 1)) == 3
-    @test convert(Bool, FixedRational{Int8,6}(1//1)) === true
-    @test convert(Bool, FixedRational{Int8,6}(0//1)) === false
+    @test convert(Int64, FixedRational{1000,Int64}(2 // 1)) == 2
+    @test convert(Int32, FixedRational{1000,Int64}(3 // 1)) == 3
+    @test convert(Bool, FixedRational{6,Int8}(1//1)) === true
+    @test convert(Bool, FixedRational{6,Int8}(0//1)) === false
 
-    @test_throws InexactError convert(Int32, FixedRational{Int8,6}(2//3))
-    @test_throws InexactError convert(Bool, FixedRational{Int8,6}(2//1))
+    @test_throws InexactError convert(Int32, FixedRational{6,Int8}(2//3))
+    @test_throws InexactError convert(Bool, FixedRational{6,Int8}(2//1))
 
-    @test_throws "Refusing to" promote(FixedRational{Int,10}(2), FixedRational{Int,4}(2))
+    @test_throws "Refusing to" promote(FixedRational{10,Int}(2), FixedRational{4,Int}(2))
 
-    f64 = FixedRational{Int,10}(2)
-    f8 = FixedRational{Int8,10}(2)
+    f64 = FixedRational{10,Int}(2)
+    f8  = FixedRational{10,Int8}(2)
     @test promote(f64, f8) == (2, 2)
     @test typeof(promote(f64, f8)) == typeof((f64, f64))
-    @test typeof(promote(FixedRational{Int8,10}(2), FixedRational{Int8,10}(2))) == typeof((f8, f8))
+    @test typeof(promote(FixedRational{10,Int8}(2), FixedRational{10,Int8}(2))) == typeof((f8, f8))
     @test promote_type(Float64, typeof(f64)) == Float64
 
     # Required to hit integer branch (otherwise will go to `literal_pow`)
@@ -370,20 +350,20 @@ end
     @test f(2) == Dimensions(length=2, mass=-2)
 
     # Null conversion
-    @test typeof(FixedRational{Int,10}(FixedRational{Int,10}(2))) == FixedRational{Int,10}
+    @test typeof(FixedRational{10,Int}(FixedRational{10,Int}(2))) == FixedRational{10,Int}
 
     # Conversion to Rational without specifying type
-    @test convert(Rational, FixedRational{UInt8,6}(2)) === Rational{UInt8}(2)
+    @test convert(Rational, FixedRational{6,UInt8}(2)) === Rational{UInt8}(2)
 
     # Promotion rules
-    @test promote_type(FixedRational{Int64,10},FixedRational{BigInt,10}) == FixedRational{BigInt,10}
-    @test promote_type(Rational{Int8}, FixedRational{Int,12345}) == Rational{Int}
-    @test promote_type(Int8, FixedRational{Int,12345}) == FixedRational{Int,12345}
+    @test promote_type(FixedRational{10,Int64},FixedRational{10,BigInt}) == FixedRational{10,BigInt}
+    @test promote_type(Rational{Int8}, FixedRational{12345,Int}) == Rational{Int}
+    @test promote_type(Int8, FixedRational{12345,Int}) == FixedRational{12345,Int}
 
     # Bug where user would create a FixedRational{::Type{Int32}, ::Int64} and get stack overflow,
     # because the stored type was FixedRational{::Type{Int32}, ::Int32}
     x = 10u"m"
-    user_quantity = Quantity(10.0, Dimensions{FixedRational{Int32,25200}}(1, 0, 0, 0, 0, 0, 0))
+    user_quantity = Quantity(10.0, Dimensions{FixedRational{25200,Int32}}(1, 0, 0, 0, 0, 0, 0))
     @test x == user_quantity
 end
 

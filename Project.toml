@@ -1,7 +1,7 @@
 name = "FlexUnits"
 uuid = "76e01b6b-c995-4ce6-8559-91e72a3d4e95"
 authors = ["Ruben Gonzalez <ruben.carbonbased@gmail.com> and contributors"]
-version = "0.1.0"
+version = "0.1.1"
 
 [compat]
 julia = "1.10"

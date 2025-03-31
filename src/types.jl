@@ -1,4 +1,4 @@
-const FAST_RATIONAL = FixedRational{DEFAULT_NUMERATOR_TYPE,DEFAULT_DENOM}
+const FAST_RATIONAL = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}
 const DEFAULT_USYMBOL = :_
 
 abstract type AbstractUnitLike end
