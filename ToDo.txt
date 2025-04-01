@@ -1,8 +1,13 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
+0. Fix uninformative unit display in "unit re-registration error"
 1. Add more tests and a coverage badge
 2. Build out documentation and a docs badge
+    -  Include all-stops-out tutorial on defining a new dimension "RadDims"
+    -  Add angle to the dimension list
+    -  Create a new unit registry with that dimension 
+    -  Re-tool sin, cos, tan rules on this particular dimension
 3. Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
     - Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
     - This can be done without documentation 
@@ -11,25 +16,6 @@ Tasks:
 4. Announce the package
 5. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
 
-
-Design Decisions:
-1.  Unit outputs should be clean and parsable (dimensions don't have to be but should be convertable)
-2.  All quantity operations (even affine units) eagerly convert to base dimensional units 
-        Displaying quantities with units not having symbol will convert to SI to emphasize this fact
-3.  Registry is a module containing a single dict for a registry (AffineUnits because they are the most general)
-        Users can easily create their own registries with the RegistryTools module that exports everythign you need
-4.  String macros ({x}"...") and parse macros ({x}parse("...")) need the following versions:
-        q: produce a Quantity{Float64, Dimensions} (si quantity representation, scale-restrictive)
-        us: produce a ScalarUnits{Dimensions} (scaled unit representation, scale-restrictive)
-        u: produce an AffineUnits{Dimensions} (affine unit represntation, general)
-5.  Macros and parsers ARE NOT EXPORTED BY DEFAULT
-        Instead, use "using Dimensionful.Registry" to export them manually
-        This prevents polluting namespaces, and allows users to export macros from their own registries
-6.  "u" and "us" variants assign the expression as their symbol
-
-7.  You can feed a dictionary to {x}parse(str, dict), to use custom unit registries
-        The dict will have have elements of AffineUnits{D} where D is a dimension object
-        Build an {x}expression(str, dict) as well for easily building string macros
 
 import DynamicQuantities
 import Unitful
