@@ -1,13 +1,15 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-1. Rework FixedRational as RationalBase{N,T}
-6. Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
+1. Add more tests and a coverage badge
+2. Build out documentation and a docs badge
+3. Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
     - Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
     - This can be done without documentation 
         - Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         - Iterate over registry and list other units that match the query dimension
-7. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
+4. Announce the package
+5. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
 
 
 Design Decisions:
