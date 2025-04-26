@@ -15,13 +15,13 @@ Useful for defining mathematical operations for dimensions
     )
 end
 
-Base.:+(args::AbstractDimensions...) = firstequal(args...)
-Base.:-(args::AbstractDimensions...) = firstequal(args...)
-Base.:*(args::AbstractDimensions...) = map_dimensions(+, args...)
-Base.:/(args::AbstractDimensions...) = map_dimensions(-, args...)
+Base.:+(arg1::AbstractDimensions, args::AbstractDimensions...) = firstequal(arg1, args...)
+Base.:-(arg1::AbstractDimensions, args::AbstractDimensions...) = firstequal(arg1, args...)
+Base.:*(arg1::AbstractDimensions, args::AbstractDimensions...) = map_dimensions(+, arg1, args...)
+Base.:/(arg1::AbstractDimensions, args::AbstractDimensions...) = map_dimensions(-, arg1, args...)
 Base.inv(arg::AbstractDimensions) = map_dimensions(-, arg)
 Base.:^(d::AbstractDimensions, p::Integer) = map_dimensions(Base.Fix1(*, p), d)
-Base.:^(d::AbstractDimensions{R}, p::Number) where {R} = map_dimensions(Base.Fix1(*, R(dimensionless(p))), d)
+Base.:^(d::AbstractDimensions{R}, p::Real) where {R} = map_dimensions(Base.Fix1(*, R(dimensionless(p))), d)
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{p}) where {p} = map_dimensions(Base.Fix1(*, p), d)
 Base.sqrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 2))
 Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
@@ -41,8 +41,8 @@ Base.:/(n::Number, u::AbstractUnitLike) = quantity(n, inv(u))
 Base.:*(q::UnionQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)*u)
 Base.:/(q::UnionQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)/u)
 
-function Base.:*(u::U...) where U <: AbstractUnits
-    return constructorof(U)(scale=*(map(uscale, u)...), dims=*(map(scalar_dimension, u)...))
+function Base.:*(u1::U, uN::U...) where U <: AbstractUnits
+    return constructorof(U)(scale=*(map(uscale, (u1, uN...))...), dims=*(map(scalar_dimension, (u1, uN...))...))
 end
 
 function Base.:/(u1::U, u2::U) where U <: AbstractUnits
@@ -53,7 +53,7 @@ function Base.:inv(arg::U) where U <: AbstractUnits
     return constructorof(U)(scale=inv(uscale(arg)), dims=inv(scalar_dimension(arg)))
 end
 
-function Base.:^(u::U, p::Number) where U <:AbstractUnits
+function Base.:^(u::U, p::Real) where U <:AbstractUnits
     pn = dimensionless(p)
     return constructorof(U)(scale=uscale(u)^pn, dims=scalar_dimension(u)^pn)
 end
@@ -119,7 +119,7 @@ end
 Base.:+(q::UnionQuantity, n::Number) = dimensionless(q) + n 
 Base.:+(n::Number, q::UnionQuantity) = dimensionless(q) + n
 Base.:+(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(+, ubase(q1), ubase(q2))
-Base.:+(q::UnionQuantity...) = apply2quantities(+, q...)
+Base.:+(q1::UnionQuantity, qN::UnionQuantity...) = apply2quantities(+, q1, qN...)
 
 Base.:-(q::UnionQuantity, n::Number) = dimensionless(q) - n 
 Base.:-(n::Number, q::UnionQuantity) = n - dimensionless(q)
@@ -129,17 +129,16 @@ Base.:-(q1::UnionQuantity) = apply2quantities(-, ubase(q1))
 Base.:*(q0::UnionQuantity, n::Number) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
 Base.:*(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
 Base.:*(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(*, q1, q2)
-Base.:*(q::UnionQuantity...) = apply2quantities(*, q...)
+Base.:*(q1::UnionQuantity, qN::UnionQuantity...) = apply2quantities(*, q1, qN...)
 
 Base.:/(q0::UnionQuantity, n::Number) = (q = ubase(q0); quantity(ustrip(q)/n, unit(q)))
 Base.:/(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(n/ustrip(q), inv(unit(q))))
 Base.:/(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(/, q1, q2)
 Base.:inv(q::UnionQuantity) = apply2quantities(inv, q)
 
-for NT in (UnionQuantity, Number, Integer, Rational) #Address potential ambiguities
-    @eval Base.:^(q::UnionQuantity, p::$NT) = apply2quantities(Base.Fix2(^, dimensionless(p)), q)
+for NT in (Number, Complex, Real, Rational, Integer) #Address potential ambiguities
+    @eval Base.:^(q::UnionQuantity, p::$NT) = apply2quantities(Base.Fix2(^, p), q)
 end
-Base.:^(q::Number, p::UnionQuantity) = apply2quantities(Base.Fix2(^, dimensionless(p)), q)
 
 @inline Base.literal_pow(::typeof(^), q::UnionQuantity, ::Val{p}) where {p} = apply2quantities(x->Base.literal_pow(^, x, Val(dimensionless(p))), q)
 

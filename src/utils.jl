@@ -15,8 +15,10 @@ Base.iterate(q::Q, maybe_state...) where Q<:UnionQuantity =
     end
 Base.ndims(::Type{<:UnionQuantity{T}}) where {T} = ndims(T)
 Base.broadcastable(q::Q) where Q<:UnionQuantity = Q(Base.broadcastable(ustrip(q)), dimension(q))
-Base.getindex(q::Q) where Q<:UnionQuantity = Q(getindex(ustrip(q)), unit(q))
-Base.getindex(q::Q, inds...) where Q<:UnionQuantity = Q(getindex(ustrip(q), inds...), unit(q))
+#Base.getindex(q::Q) where Q<:UnionQuantity = Q(getindex(ustrip(q)), unit(q))
+Base.getindex(q::Q, inds) where Q<:UnionQuantity = Q(getindex(ustrip(q), inds), unit(q))
+Base.getindex(q::Q, inds::CartesianIndex{0}) where Q<:UnionQuantity = Q(getindex(ustrip(q), inds), unit(q))
+Base.getindex(q::Q, inds::Integer...) where Q<:UnionQuantity = Q(getindex(ustrip(q), inds...), unit(q))
 
 
 #=============================================================================================

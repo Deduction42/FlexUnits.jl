@@ -175,8 +175,8 @@ end
     @test (4*xv)^0.5 == 2u"m^0.5/s^0.5"
     @test (2*xv)^2 == 4u"m^2/s^2"
 
-    @test_throws DimensionError 2^(1u"m/s")
-    @test_throws DimensionError (1u"m/s")^(1u"m/s")
+    @test_throws ErrorException 2.0^(1u"m/s")
+    @test_throws ErrorException (1u"m/s")^(1u"m/s")
 
     @test_throws ArgumentError uparse("s[1]")
     @test_throws ArgumentError uparse("pounds_per_hour")

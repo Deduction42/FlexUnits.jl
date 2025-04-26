@@ -35,7 +35,7 @@ end
 #Default Rational Base, common factors of prime numbers multiplying to less than sqrt(typemax(Int32))
 const DEFAULT_NUMERATOR_TYPE = Int32
 const DEFAULT_DENOM = 2^4 * 3^2 * 5^2 * 7
-FixedRational(x::Number)  = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}(x)
+FixedRational(x::Real)    = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}(x)
 FixedRational(x::Integer) = FixedRational{DEFAULT_DENOM}(x)
 
 #Julia's Rational API
