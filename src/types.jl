@@ -6,6 +6,7 @@ abstract type AbstractDimensions{P} <: AbstractUnitLike end
 abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
 abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
 
+const AbstractAffineLike{D} = Union{D, AbstractAffineUnits{D}} where D <: AbstractDimensions
 Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
 
 #Dimension constructor from other types of dimensions

@@ -2,7 +2,7 @@ This package should look like Unitful.jl but behave like DynamicQuantities.jl un
 
 Tasks:
 0. Fix uninformative unit display in "unit re-registration error"
-1. Add more tests and a coverage badge
+1. Add more tests and a coverage badge (including Aqua.jl)
 2. Build out documentation and a docs badge
     -  Include all-stops-out tutorial on defining a new dimension "RadDims"
     -  Add angle to the dimension list

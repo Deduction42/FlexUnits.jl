@@ -42,12 +42,12 @@ Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
 Base.:(|>)(q::UnionQuantity, u::AbstractUnitLike,) = uconvert(u, q)
 
 """
-    uconvert(utarget::AbstractUnitLike, ucurrent::AbstractUnitLike)
+    uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
 
 Produces an AffineTransform that can convert a quantity with `current`
 units to a quantity with `target` units
 """
-function uconvert(utarget::AbstractUnitLike, ucurrent::AbstractUnitLike)
+function uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
     dimension(utarget) == dimension(ucurrent) || throw(ConversionError(utarget, ucurrent))
 
     return AffineTransform(
