@@ -16,9 +16,9 @@ end
 """
     FixedRational{B,T<:Integer} <: Real
 
-Rational number type, with fixed base (or denominator) of B. FixedRational isFaster and simpler 
-than Julia's Rational type, as operations on FixedRational usually result in simple integer operations, 
-however precision of FixedRational limited to 1/B.
+Rational number type, with fixed base (or denominator) of B. FixedRational is faster and simpler 
+than Julia's base Rational type, as operations on FixedRational usually result in simple integer, 
+operations; however, precision of FixedRational limited to 1/B.
 
 When constructing, FixedRational{B,T}(x::Real) uses integer division to assign a numerator that yields 
 the closest value to "x". To assign a numerator directly, use FixedRational{B,T}(Numerator(x)).
@@ -69,7 +69,6 @@ Base.:*(xr::FixedRational{B,T}, xi::Integer) where {B,T} = FixedRational{B,T}(Nu
 #Rounding
 Base.round(::Type{T}, x::FixedRational, r::RoundingMode=RoundNearest) where {T} = div(convert(T, numerator(x)), convert(T, denominator(x)), r)
 Base.round(::Type{>:Missing}, x::FixedRational, r::RoundingMode=RoundNearest) = missing
-
 
 #Comparisons
 for comp in (:(==), :isequal, :<, :(isless), :<=)
