@@ -73,7 +73,6 @@ Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 """
 ubase(q::UnionQuantity) = uconvert(dimension(q), q)
 ubase(q::UnionQuantity{<:Any,<:AbstractDimensions}) = q
-ubase(q::Number) = NoDims()
 
 """
     ustrip(u::AbstractUnitLike, q::UnionQuantity)
