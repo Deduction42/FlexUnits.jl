@@ -15,13 +15,13 @@ function (::Type{D})(x::AbstractDimensions) where {P, D<:AbstractDimensions{P}}
 end
 
 @kwdef struct Dimensions{P} <: AbstractDimensions{P}
-    length::P = 0
-    mass::P = 0
-    time::P = 0
-    current::P = 0
-    temperature::P = 0
-    luminosity::P = 0
-    amount::P = 0
+    length::P = FAST_RATIONAL(0)
+    mass::P = FAST_RATIONAL(0)
+    time::P = FAST_RATIONAL(0)
+    current::P = FAST_RATIONAL(0)
+    temperature::P = FAST_RATIONAL(0)
+    luminosity::P = FAST_RATIONAL(0)
+    amount::P = FAST_RATIONAL(0)
 end
 
 Dimensions(args...) = Dimensions{FAST_RATIONAL}(args...)
