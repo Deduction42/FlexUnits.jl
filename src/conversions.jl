@@ -141,6 +141,9 @@ function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:UnionQuantity{<:
     return Q(uscale(u), dimension(u))
 end
 
+# Converting between generic numbers and quantity types 
+Base.convert(::Type{T}, q::UnionQuantity) where {T<:Number} = convert(T, dimensionless(q))
+
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractDimensions  = constructorof(U)(dimension(u))
 closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u))
 
@@ -166,6 +169,11 @@ function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1, U2, Q1<:Un
     D = promote_type(dimtype(U1), dimtype(U2))
     T = promote_type(T1, T2)
     return narrowest_quantity(T){T, D}
+end
+
+#Promotion between quantities and numeric types
+function Base.promote_rule(::Type{N}, ::Type{UnionQuantity{T}}) where {N<:Number, T<:Number}
+    return promote_type(N,T)
 end
 
 

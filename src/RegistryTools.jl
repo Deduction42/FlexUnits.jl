@@ -210,7 +210,8 @@ function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnit
 end
 
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    parsed = Meta.parse(str)
+    parsed = something(Meta.parse(str), :NoDims)
+    
     if !(parsed isa Union{Expr,Symbol})
         throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as an Expr or Symbol"))
     else
