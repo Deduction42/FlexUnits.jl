@@ -49,6 +49,7 @@ function (::Type{T})(x::FixedRational) where {T<:Union{AbstractFloat,Integer}}
     return convert(T, numerator(x)/denominator(x))
 end
 Base.Bool(x::FixedRational) = iszero(x) ? false : isone(x) ? true : throw(InexactError(:Bool, Bool, x))
+Base.Rational{T}(x::FixedRational) where T = Rational{T}(numerator(x)//denominator(x))
 Base.Rational(x::FixedRational) = numerator(x)//denominator(x)
 
 #Promotion rule:
