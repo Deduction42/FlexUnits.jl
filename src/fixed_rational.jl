@@ -68,6 +68,8 @@ Base.:*(xr::FixedRational{B,T}, xi::Integer) where {B,T} = FixedRational{B,T}(Nu
 
 #Rounding
 Base.round(::Type{T}, x::FixedRational, r::RoundingMode=RoundNearest) where {T} = div(convert(T, numerator(x)), convert(T, denominator(x)), r)
+Base.round(::Type{>:Missing}, x::FixedRational, r::RoundingMode=RoundNearest) = missing
+
 
 #Comparisons
 for comp in (:(==), :isequal, :<, :(isless), :<=)
@@ -83,7 +85,7 @@ Base.isinteger(x::FixedRational) = iszero(numerator(x) % denominator(x))
 Base.convert(::Type{F}, x::FixedRational{B}) where {B,F<:FixedRational{B}} = F(Numerator(x)) #Same-base shortcut
 Base.convert(::Type{F}, x::FixedRational) where {F<:FixedRational} = F(numerator(x)/denominator(x))
 
-# Promotion rules with self and other types
+#Promotion rules with self and other types
 function Base.promote_rule(::Type{FixedRational{B1,T1}}, ::Type{FixedRational{B2,T2}}) where {B1,B2,T1,T2}
         B1 == B2 || error("Refusing to promote `FixedRational` types with mixed denominators. Use `Rational` instead.")
     return FixedRational{B1, promote_type(T1,T2)}
