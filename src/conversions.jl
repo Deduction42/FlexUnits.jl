@@ -176,22 +176,3 @@ function Base.promote_rule(::Type{N}, ::Type{UnionQuantity{T}}) where {N<:Number
     return promote_type(N,T)
 end
 
-
-#=
-Preliminary test code
-K  = Dimensions(temperature=1)
-°C = AffineUnits(scale=1, offset=273.15, dims=K, symbol=:°C)
-°F = AffineUnits(scale=5/9, offset=(273.15-32*5/9), dims=K, symbol=:°F)
-
-
-uconvert(°F, Quantity(-40, °C))
-uconvert(K, Quantity(0, °F))
-uconvert(°C, Quantity(-0, °F))
-
-
-convert(Quantity{Float64, ScalarUnits}, RealQuantity(-0, °F))
-convert(NumberQuantity{Float64, Dimensions}, Quantity(-0, °F))
-convert(Quantity{Float64, AffineUnits}, Quantity(-0, °F))
-convert(RealQuantity{Float64, AffineUnits}, RealQuantity(-0, °F))
-convert(RealQuantity{Float64, AffineUnits}, RealQuantity(-0.0, °F))
-=#
