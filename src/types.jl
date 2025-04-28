@@ -1,4 +1,4 @@
-const FAST_RATIONAL = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}
+const DEFAULT_RATIONAL = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}
 const DEFAULT_USYMBOL = :_
 
 abstract type AbstractUnitLike end
@@ -24,9 +24,9 @@ end
     amount::P = FixedRational(0)
 end
 
-Dimensions(args...) = Dimensions{FAST_RATIONAL}(args...)
-Dimensions(d::AbstractDimensions) = Dimensions{FAST_RATIONAL}(d)
-DEFAULT_DIMENSONS = Dimensions{FAST_RATIONAL}
+Dimensions(args...) = Dimensions{DEFAULT_RATIONAL}(args...)
+Dimensions(d::AbstractDimensions) = Dimensions{DEFAULT_RATIONAL}(d)
+DEFAULT_DIMENSONS = Dimensions{DEFAULT_RATIONAL}
 
 uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
 uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
@@ -52,7 +52,7 @@ promote(Type{<:NoDims}, D<:AbstractDimension) will return D
 convert(Type{D}, NoDims) where D<:AbstractDimensions will return D()
 """
 struct NoDims{P} <: AbstractDimensions{P} end
-NoDims() = NoDims{FAST_RATIONAL}()
+NoDims() = NoDims{DEFAULT_RATIONAL}()
 Base.getproperty(::NoDims{P}, ::Symbol) where {P} = zero(P)
 unit_symbols(::Type{<:NoDims}) = NoDims{Symbol}()
 

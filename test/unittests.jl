@@ -2,14 +2,14 @@ using Revise
 using Test
 using BenchmarkTools
 using FlexUnits, .UnitRegistry
-using FlexUnits: FAST_RATIONAL, FixedRational, map_dimensions
+using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
 const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
 
 @testset "Basic utilities" begin
 
-    for Q in [Quantity, NumberQuantity, RealQuantity], T in [Float16, Float32, Float64], R in [FAST_RATIONAL, Rational{Int16}, Rational{Int32}]
+    for Q in [Quantity, NumberQuantity, RealQuantity], T in [Float16, Float32, Float64], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
         
         D = Dimensions{R}
         x = Q(T(0.2), D(length=1, mass=2.5, time=-1))
@@ -18,7 +18,7 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
         @test typeof(x).parameters[2] == D
         @test ustrip(x) ≈ T(0.2)
         @test dimension(x) == D(length=1, mass=5//2, time=-1)
-        if R == FAST_RATIONAL
+        if R == DEFAULT_RATIONAL
             @test dimension(x) == Dimensions(length=1, mass=5//2, time=-1)
         end
 
@@ -113,17 +113,17 @@ end
     @test abs(x) === q"1.3km/s^2"
 
     y = 0.9u"sqrt(mΩ)"
-    @test typeof(y) == RealQuantity{Float64, AffineUnits{Dimensions{FAST_RATIONAL}}}
-    @test typeof(ubase(y)) == RealQuantity{Float64, Dimensions{FAST_RATIONAL}}
+    @test typeof(y) == RealQuantity{Float64, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
+    @test typeof(ubase(y)) == RealQuantity{Float64, Dimensions{DEFAULT_RATIONAL}}
     @test ustrip_base(y) ≈ 0.02846049894151541
     @test y ≈ q"(0.9*sqrt(mΩ))"
 
     y = BigFloat(0.3) * u"mΩ"
-    @test typeof(y) == RealQuantity{BigFloat, AffineUnits{Dimensions{FAST_RATIONAL}}}
+    @test typeof(y) == RealQuantity{BigFloat, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
     @test ustrip_base(y) ≈ 0.0003
 
-    y32 = convert(RealQuantity{Float32, AffineUnits{Dimensions{FAST_RATIONAL}}}, y)
-    @test typeof(y32) == RealQuantity{Float32, AffineUnits{Dimensions{FAST_RATIONAL}}}
+    y32 = convert(RealQuantity{Float32, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}, y)
+    @test typeof(y32) == RealQuantity{Float32, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
 
     z = 1*u"yr"
     @test ustrip_base(z) ≈ 60 * 60 * 24 * 365.25
@@ -284,7 +284,7 @@ end
     @test typeof(inv(q)) == RealQuantity{Float64,typeof(d)}
 
     # Automatic conversions via constructor:
-    for T in [Float16, Float32, Float64, BigFloat], R in [FAST_RATIONAL, Rational{Int16}, Rational{Int32}]
+    for T in [Float16, Float32, Float64, BigFloat], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
         D = Dimensions{R}
         q = Quantity{T,D}(2, D(length=1.5))
         @test typeof(q) == Quantity{T,D}
