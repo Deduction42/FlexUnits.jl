@@ -3,6 +3,7 @@ using Test
 using BenchmarkTools
 using FlexUnits, .UnitRegistry
 using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions
+using Aqua
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
 const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
