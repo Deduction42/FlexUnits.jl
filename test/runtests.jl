@@ -216,6 +216,7 @@ end
     xp = 1u"percent"
     xv = 1u"m/s"
 
+    @test +(xp, xp, xp) + 1 == 1.03
     @test xp + 1 == 1.01
     @test 1 + xp == 1.01
     @test xv + xv == 2u"m/s"
@@ -235,6 +236,11 @@ end
     @test xv*1 === ubase(1u"m/s")
     @test xp*1 == 0.01*u""
     @test xv*xv == 1u"m^2/s^2"
+    @test *(xv,xv,xv) == 1u"m^3/s^3"
+    @test cbrt(*(xv,xv,xv)) == 1u"m/s"
+    @test u"m/s" / unit(ubase(1u"m/s")) == u""
+    @test cbrt(u"m^3/s^3") == u"m/s"
+    @test abs2(dimension(u"m/s")) == dimension(u"m^2/s^2")
 
     @test xv/1 == 1u"m/s"
     @test xp/1 == 0.01*u""

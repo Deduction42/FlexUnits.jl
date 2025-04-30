@@ -67,10 +67,7 @@ Base.cbrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(conve
 #Equality does not compare symbols
 Base.:(==)(u1::AbstractAffineUnits, u2::AbstractAffineUnits) = (uscale(u1) == uscale(u2)) & (uoffset(u1) == uoffset(u2)) & (dimension(u1) == dimension(u2))
 
-@inline function firstequal(args::AbstractUnitLike...) 
-    newargs = promote(args...)
-    return allequal(newargs) ? first(newargs) : throw(DimensionError(args))
-end
+@inline firstequal(arg1::AbstractUnitLike) = arg1
 
 @inline function firstequal(arg1::AbstractUnitLike, arg2::AbstractUnitLike)
     (new1, new2) = promote(arg1, arg2)
@@ -78,7 +75,10 @@ end
     return new1 
 end
 
-@inline firstequal(arg1::AbstractUnitLike) = arg1
+@inline function firstequal(arg1::AbstractUnitLike, arg2::AbstractUnitLike, args::AbstractUnitLike...) 
+    newargs = promote(arg1, arg2, args...)
+    return allequal(newargs) ? first(newargs) : throw(DimensionError(args))
+end
 
 
 #=============================================================================================
