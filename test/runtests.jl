@@ -179,12 +179,12 @@ end
     @test xv*1 == 1u"m/s"
     @test xv*1 !== 1u"m/s"
     @test xv*1 === ubase(1u"m/s")
-    @test xp*1 == 0.01*Dimensions()
+    @test xp*1 == 0.01*u""
     @test xv*xv == 1u"m^2/s^2"
 
     @test xv/1 == 1u"m/s"
-    @test xp/1 == 0.01*Dimensions()
-    @test xv/xv == 1u"NoDims"
+    @test xp/1 == 0.01*u""
+    @test xv/xv == 1u""
 
     @test sqrt(4*xv) == 2u"m^0.5/s^0.5"
     @test (4*xv)^0.5 == 2u"m^0.5/s^0.5"

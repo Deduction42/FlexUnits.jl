@@ -210,9 +210,9 @@ function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnit
 end
 
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    parsed = something(Meta.parse(str), :NoDims)
+    parsed = Meta.parse(str)
     
-    if !(parsed isa Union{Expr,Symbol})
+    if !(parsed isa Union{Expr,Symbol,Nothing})
         throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as an Expr or Symbol"))
     else
         ex = uparse_expr(parsed, reg)
@@ -230,11 +230,16 @@ function qparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: Abstr
 end
 
 function uparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    ex = _parse_expr(ex, reg)
-    return :($convert($U, $ex))
+    ex_new = _parse_expr(ex, reg)
+    return :($convert($U, $ex_new))
 end
 
-function qparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where U
+function uparse_expr(ex::Nothing, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike 
+    ex_new = :($dimtype($U)()) #If expresion parsed as Nothing, return dimensionless
+    return :($convert($U, $ex_new))
+end
+
+function qparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     Q  = RealQuantity{Float64, dimtype(U)}
     ex = _parse_expr(ex, reg)
     return :($convert($Q, ubase($ex)))
