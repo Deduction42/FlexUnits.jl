@@ -347,10 +347,34 @@ end
     @test convert(Int32, FixedRational{1000,Int64}(3 // 1)) == 3
     @test convert(Bool, FixedRational{6,Int8}(1//1)) === true
     @test convert(Bool, FixedRational{6,Int8}(0//1)) === false
+    @test convert(FixedRational{100, Int32}, FixedRational{1000}(10)) === FixedRational{100, Int32}(10) 
 
+    #Test promotion through mathematical operators 
+    @test FixedRational{1000}(10)*Float64(0.1) === Float64(1)
+    @test FixedRational{1000}(10)*Float32(0.1) === Float32(1)
+    @test FixedRational{1000}(10)*BigFloat(0.1) isa BigFloat
+    @test FixedRational{1000}(10)*true === FixedRational{1000}(10)
+
+    #Test mathematical operators
+    @test FixedRational(0.1)/Float64(100) === Float64(0.001)
+    @test FixedRational(0.1) / FixedRational(0.1) === FixedRational(1.0)
+    @test FixedRational(0.1) - FixedRational(0.1) === FixedRational(0.0)
+    @test FixedRational(0.1) - 0.1 === 0.0
+    @test FixedRational(0.1) + FixedRational(0.1) === FixedRational(0.2)
+    @test FixedRational(0.1) + 0.1 === 0.2
+    @test inv(FixedRational(0.1)) === FixedRational(10.0)
+
+    #Test Rounding 
+    @test round(Int32, FixedRational(10.2)) === Int32(10)
+    @test round(Missing, FixedRational(10.2)) === missing
+
+    #Test string conversion 
+    @test string(FixedRational(10.2)) == "51//5"
+    @test string(FixedRational(10)) == "10"
+
+    #Test conversions and rounding
     @test_throws InexactError convert(Int32, FixedRational{6,Int8}(2//3))
     @test_throws InexactError convert(Bool, FixedRational{6,Int8}(2//1))
-
     @test_throws "Refusing to" promote(FixedRational{10,Int}(2), FixedRational{4,Int}(2))
 
     f64 = FixedRational{10,Int}(2)
@@ -358,7 +382,6 @@ end
     @test promote(f64, f8) == (2, 2)
     @test typeof(promote(f64, f8)) == typeof((f64, f64))
     @test typeof(promote(FixedRational{10,Int8}(2), FixedRational{10,Int8}(2))) == typeof((f8, f8))
-    @test promote_type(Float64, typeof(f64)) == Float64
 
     # Required to hit integer branch (otherwise will go to `literal_pow`)
     f(i::Int) = Dimensions(length=1, mass=-1)^i
@@ -371,9 +394,13 @@ end
     @test convert(Rational, FixedRational{6,UInt8}(2)) === Rational{UInt8}(2)
 
     # Promotion rules
+    @test promote_type(Float64, typeof(f64)) == Float64
+    @test promote_type(Bool, typeof(f64)) == typeof(f64)
     @test promote_type(FixedRational{10,Int64},FixedRational{10,BigInt}) == FixedRational{10,BigInt}
     @test promote_type(Rational{Int8}, FixedRational{12345,Int}) == Rational{Int}
     @test promote_type(Int8, FixedRational{12345,Int}) == FixedRational{12345,Int}
+    @test promote_type(FixedRational{1000}, Irrational) == Real
+    @test promote_type(FixedRational{1000}, BigFloat) == BigFloat
 
     # Bug where user would create a FixedRational{::Type{Int32}, ::Int64} and get stack overflow,
     # because the stored type was FixedRational{::Type{Int32}, ::Int32}

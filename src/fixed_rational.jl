@@ -37,12 +37,11 @@ const DEFAULT_NUMERATOR_TYPE = Int32
 const DEFAULT_DENOM = 2^4 * 3^2 * 5^2 * 7
 FixedRational(x::Real)    = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}(x)
 FixedRational(x::Integer) = FixedRational{DEFAULT_DENOM}(x)
+Numerator(x::FixedRational) = Numerator(x.num)
 
 #Julia's Rational API
 Base.numerator(x::FixedRational) = x.num 
 Base.denominator(x::FixedRational{B,T}) where {B,T} = convert(T, B)
-numtype(::Type{<:FixedRational{B,T}}) where {B,T} = T
-Numerator(x::FixedRational) = Numerator(x.num)
 
 #Conversion to float and rational
 function (::Type{T})(x::FixedRational) where {T<:Union{AbstractFloat,Integer}}
@@ -51,9 +50,6 @@ end
 Base.Bool(x::FixedRational) = iszero(x) ? false : isone(x) ? true : throw(InexactError(:Bool, Bool, x))
 Base.Rational{T}(x::FixedRational) where T = Rational{T}(numerator(x)//denominator(x))
 Base.Rational(x::FixedRational) = numerator(x)//denominator(x)
-
-#Promotion rule:
-promote_rule(::Type{FixedRational{B,T}}, ::Type{S}) where {B, T<:Integer, S<:AbstractFloat} = promote_type(T,S)
 
 #Mathematical operations on similar objects
 Base.:+(x1::FixedRational{B}, x2::FixedRational{B}) where {B} = FixedRational{B}(Numerator(x1.num + x2.num))
@@ -85,38 +81,30 @@ Base.isinteger(x::FixedRational) = iszero(numerator(x) % denominator(x))
 Base.convert(::Type{F}, x::FixedRational{B}) where {B,F<:FixedRational{B}} = F(Numerator(x)) #Same-base shortcut
 Base.convert(::Type{F}, x::FixedRational) where {F<:FixedRational} = F(numerator(x)/denominator(x))
 
-#Promotion rules with self and other types
+#Promotion rules:
 function Base.promote_rule(::Type{FixedRational{B1,T1}}, ::Type{FixedRational{B2,T2}}) where {B1,B2,T1,T2}
-        B1 == B2 || error("Refusing to promote `FixedRational` types with mixed denominators. Use `Rational` instead.")
-    return FixedRational{B1, promote_type(T1,T2)}
+    B1 == B2 || error("Refusing to promote `FixedRational` types with mixed denominators. Use `Rational` instead.")
+return FixedRational{B1, promote_type(T1,T2)}
 end
-function Base.promote_rule(::Type{FixedRational{B,T1}}, ::Type{Rational{T2}}) where {B,T1,T2}
-    return Rational{promote_type(T1, T2)}
+function Base.promote_rule(::Type{FixedRational{B,I}}, ::Type{T}) where {B,I,T<:Real}
+    return promote_type(Rational{I}, T)
+end
+function Base.promote_rule(::Type{FixedRational{B,I}}, ::Type{Rational{T}}) where {B,I,T}
+    return Rational{promote_type(I,T)}
 end
 function Base.promote_rule(::Type{F}, ::Type{<:Integer}) where {F<:FixedRational}
     return F
 end
-function Base.promote_rule(::Type{FixedRational{B,T1}}, ::Type{T2}) where {B,T1,T2<:Real}
-    return promote_type(Rational{T1}, T2)
-end
 
-#Ambiguities
-function Base.promote_rule(::Type{F}, ::Type{Bool}) where {F<:FixedRational}
-    return F
-end
-function Base.promote_rule(::Type{FixedRational{B,T}}, ::Type{BigFloat}) where {B,T}
-    return promote_type(Rational{T}, BigFloat)
-end
-function Base.promote_rule(::Type{FixedRational{B,T}}, ::Type{T2}) where {B,T,T2<:AbstractIrrational}
-    return promote_type(Rational{T}, T2)
-end
+
 
 #Printing/showing
-function Base.string(x::FixedRational{B,T}) where {B,T}
+function Base.show(io::IO, x::FixedRational{B,T}) where {B,T}
     if isinteger(x)
-        return string(convert(T, x))
+        return print(io, convert(T, x))
     end
     g = gcd(x.num, B)
-    return string(div(x.num, g)) * "//" * string(div(B, g))
+    print(io, div(x.num, g))
+    print(io, "//")
+    return print(io, div(B, g))
 end
-Base.show(io::IO, x::FixedRational) = print(io, string(x))
