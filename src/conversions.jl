@@ -131,8 +131,8 @@ end
 
 # Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = (u isa U) ? u : U(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=usymbol(u))
-Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : (assert_dimension(u); D(dimension(u)))
-Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
+Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : D(dimension(assert_dimension(u)))
+Base.convert(::Type{D}, u::NoDims) where D<:AbstractDimensions = D()
 
 # Converting between units and quantities ====================================================
 Base.convert(::Type{U}, q::UnionQuantity) where U<:AbstractUnits = convert(U, asunit(q))
@@ -143,10 +143,6 @@ end
 
 # Converting between generic numbers and quantity types 
 Base.convert(::Type{T}, q::UnionQuantity) where {T<:Number} = convert(T, dimensionless(q))
-
-closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractDimensions  = constructorof(U)(dimension(u))
-closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u))
-
 
 # Promotion rules ======================================================
 

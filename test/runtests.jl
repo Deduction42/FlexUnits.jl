@@ -23,6 +23,58 @@ const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
 const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
 
 @testset "Basic utilities" begin
+    d = Dimensions(length=2, mass=1, time=-2)
+    @test d.length == 2
+    @test d.mass == 1
+    @test d.time == -2
+    @test FlexUnits.dimtype(typeof(d)) == DEFAULT_DIM_TYPE
+    @test FlexUnits.dimtype(typeof(u"m/s")) == DEFAULT_DIM_TYPE
+    @test uscale(d) == 1
+    @test uoffset(d) == 0
+    @test FlexUnits.usymbol(d) == FlexUnits.DEFAULT_USYMBOL
+
+    d = NoDims()
+    @test d.length == 0
+    @test d.mass == 0
+    @test FlexUnits.unit_symbols(NoDims) ==  NoDims{Symbol}()
+
+    @test FlexUnits.remove_offset(u"°C") == u"K"
+
+    @test FlexUnits.constructorof(typeof(Dimensions())) == Dimensions
+    @test FlexUnits.constructorof(typeof(u"m")) == AffineUnits
+    @test FlexUnits.constructorof(typeof(1.0*u"m")) == RealQuantity
+    @test FlexUnits.constructorof(typeof((1.0+im)*u"m")) == NumberQuantity
+    @test FlexUnits.constructorof(typeof(quantity("this", u"m"))) == Quantity
+    @test FlexUnits.constructorof(Array{Float64}) == Array
+    @test FlexUnits.narrowest(Quantity(1.0, u"m")) === RealQuantity(1.0, u"m")
+
+    @test FlexUnits.narrowest_quantity("this") == Quantity
+    @test FlexUnits.narrowest_quantity(String) == Quantity
+    @test FlexUnits.narrowest_quantity(Complex{Float64}) == NumberQuantity
+    @test FlexUnits.narrowest_quantity(Float64) == RealQuantity
+
+    @test string(AffineUnits(scale=1, offset=0, dims=dimension(u"m"), symbol=:_)) == "AffineUnits(scale=1.0, offset=0.0, dims=m)"
+    @test string(ubase(1.0u"kg*m^2/s^2"), pretty=true)  == "1.0 (m² kg)/s²"
+    @test string(ubase(1.0u"kg*m^2/s^2"), pretty=false) == "(1.0)(m^2*kg)/s^2"
+    @test string(1.0u"kg*m^2/s^2", pretty=true)  == "1.0 kg*m^2/s^2"
+    @test string(1.0u"kg*m^2/s^2", pretty=false) == "(1.0)kg*m^2/s^2"
+    @test string(ubase(1.0u"1/s^2"), pretty=true)  == "1.0 1/s²"
+    @test string(ubase(1.0u"1/s^2"), pretty=false) == "(1.0)1/s^2"
+    @test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=true) == "1.0 m/s²"
+    @test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=false) == "(1.0)m/s^2"
+
+    #Vector operations
+    vq = quantity([1,2], u"m/s")
+    @test [1,2].*u"m/s" == [1u"m/s", 2u"m/s"]
+    @test [1,2].*(5u"m/s") == [5.0u"m/s", 10.0u"m/s"]
+    @test vq[:] == quantity([1,2], u"m/s")
+    @test vq[1] == 1*u"m/s"
+    @test vq[CartesianIndex(1)] == 1*u"m/s"
+    @test all([q for q in vq] .== vq)
+end
+
+@testset "Math on various types" begin
+    FlexUnits.PRETTY_DIM_OUTPUT[] = true  
 
     for Q in [Quantity, NumberQuantity, RealQuantity], T in [Float16, Float32, Float64], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
         
@@ -44,10 +96,9 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
         @test typeof(x).parameters[2] == D
         @test ustrip(y) ≈ T(0.04)
 
-        if R <: Rational
-            FlexUnits.PRETTY_DIM_OUTPUT[] = true    
-            @test string(x) == "0.2 (m kg⁵ᐟ²)/s"
-            @test string(inv(x)) == "5.0 s/(m kg⁵ᐟ²)"
+        if R <: Rational  
+            @test string(x, pretty=true) == "0.2 (m kg⁵ᐟ²)/s"
+            @test string(inv(x), pretty=true) == "5.0 s/(m kg⁵ᐟ²)"
         end
 
         y = x - x
@@ -103,6 +154,7 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
 
     end
 
+
 end
 
 
@@ -157,6 +209,7 @@ end
     @test_throws "Unexpected expression" uparse("import ..Units")
     @test_throws "Unexpected expression" uparse("(m, m)")
     @test_throws LoadError eval(:(us"x"))
+    @test_throws NotScalarError u"J/°C"
 
 
     #Basic mathematical operations
@@ -176,6 +229,7 @@ end
     @test_throws DimensionError xv + 1
     @test_throws DimensionError 1 + xv
 
+    @test xv*NoDims() == xv
     @test xv*1 == 1u"m/s"
     @test xv*1 !== 1u"m/s"
     @test xv*1 === ubase(1u"m/s")
@@ -266,6 +320,7 @@ end
     @test map_dimensions(+, dimension(u"m/s"), dimension(u"m/s")) == Dimensions(length=2, time=-2)
     @test map_dimensions(-, dimension(u"m"), dimension(u"s"))     == Dimensions(length=1, time=-1)
     @test map_dimensions(Base.Fix1(*,2), dimension(u"m/s"))       == Dimensions(length=2, time=-2)
+
 end
 
 
@@ -297,6 +352,17 @@ end
     @test typeof(q ^ 2) == RealQuantity{Int64,typeof(d)}
     @test typeof(0.5 * q) == RealQuantity{Float64,typeof(d)}
     @test typeof(inv(q)) == RealQuantity{Float64,typeof(d)}
+
+    # Test conversion of unit types 
+    @test convert(DEFAULT_DIM_TYPE, u"m") === Dimensions(length=1)
+    @test_throws NotDimensionError convert(DEFAULT_DIM_TYPE, u"mm")
+    @test convert(DEFAULT_DIM_TYPE, NoDims()) === Dimensions(length=0)
+    @test convert(AffineUnits{DEFAULT_DIM_TYPE}, ubase(2u"m")) == AffineUnits(scale=2.0, offset=0.0, dims=dimension(u"m"))
+    @test convert(AffineUnits{DEFAULT_DIM_TYPE}, 2u"°C") == AffineUnits(scale=2.0, offset=273.15, dims=dimension(u"K"))
+    @test convert(Quantity{Float64, DEFAULT_DIM_TYPE}, 2u"m") === Quantity{Float64, DEFAULT_DIM_TYPE}(2.0, dimension(u"m")) 
+    @test_throws NotScalarError convert(Quantity{Float64, DEFAULT_DIM_TYPE}, u"°C") 
+    @test promote_type(DEFAULT_DIM_TYPE, NoDims) == DEFAULT_DIM_TYPE
+
 
     # Automatic conversions via constructor:
     for T in [Float16, Float32, Float64, BigFloat], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
