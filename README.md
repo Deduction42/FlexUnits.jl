@@ -1,3 +1,7 @@
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+[![Build Status](https://github.com/Deduction42/FlexUnits.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Deduction42/FlexUnits.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Coverage Status](https://coveralls.io/repos/github/Deduction42/FlexUnits.jl/badge.svg?branch=main)](https://coveralls.io/github/Deduction42/FlexUnits.jl?branch=main)
+
 # FlexUnits.jl
 The flexible units package. FlexUnits.jl was heavily inspired by DynamicQuantities.jl and Unitful.jl and can be seen as a hybridization of the two. Under the hood, operations on quantities are executed similarly to DynamicQuantities.jl, allowing a single concrete unit type to represent a variety of units, but the API and unit support is designed to more closely relate to Unitful.jl. This means multiple quantities with different units can be stored inside a concretely-typed Array or Dict (which is not possible with Unitful.jl). However, unlike DynamicQuantities.jl, this package *fully* supports affine units (like °C and °F) and fully supports custom unit registries.
 
