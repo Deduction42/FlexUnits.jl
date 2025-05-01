@@ -40,8 +40,21 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v5
+      - name: "Coveralls"
+        uses: coverallsapp/github-action@v2
         with:
-          files: lcov.info
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: lcov.info
+          parallel: true
+          flag-name: julia-${{ matrix.version }}-${{ matrix.os }}
+          
+  coveralls:
+    name: Indicate completion to coveralls
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Finish
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true

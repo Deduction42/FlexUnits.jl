@@ -1,165 +1,110 @@
-#=
-FixedRational was originally written by Miles Cranmer and Contributors for DynamicQuantities
-
-Apache License
-                           Version 2.0, January 2004
-                        http://www.apache.org/licenses/
-
-   Copyright 2023 Miles Cranmer
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-=#
-
-import Base: Rational, Bool
-
+#===============================================================================================
+ FixedRational was heavily inspired by DynamicQuantities.FixedRational
+ https://github.com/SymbolicML/DynamicQuantities.jl?tab=Apache-2.0-1-ov-file
+===============================================================================================#
 """
-    FixedRational{T,den}
+    Numerator{T<:Integer}
 
-A rational number with a fixed denominator. Significantly
-faster than `Rational{T}`, as it never needs to compute
-the `gcd` apart from when printing.
-Access the denominator with `denom(F)` (which converts to `T`).
-
-# Fields
-
-- `num`: numerator of type `T`. The denominator is fixed to the type parameter `den`.
+Internal struct that indicates the value should be interpreated as a numerator, mainly intended 
+for dispatching FixedRational constructors to directly assign a numerator.
 """
-struct FixedRational{T<:Integer,den} <: Real
-    num::T
-    global unsafe_fixed_rational(num::Integer, ::Type{T}, ::Val{den}) where {T,den} = new{T,den}(num)
+struct Numerator{T<:Integer}
+    val :: T
 end
-@inline _denom(::Type{F}) where {T,den,F<:FixedRational{T,den}} = den
+
 
 """
-    denom(F::FixedRational)
+    FixedRational{B,T<:Integer} <: Real
 
-Since `den` can be a different type than `T`, this function
-is used to get the denominator as a `T`.
+Rational number type, with fixed base (or denominator) of B. FixedRational is faster and simpler 
+than Julia's base Rational type, as operations on FixedRational usually result in simple integer, 
+operations; however, precision of FixedRational limited to 1/B.
+
+When constructing, FixedRational{B,T}(x::Real) uses integer division to assign a numerator that yields 
+the closest value to "x". To assign a numerator directly, use FixedRational{B,T}(Numerator(x)).
 """
-denom(::Type{<:F}) where {T,F<:FixedRational{T}} = convert(T, _denom(F))
-denom(x::FixedRational) = denom(typeof(x))
+struct FixedRational{B,T<:Integer} <: Real
+    num :: T
+    FixedRational{B}(x::Numerator{T}) where {B,T} = new{B,T}(x.val)
+    FixedRational{B,T}(x::Numerator) where {B,T} = new{B,T}(x.val)
+    FixedRational{B}(x::T) where {B,T<:Integer} = new{B,T}(x*B)
+    FixedRational{B,T}(x::Integer) where {B,T} = new{B,T}(x*B)
+    FixedRational{B,T}(x::Real) where {B,T} = new{B,T}(round(T, x*B))
+end
 
-# But, for Val(den), we need to use the same type as at init.
-# Otherwise, we would have type instability.
-val_denom(::Type{<:F}) where {F<:FixedRational} = Val(_denom(F))
-
-Base.eltype(::Type{<:FixedRational{T}}) where {T} = T
-
+#Default Rational Base, common factors of prime numbers multiplying to less than sqrt(typemax(Int32))
 const DEFAULT_NUMERATOR_TYPE = Int32
 const DEFAULT_DENOM = 2^4 * 3^2 * 5^2 * 7
+FixedRational(x::Real)    = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}(x)
+FixedRational(x::Integer) = FixedRational{DEFAULT_DENOM}(x)
+Numerator(x::FixedRational) = Numerator(x.num)
 
-(::Type{F})(x::F) where {F<:FixedRational} = x
-(::Type{F})(x::F2) where {T,T2,den,F<:FixedRational{T,den},F2<:FixedRational{T2,den}} = unsafe_fixed_rational(x.num, eltype(F), val_denom(F))
-(::Type{F})(x::Integer) where {F<:FixedRational} = unsafe_fixed_rational(x * denom(F), eltype(F), val_denom(F))
-(::Type{F})(x::Rational) where {F<:FixedRational} = unsafe_fixed_rational(widemul(x.num, denom(F)) ÷ x.den, eltype(F), val_denom(F))
-(::Type{F})(x::AbstractFloat) where {F<:FixedRational} = tryrationalize(F, x) #This was added due to easier construction
+#Julia's Rational API
+Base.numerator(x::FixedRational) = x.num 
+Base.denominator(x::FixedRational{B,T}) where {B,T} = convert(T, B)
 
-Base.:*(l::F, r::F) where {F<:FixedRational} = unsafe_fixed_rational(widemul(l.num, r.num) ÷ denom(F), eltype(F), val_denom(F))
-Base.:+(l::F, r::F) where {F<:FixedRational} = unsafe_fixed_rational(l.num + r.num, eltype(F), val_denom(F))
-Base.:-(l::F, r::F) where {F<:FixedRational} = unsafe_fixed_rational(l.num - r.num, eltype(F), val_denom(F))
-Base.:-(x::F) where {F<:FixedRational} = unsafe_fixed_rational(-x.num, eltype(F), val_denom(F))
+#Conversion to float and rational
+function (::Type{T})(x::FixedRational) where {T<:Union{AbstractFloat,Integer}}
+    return convert(T, numerator(x)/denominator(x))
+end
+Base.Bool(x::FixedRational) = iszero(x) ? false : isone(x) ? true : throw(InexactError(:Bool, Bool, x))
+Base.Rational{T}(x::FixedRational) where T = Rational{T}(numerator(x)//denominator(x))
+Base.Rational(x::FixedRational) = numerator(x)//denominator(x)
 
-Base.inv(x::F) where {F<:FixedRational} = unsafe_fixed_rational(widemul(denom(F), denom(F)) ÷ x.num, eltype(F), val_denom(F))
+#Mathematical operations on similar objects
+Base.:+(x1::FixedRational{B}, x2::FixedRational{B}) where {B} = FixedRational{B}(Numerator(x1.num + x2.num))
+Base.:-(x::FixedRational{B}) where {B} = FixedRational{B}(Numerator(-x.num))
+Base.:-(x1::FixedRational{B}, x2::FixedRational{B}) where {B} = FixedRational{B}(Numerator(x1.num - x2.num))
+Base.:*(x1::FixedRational{B,T1}, x2::FixedRational{B,T2}) where {B,T1,T2} = FixedRational{B,promote_type(T1,T2)}(Numerator(widemul(x1.num, x2.num) ÷ B))
+Base.:/(x1::FixedRational{B,T1}, x2::FixedRational{B,T2}) where {B,T1,T2} = FixedRational{B,promote_type(T1,T2)}(Numerator(widemul(B, x1.num) ÷ x2.num))
+Base.:inv(x::FixedRational{B,T}) where {B,T} = FixedRational{B,T}(Numerator(widemul(B, B) ÷ x.num))
 
-Base.:*(l::F, r::Integer) where {F<:FixedRational} = unsafe_fixed_rational(l.num * r, eltype(F), val_denom(F))
-Base.:*(l::Integer, r::F) where {F<:FixedRational} = unsafe_fixed_rational(l * r.num, eltype(F), val_denom(F))
+#Specialized mathematical operations on different number types that don't require promotion
+Base.:*(xi::Integer, xr::FixedRational{B,T}) where {B,T} = FixedRational{B,T}(Numerator(xi*xr.num))
+Base.:*(xr::FixedRational{B,T}, xi::Integer) where {B,T} = FixedRational{B,T}(Numerator(xi*xr.num))
 
+#Rounding
+Base.round(::Type{T}, x::FixedRational, r::RoundingMode=RoundNearest) where {T} = div(convert(T, numerator(x)), convert(T, denominator(x)), r)
+Base.round(::Type{>:Missing}, x::FixedRational, r::RoundingMode=RoundNearest) = missing
+
+#Comparisons
 for comp in (:(==), :isequal, :<, :(isless), :<=)
-    @eval Base.$comp(x::F, y::F) where {F<:FixedRational} = $comp(x.num, y.num)
+    @eval Base.$comp(x::FixedRational{B}, y::FixedRational{B}) where {B} = $comp(x.num, y.num)
 end
 
-Base.iszero(x::FixedRational) = iszero(x.num)
-Base.isone(x::F) where {F<:FixedRational} = x.num == denom(F)
-Base.isinteger(x::F) where {F<:FixedRational} = iszero(x.num % denom(F))
+#Check values
+Base.iszero(x::FixedRational) = iszero(numerator(x))
+Base.isone(x::FixedRational)  = (numerator(x) == denominator(x))
+Base.isinteger(x::FixedRational) = iszero(numerator(x) % denominator(x))
 
-Rational{R}(x::F) where {R,F<:FixedRational} = Rational{R}(x.num, denom(F))
-Rational(x::F) where {F<:FixedRational} = Rational{eltype(F)}(x)
-(::Type{AF})(x::F) where {AF<:AbstractFloat,F<:FixedRational} = convert(AF, x.num) / convert(AF, denom(F))
-(::Type{I})(x::F) where {I<:Integer,F<:FixedRational} =
-    let
-        isinteger(x) || throw(InexactError(:convert, I, x))
-        convert(I, div(x.num, denom(F)))
-    end
-(::Type{Bool})(x::F) where {F<:FixedRational} =
-    let
-        iszero(x) || isone(x) || throw(InexactError(:convert, Bool, x))
-        return x.num == denom(F)
-    end
+#Fixed rational conversions
+Base.convert(::Type{F}, x::FixedRational{B}) where {B,F<:FixedRational{B}} = F(Numerator(x)) #Same-base shortcut
+Base.convert(::Type{F}, x::FixedRational) where {F<:FixedRational} = F(numerator(x)/denominator(x))
 
-Base.round(::Type{T}, x::F, r::RoundingMode=RoundNearest) where {T,F<:FixedRational} = div(convert(T, x.num), convert(T, denom(F)), r)
-Base.decompose(x::F) where {T,F<:FixedRational{T}} = (x.num, zero(T), denom(F))
-
-# Promotion with self or rational-like
-function Base.promote_rule(::Type{F1}, ::Type{F2}) where {F1<:FixedRational,F2<:FixedRational}
-    _denom(F1) == _denom(F2) ||
-        error("Refusing to promote `FixedRational` types with mixed denominators. Use `Rational` instead.")
-    return FixedRational{promote_type(eltype(F1), eltype(F2)), _denom(F1)}
+#Promotion rules:
+function Base.promote_rule(::Type{FixedRational{B1,T1}}, ::Type{FixedRational{B2,T2}}) where {B1,B2,T1,T2}
+    B1 == B2 || error("Refusing to promote `FixedRational` types with mixed denominators. Use `Rational` instead.")
+return FixedRational{B1, promote_type(T1,T2)}
 end
-function Base.promote_rule(::Type{F}, ::Type{Rational{T2}}) where {F<:FixedRational,T2}
-    return Rational{promote_type(eltype(F),T2)}
+function Base.promote_rule(::Type{FixedRational{B,I}}, ::Type{T}) where {B,I,T<:Real}
+    return promote_type(Rational{I}, T)
 end
-function Base.promote_rule(::Type{Rational{T2}}, ::Type{F}) where {F<:FixedRational,T2}
-    return Rational{promote_type(eltype(F),T2)}
+function Base.promote_rule(::Type{FixedRational{B,I}}, ::Type{Rational{T}}) where {B,I,T}
+    return Rational{promote_type(I,T)}
 end
-
-# We want to consume integers
 function Base.promote_rule(::Type{F}, ::Type{<:Integer}) where {F<:FixedRational}
     return F
 end
-function Base.promote_rule(::Type{<:Integer}, ::Type{F}) where {F<:FixedRational}
-    return F
-end
 
-# Promotion with general types promotes like a rational
-function Base.promote_rule(::Type{T}, ::Type{T2}) where {T2<:Real,T<:FixedRational}
-    return promote_type(Rational{eltype(T)}, T2)
-end
-function Base.promote_rule(::Type{T2}, ::Type{T}) where {T2<:Real,T<:FixedRational}
-    return promote_type(Rational{eltype(T)}, T2)
-end
 
-Base.string(x::FixedRational) =
-    let
-        isinteger(x) && return string(convert(eltype(x), x))
-        g = gcd(x.num, denom(x))
-        return string(div(x.num, g)) * "//" * string(div(denom(x), g))
+
+#Printing/showing
+function Base.show(io::IO, x::FixedRational{B,T}) where {B,T}
+    if isinteger(x)
+        return print(io, convert(T, x))
     end
-Base.show(io::IO, x::FixedRational) = print(io, string(x))
-
-tryrationalize(::Type{F}, x::F) where {F<:FixedRational} = x
-tryrationalize(::Type{F}, x::Union{Rational,Integer}) where {F<:FixedRational} = convert(F, x)
-tryrationalize(::Type{F}, x::Number) where {F<:FixedRational} = unsafe_fixed_rational(round(eltype(F), x * denom(F)), eltype(F), val_denom(F))
-
-# Fix method ambiguities
-Base.round(::Type{T}, x::F, r::RoundingMode=RoundNearest) where {T>:Missing, F<:FixedRational} = round(Base.nonmissingtype_checked(T), x, r)
-
-
-# Promotion ambiguities (merged in from another spot in DynamicQuantitiess)
-function Base.promote_rule(::Type{F}, ::Type{Bool}) where {F<:FixedRational}
-    return F
-end
-function Base.promote_rule(::Type{Bool}, ::Type{F}) where {F<:FixedRational}
-    return F
-end
-function Base.promote_rule(::Type{F}, ::Type{BigFloat}) where {F<:FixedRational}
-    return promote_type(Rational{eltype(F)}, BigFloat)
-end
-function Base.promote_rule(::Type{BigFloat}, ::Type{F}) where {F<:FixedRational}
-    return promote_type(Rational{eltype(F)}, BigFloat)
-end
-function Base.promote_rule(::Type{F}, ::Type{T}) where {F<:FixedRational,T<:AbstractIrrational}
-    return promote_type(Rational{eltype(F)}, T)
-end
-function Base.promote_rule(::Type{T}, ::Type{F}) where {F<:FixedRational,T<:AbstractIrrational}
-    return promote_type(Rational{eltype(F)}, T)
+    g = gcd(x.num, B)
+    print(io, div(x.num, g))
+    print(io, "//")
+    return print(io, div(B, g))
 end

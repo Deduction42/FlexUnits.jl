@@ -16,7 +16,7 @@ const UnitOrQuantity = Union{AbstractUnitLike, UnionQuantity}
     PermanentDict{K,T}
 
 A dict where any additions made are permanent and not allowed to be changed.
-This prevents astonishing behaviour from string macros, which only look up the units
+This prevents "astonishing" behaviour from string macros, which only look up the units
 at compile time. If a value was changed since the lookup, the string macro will always
 return the value looked up at compile time. Attempts to delete entries, or modify
 them will result in an error. Reassinging the same value will result in no action.
@@ -44,7 +44,7 @@ Base.get(d::PermanentDict, k, v) = get(d.data, k, v)
 Base.getindex(d::PermanentDict, k) = d.data[k]
 function Base.setindex!(d::PermanentDict, v, k)
     if haskey(d.data, k)
-        d.data[k] == v || throw(PermanentDictError("Key $(k) already exists with value $(d.data[k]), changing it to $(v) not allowed)"))
+        d.data[k] == v || throw(PermanentDictError("Key $(k) already exists. Cannot assign a different value."))
     else 
         d.data[k] = v 
     end
@@ -211,7 +211,8 @@ end
 
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     parsed = Meta.parse(str)
-    if !(parsed isa Union{Expr,Symbol})
+    
+    if !(parsed isa Union{Expr,Symbol,Nothing})
         throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as an Expr or Symbol"))
     else
         ex = uparse_expr(parsed, reg)
@@ -229,11 +230,16 @@ function qparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: Abstr
 end
 
 function uparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    ex = _parse_expr(ex, reg)
-    return :($convert($U, $ex))
+    ex_new = _parse_expr(ex, reg)
+    return :($convert($U, $ex_new))
 end
 
-function qparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where U
+function uparse_expr(ex::Nothing, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike 
+    ex_new = :($dimtype($U)()) #If expresion parsed as Nothing, return dimensionless
+    return :($convert($U, $ex_new))
+end
+
+function qparse_expr(ex::Union{Expr,Symbol}, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     Q  = RealQuantity{Float64, dimtype(U)}
     ex = _parse_expr(ex, reg)
     return :($convert($Q, ubase($ex)))

@@ -42,12 +42,12 @@ Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
 Base.:(|>)(q::UnionQuantity, u::AbstractUnitLike,) = uconvert(u, q)
 
 """
-    uconvert(utarget::AbstractUnitLike, ucurrent::AbstractUnitLike)
+    uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
 
 Produces an AffineTransform that can convert a quantity with `current`
 units to a quantity with `target` units
 """
-function uconvert(utarget::AbstractUnitLike, ucurrent::AbstractUnitLike)
+function uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
     dimension(utarget) == dimension(ucurrent) || throw(ConversionError(utarget, ucurrent))
 
     return AffineTransform(
@@ -73,7 +73,6 @@ Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 """
 ubase(q::UnionQuantity) = uconvert(dimension(q), q)
 ubase(q::UnionQuantity{<:Any,<:AbstractDimensions}) = q
-ubase(q::Number) = NoDims()
 
 """
     ustrip(u::AbstractUnitLike, q::UnionQuantity)
@@ -132,8 +131,8 @@ end
 
 # Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = (u isa U) ? u : U(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=usymbol(u))
-Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : (assert_dimension(u); D(dimension(u)))
-Base.convert(::Type{D}, u::NoDims) where {T, D<:AbstractDimensions{T}} = D{T}()
+Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : D(dimension(assert_dimension(u)))
+Base.convert(::Type{D}, u::NoDims) where D<:AbstractDimensions = D()
 
 # Converting between units and quantities ====================================================
 Base.convert(::Type{U}, q::UnionQuantity) where U<:AbstractUnits = convert(U, asunit(q))
@@ -142,9 +141,8 @@ function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:UnionQuantity{<:
     return Q(uscale(u), dimension(u))
 end
 
-closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractDimensions  = constructorof(U)(dimension(u))
-closest_unit(::Type{U}, u::AbstractUnitLike) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u))
-
+# Converting between generic numbers and quantity types 
+Base.convert(::Type{T}, q::UnionQuantity) where {T<:Number} = convert(T, dimensionless(q))
 
 # Promotion rules ======================================================
 
@@ -169,22 +167,8 @@ function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1, U2, Q1<:Un
     return narrowest_quantity(T){T, D}
 end
 
+#Promotion between quantities and numeric types
+function Base.promote_rule(::Type{N}, ::Type{UnionQuantity{T}}) where {N<:Number, T<:Number}
+    return promote_type(N,T)
+end
 
-#=
-Preliminary test code
-K  = Dimensions(temperature=1)
-°C = AffineUnits(scale=1, offset=273.15, dims=K, symbol=:°C)
-°F = AffineUnits(scale=5/9, offset=(273.15-32*5/9), dims=K, symbol=:°F)
-
-
-uconvert(°F, Quantity(-40, °C))
-uconvert(K, Quantity(0, °F))
-uconvert(°C, Quantity(-0, °F))
-
-
-convert(Quantity{Float64, ScalarUnits}, RealQuantity(-0, °F))
-convert(NumberQuantity{Float64, Dimensions}, Quantity(-0, °F))
-convert(Quantity{Float64, AffineUnits}, Quantity(-0, °F))
-convert(RealQuantity{Float64, AffineUnits}, RealQuantity(-0, °F))
-convert(RealQuantity{Float64, AffineUnits}, RealQuantity(-0.0, °F))
-=#

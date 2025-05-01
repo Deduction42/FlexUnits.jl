@@ -1,4 +1,4 @@
-const FAST_RATIONAL = FixedRational{DEFAULT_NUMERATOR_TYPE,DEFAULT_DENOM}
+const DEFAULT_RATIONAL = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}
 const DEFAULT_USYMBOL = :_
 
 abstract type AbstractUnitLike end
@@ -6,26 +6,16 @@ abstract type AbstractDimensions{P} <: AbstractUnitLike end
 abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
 abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
 
+const AbstractAffineLike{D} = Union{D, AbstractAffineUnits{D}} where D <: AbstractDimensions
 Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
 
+#=======================================================================================
+AbstractDimensions API
+=======================================================================================#
 #Dimension constructor from other types of dimensions
 function (::Type{D})(x::AbstractDimensions) where {P, D<:AbstractDimensions{P}}
     return D(map(Base.Fix1(getproperty, x), static_fieldnames(D))...)
 end
-
-@kwdef struct Dimensions{P} <: AbstractDimensions{P}
-    length::P = 0
-    mass::P = 0
-    time::P = 0
-    current::P = 0
-    temperature::P = 0
-    luminosity::P = 0
-    amount::P = 0
-end
-
-Dimensions(args...) = Dimensions{FAST_RATIONAL}(args...)
-Dimensions(d::AbstractDimensions) = Dimensions{FAST_RATIONAL}(d)
-DEFAULT_DIMENSONS = Dimensions{FAST_RATIONAL}
 
 uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
 uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
@@ -34,6 +24,35 @@ usymbol(u::AbstractDimensions) = DEFAULT_USYMBOL
 Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
 dimtype(::Type{<:AbstractUnits{D}}) where D = D
 dimtype(::Type{D}) where D<:AbstractDimensions = D
+
+
+#=======================================================================================
+Basic SI dimensions
+=======================================================================================#
+"""
+    Dimensions{P}
+
+Basic SI dimensions:
+    length = m, 
+    mass = kg, 
+    time = s, 
+    current = A, 
+    temperature = K, 
+    luminosity = cd, 
+    amount = mol
+"""
+@kwdef struct Dimensions{P} <: AbstractDimensions{P}
+    length::P = FixedRational(0)
+    mass::P = FixedRational(0)
+    time::P = FixedRational(0)
+    current::P = FixedRational(0)
+    temperature::P = FixedRational(0)
+    luminosity::P = FixedRational(0)
+    amount::P = FixedRational(0)
+end
+const DEFAULT_DIMENSONS = Dimensions{DEFAULT_RATIONAL}
+Dimensions(args...) = Dimensions{DEFAULT_RATIONAL}(args...)
+#Dimensions(d::AbstractDimensions) = Dimensions{DEFAULT_RATIONAL}(d)
 
 function unit_symbols(::Type{<:Dimensions})
     return Dimensions{Symbol}(
@@ -51,7 +70,7 @@ promote(Type{<:NoDims}, D<:AbstractDimension) will return D
 convert(Type{D}, NoDims) where D<:AbstractDimensions will return D()
 """
 struct NoDims{P} <: AbstractDimensions{P} end
-NoDims() = NoDims{FAST_RATIONAL}()
+NoDims() = NoDims{DEFAULT_RATIONAL}()
 Base.getproperty(::NoDims{P}, ::Symbol) where {P} = zero(P)
 unit_symbols(::Type{<:NoDims}) = NoDims{Symbol}()
 
@@ -95,8 +114,7 @@ julia> (ustrip(5u"°C") + ustrip(2u"°C"))*u"°C" #Strips, adds raw quantity val
 end
 
 AffineUnits(scale, offset, dims::D, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = AffineUnits{D}(scale, offset, dims, symbol)
-AffineUnits(scale, offset, dims::U, symbol=DEFAULT_USYMBOL) where {D,U<:AbstractUnits{D}} = AffineUnits{D}(scale, offset, dims, symbol)
-#AffineUnits(u::AffineUnits) = u
+AffineUnits(scale, offset, dims::AbstractUnits{D}, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = AffineUnits(scale, offset, convert(D, dims), symbol)
 
 uscale(u::AffineUnits) = u.scale
 uoffset(u::AffineUnits) = u.offset 
@@ -124,19 +142,33 @@ Quantity types
 The basic type is Quantity, which belongs to <:Any (hence it has no real hierarchy)
 Other types are "narrower" in order to slot into different parts of the number hierarchy
 =================================================================================================#
+"""
+    Quantity{T<:Any,U<:AbstractUnitLike}
 
+Generic quantity type with fields `value` and `units`
+"""
 struct Quantity{T<:Any,U<:AbstractUnitLike}
     value :: T
     units :: U
 end
 narrowest_quantity(::Type{<:Any}) = Quantity
 
+"""
+    NumberQuantity{T<:Number,U<:AbstractUnitLike}
+
+Quantity type that subtypes to Number, with fields `value` and `units`
+"""
 struct NumberQuantity{T<:Number,U<:AbstractUnitLike} <: Number
     value :: T
     units :: U
 end
 narrowest_quantity(::Type{<:Number}) = NumberQuantity
 
+"""
+    RealQuantity{T<:Real,U<:AbstractUnitLike}
+
+Quantity type that subtypes to Real, with fields `value` and `units`
+"""
 struct RealQuantity{T<:Real,U<:AbstractUnitLike} <: Real
     value :: T
     units :: U
@@ -144,6 +176,10 @@ end
 narrowest_quantity(::Type{<:Real}) = RealQuantity
 
 narrowest_quantity(x::Any) = narrowest_quantity(typeof(x))
+
+AffineUnits(scale, offset::RealQuantity, dims::AbstractDimensions, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
+AffineUnits(scale, offset::RealQuantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
+
 
 #=================================================================================================
 # Generic unions of quantities and fallbacks
