@@ -114,7 +114,7 @@ julia> (ustrip(5u"°C") + ustrip(2u"°C"))*u"°C" #Strips, adds raw quantity val
 end
 
 AffineUnits(scale, offset, dims::D, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = AffineUnits{D}(scale, offset, dims, symbol)
-AffineUnits(scale, offset, dims::U, symbol=DEFAULT_USYMBOL) where {D,U<:AbstractUnits{D}} = AffineUnits{D}(scale, offset, dims, symbol)
+AffineUnits(scale, offset, dims::AbstractUnits{D}, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = AffineUnits(scale, offset, convert(D, dims), symbol)
 
 uscale(u::AffineUnits) = u.scale
 uoffset(u::AffineUnits) = u.offset 
@@ -176,6 +176,10 @@ end
 narrowest_quantity(::Type{<:Real}) = RealQuantity
 
 narrowest_quantity(x::Any) = narrowest_quantity(typeof(x))
+
+AffineUnits(scale, offset::RealQuantity, dims::AbstractDimensions, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
+AffineUnits(scale, offset::RealQuantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
+
 
 #=================================================================================================
 # Generic unions of quantities and fallbacks

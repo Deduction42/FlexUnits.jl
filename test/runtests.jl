@@ -205,6 +205,7 @@ end
     @test typeof(u"Ω") == U
 
     @test_throws ArgumentError uparse(":x")
+    @test_throws ArgumentError qparse(":x")
     @test_throws "Symbol x not found" uparse("x")
     @test_throws "Unexpected expression" uparse("import ..Units")
     @test_throws "Unexpected expression" uparse("(m, m)")
@@ -304,6 +305,8 @@ end
     @test °C |> °F isa AffineTransform
     @test 0°C |> °F == 32°F
 
+    @test AffineUnits(dims=u"Pa") == u"Pa"
+    @test_throws NotDimensionError AffineUnits(dims=u"kPa")
 
     # Test display against errors
     celsius = AffineUnits(offset=273.15, dims=u"K")
@@ -316,8 +319,9 @@ end
     @test register_unit("K" => Dimensions(temperature=1)) isa AbstractDict # same value yields nothing for dimension
     @test_throws MethodError register_unit(u"K") # cannot register only a unit
 
-    # Cannot re-register a unit if its value changes
+    # Cannot re-register a unit if its value changes nor can we delete a unit
     @test_throws RegistryTools.PermanentDictError register_unit("°C"=>u"°F")
+    @test_throws RegistryTools.PermanentDictError delete!(UnitRegistry.UNITS, :m)
 
     # Cannot register non-parsable unit
     @test_throws ArgumentError register_unit("m/s"=>u"m/s")
@@ -480,6 +484,25 @@ end
     user_quantity = Quantity(10.0, Dimensions{FixedRational{25200,Int32}}(1, 0, 0, 0, 0, 0, 0))
     @test x == user_quantity
 end
+
+#Register a new affine unit (and verify re-registering)
+register_unit("psig" => AffineUnits(scale=uscale(u"psi"), offset=101.3u"kPa", dims=dimension(u"Pa")))
+
+@testset "Registration tests" begin
+    #Test re-registering and verify that the unit exists
+    register_unit("psig" => AffineUnits(scale=uscale(u"psi"), offset=101.3u"kPa", dims="Pa"))
+    @test 0*u"psig" == 101.3u"kPa"
+    @test q"0psig" == 101.3u"kPa"
+    
+    #Test registration for a different registry base type
+    IntDimType = Dimensions{Int32}
+    reg = RegistryTools.PermanentDict{Symbol, AffineUnits{IntDimType}}()
+    reg = RegistryTools.registry_defaults!(reg)  
+    @test reg[:m]  === AffineUnits(dims=IntDimType(length=1), symbol=:m)
+    @test reg[:kg] === AffineUnits(dims=IntDimType(mass=1), symbol=:kg)    
+end
+
+
 
 @testset "Aqua.jl" begin
     Aqua.test_all(FlexUnits)
