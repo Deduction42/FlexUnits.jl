@@ -486,11 +486,11 @@ end
 end
 
 #Register a new affine unit (and verify re-registering)
-register_unit("psig" => AffineUnits(scale=uscale(u"psi"), offset=101.3u"kPa", dims=dimension(u"Pa")))
+register_unit("psig" => AffineUnits(scale=uscale(u"psi"), offset=101.3u"kPa", dims=u"Pa"))
 
 @testset "Registration tests" begin
     #Test re-registering and verify that the unit exists
-    register_unit("psig" => AffineUnits(scale=uscale(u"psi"), offset=101.3u"kPa", dims="Pa"))
+    register_unit("psig" => AffineUnits(scale=uscale(u"psi"), offset=101.3u"kPa", dims=u"Pa"))
     @test 0*u"psig" == 101.3u"kPa"
     @test q"0psig" == 101.3u"kPa"
     
