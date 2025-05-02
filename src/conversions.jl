@@ -147,7 +147,10 @@ Base.convert(::Type{T}, q::UnionQuantity) where {T<:Number} = convert(T, dimensi
 # Promotion rules ======================================================
 
 #We assume dimension types match except for NoDims
-Base.promote_rule(::Type{D}, ::Type{<:NoDims}) where D<:AbstractDimensions = D
+function Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:NoDims}
+    return constructorof(D1){promote_type(eltype(D1), eltype(D2))}
+end
+
 function Base.promote_rule(::Type{<:Dimensions{P1}}, ::Type{<:Dimensions{P2}}) where {P1, P2}
     return Dimensions{promote_type(P1,P2)}
 end

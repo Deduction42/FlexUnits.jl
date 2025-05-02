@@ -393,7 +393,7 @@ end
     @test ustrip(q32_32) == 0.5
     @test typeof(ustrip(q)) == Float64
     @test typeof(ustrip(q32_32)) == Float32
-    @test dimension(q32_32) == dimension(q)
+    @test dimension(q32_32) == convert(typeof(dimension(q32_32)), dimension(q))
     @test typeof(convert(Quantity{Float16}, q)) == Quantity{Float16,Dimensions{Rational{Int16}}}
     @test convert(Quantity, q) === q
     @test convert(Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}, ubase(1u"kg")) isa Quantity{Float64, AffineUnits{DEFAULT_DIM_TYPE}}
@@ -413,8 +413,10 @@ end
     @test convert(AffineUnits{DEFAULT_DIM_TYPE}, 2u"°C") == AffineUnits(scale=2.0, offset=273.15, dims=dimension(u"K"))
     @test convert(Quantity{Float64, DEFAULT_DIM_TYPE}, 2u"m") === Quantity{Float64, DEFAULT_DIM_TYPE}(2.0, dimension(u"m")) 
     @test_throws NotScalarError convert(Quantity{Float64, DEFAULT_DIM_TYPE}, u"°C") 
-    @test promote_type(DEFAULT_DIM_TYPE, NoDims) == DEFAULT_DIM_TYPE
+    @test promote_type(DEFAULT_DIM_TYPE, NoDims{Int64}) == DEFAULT_DIM_TYPE
 
+    # Test that adding different dimension subtypes still works
+    @test 1*Dimensions{Int64}(length=1) + 1u"m" == 2u"m"
 
     # Automatic conversions via constructor:
     for T in [Float16, Float32, Float64, BigFloat], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
@@ -555,4 +557,11 @@ R = Ref(8.314 * u"J/(mol*K)")
     v_satp = R * (25u"°C") / (101.3u"kPa")
 end
 
-
+#Profiling diagnostic if benchmarks are off 
+#=
+v = randn(100000).*u""
+v2 = deepcopy(v)
+@profview for ii in 1:1000
+    v2 .= v.*(1.1*u"m/s")
+end
+=#

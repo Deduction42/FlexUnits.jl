@@ -27,10 +27,12 @@ Base.sqrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 2))
 Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
 Base.abs2(d::AbstractDimensions) = d^2
 
+#=
 function Base.:(==)(d1::D1, d2::D2) where {D1<:AbstractDimensions, D2<:AbstractDimensions} 
     static_fieldnames(D1) == static_fieldnames(D2)
     return all(fn->d1[fn]==d2[fn], static_fieldnames(D1))
 end
+=#
 
 #=============================================================================================
  Mathematical operations on abstract units (mostly for parsing)
