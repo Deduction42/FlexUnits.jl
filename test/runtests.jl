@@ -272,6 +272,28 @@ end
     @test qparse("0°C") == 0°C
     @test 0*uparse("°C") == 0°C
 
+    #Ambiguity tests 
+    cplx  = 1.0 + im 
+    cplxb = Complex{Bool}(true + im)
+    @test xv*cplx  === ubase(NumberQuantity(cplx, u"m/s"))
+    @test xv*cplxb === ubase(NumberQuantity(cplxb, u"m/s"))
+    @test cplx*xv  === ubase(NumberQuantity(cplx, u"m/s"))
+    @test cplxb*xv === ubase(NumberQuantity(cplxb, u"m/s"))
+
+    @test xv/cplx  === ubase(NumberQuantity(inv(cplx), u"m/s"))
+    @test xv/cplxb === ubase(NumberQuantity(inv(cplxb), u"m/s"))
+    @test cplx/xv  === ubase(NumberQuantity(cplx, inv(u"m/s")))
+    @test cplxb/xv === ubase(NumberQuantity(cplxb, inv(u"m/s")))
+
+    @test cplx + xp === cplx + 0.01
+    @test xp + cplx === cplx + 0.01
+    @test cplxb + xp === 0.01 + cplxb
+    @test xp + cplxb === 0.01 + cplxb
+
+    @test cplx - xp === cplx - 0.01
+    @test xp - cplx === 0.01 - cplx
+    @test cplxb - xp === cplxb - 0.01
+    @test xp - cplxb === 0.01 - cplxb
 
     # Constructors
     kelvin  = AffineUnits(dims=u"K")
@@ -331,6 +353,26 @@ end
     @test map_dimensions(-, dimension(u"m"), dimension(u"s"))     == Dimensions(length=1, time=-1)
     @test map_dimensions(Base.Fix1(*,2), dimension(u"m/s"))       == Dimensions(length=2, time=-2)
 
+    #Test showerror 
+    testio = IOBuffer()
+
+    showerror(testio, ConversionError(u"m/s", u"m"))
+    @test String(take!(testio)) == "ConversionError: Cannot convert unit 'm' to target unit 'm/s'. Consider multiplying 'm/s' by 's' or similar."
+
+    showerror(testio, DimensionError(dimension(u"m/s")))
+    @test String(take!(testio)) == "DimensionError: m/s is not dimensionless"
+
+    showerror(testio, DimensionError(1u"m/s"))
+    @test String(take!(testio)) == "DimensionError: 1 m/s is not dimensionless"
+
+    showerror(testio, DimensionError((dimension(u"m/s"), dimension(u"s/m"))))
+    @test String(take!(testio)) == "DimensionError: (m/s, s/m) have incompatible dimensions"
+
+    showerror(testio, NotScalarError(u"°C"))
+    @test String(take!(testio)) == "NotScalarError: °C cannot be treated as scalar, operation only valid for scalar units"
+
+    showerror(testio, NotDimensionError(u"kPa"))
+    @test String(take!(testio)) == "NotDimensionError: kPa cannot be treated as dimension, operation only valid for dimension units"
 end
 
 

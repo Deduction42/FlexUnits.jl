@@ -218,11 +218,11 @@ Return the constructor of a type T{PS...} by default it only returns T (i.e. rem
 This function can be overloaded if custom behaviour is needed
 """
 constructorof(::Type{T}) where T = Base.typename(T).wrapper
-constructorof(::Type{<:Dimensions})  = Dimensions
-constructorof(::Type{<:AffineUnits}) = AffineUnits
-constructorof(::Type{<:Quantity}) = Quantity
-constructorof(::Type{<:RealQuantity}) = RealQuantity
-constructorof(::Type{<:NumberQuantity}) = NumberQuantity
+constructorof(::Type{D}) where D<:Dimensions     = Dimensions
+constructorof(::Type{U}) where U<:AffineUnits    = AffineUnits
+constructorof(::Type{Q}) where Q<:Quantity       = Quantity
+constructorof(::Type{Q}) where Q<:RealQuantity   = RealQuantity
+constructorof(::Type{Q}) where Q<:NumberQuantity = NumberQuantity
 
 #=============================================================================================
 Errors and assertion functions
