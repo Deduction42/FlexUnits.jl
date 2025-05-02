@@ -8,6 +8,7 @@ abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end
 
 const AbstractAffineLike{D} = Union{D, AbstractAffineUnits{D}} where D <: AbstractDimensions
 Base.@pure static_fieldnames(t::Type) = Base.fieldnames(t)
+Base.eltype(::Type{<:AbstractDimensions{P}}) where P = P
 
 #=======================================================================================
 AbstractDimensions API

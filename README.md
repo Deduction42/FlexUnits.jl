@@ -32,29 +32,30 @@ import DynamicQuantities
 import Unitful
 using BenchmarkTools
 
-v1flex = ubase.([1.0u"m/s", 1.0u"J/kg", 1.0u"A/V"])
 v1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"J/kg", 1.0*Unitful.u"A/V"]
 v1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"J/kg", 1.0*DynamicQuantities.u"A/V"]
+v1flex = ubase.([1.0u"m/s", 1.0u"J/kg", 1.0u"A/V"])
 
 @btime sum(x->x^0.0, v1uni)
-  7.375 μs (86 allocations: 3.92 KiB)
-@btime sum(x->x^0.0, v1flex)
-  145.192 ns (1 allocation: 48 bytes)
+  7.850 μs (86 allocations: 3.92 KiB)
 @btime sum(x->x^0.0, v1dyn)
   105.173 ns (1 allocation: 48 bytes)
+@btime sum(x->x^0.0, v1flex)
+  106.882 ns (1 allocation: 48 bytes)
+
 ```
-Notice the 'μ' instead of the 'n' on the Unitful result, FlexUnits offers a 50x speedup in this case (DynamicQuantities offers a similar boost). In the case where all types can be inferred, performance is more or less the same, with Unitful being slightly better than the others.
+Notice the 'μ' instead of the 'n' on the Unitful result, FlexUnits/DynamicQuantities both offer a ~75x speedup in this case (where unit type cannot be inferred). In the case where all types can be inferred, performance is more or less the same in terms of execution time (but Unitful allocates fewer bytes).
 ```
-t1flex = ubase.([1.0u"m/s", 1.0u"m/s", 1.0u"m/s"])
 t1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s"]
 t1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s"]
+t1flex = ubase.([1.0u"m/s", 1.0u"m/s", 1.0u"m/s"])
 
-@btime sum(x->x^0, t1uni)
-  88.518 ns (2 allocations: 64 bytes)
-@btime sum(x->x^0, t1flex)
-  137.100 ns (1 allocation: 48 bytes)
-@btime sum(x->x^0, t1dyn)
-  115.335 ns (1 allocation: 48 bytes)
+@btime sum(x->x*x, t1uni)
+  86.902 ns (1 allocation: 16 bytes)
+@btime sum(x->x*x, t1dyn)
+  86.472 ns (1 allocation: 48 bytes)
+@btime sum(x->x*x, t1flex)
+  86.260 ns (1 allocation: 48 bytes)
 ```
 
 ## General Use
@@ -88,5 +89,5 @@ FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRation
   :μV     => μV
 
 julia> register_unit("bbl" => 22.5*u"m^3")
-ERROR: PermanentDictError: Key bbl already exists with value bbl, changing it to bbl not allowed
+ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
 ```
