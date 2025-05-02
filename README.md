@@ -89,5 +89,5 @@ FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRation
   :μV     => μV
 
 julia> register_unit("bbl" => 22.5*u"m^3")
-ERROR: PermanentDictError: Key bbl already exists with value bbl, changing it to bbl not allowed
+ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
 ```

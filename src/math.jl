@@ -27,12 +27,6 @@ Base.sqrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 2))
 Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
 Base.abs2(d::AbstractDimensions) = d^2
 
-#=
-function Base.:(==)(d1::D1, d2::D2) where {D1<:AbstractDimensions, D2<:AbstractDimensions} 
-    static_fieldnames(D1) == static_fieldnames(D2)
-    return all(fn->d1[fn]==d2[fn], static_fieldnames(D1))
-end
-=#
 
 #=============================================================================================
  Mathematical operations on abstract units (mostly for parsing)
@@ -179,32 +173,3 @@ for f in (:iszero, :signbit, :angle)
     @eval Base.$f(q::UnionQuantity) = (assert_scalar(unit(q)); $f(ustrip_base(q)))
 end
 
-#=
-#Preliminary test code
-K  = Dimensions(temperature=1)
-°C = AffineUnits(scale=1, offset=273.15, dims=K, symbol=:°C)
-°F = AffineUnits(scale=5/9, offset=(273.15-32*5/9), dims=K, symbol=:°F)
-
-
-uconvert(°F, Quantity(-40, °C))
-uconvert(K, Quantity(0, °F))
-uconvert(°C, Quantity(-0, °F))
-
-
-convert(Quantity{Float64, ScalarUnits}, RealQuantity(-0, °F))
-convert(NumberQuantity{Float64, Dimensions}, Quantity(-0, °F))
-convert(Quantity{Float64, AffineUnits}, Quantity(-0, °F))
-convert(RealQuantity{Float64, AffineUnits}, RealQuantity(-0, °F))
-convert(RealQuantity{Float64, AffineUnits}, RealQuantity(-0.0, °F))
-=#
-
-
-
-
-#Test code
-#=
-velocity = Dimensions(length=1, time=-1)
-velocity*velocity
-velocity^2
-velocity^(-0.5)
-=#

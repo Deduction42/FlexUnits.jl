@@ -96,8 +96,6 @@ function Base.promote_rule(::Type{F}, ::Type{<:Integer}) where {F<:FixedRational
     return F
 end
 
-
-
 #Printing/showing
 function Base.show(io::IO, x::FixedRational{B,T}) where {B,T}
     if isinteger(x)
