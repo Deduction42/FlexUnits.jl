@@ -44,7 +44,7 @@ v1flex = ubase.([1.0u"m/s", 1.0u"J/kg", 1.0u"A/V"])
   106.882 ns (1 allocation: 48 bytes)
 
 ```
-Notice the 'μ' instead of the 'n' on the Unitful result, FlexUnits/DynamicQuantities both offer a ~75x speedup in this case (where unit type cannot be inferred). In the case where all types can be inferred, performance is more or less the same in terms of execution time (but Unitful allocates fewer bytes).
+Notice the 'μ' instead of the 'n' on the Unitful result, FlexUnits and DynamicQuantities both offer a ~75x speedup in this case (where unit type cannot be inferred). In the case where all types *can* be inferred, performance is more or less the same in terms of execution time (but Unitful allocates fewer bytes).
 ```
 t1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s"]
 t1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s"]
