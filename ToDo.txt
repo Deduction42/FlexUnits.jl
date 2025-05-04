@@ -1,8 +1,14 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-0. Fix uninformative unit display in "unit re-registration error"
-1. Add more tests and a coverage badge (including Aqua.jl)
+1. Resolve some design decisions:
+    -  In math, attempt to remove "Number" from functions that apply to matrices (try to use "Any" instead)
+    -  Find a workable solution to the "zero" problem for dynamic units
+        -  You can't infer the dimension with just the dimension type, we need a placeholder for a "free agent dimension"
+            -  This "free agent" should probably AbstractDimensions{Missing}
+            -  Union{Missing, Number} is a natural promotion type
+                -  Multiplcation operations would get nullified which is exactly what "zero" does
+            -  `$quantity + $free_agent_zero` should return the original `$quantity`
 2. Build out documentation and a docs badge
     -  Include all-stops-out tutorial on defining a new dimension "RadDims"
     -  Add angle to the dimension list
