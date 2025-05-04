@@ -163,7 +163,7 @@ struct NumberQuantity{T<:Number,U<:AbstractUnitLike} <: Number
     value :: T
     units :: U
 end
-narrowest_quantity(::Type{<:Number}) = NumberQuantity
+narrowest_quantity(::Type{<:Number}) = Quantity
 
 """
     RealQuantity{T<:Real,U<:AbstractUnitLike}
@@ -174,7 +174,7 @@ struct RealQuantity{T<:Real,U<:AbstractUnitLike} <: Real
     value :: T
     units :: U
 end
-narrowest_quantity(::Type{<:Real}) = RealQuantity
+narrowest_quantity(::Type{<:Real}) = Quantity
 
 narrowest_quantity(x::Any) = narrowest_quantity(typeof(x))
 
@@ -185,7 +185,7 @@ AffineUnits(scale, offset::RealQuantity, dims::AbstractUnits, symbol=DEFAULT_USY
 #=================================================================================================
 # Generic unions of quantities and fallbacks
 =================================================================================================#
-const UnionQuantity{T,U} = Union{Quantity{T,U}, NumberQuantity{T,U}, RealQuantity{T,U}}
+const UnionQuantity{T,U} = Quantity{T,U} #Union{Quantity{T,U}, NumberQuantity{T,U}, RealQuantity{T,U}}
 
 #Generic fallback constructors
 (::Type{Q})(v0, u) where {T, Q<:UnionQuantity{T}} = constructorof(Q)(convert(T, v0), u)

@@ -31,8 +31,8 @@ Base.abs2(d::AbstractDimensions) = d^2
 #=============================================================================================
  Mathematical operations on abstract units (mostly for parsing)
 =============================================================================================#
-Base.:*(n::Number, u::AbstractUnitLike) = quantity(n, u)
-Base.:/(n::Number, u::AbstractUnitLike) = quantity(n, inv(u))
+Base.:*(n::Any, u::AbstractUnitLike) = quantity(n, u)
+Base.:/(n::Any, u::AbstractUnitLike) = quantity(n, inv(u))
 
 Base.:*(q::UnionQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)*u)
 Base.:/(q::UnionQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)/u)
@@ -112,23 +112,23 @@ function Base.:(≈)(q1::UnionQuantity, q2::UnionQuantity)
     return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
 end
 
-Base.:+(q::UnionQuantity, n::Number) = dimensionless(q) + n 
-Base.:+(n::Number, q::UnionQuantity) = dimensionless(q) + n
+Base.:+(q::UnionQuantity, n::Any) = dimensionless(q) + n 
+Base.:+(n::Any, q::UnionQuantity) = dimensionless(q) + n
 Base.:+(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(+, ubase(q1), ubase(q2))
 Base.:+(q1::UnionQuantity, qN::UnionQuantity...) = apply2quantities(+, q1, qN...)
 
-Base.:-(q::UnionQuantity, n::Number) = dimensionless(q) - n 
-Base.:-(n::Number, q::UnionQuantity) = n - dimensionless(q)
+Base.:-(q::UnionQuantity, n::Any) = dimensionless(q) - n 
+Base.:-(n::Any, q::UnionQuantity) = n - dimensionless(q)
 Base.:-(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(-, ubase(q1), ubase(q2))
 Base.:-(q1::UnionQuantity) = apply2quantities(-, ubase(q1))
 
-Base.:*(q0::UnionQuantity, n::Number) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
-Base.:*(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
+Base.:*(q0::UnionQuantity, n::Any) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
+Base.:*(n::Any, q0::UnionQuantity) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
 Base.:*(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(*, q1, q2)
 Base.:*(q1::UnionQuantity, qN::UnionQuantity...) = apply2quantities(*, q1, qN...)
 
-Base.:/(q0::UnionQuantity, n::Number) = (q = ubase(q0); quantity(ustrip(q)/n, unit(q)))
-Base.:/(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(n/ustrip(q), inv(unit(q))))
+Base.:/(q0::UnionQuantity, n::Any) = (q = ubase(q0); quantity(ustrip(q)/n, unit(q)))
+Base.:/(n::Any, q0::UnionQuantity) = (q = ubase(q0); quantity(n/ustrip(q), inv(unit(q))))
 Base.:/(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(/, q1, q2)
 Base.:inv(q::UnionQuantity) = apply2quantities(inv, q)
 
