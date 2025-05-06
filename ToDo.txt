@@ -2,10 +2,6 @@ This package should look like Unitful.jl but behave like DynamicQuantities.jl un
 
 Tasks:
 1. Resolve some design decisions:
-    -  Remove "number" subtyping for Quantity, it unleashes "anbiguity hell" for anyone trying to monkey-patch mathematical operations
-        -  Simply monkey-patch functions that aren't general enough for Quantity 
-        -  High-level monkey-patching for "number" functions removes burden of unneccessary dimension tracking
-        -  Many operations (like Array) are already general enough
     -  Define ustrip(f, u, args...)
         -  Useful for extending functions that don't use quantities
     -  Find a workable solution to the "zero" problem for dynamic units
@@ -14,6 +10,10 @@ Tasks:
             -  Union{Missing, Number} is a natural promotion type
                 -  Multiplcation operations would get nullified which is exactly what "zero" does
             -  `$quantity + $free_agent_zero` should return the original `$quantity`
+    -  Remove "number" subtyping for Quantity, it unleashes "anbiguity hell" for anyone trying to extend mathematical operations
+        -  Simply extend functions that aren't general enough for Quantity 
+        -  High-level extensions removes burden of unneccessary dimension tracking
+        -  Many operations (like Array) are already general enough
 2. Build out documentation and a docs badge
     -  Include all-stops-out tutorial on defining a new dimension "RadDims"
     -  Add angle to the dimension list
