@@ -6,6 +6,8 @@ Tasks:
         -  Simply monkey-patch functions that aren't general enough for Quantity 
         -  High-level monkey-patching for "number" functions removes burden of unneccessary dimension tracking
         -  Many operations (like Array) are already general enough
+    -  Define ustrip(f, u, args...)
+        -  Useful for extending functions that don't use quantities
     -  Find a workable solution to the "zero" problem for dynamic units
         -  You can't infer the dimension with just the dimension type, we need a placeholder for a "free agent dimension"
             -  This "free agent" should probably AbstractDimensions{Missing}
