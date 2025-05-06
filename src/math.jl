@@ -83,11 +83,11 @@ end
 """
     dimensionalize(f, args::UnionQuantity...)
 
-Converts all arguments to base units, and applies `f` to values and dimensions
-returns the narrowest possible quanity (usually RealQuantity). Useful for defining 
-new functions for quantities 
+Converts all arguments to base units, and applies `f` to values and dimensions,
+then returns the associated quantity. Useful for extending functions to quantities
     
-Thus, in order to support `f` for quantities, simply define 
+In order to support `f` for quantities, simply define `f` for dimensions 
+(as the expected return dimension) then use dimensionalize on `f` as follows:
 
 f(dims::AbstractDimensions...)
 f(args::UnionQuantity...) = dimensionalize(f, args...)
