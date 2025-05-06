@@ -1,7 +1,7 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-1. Resolve some design decisions:
+1. Patch some gaps:
     -  Define ustrip(f, u, args...)
         -  Useful for extending functions that don't use quantities
     -  Find a workable solution to the "zero" problem for dynamic units
@@ -10,22 +10,22 @@ Tasks:
             -  Union{Missing, Number} is a natural promotion type
                 -  Multiplcation operations would get nullified which is exactly what "zero" does
             -  `$quantity + $free_agent_zero` should return the original `$quantity`
-    -  Remove "number" subtyping for Quantity, it unleashes "anbiguity hell" for anyone trying to extend mathematical operations
-        -  Simply extend functions that aren't general enough for Quantity 
-        -  High-level extensions removes burden of unneccessary dimension tracking
-        -  Many operations (like Array) are already general enough
-2. Build out documentation and a docs badge
+2. Remove "number" subtyping for Quantity, it unleashes "anbiguity hell" for anyone trying to extend mathematical operations
+    -  Simply extend functions that aren't general enough for Quantity 
+    -  High-level extensions removes burden of unneccessary dimension tracking
+    -  Many operations (like Array) are already general enough
+3. Build out documentation and a docs badge
     -  Include all-stops-out tutorial on defining a new dimension "RadDims"
     -  Add angle to the dimension list
     -  Create a new unit registry with that dimension 
     -  Re-tool sin, cos, tan rules on this particular dimension
-3. Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
+4. Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
     - Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
     - This can be done without documentation 
         - Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         - Iterate over registry and list other units that match the query dimension
-4. Announce the package
-5. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
+5. Announce the package
+6. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
 
 
 import DynamicQuantities
