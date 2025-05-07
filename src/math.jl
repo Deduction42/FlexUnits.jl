@@ -81,7 +81,7 @@ end
  Mathematical operations on quantities
 =============================================================================================#
 """
-    apply2quantities(f, args::UnionQuantity...)
+    dimensionalize(f, args::UnionQuantity...)
 
 Converts all arguments to base units, and applies `f` to values and dimensions
 returns the narrowest possible quanity (usually RealQuantity). Useful for defining 
@@ -90,9 +90,9 @@ new functions for quantities
 Thus, in order to support `f` for quantities, simply define 
 
 f(dims::AbstractDimensions...)
-f(args::UnionQuantity...) = apply2quantities(f, args...)
+f(args::UnionQuantity...) = dimensionalize(f, args...)
 """
-@inline function apply2quantities(f, args::UnionQuantity...)
+@inline function dimensionalize(f, args::UnionQuantity...)
     baseargs = map(ubase, args)
     basevals = map(ustrip, baseargs)
     basedims = map(unit, baseargs)
@@ -114,32 +114,32 @@ end
 
 Base.:+(q::UnionQuantity, n::Number) = dimensionless(q) + n 
 Base.:+(n::Number, q::UnionQuantity) = dimensionless(q) + n
-Base.:+(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(+, ubase(q1), ubase(q2))
-Base.:+(q1::UnionQuantity, qN::UnionQuantity...) = apply2quantities(+, q1, qN...)
+Base.:+(q1::UnionQuantity, q2::UnionQuantity) = dimensionalize(+, q1, q2)
+Base.:+(q1::UnionQuantity, qN::UnionQuantity...) = dimensionalize(+, q1, qN...)
 
 Base.:-(q::UnionQuantity, n::Number) = dimensionless(q) - n 
 Base.:-(n::Number, q::UnionQuantity) = n - dimensionless(q)
-Base.:-(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(-, ubase(q1), ubase(q2))
-Base.:-(q1::UnionQuantity) = apply2quantities(-, ubase(q1))
+Base.:-(q1::UnionQuantity, q2::UnionQuantity) = dimensionalize(-, q1, q2)
+Base.:-(q1::UnionQuantity) = dimensionalize(-, q1)
 
 Base.:*(q0::UnionQuantity, n::Number) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
 Base.:*(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
-Base.:*(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(*, q1, q2)
-Base.:*(q1::UnionQuantity, qN::UnionQuantity...) = apply2quantities(*, q1, qN...)
+Base.:*(q1::UnionQuantity, q2::UnionQuantity) = dimensionalize(*, q1, q2)
+Base.:*(q1::UnionQuantity, qN::UnionQuantity...) = dimensionalize(*, q1, qN...)
 
 Base.:/(q0::UnionQuantity, n::Number) = (q = ubase(q0); quantity(ustrip(q)/n, unit(q)))
 Base.:/(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(n/ustrip(q), inv(unit(q))))
-Base.:/(q1::UnionQuantity, q2::UnionQuantity) = apply2quantities(/, q1, q2)
-Base.:inv(q::UnionQuantity) = apply2quantities(inv, q)
+Base.:/(q1::UnionQuantity, q2::UnionQuantity) = dimensionalize(/, q1, q2)
+Base.:inv(q::UnionQuantity) = dimensionalize(inv, q)
 
 for NT in (Number, Complex, Real, Rational, Integer) #Address potential ambiguities
-    @eval Base.:^(q::UnionQuantity, p::$NT) = apply2quantities(Base.Fix2(^, p), q)
+    @eval Base.:^(q::UnionQuantity, p::$NT) = dimensionalize(Base.Fix2(^, p), q)
 end
 
-@inline Base.literal_pow(::typeof(^), q::UnionQuantity, ::Val{p}) where {p} = apply2quantities(x->Base.literal_pow(^, x, Val(dimensionless(p))), q)
+@inline Base.literal_pow(::typeof(^), q::UnionQuantity, ::Val{p}) where {p} = dimensionalize(x->Base.literal_pow(^, x, Val(dimensionless(p))), q)
 
-Base.sqrt(q::UnionQuantity) = apply2quantities(sqrt, q)
-Base.cbrt(q::UnionQuantity) = apply2quantities(cbrt, q)
+Base.sqrt(q::UnionQuantity) = dimensionalize(sqrt, q)
+Base.cbrt(q::UnionQuantity) = dimensionalize(cbrt, q)
 
 
 #Functions that return the same unit
@@ -148,7 +148,7 @@ for f in (
         :transpose, :significand, :zero, :one, :typemax
     )
     @eval Base.$f(u::AbstractDimensions) = u
-    @eval Base.$f(q::UnionQuantity) = apply2quantities($f, q)
+    @eval Base.$f(q::UnionQuantity) = dimensionalize($f, q)
 end
 
 #Single-argument funtions that require dimensionless input and produce dimensionless output
@@ -160,7 +160,7 @@ for f in (
         :expm1, :frexp, :exponent,
     )
     @eval Base.$f(u::AbstractDimensions) = dimensionless(u)
-    @eval Base.$f(q::UnionQuantity) = apply2quantities($f, q)
+    @eval Base.$f(q::UnionQuantity) = dimensionalize($f, q)
 end
 
 #Single-argument functions that only operate on values
