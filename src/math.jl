@@ -15,7 +15,7 @@ Useful for defining mathematical operations for dimensions
     )
 end
 
-Base.:+(arg1::AbstractDimensions, args::AbstractDimensions...) = firstequal(arg1, args...)
+Base.:+(arg1::AbstractDimensions, arg2::AbstractDimensions...) = firstequal(arg1, arg2...)
 Base.:-(arg1::AbstractDimensions, args::AbstractDimensions...) = firstequal(arg1, args...)
 Base.:*(arg1::AbstractDimensions, args::AbstractDimensions...) = map_dimensions(+, arg1, args...)
 Base.:/(arg1::AbstractDimensions, args::AbstractDimensions...) = map_dimensions(-, arg1, args...)
@@ -27,6 +27,12 @@ Base.sqrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 2))
 Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
 Base.abs2(d::AbstractDimensions) = d^2
 
+#Determine if dimensions are missing 
+missingdims(::Type{<:AbstractDimensions{<:Missing}}) = true
+missingdims(::Type{<:AbstractDimensions}) = false
+missingdims(::Type{<:AbstractUnits{D}}) where D = missingdims(D)
+missingdims(::UnionQuantity{T,U}) where {T,U} = missingdims(U)
+missingdims(obj) = missingdims(typeof(obj))
 
 #=============================================================================================
  Mathematical operations on abstract units (mostly for parsing)
@@ -65,14 +71,8 @@ Base.:(==)(u1::AbstractAffineUnits, u2::AbstractAffineUnits) = (uscale(u1) == us
 
 @inline firstequal(arg1::AbstractUnitLike) = arg1
 
-@inline function firstequal(arg1::AbstractUnitLike, arg2::AbstractUnitLike)
-    (new1, new2) = promote(arg1, arg2)
-    (new1 == new2) || throw(DimensionError((arg1, arg2)))
-    return new1 
-end
-
-@inline function firstequal(arg1::AbstractUnitLike, arg2::AbstractUnitLike, args::AbstractUnitLike...) 
-    newargs = promote(arg1, arg2, args...)
+@inline function firstequal(arg1::AbstractUnitLike, arg2::AbstractUnitLike, argN::AbstractUnitLike...)
+    newargs = promote(filter(!missingdims, (arg1, arg2, argN...))...)
     return allequal(newargs) ? first(newargs) : throw(DimensionError(args))
 end
 
@@ -140,12 +140,21 @@ end
 
 Base.sqrt(q::UnionQuantity) = dimensionalize(sqrt, q)
 Base.cbrt(q::UnionQuantity) = dimensionalize(cbrt, q)
+Base.abs2(q::UnionQuantity) = dimensionalize(abs2, q)
+
+#zero on a quantity type will have missing dimensions
+function Base.zero(::Type{D}) where D<:AbstractDimensions
+    dimvals = map(x->missing, dimension_names(D))
+    return constructorof(D)(dimvals...)
+end
+Base.zero(::Type{<:UnionQuantity{T, D}}) where {T, D<:AbstractDimensions} = quantity(zero(T), zero(D))
+Base.zero(::Type{<:UnionQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = quantity(zero(T), zero(D))
 
 
 #Functions that return the same unit
 for f in (
         :float, :abs, :real, :imag, :conj, :adjoint,
-        :transpose, :significand, :zero, :one, :typemax
+        :transpose, :significand, :zero, :oneunit, :typemax
     )
     @eval Base.$f(u::AbstractDimensions) = u
     @eval Base.$f(q::UnionQuantity) = dimensionalize($f, q)
@@ -164,7 +173,7 @@ for f in (
 end
 
 #Single-argument functions that only operate on values
-for f in (:isfinite, :isinf, :isnan, :isreal, :isempty)
+for f in (:isfinite, :isinf, :isnan, :isreal, :isempty, :one)
     @eval Base.$f(q::UnionQuantity) = $f(ustrip(q))
 end
 

@@ -73,6 +73,11 @@ Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 """
 ubase(q::UnionQuantity) = uconvert(dimension(q), q)
 ubase(q::UnionQuantity{<:Any,<:AbstractDimensions}) = q
+function ubase(q::UnionQuantity{<:Any,<:AbstractAffineUnits})
+    u = unit(q)
+    trans = AffineTransform(scale=uscale(u), offset=uoffset(u))
+    return quantity(transform(ustrip(q), trans), dimension(u))
+end 
 
 """
     ustrip(u::AbstractUnitLike, q::UnionQuantity)
