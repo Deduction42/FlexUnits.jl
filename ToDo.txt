@@ -2,11 +2,11 @@ This package should look like Unitful.jl but behave like DynamicQuantities.jl un
 
 Tasks:
 1. Patch some gaps:
-    -  Define ustrip(f, u, args...)
-        -  Useful for extending functions that don't use quantities
     -  Find a workable solution to the "zero" problem for dynamic units
         -  You can't infer the dimension with just the dimension type, we need a placeholder for a "free agent dimension"
             -  This "free agent" should probably AbstractDimensions{Missing}
+                -  ubase should work on on Quantity{T, AbstractUnits{AbstractDimensions{Missing}}}
+                -  we just need to define "zero" for Quantity{T, AbstractUnits{<:D}} and Quantity{T, AbstractDimensions}
             -  Union{Missing, Number} is a natural promotion type
                 -  Multiplcation operations would get nullified which is exactly what "zero" does
             -  `$quantity + $free_agent_zero` should return the original `$quantity`
