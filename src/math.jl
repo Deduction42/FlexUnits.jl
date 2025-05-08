@@ -15,7 +15,7 @@ Useful for defining mathematical operations for dimensions
     )
 end
 
-Base.:+(arg1::AbstractDimensions, arg2::AbstractDimensions...) = firstequal(arg1, arg2...)
+Base.:+(arg1::AbstractDimensions, args::AbstractDimensions...) = firstequal(arg1, args...)
 Base.:-(arg1::AbstractDimensions, args::AbstractDimensions...) = firstequal(arg1, args...)
 Base.:*(arg1::AbstractDimensions, args::AbstractDimensions...) = map_dimensions(+, arg1, args...)
 Base.:/(arg1::AbstractDimensions, args::AbstractDimensions...) = map_dimensions(-, arg1, args...)
@@ -144,12 +144,23 @@ Base.abs2(q::UnionQuantity) = dimensionalize(abs2, q)
 
 #zero on a quantity type will have missing dimensions
 function Base.zero(::Type{D}) where D<:AbstractDimensions
-    dimvals = map(x->missing, dimension_names(D))
-    return constructorof(D)(dimvals...)
+    #dimvals = map(x->missing, dimension_names(D))
+    #return constructorof(D)(dimvals...)
+    return D()
 end
 Base.zero(::Type{<:UnionQuantity{T, D}}) where {T, D<:AbstractDimensions} = quantity(zero(T), zero(D))
 Base.zero(::Type{<:UnionQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = quantity(zero(T), zero(D))
+Base.one(::Type{<:UnionQuantity{T}}) where T = one(T) #unitless
+Base.oneunit(::Type{<:UnionQuantity{T,D}}) where {T,D} = quantity(one(T), D()) #unitless with type
 
+#Comparison functions
+for f in (:<, :>, :<=, :>=)
+    @eval function Base.$f(q1::UnionQuantity, q2::UnionQuantity)
+        (b1, b2) = (ubase(q1), ubase(q2))
+        unit(b1) == unit(b2) || throw(DimensionError(b1, b2))
+        return $f(ustrip(b1), ustrip(b2))
+    end
+end
 
 #Functions that return the same unit
 for f in (
