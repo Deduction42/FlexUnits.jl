@@ -3,7 +3,8 @@ This package should look like Unitful.jl but behave like DynamicQuantities.jl un
 Tasks:
 1. Patch some gaps:
     -  Revert the "missing" dimension type, "zero" should just produce a dimensionless quantity if no units are given
-        -  zero(::Quantity{T,D}) = quantity(zero(T), D())  #unitless
+        -  zero(::Quantity{T,D}) = quantity(zero(T), D())  #unitless with type
+        -  zero(::Quantity{T,<:AbstractUnits{D}}) = quantity(zero(T), D()) #unitless with type
     -  Find a workable solution to the "oneunit" problem for dynamic units
         -  one(::Quantity{T}) = one(T) #unitless
         -  oneunit(::Quantity{T,D}) = quantity(one(T), D()) #unitless with type
