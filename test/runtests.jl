@@ -353,6 +353,12 @@ end
     @test map_dimensions(-, dimension(u"m"), dimension(u"s"))     == Dimensions(length=1, time=-1)
     @test map_dimensions(Base.Fix1(*,2), dimension(u"m/s"))       == Dimensions(length=2, time=-2)
 
+    # Parsing tests 
+    @test u"1.0" == u""
+    @test q"5 kg/s" == 5u"kg/s"
+    @test uparse("1.0") == u""
+    @test qparse("10 km/hr") == 10*u"km/hr"
+
     #Test showerror 
     testio = IOBuffer()
 
