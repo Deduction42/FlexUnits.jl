@@ -64,7 +64,7 @@ function Base.show(io::IO, u::AbstractUnits; pretty=PRETTY_DIM_OUTPUT[])
     return Base.show_default(io, u)
 end
     
-function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions
+function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<:AbstractDimensions{<:Real}
     dimnames = collect(static_fieldnames(D))
     dimunits = unit_symbols(D)
 
@@ -80,8 +80,8 @@ function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractD
         end
     end
 
-    num = filter(k-> d[k]>0, dimnames)
-    den = filter(k-> d[k]<0, dimnames)
+    num = filter(k-> !ismissing(d[k]) && (d[k]>0), dimnames)
+    den = filter(k-> !ismissing(d[k]) && (d[k]<0), dimnames)
 
     if isempty(num) & isempty(den)
     elseif isempty(den)
@@ -96,6 +96,15 @@ function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractD
     end
 
     return nothing
+end
+
+function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions{<:Union{<:Real,Missing}}
+    return show(io, missing)
+end
+
+function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions
+    vals = map(fn->fn=>getproperty(d,fn), dimension_names(D))
+    return show(io, vals)
 end
 
 function _parsable_print_quantity(io::IO, q::UnionQuantity)

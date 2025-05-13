@@ -16,7 +16,7 @@ export Dimensions, NoDims, AffineUnits, Quantity, RealQuantity, NumberQuantity, 
 export RegistryTools, UnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units
 export assert_scalar, assert_dimension, assert_dimensionless
-export apply2quantities, quantity, narrowest, ustrip, unit
+export dimensionalize, quantity, narrowest, ustrip, unit
 export ubase, uconvert, ustrip_base, ustrip_dimensionless
 
 

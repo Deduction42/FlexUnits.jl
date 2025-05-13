@@ -26,7 +26,6 @@ Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
 dimtype(::Type{<:AbstractUnits{D}}) where D = D
 dimtype(::Type{D}) where D<:AbstractDimensions = D
 
-
 #=======================================================================================
 Basic SI dimensions
 =======================================================================================#
