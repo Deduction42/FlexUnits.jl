@@ -12,6 +12,10 @@ Tasks:
     -  Simply extend functions that aren't general enough for Quantity 
     -  High-level extensions removes burden of unneccessary dimension tracking
     -  Many operations (like Array) are already general enough
+3. Create a BlackBoxQuantity{T,UI,UO}
+    -  A "Black Box" that requires units in UI and applies units UO to the result
+    -  UI/UO can be any object that contains unit information (like a vector of units)
+    -  f(obj::BlackBoxQuantity, x) = quantity(f(ustrip(obj.u_in, x)), obj.u_out)
 3. Build out documentation and a docs badge
     -  Include all-stops-out tutorial on defining a new dimension "RadDims"
     -  Add angle to the dimension list
