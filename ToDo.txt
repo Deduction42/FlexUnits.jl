@@ -1,33 +1,39 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-1. Patch some gaps:
+1.  Patch some gaps:
     -  Revert the "missing" dimension type, "zero" should just produce a dimensionless quantity if no units are given
         -  zero(::Quantity{T,D}) = quantity(zero(T), D())  #unitless with type
         -  zero(::Quantity{T,<:AbstractUnits{D}}) = quantity(zero(T), D()) #unitless with type
     -  Find a workable solution to the "oneunit" problem for dynamic units
         -  one(::Quantity{T}) = one(T) #unitless
         -  oneunit(::Quantity{T,D}) = quantity(one(T), D()) #unitless with type
-2. Remove "number" subtyping for Quantity, it unleashes "anbiguity hell" for anyone trying to extend mathematical operations
-    -  Simply extend functions that aren't general enough for Quantity 
-    -  High-level extensions removes burden of unneccessary dimension tracking
-    -  Many operations (like Array) are already general enough
-3. Create a BlackBoxQuantity{T,UI,UO}
-    -  A "Black Box" that requires units in UI and applies units UO to the result
-    -  UI/UO can be any object that contains unit information (like a vector of units)
-    -  f(obj::BlackBoxQuantity, x) = quantity(f(ustrip(obj.u_in, x)), obj.u_out)
-3. Build out documentation and a docs badge
-    -  Include all-stops-out tutorial on defining a new dimension "RadDims"
-    -  Add angle to the dimension list
-    -  Create a new unit registry with that dimension 
-    -  Re-tool sin, cos, tan rules on this particular dimension
-4. Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
-    - Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
-    - This can be done without documentation 
-        - Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
-        - Iterate over registry and list other units that match the query dimension
-5. Announce the package
-6. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
+2.  Remove "number" subtyping for Quantity, it unleashes "anbiguity hell" for anyone trying to extend mathematical operations
+    -   Simply extend functions that aren't general enough for Quantity 
+        -   High-level extensions removes burden of unneccessary dimension tracking
+        -   Many operations (like Array) are already general enough
+    -   Quantity should have field "unit" not "units"
+3.  Create a UnitfulBlackBox{T,UI,UO}: {value::T, units::Pair{UI,UO}}
+    -   A "Black Box" that requires inputs in units UI and applies units UO to the result
+    -   UI/UO can be any object that contains unit information (like a vector of units)
+    -   function apply_units(obj::UnitfulBlackBox{<:Function}, x::Quantity) 
+            (ui, uo) = unit(obj)
+            f = ustrip(obj)
+            return quantity(f(ustrip(ui, x)), uo)
+        end
+    -   We can even make UnitfulBlackBox(f::Function, UI=>UO) callable through apply_units
+4.  Build out documentation and a docs badge
+    -   Include all-stops-out tutorial on defining a new dimension "RadDims"
+    -   Add angle to the dimension list
+    -   Create a new unit registry with that dimension 
+    -   Re-tool sin, cos, tan rules on this particular dimension
+5.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
+    -   Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
+    -   This can be done without documentation 
+        -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
+        -   Iterate over registry and list other units that match the query dimension
+6. Announce the package
+7. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
 
 
 import DynamicQuantities
