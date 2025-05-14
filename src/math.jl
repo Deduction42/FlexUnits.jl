@@ -30,11 +30,11 @@ Base.abs2(d::AbstractDimensions) = d^2
 #=============================================================================================
  Mathematical operations on abstract units (mostly for parsing)
 =============================================================================================#
-Base.:*(n::Number, u::AbstractUnitLike) = quantity(n, u)
-Base.:/(n::Number, u::AbstractUnitLike) = quantity(n, inv(u))
+Base.:*(x, u::AbstractUnitLike) = quantity(x, u)
+Base.:/(x, u::AbstractUnitLike) = quantity(x, inv(u))
 
-Base.:*(q::UnionQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)*u)
-Base.:/(q::UnionQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)/u)
+Base.:*(q::AbstractQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)*u)
+Base.:/(q::AbstractQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)/u)
 
 function Base.:*(u1::U, uN::U...) where U <: AbstractUnits
     return constructorof(U)(scale=*(map(uscale, (u1, uN...))...), dims=*(map(scalar_dimension, (u1, uN...))...))
@@ -66,7 +66,7 @@ Base.:(==)(u1::AbstractAffineUnits, u2::AbstractAffineUnits) = (uscale(u1) == us
 
 @inline function firstequal(arg1::AbstractUnitLike, arg2::AbstractUnitLike, argN::AbstractUnitLike...)
     newargs = promote(arg1, arg2, argN...)
-    return allequal(newargs) ? first(newargs) : throw(DimensionError(args))
+    return allequal(newargs) ? first(newargs) : throw(DimensionError(newargs))
 end
 
 
@@ -74,18 +74,18 @@ end
  Mathematical operations on quantities
 =============================================================================================#
 """
-    dimensionalize(f, args::UnionQuantity...)
+    dimensionalize(f, args::AbstractQuantity...)
 
 Converts all arguments to base units, and applies `f` to values and dimensions
-returns the narrowest possible quanity (usually RealQuantity). Useful for defining 
+returns the narrowest possible quanity. Useful for defining 
 new functions for quantities 
     
 Thus, in order to support `f` for quantities, simply define 
 
 f(dims::AbstractDimensions...)
-f(args::UnionQuantity...) = dimensionalize(f, args...)
+f(args::AbstractQuantity...) = dimensionalize(f, args...)
 """
-@inline function dimensionalize(f, args::UnionQuantity...)
+@inline function dimensionalize(f, args::AbstractQuantity...)
     baseargs = map(ubase, args)
     basevals = map(ustrip, baseargs)
     basedims = map(unit, baseargs)
@@ -93,61 +93,61 @@ f(args::UnionQuantity...) = dimensionalize(f, args...)
 end
 
 
-function Base.:(==)(q1::UnionQuantity, q2::UnionQuantity)
+function Base.:(==)(q1::AbstractQuantity, q2::AbstractQuantity)
     qb1 = ubase(q1)
     qb2 = ubase(q2)
     return (ustrip(qb1) == ustrip(qb2)) && (unit(qb1) == unit(qb2))
 end
 
-function Base.:(≈)(q1::UnionQuantity, q2::UnionQuantity)
+function Base.:(≈)(q1::AbstractQuantity, q2::AbstractQuantity)
     qb1 = ubase(q1)
     qb2 = ubase(q2)
     return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
 end
 
-Base.:+(q::UnionQuantity, n::Number) = dimensionless(q) + n 
-Base.:+(n::Number, q::UnionQuantity) = dimensionless(q) + n
-Base.:+(q1::UnionQuantity, q2::UnionQuantity) = dimensionalize(+, q1, q2)
-Base.:+(q1::UnionQuantity, qN::UnionQuantity...) = dimensionalize(+, q1, qN...)
+Base.:+(q::AbstractQuantity, x::Any) = dimensionless(q) + x 
+Base.:+(x::Any, q::AbstractQuantity) = dimensionless(q) + x
+Base.:+(q1::AbstractQuantity, q2::AbstractQuantity) = dimensionalize(+, q1, q2)
+Base.:+(q1::AbstractQuantity, qN::AbstractQuantity...) = dimensionalize(+, q1, qN...)
 
-Base.:-(q::UnionQuantity, n::Number) = dimensionless(q) - n 
-Base.:-(n::Number, q::UnionQuantity) = n - dimensionless(q)
-Base.:-(q1::UnionQuantity, q2::UnionQuantity) = dimensionalize(-, q1, q2)
-Base.:-(q1::UnionQuantity) = dimensionalize(-, q1)
+Base.:-(q::AbstractQuantity, x::Any) = dimensionless(q) - x 
+Base.:-(x::Any, q::AbstractQuantity) = x - dimensionless(q)
+Base.:-(q1::AbstractQuantity, q2::AbstractQuantity) = dimensionalize(-, q1, q2)
+Base.:-(q1::AbstractQuantity) = dimensionalize(-, q1)
 
-Base.:*(q0::UnionQuantity, n::Number) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
-Base.:*(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(ustrip(q)*n, unit(q)))
-Base.:*(q1::UnionQuantity, q2::UnionQuantity) = dimensionalize(*, q1, q2)
-Base.:*(q1::UnionQuantity, qN::UnionQuantity...) = dimensionalize(*, q1, qN...)
+Base.:*(q0::AbstractQuantity, x::Any) = (q = ubase(q0); quantity(ustrip(q)*x, unit(q)))
+Base.:*(x::Any, q0::AbstractQuantity) = (q = ubase(q0); quantity(ustrip(q)*x, unit(q)))
+Base.:*(q1::AbstractQuantity, q2::AbstractQuantity) = dimensionalize(*, q1, q2)
+Base.:*(q1::AbstractQuantity, qN::AbstractQuantity...) = dimensionalize(*, q1, qN...)
 
-Base.:/(q0::UnionQuantity, n::Number) = (q = ubase(q0); quantity(ustrip(q)/n, unit(q)))
-Base.:/(n::Number, q0::UnionQuantity) = (q = ubase(q0); quantity(n/ustrip(q), inv(unit(q))))
-Base.:/(q1::UnionQuantity, q2::UnionQuantity) = dimensionalize(/, q1, q2)
-Base.:inv(q::UnionQuantity) = dimensionalize(inv, q)
+Base.:/(q0::AbstractQuantity, x::Any) = (q = ubase(q0); quantity(ustrip(q)/x, unit(q)))
+Base.:/(x::Any, q0::AbstractQuantity) = (q = ubase(q0); quantity(x/ustrip(q), inv(unit(q))))
+Base.:/(q1::AbstractQuantity, q2::AbstractQuantity) = dimensionalize(/, q1, q2)
+Base.:inv(q::AbstractQuantity) = dimensionalize(inv, q)
 
-for NT in (Number, Complex, Real, Rational, Integer) #Address potential ambiguities
-    @eval Base.:^(q::UnionQuantity, p::$NT) = dimensionalize(Base.Fix2(^, p), q)
-end
+Base.:^(q::AbstractQuantity, p::Number) = dimensionalize(Base.Fix2(^, p), q)
+Base.:^(q::Number, p::AbstractQuantity) = q^dimensionless(p)
+Base.:^(q::AbstractQuantity, p::AbstractQuantity) = dimensionalize(Base.Fix2(^, dimensionless(p)), q)
 
-@inline Base.literal_pow(::typeof(^), q::UnionQuantity, ::Val{p}) where {p} = dimensionalize(x->Base.literal_pow(^, x, Val(dimensionless(p))), q)
+@inline Base.literal_pow(::typeof(^), q::AbstractQuantity, ::Val{p}) where {p} = dimensionalize(x->Base.literal_pow(^, x, Val(dimensionless(p))), q)
 
-Base.sqrt(q::UnionQuantity) = dimensionalize(sqrt, q)
-Base.cbrt(q::UnionQuantity) = dimensionalize(cbrt, q)
-Base.abs2(q::UnionQuantity) = dimensionalize(abs2, q)
+Base.sqrt(q::AbstractQuantity) = dimensionalize(sqrt, q)
+Base.cbrt(q::AbstractQuantity) = dimensionalize(cbrt, q)
+Base.abs2(q::AbstractQuantity) = dimensionalize(abs2, q)
 
-function Base.zero(::Type{D}) where D<:AbstractDimensions
-    return D()
-end
-Base.zero(::Type{<:UnionQuantity{T, D}}) where {T, D<:AbstractDimensions} = quantity(zero(T), zero(D))
-Base.zero(::Type{<:UnionQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = quantity(zero(T), zero(D))
-Base.one(::Type{<:UnionQuantity{T}}) where T = one(T) #unitless
-Base.oneunit(::Type{<:UnionQuantity{T,D}}) where {T,D} = quantity(one(T), D()) #unitless with type
+Base.zero(::Type{D}) where D<:AbstractDimensions = D()
+Base.zero(::Type{U}) where U<:AffineUnits = U(dims=dimtype(U)())
+
+Base.zero(::Type{<:AbstractQuantity{T, D}}) where {T, D<:AbstractDimensions} = quantity(zero(T), zero(D))
+Base.zero(::Type{<:AbstractQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = quantity(zero(T), zero(D))
+Base.one(::Type{<:AbstractQuantity{T}}) where T = one(T) #unitless
+Base.oneunit(::Type{<:AbstractQuantity{T,D}}) where {T,D} = quantity(one(T), zero(D)) #unitless with type
 
 #Comparison functions
 for f in (:<, :>, :<=, :>=)
-    @eval function Base.$f(q1::UnionQuantity, q2::UnionQuantity)
+    @eval function Base.$f(q1::AbstractQuantity, q2::AbstractQuantity)
         (b1, b2) = (ubase(q1), ubase(q2))
-        unit(b1) == unit(b2) || throw(DimensionError(b1, b2))
+        unit(b1) == unit(b2) || throw(DimensionError(unit(b1), unit(b2)))
         return $f(ustrip(b1), ustrip(b2))
     end
 end
@@ -158,7 +158,7 @@ for f in (
         :transpose, :significand, :zero, :oneunit, :typemax
     )
     @eval Base.$f(u::AbstractDimensions) = u
-    @eval Base.$f(q::UnionQuantity) = dimensionalize($f, q)
+    @eval Base.$f(q::AbstractQuantity) = dimensionalize($f, q)
 end
 
 #Single-argument funtions that require dimensionless input and produce dimensionless output
@@ -170,16 +170,16 @@ for f in (
         :expm1, :frexp, :exponent,
     )
     @eval Base.$f(u::AbstractDimensions) = dimensionless(u)
-    @eval Base.$f(q::UnionQuantity) = dimensionalize($f, q)
+    @eval Base.$f(q::AbstractQuantity) = dimensionalize($f, q)
 end
 
 #Single-argument functions that only operate on values
 for f in (:isfinite, :isinf, :isnan, :isreal, :isempty, :one)
-    @eval Base.$f(q::UnionQuantity) = $f(ustrip(q))
+    @eval Base.$f(q::AbstractQuantity) = $f(ustrip(q))
 end
 
 #Single-argument functions with dimensionless output that don't work with non-scalar units
 for f in (:iszero, :signbit, :angle)
-    @eval Base.$f(q::UnionQuantity) = (assert_scalar(unit(q)); $f(ustrip_base(q)))
+    @eval Base.$f(q::AbstractQuantity) = (assert_scalar(unit(q)); $f(ustrip_base(q)))
 end
 

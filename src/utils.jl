@@ -2,23 +2,23 @@
 Broadcasting
 =============================================================================================#
 
-Base.BroadcastStyle(::Type{UnionQuantity{T}}) where T = Base.BroadcastStyle(T)
+Base.BroadcastStyle(::Type{AbstractQuantity{T}}) where T = Base.BroadcastStyle(T)
 Base.broadcastable(u::AbstractUnitLike) = Ref(u)
 
 for f in (:size, :length, :axes, :ndims)
-    @eval Base.$f(q::UnionQuantity) = $f(ustrip(q))
+    @eval Base.$f(q::AbstractQuantity) = $f(ustrip(q))
 end
-Base.iterate(q::Q, maybe_state...) where Q<:UnionQuantity = 
+Base.iterate(q::Q, maybe_state...) where Q<:AbstractQuantity = 
     let subiterate = iterate(ustrip(q), maybe_state...)
         subiterate === nothing && return nothing
         return quantity(subiterate[1], unit(q)), subiterate[2]
     end
-Base.ndims(::Type{<:UnionQuantity{T}}) where {T} = ndims(T)
-Base.broadcastable(q::Q) where Q<:UnionQuantity = Q(Base.broadcastable(ustrip(q)), dimension(q))
-Base.getindex(q::Q) where Q<:UnionQuantity = Q(getindex(ustrip(q)), unit(q))
-Base.getindex(q::Q, inds) where Q<:UnionQuantity = quantity(getindex(ustrip(q), inds), unit(q))
-Base.getindex(q::Q, inds::CartesianIndex{0}) where Q<:UnionQuantity = quantity(getindex(ustrip(q), inds), unit(q))
-Base.getindex(q::Q, ind::Integer, inds::Integer...) where Q<:UnionQuantity = quantity(getindex(ustrip(q), ind, inds...), unit(q))
+Base.ndims(::Type{<:AbstractQuantity{T}}) where {T} = ndims(T)
+Base.broadcastable(q::Q) where Q<:AbstractQuantity = Q(Base.broadcastable(ustrip(q)), dimension(q))
+Base.getindex(q::Q) where Q<:AbstractQuantity = Q(getindex(ustrip(q)), unit(q))
+Base.getindex(q::Q, inds) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), inds), unit(q))
+Base.getindex(q::Q, inds::CartesianIndex{0}) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), inds), unit(q))
+Base.getindex(q::Q, ind::Integer, inds::Integer...) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), ind, inds...), unit(q))
 
 
 #=============================================================================================
@@ -28,7 +28,7 @@ Displaying output
 #This value to "false" makes output parsable by default
 const PRETTY_DIM_OUTPUT = Ref(true)
 
-function Base.string(x::Union{AbstractUnitLike, UnionQuantity}; pretty=PRETTY_DIM_OUTPUT[])
+function Base.string(x::Union{AbstractUnitLike, AbstractQuantity}; pretty=PRETTY_DIM_OUTPUT[])
     tmp_io = IOBuffer()
     show(tmp_io, x, pretty=pretty)
     return String(take!(tmp_io))
@@ -39,7 +39,7 @@ function pretty_print_units(x::Bool)
     return x 
 end
 
-function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractDimensions}; pretty=PRETTY_DIM_OUTPUT[])
+function Base.show(io::IO, q::AbstractQuantity{<:Any, <:AbstractDimensions}; pretty=PRETTY_DIM_OUTPUT[])
     if pretty
         return _pretty_print_quantity(io, q)
     else
@@ -47,7 +47,7 @@ function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractDimensions}; pretty
     end
 end
 
-function Base.show(io::IO, q::UnionQuantity{<:Any, <:AbstractUnits}; pretty=PRETTY_DIM_OUTPUT[])
+function Base.show(io::IO, q::AbstractQuantity{<:Any, <:AbstractUnits}; pretty=PRETTY_DIM_OUTPUT[])
     if usymbol(unit(q)) != DEFAULT_USYMBOL #Print the unit symbol if it exists (not default)
         if pretty
             return _pretty_print_quantity(io, q)
@@ -107,12 +107,12 @@ function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractD
     return show(io, vals)
 end
 
-function _parsable_print_quantity(io::IO, q::UnionQuantity)
+function _parsable_print_quantity(io::IO, q::AbstractQuantity)
     print(io, "(", ustrip(q), ")")
     return _parsable_print_unit(io, unit(q))
 end
 
-function _pretty_print_quantity(io::IO, q::UnionQuantity)
+function _pretty_print_quantity(io::IO, q::AbstractQuantity)
     print(io, ustrip(q), " ")
     return _print_pretty_unit(io, unit(q))
 end

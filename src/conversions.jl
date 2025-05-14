@@ -34,12 +34,12 @@ transform(x, trans::AffineTransform) = muladd(x, trans.scale, trans.offset)
 transform(x::AbstractArray, trans::AffineTransform) = transform.(x, trans)
 
 """
-    |>(u1::AbstractUnitLike, u2::Union{AbstractUnitLike, UnionQuantity})
+    |>(u1::AbstractUnitLike, u2::Union{AbstractUnitLike, AbstractQuantity})
 
 Using `q |> qout` is an alias for `uconvert(u, q)`.
 """
 Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
-Base.:(|>)(q::UnionQuantity, u::AbstractUnitLike,) = uconvert(u, q)
+Base.:(|>)(q::AbstractQuantity, u::AbstractUnitLike,) = uconvert(u, q)
 
 """
     uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
@@ -57,57 +57,57 @@ function uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
 end
 
 """
-    uconvert(u::AbstractUnitLike, q::UnionQuantity)
+    uconvert(u::AbstractUnitLike, q::AbstractQuantity)
 
 Converts quantity `q` to the equivalent quantity having units `u`
 """
-function uconvert(u::AbstractUnitLike, q::UnionQuantity)
+function uconvert(u::AbstractUnitLike, q::AbstractQuantity)
     newval = transform(ustrip(q), uconvert(u, unit(q)))
     return quantity(newval, u)
 end
 
 """
-    ubase(q::UnionQuantity)
+    ubase(q::AbstractQuantity)
 
 Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 """
-ubase(q::UnionQuantity) = uconvert(dimension(q), q)
-ubase(q::UnionQuantity{<:Any,<:AbstractDimensions}) = q
-function ubase(q::UnionQuantity{<:Any,<:AbstractAffineUnits})
+ubase(q::AbstractQuantity) = uconvert(dimension(q), q)
+ubase(q::AbstractQuantity{<:Any,<:AbstractDimensions}) = q
+function ubase(q::AbstractQuantity{<:Any,<:AbstractAffineUnits})
     u = unit(q)
     trans = AffineTransform(scale=uscale(u), offset=uoffset(u))
     return quantity(transform(ustrip(q), trans), dimension(u))
 end 
 
 """
-    ustrip(u::AbstractUnitLike, q::UnionQuantity)
+    ustrip(u::AbstractUnitLike, q::AbstractQuantity)
 
 Converts quantity `q` to units `q`` equivalent and removes units
 """
-ustrip(u::AbstractUnitLike, q::UnionQuantity) = transform(ustrip(q), uconvert(u, unit(q)))
+ustrip(u::AbstractUnitLike, q::AbstractQuantity) = transform(ustrip(q), uconvert(u, unit(q)))
 
 """
-    basestrip(q::UnionQuantity)
+    basestrip(q::AbstractQuantity)
 
 Converts quantity `q` to its raw dimensional equivalent and removes units
 """
-ustrip_base(q::UnionQuantity) = ustrip(dimension(q), q)
+ustrip_base(q::AbstractQuantity) = ustrip(dimension(q), q)
 
 """
-    ustrip_dimensionless(q::UnionQuantity)
+    ustrip_dimensionless(q::AbstractQuantity)
 
 Converts quantity `q` to its raw dimensional equivalent, asserts 
 a dimensionless result, and then removes units
 """
-ustrip_dimensionless(q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q)))
+ustrip_dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
 
 """
-    asunit(q::UnionQuantity{<:Number})
+    asunit(q::AbstractQuantity{<:Number})
 
 Convert quantity `q` into a unit of the same magnitude
 """
-asunit(q::UnionQuantity{<:Number, <:Dimensions})  = AffineUnits(scale=ustrip(q), dims=dimension(q))
-asunit(q::UnionQuantity{<:Number, <:AffineUnits}) = ( u = unit(q); AffineUnits(scale=ustrip(q)*uscale(u), offset=uoffset(u), dims=dimension(q)) )
+asunit(q::AbstractQuantity{<:Number, <:Dimensions})  = AffineUnits(scale=ustrip(q), dims=dimension(q))
+asunit(q::AbstractQuantity{<:Number, <:AffineUnits}) = ( u = unit(q); AffineUnits(scale=ustrip(q)*uscale(u), offset=uoffset(u), dims=dimension(q)) )
 asunit(u::AbstractUnitLike) = u
 
 #=================================================================================================
@@ -124,8 +124,8 @@ this can yield potentially unintuitive results like 2°C/1°C = 1.00364763815429
 
 
 # Converting quantity types ====================================================
-Base.convert(::Type{Q}, q::UnionQuantity) where Q<:UnionQuantity = (q isa Q) ? q : Q(ustrip(q), unit(q))
-function Base.convert(::Type{Q}, q::UnionQuantity) where Q<:UnionQuantity{<:Any, <:AbstractDimensions}
+Base.convert(::Type{Q}, q::AbstractQuantity) where Q<:AbstractQuantity = (q isa Q) ? q : Q(ustrip(q), unit(q))
+function Base.convert(::Type{Q}, q::AbstractQuantity) where Q<:AbstractQuantity{<:Any, <:AbstractDimensions}
     if (q isa Q) 
         return q 
     else 
@@ -140,14 +140,14 @@ Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u is
 Base.convert(::Type{D}, u::NoDims) where D<:AbstractDimensions = D()
 
 # Converting between units and quantities ====================================================
-Base.convert(::Type{U}, q::UnionQuantity) where U<:AbstractUnits = convert(U, asunit(q))
-function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:UnionQuantity{<:Any, <:AbstractDimensions}}
+Base.convert(::Type{U}, q::AbstractQuantity) where U<:AbstractUnits = convert(U, asunit(q))
+function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:AbstractQuantity{<:Any, <:AbstractDimensions}}
     assert_scalar(u)
     return Q(uscale(u), dimension(u))
 end
 
 # Converting between generic numbers and quantity types 
-Base.convert(::Type{T}, q::UnionQuantity) where {T<:Number} = convert(T, dimensionless(q))
+Base.convert(::Type{T}, q::AbstractQuantity) where {T<:Number} = convert(T, dimensionless(q))
 
 # Promotion rules ======================================================
 
@@ -169,14 +169,14 @@ function Base.promote_rule(::Type{AffineUnits{D1}}, ::Type{AffineUnits{D2}}) whe
 end
 
 #Quantity promotion (favors Dimensions, as converting quantities to SI does not result in information loss)
-function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1, U2, Q1<:UnionQuantity{T1,U1}, Q2<:UnionQuantity{T2,U2}}
+function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1, U2, Q1<:AbstractQuantity{T1,U1}, Q2<:AbstractQuantity{T2,U2}}
     D = promote_type(dimtype(U1), dimtype(U2))
     T = promote_type(T1, T2)
-    return narrowest_quantity(T){T, D}
+    return Quantity{T, D}
 end
 
 #Promotion between quantities and numeric types
-function Base.promote_rule(::Type{N}, ::Type{UnionQuantity{T}}) where {N<:Number, T<:Number}
+function Base.promote_rule(::Type{N}, ::Type{AbstractQuantity{T}}) where {N<:Number, T<:Number}
     return promote_type(N,T)
 end
 

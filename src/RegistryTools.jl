@@ -2,15 +2,15 @@
 module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits, ..AbstractAffineUnits, ..AbstractDimensions
-import ..AffineUnits, ..Dimensions, ..RealQuantity, ..UnionQuantity, ..DEFAULT_DIMENSONS
+import ..AffineUnits, ..Dimensions, ..AbstractQuantity, ..Quantity, ..DEFAULT_DIMENSONS
 import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit,  ..ubase, ..constructorof, ..dimtype
 
 export 
     AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractDimensions, DEFAULT_DIMENSONS,
-    AffineUnits, Dimensions, RealQuantity, UnionQuantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
+    AffineUnits, Dimensions, AbstractQuantity, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
     PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, dimtype
 
-const UnitOrQuantity = Union{AbstractUnitLike, UnionQuantity}
+const UnitOrQuantity = Union{AbstractUnitLike, AbstractQuantity}
 const PARSE_CASES = Union{Expr,Symbol,Real,Nothing}
 """
     PermanentDict{K,T}
@@ -75,7 +75,7 @@ function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol
     return setindex!(reg, vn, k)
 end
 
-function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol, <:UnionQuantity})
+function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol, <:AbstractQuantity})
     return _register_unit!(reg, p[1]=>asunit(p[2]))
 end
 
@@ -190,13 +190,13 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
 
     #If you want to add "angle" as a dimension, you can overload the appropriate function
 
-    #function apply_trig_func(f, q::UnionQuantity{<:Any, <:RadDimensions{T}}) where T
+    #function apply_trig_func(f, q::AbstractQuantity{<:Any, <:RadDimensions{T}}) where T
     #   baseq = ubase(q)
     #   assert_radians(unit(baseq))
     #   return quantity(f(ustrip(baseq)), RadDimensions{T}())
     #end
 
-    #sin(q::UnionQuantity{<:RadDimensions}) = apply_trig_func(sin, q)
+    #sin(q::AbstractQuantity{<:RadDimensions}) = apply_trig_func(sin, q)
 
     return reg
 end
@@ -207,7 +207,7 @@ function uparse(str::String, reg::AbstractDict{Symbol, U}) where {U<:AbstractUni
 end
 
 function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnitLike}
-    return eval(qparse_expr(str, reg)) :: RealQuantity{Float64, dimtype(U)}
+    return eval(qparse_expr(str, reg)) :: Quantity{Float64, dimtype(U)}
 end
 
 # Expression parsing (for dynamic and macros) ==============================================================
@@ -240,7 +240,7 @@ end
 
 
 function qparse_expr(ex::PARSE_CASES, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    Q  = RealQuantity{Float64, dimtype(U)}
+    Q  = Quantity{Float64, dimtype(U)}
     ex = _parse_expr(ex, reg)
     return :($convert($Q, ubase($ex)))
 end

@@ -42,16 +42,10 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
 
     @test FlexUnits.constructorof(typeof(Dimensions())) == Dimensions
     @test FlexUnits.constructorof(typeof(u"m")) == AffineUnits
-    @test FlexUnits.constructorof(typeof(1.0*u"m")) == RealQuantity
-    @test FlexUnits.constructorof(typeof((1.0+im)*u"m")) == NumberQuantity
+    @test FlexUnits.constructorof(typeof(1.0*u"m")) == Quantity
+    @test FlexUnits.constructorof(typeof((1.0+im)*u"m")) == Quantity
     @test FlexUnits.constructorof(typeof(quantity("this", u"m"))) == Quantity
     @test FlexUnits.constructorof(Array{Float64}) == Array
-    @test FlexUnits.narrowest(Quantity(1.0, u"m")) === RealQuantity(1.0, u"m")
-
-    @test FlexUnits.narrowest_quantity("this") == Quantity
-    @test FlexUnits.narrowest_quantity(String) == Quantity
-    @test FlexUnits.narrowest_quantity(Complex{Float64}) == NumberQuantity
-    @test FlexUnits.narrowest_quantity(Float64) == RealQuantity
 
     @test string(AffineUnits(scale=1, offset=0, dims=dimension(u"m"), symbol=:_)) == "AffineUnits(scale=1.0, offset=0.0, dims=m)"
     @test string(ubase(1.0u"kg*m^2/s^2"), pretty=true)  == "1.0 (m² kg)/s²"
@@ -76,7 +70,7 @@ end
 @testset "Math on various types" begin
     FlexUnits.PRETTY_DIM_OUTPUT[] = true  
 
-    for Q in [Quantity, NumberQuantity, RealQuantity], T in [Float16, Float32, Float64], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
+    for Q in [Quantity], T in [Float16, Float32, Float64], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
         
         D = Dimensions{R}
         x = Q(T(0.2), D(length=1, mass=2.5, time=-1))
@@ -91,7 +85,7 @@ end
 
         y = x^2
 
-        @test typeof(y) <: RealQuantity
+        @test typeof(y) <: Quantity
         @test typeof(x).parameters[1] == T
         @test typeof(x).parameters[2] == D
         @test ustrip(y) ≈ T(0.04)
@@ -121,15 +115,15 @@ end
         @test !isfinite(y)
        
         u = Dimensions(length=2//5)
-        x = RealQuantity(-1.2, u)
+        x = Quantity(-1.2, u)
 
-        @test typemax(x) == RealQuantity(typemax(-1.2), u)
+        @test typemax(x) == Quantity(typemax(-1.2), u)
     
-        @test abs(x) == RealQuantity(1.2, u)
-        @test abs(x) == abs(RealQuantity(1.2, u))
-        @test abs2(x) == RealQuantity(abs2(-1.2), u^2)
+        @test abs(x) == Quantity(1.2, u)
+        @test abs(x) == abs(Quantity(1.2, u))
+        @test abs2(x) == Quantity(abs2(-1.2), u^2)
     
-        @test copy(x) == x
+        @test deepcopy(x) == x
     
         @test iszero(x) == false
         @test iszero(x * 0) == true
@@ -154,6 +148,20 @@ end
 
     end
 
+    #Math on arrays of number quantities 
+    mq = [5*u"m/s" 2u"m/s^2"; 1*u"kg/s" 4*u"kg/s^2"]
+    vq = [1u"s", 2u"s^2"]
+    @test mq*vq == [9.0u"m", 9.0u"kg"]
+    @test mq + 2*mq == 3*mq
+    @test 3.0.*mq .- 2.0.*mq == mq
+    @test vq.*vq == [1u"s^2", 4u"s^4"]
+
+    #Math on arrays of quantities
+    qm = [1 2; 3 4]*u"m/s"
+    qi = inv(qm)
+    @test qm*qi ≈ [1 0; 0 1]*u""
+    @test sum(qm) ≈ 10u"m/s"
+    @test qm[1] == 1u"m/s"
 
 end
 
@@ -180,17 +188,17 @@ end
     @test abs(x) === q"1.3km/s^2"
 
     y = 0.9u"sqrt(mΩ)"
-    @test typeof(y) == RealQuantity{Float64, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
-    @test typeof(ubase(y)) == RealQuantity{Float64, Dimensions{DEFAULT_RATIONAL}}
+    @test typeof(y) == Quantity{Float64, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
+    @test typeof(ubase(y)) == Quantity{Float64, Dimensions{DEFAULT_RATIONAL}}
     @test ustrip_base(y) ≈ 0.02846049894151541
     @test y ≈ q"(0.9*sqrt(mΩ))"
 
     y = BigFloat(0.3) * u"mΩ"
-    @test typeof(y) == RealQuantity{BigFloat, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
+    @test typeof(y) == Quantity{BigFloat, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
     @test ustrip_base(y) ≈ 0.0003
 
-    y32 = convert(RealQuantity{Float32, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}, y)
-    @test typeof(y32) == RealQuantity{Float32, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
+    y32 = convert(Quantity{Float32, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}, y)
+    @test typeof(y32) == Quantity{Float32, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
 
     z = 1*u"yr"
     @test ustrip_base(z) ≈ 60 * 60 * 24 * 365.25
@@ -221,12 +229,12 @@ end
     @test xp + 1 == 1.01
     @test 1 + xp == 1.01
     @test xv + xv == 2u"m/s"
-    @test (xv + xv) isa RealQuantity{Float64, <:Dimensions}
+    @test (xv + xv) isa Quantity{Float64, <:Dimensions}
 
     @test 1 - xp == 0.99 
     @test xp - 1 == -0.99
     @test xv - xv == 0u"m/s"
-    @test (xv - xv) isa RealQuantity{Float64, <:Dimensions}
+    @test (xv - xv) isa Quantity{Float64, <:Dimensions}
 
     @test_throws DimensionError xv + 1
     @test_throws DimensionError 1 + xv
@@ -275,15 +283,15 @@ end
     #Ambiguity tests 
     cplx  = 1.0 + im 
     cplxb = Complex{Bool}(true + im)
-    @test xv*cplx  === ubase(NumberQuantity(cplx, u"m/s"))
-    @test xv*cplxb === ubase(NumberQuantity(cplxb, u"m/s"))
-    @test cplx*xv  === ubase(NumberQuantity(cplx, u"m/s"))
-    @test cplxb*xv === ubase(NumberQuantity(cplxb, u"m/s"))
+    @test xv*cplx  === ubase(Quantity(cplx, u"m/s"))
+    @test xv*cplxb === ubase(Quantity(cplxb, u"m/s"))
+    @test cplx*xv  === ubase(Quantity(cplx, u"m/s"))
+    @test cplxb*xv === ubase(Quantity(cplxb, u"m/s"))
 
-    @test xv/cplx  === ubase(NumberQuantity(inv(cplx), u"m/s"))
-    @test xv/cplxb === ubase(NumberQuantity(inv(cplxb), u"m/s"))
-    @test cplx/xv  === ubase(NumberQuantity(cplx, inv(u"m/s")))
-    @test cplxb/xv === ubase(NumberQuantity(cplxb, inv(u"m/s")))
+    @test xv/cplx  === ubase(Quantity(inv(cplx), u"m/s"))
+    @test xv/cplxb === ubase(Quantity(inv(cplxb), u"m/s"))
+    @test cplx/xv  === ubase(Quantity(cplx, inv(u"m/s")))
+    @test cplxb/xv === ubase(Quantity(cplxb, inv(u"m/s")))
 
     @test cplx + xp === cplx + 0.01
     @test xp + cplx === cplx + 0.01
@@ -317,12 +325,12 @@ end
     @test promote_type(Dimensions{Int16}, AffineUnits{Dimensions{Int32}}) === AffineUnits{Dimensions{Int32}}
     
     # Test conversions
-    @test 1°C |> K isa RealQuantity{<:Real, <:AffineUnits}
-    @test 1°C |> unit(ubase(1K)) isa RealQuantity{<:Real, <:Dimensions}
+    @test 1°C |> K isa Quantity{<:Real, <:AffineUnits}
+    @test 1°C |> unit(ubase(1K)) isa Quantity{<:Real, <:Dimensions}
     @test  °C |> unit(ubase(1K)) isa AffineTransform
 
     @test 0°C |> u"K" == 273.15u"K"
-    @test 1u"K" |> °C isa RealQuantity{<:Real, <:AffineUnits}
+    @test 1u"K" |> °C isa Quantity{<:Real, <:AffineUnits}
     @test 0u"K" |> °C  == -273.15°C
     @test °C |> °F isa AffineTransform
     @test 0°C |> °F == 32°F
@@ -407,9 +415,9 @@ end
     # Test that regular type promotion applies:
     q = Quantity(2, d)
     @test typeof(q) == Quantity{Int64,typeof(d)}
-    @test typeof(q ^ 2) == RealQuantity{Int64,typeof(d)}
-    @test typeof(0.5 * q) == RealQuantity{Float64,typeof(d)}
-    @test typeof(inv(q)) == RealQuantity{Float64,typeof(d)}
+    @test typeof(q ^ 2) == Quantity{Int64,typeof(d)}
+    @test typeof(0.5 * q) == Quantity{Float64,typeof(d)}
+    @test typeof(inv(q)) == Quantity{Float64,typeof(d)}
 
     # Test conversion of unit types 
     @test convert(DEFAULT_DIM_TYPE, u"m") === Dimensions(length=1)
@@ -449,22 +457,21 @@ end
     @test_throws ConversionError uconvert(u"nm*J", 5e-9u"m")
 
     # Types:
-    @test typeof(uconvert(u"nm", 5e-9u"m")) <: RealQuantity{Float64, U} 
-    @test typeof(uconvert(u"nm", Quantity(5e-9, u"m"))) <: RealQuantity{Float64, U}
+    @test typeof(uconvert(u"nm", 5e-9u"m")) <: Quantity{Float64, U} 
+    @test typeof(uconvert(u"nm", Quantity(5e-9, u"m"))) <: Quantity{Float64, U}
     @test uconvert(u"nm", Quantity(5e-9, u"m")) ≈ 5u"nm"
 
     @test dimension(1u"m" |> u"nm")[:length] == 1
 
-    for Q in (RealQuantity, NumberQuantity, Quantity)
-        # Different types require converting both arguments:
-        q = convert(Q{Float16}, 1.5u"g")
+   
+    # Different types require converting both arguments:
+    q = convert(Quantity{Float16}, 1.5u"g")
 
-        # Broadcasting conversions over Arrays
-        x = [1.0, 2.0, 3.0] .* Q(1, u"kg")
-        x2 = x .|> u"g"
-        @test typeof(x2) <: Vector{<:RealQuantity{Float64,<:AffineUnits{<:Any}}}
-        @test x2[2] ≈ Q(2000u"g")
-    end
+    # Broadcasting conversions over Arrays
+    x = [1.0, 2.0, 3.0] .* Quantity(1, u"kg")
+    x2 = x .|> u"g"
+    @test typeof(x2) <: Vector{<:Quantity{Float64,<:AffineUnits{<:Any}}}
+    @test x2[2] ≈ (2000u"g")
 end
 
 @testset "Additional tests of FixedRational" begin
