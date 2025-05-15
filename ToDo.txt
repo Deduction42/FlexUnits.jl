@@ -1,31 +1,18 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-1.  Create a UnitfulBlackBox{T,UI,UO}: {value::T, units::Pair{UI,UO}}
-    -   A "Black Box" that requires inputs in units UI and applies units UO to the result
-    -   UI/UO can be any object that contains unit information (like a vector of units)
-    -   function apply_units(obj::UnitfulBlackBox{<:Function}, x...) 
-            (ui, uo) = unit(obj)
-            f = ustrip(obj)
-            return quantity(f(map(ustrip, ui, x)...), uo)
-        end
-    -   function apply_units(f::Function, obj::UnitfulBlackBox{<:Function}, x...) 
-            (ui, uo) = unit(obj)
-            return quantity(f(obj, map(ustrip, ui, x)...), uo)
-        end
-    -   We can even make UnitfulBlackBox(f::Function, UI=>UO) callable through apply_units
-2.  Build out documentation and a docs badge
+1.  Build out documentation and a docs badge
     -   Include all-stops-out tutorial on defining a new dimension "RadDims"
     -   Add angle to the dimension list
     -   Create a new unit registry with that dimension 
     -   Re-tool sin, cos, tan rules on this particular dimension
-3.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
+2.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
     -   Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
     -   This can be done without documentation 
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
-4. Announce the package
-5. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
+3. Announce the package
+4. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
 
 
 import DynamicQuantities
