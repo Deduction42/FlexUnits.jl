@@ -71,7 +71,6 @@ end
 
 Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 """
-ubase(q::AbstractQuantity) = uconvert(dimension(q), q)
 ubase(q::AbstractQuantity{<:Any,<:AbstractDimensions}) = q
 function ubase(q::AbstractQuantity{<:Any,<:AbstractAffineUnits})
     u = unit(q)
@@ -169,14 +168,10 @@ function Base.promote_rule(::Type{AffineUnits{D1}}, ::Type{AffineUnits{D2}}) whe
 end
 
 #Quantity promotion (favors Dimensions, as converting quantities to SI does not result in information loss)
-function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1, U2, Q1<:AbstractQuantity{T1,U1}, Q2<:AbstractQuantity{T2,U2}}
+function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1, U2}
     D = promote_type(dimtype(U1), dimtype(U2))
     T = promote_type(T1, T2)
     return Quantity{T, D}
 end
 
-#Promotion between quantities and numeric types
-function Base.promote_rule(::Type{N}, ::Type{AbstractQuantity{T}}) where {N<:Number, T<:Number}
-    return promote_type(N,T)
-end
 

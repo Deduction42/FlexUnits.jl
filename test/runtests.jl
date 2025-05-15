@@ -114,7 +114,7 @@ end
         @test isfinite(x)
         @test !isfinite(y)
        
-        u = Dimensions(length=2//5)
+        u = Dimensions{R}(length=2//5)
         x = Quantity(-1.2, u)
 
         @test typemax(x) == Quantity(typemax(-1.2), u)
@@ -140,13 +140,29 @@ end
         @test isempty(x) == false
         @test isempty(Quantity([0.0, 1.0], u)) == false
         @test isempty(Quantity(Float64[], u)) == true 
-        @test sin(5u"rad") == sin(5) 
-        @test cos(60u"deg") ≈ 0.5
+        @test zero(Dimensions{R}) === Dimensions{R}()
+        @test zero(AffineUnits{Dimensions{R}}) === AffineUnits{Dimensions{R}}(dims=zero(Dimensions{R}))
+        @test zero(Quantity{T, Dimensions{R}}) === Quantity(zero(T), zero(Dimensions{R}))
+        @test zero(Quantity{T, AffineUnits{Dimensions{R}}}) == Quantity(zero(T), zero(AffineUnits{Dimensions{R}}))
+        @test one(Quantity{T, AffineUnits{Dimensions{R}}}) === one(T)
+        @test oneunit(Quantity{T, AffineUnits{Dimensions{R}}}) == Quantity(one(T), zero(AffineUnits{Dimensions{R}}))
+        @test oneunit(Quantity{T, Dimensions{R}}) == Quantity(one(T), zero(Dimensions{R}))
 
         #Cannot check iszero on non-affine units 
         @test_throws NotScalarError iszero(5u"°C")
 
     end
+
+    #Other mathematical operators/functions
+    @test sin(5u"rad") == sin(5) 
+    @test cos(60u"deg") ≈ 0.5
+    @test 5u"km/hr" < 6u"km/hr"
+    @test 5u"m/s" > 5u"km/hr"
+    @test 5u"km/hr" <= 6u"km/hr"
+    @test 5u"m/s" >= 5u"km/hr"
+    @test 5u"m/s" >= 5u"m/s"
+    @test 5u"m/s" <= 5u"m/s"
+    @test_throws DimensionError 5u"m/s" <= 5u"kg"
 
     #Math on arrays of number quantities 
     mq = [5*u"m/s" 2u"m/s^2"; 1*u"kg/s" 4*u"kg/s^2"]
@@ -428,6 +444,7 @@ end
     @test convert(Quantity{Float64, DEFAULT_DIM_TYPE}, 2u"m") === Quantity{Float64, DEFAULT_DIM_TYPE}(2.0, dimension(u"m")) 
     @test_throws NotScalarError convert(Quantity{Float64, DEFAULT_DIM_TYPE}, u"°C") 
     @test promote_type(DEFAULT_DIM_TYPE, NoDims{Int64}) == DEFAULT_DIM_TYPE
+    @test promote_type(Quantity{Float32, DEFAULT_DIM_TYPE}, Quantity{Float64, DEFAULT_UNIT_TYPE}) == Quantity{Float64, DEFAULT_DIM_TYPE}
 
     # Test that adding different dimension subtypes still works
     @test 1*Dimensions{Int64}(length=1) + 1u"m" == 2u"m"
