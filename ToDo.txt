@@ -4,10 +4,14 @@ Tasks:
 1.  Create a UnitfulBlackBox{T,UI,UO}: {value::T, units::Pair{UI,UO}}
     -   A "Black Box" that requires inputs in units UI and applies units UO to the result
     -   UI/UO can be any object that contains unit information (like a vector of units)
-    -   function apply_units(obj::UnitfulBlackBox{<:Function}, x::Quantity) 
+    -   function apply_units(obj::UnitfulBlackBox{<:Function}, x...) 
             (ui, uo) = unit(obj)
             f = ustrip(obj)
-            return quantity(f(ustrip(ui, x)), uo)
+            return quantity(f(map(ustrip, ui, x)...), uo)
+        end
+    -   function apply_units(f::Function, obj::UnitfulBlackBox{<:Function}, x...) 
+            (ui, uo) = unit(obj)
+            return quantity(f(obj, map(ustrip, ui, x)...), uo)
         end
     -   We can even make UnitfulBlackBox(f::Function, UI=>UO) callable through apply_units
 2.  Build out documentation and a docs badge

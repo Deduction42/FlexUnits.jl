@@ -140,7 +140,6 @@ end
 #=================================================================================================
 Quantity types
 The basic type is Quantity, which belongs to <:Any (hence it has no real hierarchy)
-Other types are "narrower" in order to slot into different parts of the number hierarchy
 =================================================================================================#
 abstract type AbstractQuantity{T,U} end
 
@@ -162,17 +161,14 @@ dimension(q::Quantity) = dimension(unit(q))
 AffineUnits(scale, offset::Quantity, dims::AbstractDimensions, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
 AffineUnits(scale, offset::Quantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
 
-#=================================================================================================
-# Generic unions of quantities and fallbacks
-=================================================================================================#
 """
     quantity(x, u::AbstractUnitLike)
 
-Constructs a quantity based on the narrowest quantity type that accepts x as an agument.
-If "NoDims" is passed, only x is returned
+Overloading constructor for various quantities
 """
 quantity(x, u::AbstractUnitLike) = Quantity(x, u)
 quantity(x, u::NoDims) = x
+quantity(x::Tuple, u::Tuple) = map(quantity, x, u)
 
 """
     constructorof(::Type{T}) where T = Base.typename(T).wrapper
@@ -184,6 +180,53 @@ constructorof(::Type{T}) where T = Base.typename(T).wrapper
 constructorof(::Type{<:Dimensions}) = Dimensions
 constructorof(::Type{<:AffineUnits}) = AffineUnits 
 constructorof(::Type{<:Quantity}) = Quantity
+
+"""
+    UnitfulBlackBox{T<:Any, UI<:Any, UO<:Any}
+
+An object representing a unitful black-box model that requires inputs to be units UI and produces outputs of UO
+This is useful for wrapping functions/models that aren't generic enough to support `Quantity` types.
+
+Example1: Applying quantities to a strictly Real function
+
+    angle_coords(θ::Real, r::Real) = r.*(cos(θ), sin(θ))
+    unitful_angle_coords = UnitfulBlackBox(angle_coords, (u"", u"m") => dimension(u"m"))
+
+    c = unitful_angle_coords(30u"deg", 6u"cm")
+
+Example2: Applying quantities to a strictly Real model
+
+    struct RotatingArm
+        len :: Float64
+    end
+
+    angle_coords(arm::RotatingArm, θ::Real) = arm.len.*(cos(θ), sin(θ))
+    angle_coords(arm::Quantity{<:RotatingArm}, θ::Quantity{<:Real}) = UnitfulBlackBox(Base.Fix1(angle_coords, ustrip(arm)), u""=>unit(arm))(θ)
+
+    c = angle_coords(Quantity(RotatingArm(1.0), u"m"), 30u"deg")
+"""
+struct UnitfulBlackBox{T, UI, UO}
+    model :: T 
+    units :: Pair{UI, UO}
+end
+
+(bb::UnitfulBlackBox{F})(x) where F = apply_units(bb, x)
+(bb::UnitfulBlackBox{F})(x1, xs...) where F = apply_units(bb, x1, xs...)
+apply_units(bb::UnitfulBlackBox, x...) = _apply_unit_pair(bb.model, bb.units, x...)
+
+function _apply_unit_pair(f, u::Pair, x)
+    (ui, uo) = u
+    raw_args = ustrip(ui, x)
+    return quantity(f(raw_args), uo)
+end
+
+function _apply_unit_pair(f, u::Pair, x1, xs...)
+    (ui, uo) = u
+    raw_args = map(ustrip, ui, (x1, xs...))
+    return quantity(f(raw_args...), uo)
+end
+
+
 
 #=============================================================================================
 Errors and assertion functions

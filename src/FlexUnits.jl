@@ -11,12 +11,12 @@ include("UnitRegistry.jl")
 
 export AbstractUnitLike, AbstractDimensions, AbstractUnits, AbstractAffineUnits, AbstractUnitTransform
 export ConversionError, DimensionError, NotScalarError, NotDimensionError
-export Dimensions, NoDims, AffineUnits, Quantity, AbstractQuantity, AffineTransform
+export Dimensions, NoDims, AffineUnits, Quantity, UnitfulBlackBox, AbstractQuantity, AffineTransform
 export RegistryTools, UnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units
 export assert_scalar, assert_dimension, assert_dimensionless
 export dimensionalize, quantity, ustrip, unit
-export ubase, uconvert, ustrip_base, ustrip_dimensionless
+export ubase, uconvert, ustrip_base, ustrip_dimensionless, transform
 
 
 end

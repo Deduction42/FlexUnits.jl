@@ -65,6 +65,26 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
     @test vq[1] == 1*u"m/s"
     @test vq[CartesianIndex(1)] == 1*u"m/s"
     @test all([q for q in vq] .== vq)
+
+    #Size indicators for quantities
+    tx = [1, 3.6, 501.3]
+    tq = tx*u"kg/hr"
+    @test size(tq) == size(tx)
+    @test length(tq) == length(tx)
+    @test axes(tq) == axes(tx)
+    @test ndims(tq) == ndims(tx)
+    @test ndims(typeof(tq)) == ndims(typeof(tx))
+    @test Base.broadcastable(tq) == tq
+
+    #Size indicators for units
+    @test size(u"kW") == size(1)
+    @test length(u"kW") == length(1)
+    @test axes(u"kW") == axes(1)
+    @test ndims(u"kW") == ndims(1)
+    @test ndims(typeof(u"kW")) == ndims(Float64)
+    @test iterate(u"kW") == (u"kW", nothing)
+    @test (5u"kg/hr")[] == 5u"kg/hr"
+
 end
 
 @testset "Math on various types" begin
@@ -181,6 +201,24 @@ end
 
 end
 
+@testset "UnitfulBlackBox" begin
+    #Test function application
+    angle_coords(θ::Real, r::Real) = r.*(cos(θ), sin(θ))
+    unitful_angle_coords = UnitfulBlackBox(angle_coords, (u"", u"m") => (Dimensions(length=1), Dimensions(length=1)))
+    c = unitful_angle_coords(30u"deg", 6u"cm")
+    @test all(c .≈ (cosd(30), sind(30)).*(ubase(0.06u"m")))
+
+    #Test rotating arm application
+    struct RotatingArm
+        len :: Float64
+    end
+    angle_coords(arm::RotatingArm, θ::Real) = arm.len.*(cos(θ), sin(θ))
+    angle_coords(arm::Quantity{<:RotatingArm}, θ::Quantity{<:Real}) = UnitfulBlackBox(Base.Fix1(angle_coords, ustrip(arm)), u""=>unit(arm))(θ)
+
+    c = angle_coords(Quantity(RotatingArm(1.0), u"m"), 30u"deg")
+    @test all(c .≈ 1u"m".*(cosd(30), sind(30)))
+
+end
 
 @testset "Basic unit functionality" begin
     x = quantity(0.2, Dimensions(length=1, mass=2.5, time=-1))

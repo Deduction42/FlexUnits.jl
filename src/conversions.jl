@@ -28,10 +28,19 @@ struct AffineTransform <: AbstractUnitTransform
     offset :: Float64
 end
 AffineTransform(;scale, offset) = AffineTransform(scale, offset)
-
 Base.broadcastable(trans::AffineTransform) = Ref(trans)
+
+"""
+    transform(x, trans::AbstractUnitTransform)
+
+Apply an affine transform to "x", can be used to apply unit conversions on unitless values
+
+julia> transform(1.0, u"m/s"|>u"km/hr")
+3.5999999999999996
+"""
 transform(x, trans::AffineTransform) = muladd(x, trans.scale, trans.offset)
 transform(x::AbstractArray, trans::AffineTransform) = transform.(x, trans)
+transform(x::Tuple, trans::AffineTransform) = map(Base.Fix2(transform, trans), x)
 
 """
     |>(u1::AbstractUnitLike, u2::Union{AbstractUnitLike, AbstractQuantity})
@@ -86,7 +95,7 @@ Converts quantity `q` to units `q`` equivalent and removes units
 ustrip(u::AbstractUnitLike, q::AbstractQuantity) = transform(ustrip(q), uconvert(u, unit(q)))
 
 """
-    basestrip(q::AbstractQuantity)
+    ustrip_base(q::AbstractQuantity)
 
 Converts quantity `q` to its raw dimensional equivalent and removes units
 """
