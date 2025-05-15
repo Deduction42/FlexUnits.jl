@@ -93,6 +93,7 @@ end
 Converts quantity `q` to units `q`` equivalent and removes units
 """
 ustrip(u::AbstractUnitLike, q::AbstractQuantity) = transform(ustrip(q), uconvert(u, unit(q)))
+ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
 
 """
     ustrip_base(q::AbstractQuantity)

@@ -201,22 +201,41 @@ end
 
 end
 
-@testset "UnitfulBlackBox" begin
-    #Test function application
+@testset "UnitfulCallable" begin
+    #Test callable application
     angle_coords(θ::Real, r::Real) = r.*(cos(θ), sin(θ))
-    unitful_angle_coords = UnitfulBlackBox(angle_coords, (u"", u"m") => (Dimensions(length=1), Dimensions(length=1)))
+    unitful_angle_coords = UnitfulCallable(angle_coords, (u"", u"m") => (Dimensions(length=1), Dimensions(length=1)))
     c = unitful_angle_coords(30u"deg", 6u"cm")
     @test all(c .≈ (cosd(30), sind(30)).*(ubase(0.06u"m")))
+
+    #Test unit_call application
+    function angle_coords(θ::Quantity{<:Real}, r::Quantity{<:Real})
+        u = UnitfulCallable( (u"", unit(r)) => unit(r) )
+        return unitful_call(angle_coords, u, θ, r)
+    end
+    c = angle_coords(30u"deg", 100.0u"cm")
+    @test all(c .≈ 1u"m".*(cosd(30), sind(30)))
+    @test unit(c) == u"cm"
 
     #Test rotating arm application
     struct RotatingArm
         len :: Float64
     end
     angle_coords(arm::RotatingArm, θ::Real) = arm.len.*(cos(θ), sin(θ))
-    angle_coords(arm::Quantity{<:RotatingArm}, θ::Quantity{<:Real}) = UnitfulBlackBox(Base.Fix1(angle_coords, ustrip(arm)), u""=>unit(arm))(θ)
-
+    angle_coords(arm::Quantity{<:RotatingArm}, θ::Quantity{<:Real}) = UnitfulCallable(Base.Fix1(angle_coords, ustrip(arm)), u""=>unit(arm))(θ)
     c = angle_coords(Quantity(RotatingArm(1.0), u"m"), 30u"deg")
     @test all(c .≈ 1u"m".*(cosd(30), sind(30)))
+
+
+    #Test linear transfomration where x is assumed to be [u"kg/s", u"m^3/s"]
+    heat_rate(x::AbstractVector) = [4.136,0.235]'*x
+    heat_rate(x::AbstractVector{<:Quantity}) = UnitfulCallable(heat_rate, [u"kg/s", u"m^3/s"]=>u"kW")(x)
+    @test heat_rate([1000u"g/s", 1000u"L/s"]) ≈ sum([4.136,0.235])*u"kW"
+
+    #Test no-argument call
+    unitless_const() = 5.0
+    unitful_const() = unitful_call(unitless_const, UnitfulCallable(()=>u"m"))
+    unitful_const()
 
 end
 

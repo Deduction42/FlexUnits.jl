@@ -182,15 +182,15 @@ constructorof(::Type{<:AffineUnits}) = AffineUnits
 constructorof(::Type{<:Quantity}) = Quantity
 
 """
-    UnitfulBlackBox{T<:Any, UI<:Any, UO<:Any}
+    UnitfulCallable{T<:Any, UI<:Any, UO<:Any}
 
-An object representing a unitful black-box model that requires inputs to be units UI and produces outputs of UO
+An object representing a callable object that requires inputs to be units UI and produces outputs of UO
 This is useful for wrapping functions/models that aren't generic enough to support `Quantity` types.
 
 Example1: Applying quantities to a strictly Real function
 
     angle_coords(θ::Real, r::Real) = r.*(cos(θ), sin(θ))
-    unitful_angle_coords = UnitfulBlackBox(angle_coords, (u"", u"m") => dimension(u"m"))
+    unitful_angle_coords = UnitfulCallable(angle_coords, (u"", u"m") => dimension(u"m"))
 
     c = unitful_angle_coords(30u"deg", 6u"cm")
 
@@ -201,18 +201,22 @@ Example2: Applying quantities to a strictly Real model
     end
 
     angle_coords(arm::RotatingArm, θ::Real) = arm.len.*(cos(θ), sin(θ))
-    angle_coords(arm::Quantity{<:RotatingArm}, θ::Quantity{<:Real}) = UnitfulBlackBox(Base.Fix1(angle_coords, ustrip(arm)), u""=>unit(arm))(θ)
+    angle_coords(arm::Quantity{<:RotatingArm}, θ::Quantity{<:Real}) = UnitfulCallable(Base.Fix1(angle_coords, ustrip(arm)), u""=>unit(arm))(θ)
 
     c = angle_coords(Quantity(RotatingArm(1.0), u"m"), 30u"deg")
 """
-struct UnitfulBlackBox{T, UI, UO}
-    model :: T 
-    units :: Pair{UI, UO}
+struct UnitfulCallable{T, UI, UO}
+    caller :: T 
+    units  :: Pair{UI, UO}
 end
+UnitfulCallable(p::Pair) = UnitfulCallable(nothing, p)
 
-(bb::UnitfulBlackBox{F})(x) where F = apply_units(bb, x)
-(bb::UnitfulBlackBox{F})(x1, xs...) where F = apply_units(bb, x1, xs...)
-apply_units(bb::UnitfulBlackBox, x...) = _apply_unit_pair(bb.model, bb.units, x...)
+(bb::UnitfulCallable{F})(x...) where F = _apply_unit_pair(bb.caller, bb.units, x...)
+unitful_call(f, bb::UnitfulCallable, x...)  = _apply_unit_pair(f, bb.units, x...)
+
+function _apply_unit_pair(f, u::Pair)
+    return quantity(f(), u[2])
+end
 
 function _apply_unit_pair(f, u::Pair, x)
     (ui, uo) = u
