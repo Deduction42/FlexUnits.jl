@@ -140,76 +140,35 @@ end
 #=================================================================================================
 Quantity types
 The basic type is Quantity, which belongs to <:Any (hence it has no real hierarchy)
-Other types are "narrower" in order to slot into different parts of the number hierarchy
 =================================================================================================#
+abstract type AbstractQuantity{T,U} end
+
 """
     Quantity{T<:Any,U<:AbstractUnitLike}
 
-Generic quantity type with fields `value` and `units`
+Generic quantity type with fields `value` and `unit`
 """
-struct Quantity{T<:Any,U<:AbstractUnitLike}
+struct Quantity{T<:Any,U<:AbstractUnitLike} <: AbstractQuantity{T,U}
     value :: T
-    units :: U
+    unit  :: U
 end
-narrowest_quantity(::Type{<:Any}) = Quantity
+Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
 
-"""
-    NumberQuantity{T<:Number,U<:AbstractUnitLike}
+ustrip(q::Quantity) = q.value
+unit(q::Quantity) = q.unit
+dimension(q::Quantity) = dimension(unit(q))
 
-Quantity type that subtypes to Number, with fields `value` and `units`
-"""
-struct NumberQuantity{T<:Number,U<:AbstractUnitLike} <: Number
-    value :: T
-    units :: U
-end
-narrowest_quantity(::Type{<:Number}) = NumberQuantity
-
-"""
-    RealQuantity{T<:Real,U<:AbstractUnitLike}
-
-Quantity type that subtypes to Real, with fields `value` and `units`
-"""
-struct RealQuantity{T<:Real,U<:AbstractUnitLike} <: Real
-    value :: T
-    units :: U
-end
-narrowest_quantity(::Type{<:Real}) = RealQuantity
-
-narrowest_quantity(x::Any) = narrowest_quantity(typeof(x))
-
-AffineUnits(scale, offset::RealQuantity, dims::AbstractDimensions, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
-AffineUnits(scale, offset::RealQuantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
-
-
-#=================================================================================================
-# Generic unions of quantities and fallbacks
-=================================================================================================#
-const UnionQuantity{T,U} = Union{Quantity{T,U}, NumberQuantity{T,U}, RealQuantity{T,U}}
-
-#Generic fallback constructors
-(::Type{Q})(v0, u) where {T, Q<:UnionQuantity{T}} = constructorof(Q)(convert(T, v0), u)
-(::Type{Q})(q::UnionQuantity) where Q<:UnionQuantity = Q(ustrip(q), unit(q))
-
-ustrip(q::UnionQuantity) = q.value
-unit(q::UnionQuantity) = q.units
-dimension(q::UnionQuantity) = dimension(unit(q))
-
+AffineUnits(scale, offset::Quantity, dims::AbstractDimensions, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
+AffineUnits(scale, offset::Quantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
 
 """
     quantity(x, u::AbstractUnitLike)
 
-Constructs a quantity based on the narrowest quantity type that accepts x as an agument.
-If "NoDims" is passed, only x is returned
+Overloading constructor for various quantities
 """
-quantity(x, u::AbstractUnitLike) = narrowest_quantity(x)(x, u)
+quantity(x, u::AbstractUnitLike) = Quantity(x, u)
 quantity(x, u::NoDims) = x
-
-"""
-    narrowest(q::UnionQuantity)
-
-Returns the narrowest quantity type of `q`
-"""
-narrowest(q::UnionQuantity) = quantity(ustrip(q), unit(q))
+quantity(x::Tuple, u::Tuple) = map(quantity, x, u)
 
 """
     constructorof(::Type{T}) where T = Base.typename(T).wrapper
@@ -218,11 +177,60 @@ Return the constructor of a type T{PS...} by default it only returns T (i.e. rem
 This function can be overloaded if custom behaviour is needed
 """
 constructorof(::Type{T}) where T = Base.typename(T).wrapper
-constructorof(::Type{D}) where D<:Dimensions     = Dimensions
-constructorof(::Type{U}) where U<:AffineUnits    = AffineUnits
-constructorof(::Type{Q}) where Q<:Quantity       = Quantity
-constructorof(::Type{Q}) where Q<:RealQuantity   = RealQuantity
-constructorof(::Type{Q}) where Q<:NumberQuantity = NumberQuantity
+constructorof(::Type{<:Dimensions}) = Dimensions
+constructorof(::Type{<:AffineUnits}) = AffineUnits 
+constructorof(::Type{<:Quantity}) = Quantity
+
+"""
+    UnitfulCallable{T<:Any, UI<:Any, UO<:Any}
+
+An object representing a callable object that requires inputs to be units UI and produces outputs of UO
+This is useful for wrapping functions/models that aren't generic enough to support `Quantity` types.
+
+Example1: Applying quantities to a strictly Real function
+
+    angle_coords(θ::Real, r::Real) = r.*(cos(θ), sin(θ))
+    unitful_angle_coords = UnitfulCallable(angle_coords, (u"", u"m") => dimension(u"m"))
+
+    c = unitful_angle_coords(30u"deg", 6u"cm")
+
+Example2: Applying quantities to a strictly Real model
+
+    struct RotatingArm
+        len :: Float64
+    end
+
+    angle_coords(arm::RotatingArm, θ::Real) = arm.len.*(cos(θ), sin(θ))
+    angle_coords(arm::Quantity{<:RotatingArm}, θ::Quantity{<:Real}) = UnitfulCallable(Base.Fix1(angle_coords, ustrip(arm)), u""=>unit(arm))(θ)
+
+    c = angle_coords(Quantity(RotatingArm(1.0), u"m"), 30u"deg")
+"""
+struct UnitfulCallable{T, UI, UO}
+    caller :: T 
+    units  :: Pair{UI, UO}
+end
+UnitfulCallable(p::Pair) = UnitfulCallable(nothing, p)
+
+(bb::UnitfulCallable{F})(x...) where F = _apply_unit_pair(bb.caller, bb.units, x...)
+unitful_call(f, bb::UnitfulCallable, x...)  = _apply_unit_pair(f, bb.units, x...)
+
+function _apply_unit_pair(f, u::Pair)
+    return quantity(f(), u[2])
+end
+
+function _apply_unit_pair(f, u::Pair, x)
+    (ui, uo) = u
+    raw_args = ustrip(ui, x)
+    return quantity(f(raw_args), uo)
+end
+
+function _apply_unit_pair(f, u::Pair, x1, xs...)
+    (ui, uo) = u
+    raw_args = map(ustrip, ui, (x1, xs...))
+    return quantity(f(raw_args...), uo)
+end
+
+
 
 #=============================================================================================
 Errors and assertion functions
@@ -236,8 +244,9 @@ Error thrown when an operation is dimensionally invalid given the arguments
 struct DimensionError{T} <: Exception
     items :: T
 end
+DimensionError(arg1, arg2, args...) = DimensionError((arg1, arg2, args...))
 Base.showerror(io::IO, e::DimensionError{<:Tuple}) = print(io, "DimensionError: ", e.items, " have incompatible dimensions")
-Base.showerror(io::IO, e::DimensionError{<:UnionQuantity}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
+Base.showerror(io::IO, e::DimensionError{<:AbstractQuantity}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
 Base.showerror(io::IO, e::DimensionError{<:AbstractUnitLike}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
 
 """
@@ -290,9 +299,9 @@ assert_dimension(u::AbstractDimensions) =  u
 assert_dimension(u::AbstractAffineUnits) = isone(uscale(u)) & iszero(uoffset(u)) ? u : throw(NotDimensionError(u))
 
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
-assert_dimensionless(q::UnionQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
+assert_dimensionless(q::AbstractQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
 dimensionless(u::AbstractUnitLike) = (assert_dimensionless(u); NoDims())
-dimensionless(q::UnionQuantity) = ustrip(assert_dimensionless(ubase(q)))
+dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
 dimensionless(n::Number) = n
 
 function Base.iszero(u::U) where U<:AbstractDimensions

@@ -13,14 +13,16 @@ The flexible units package. FlexUnits.jl was heavily inspired by DynamicQuantiti
 5. More closely resembles the Unitful.jl API in many ways
 6. No symbolic units (everything eagerly evaluates to SI units)
 7. The function `uexpand` is replaced by `ubase`
+8. There is no `Quantity` type that subtypes to `Number` or `Real`. A `Quantity` in FlexUnits.jl is equivalent to a `GenericQuantity` in DynamicQuantities.jl This is a deliberate design decision to avoid ambiguities on numerical operations with user-defined types.
 
 #### Major differences between FlexUnits.jl and Unitufl.jl
 1. Units are not specialized (u"m/s" returns the same concrete type as u"°C") which is much faster when units cannot be inferred
 2. The string macro `u_str` and parsing function `uparse` are not automatically exported (allowing users to export their own registries)
 3. Units are not dynamically tracked, quantities are displayed as though `upreferred` was called on them
-4. The function `upreferred` is replaced by `ubase` which shows raw dimensions and is not configurable
+4. The function `upreferred` is replaced by `ubase` which converts to raw dimensions (like SI) which are not configurable
 5. Operations on affine units do not produce errors (due to automatic conversion to dimensional form). **This may may yield unituitive (but more consistent) results**.
 6. Unit registries are much simpler; a registry is simply a dict of units, all of the same type, living inside a module. Custom registries inside user-defined modules are not neccessary, but are still supported.
+7. `Quantity` in FlexUnits.jl does not subtype to `Number` in order to support more value types (such as a Distribution or Array)
 
 
 ## Benchmarks
