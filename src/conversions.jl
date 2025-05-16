@@ -1,19 +1,50 @@
 #============================================================================================
 Unit Transforms are the backbone of the conversion process
-    uconvert(u1::AbstractUnit, u2::AbstractUnit) produces a kind of unit transform 
-    unit transforms can be applied directly to quantities to do the conversion 
+    uconvert(u1::AbstractUnit, u2::AbstractUnit) produces a kind of unit transformation
+    unit transformations can be applied directly to quantities to do the conversion 
 Currently, only conversions between affine units are supported, 
     but other conversions (such as log units) are conceivably possible but they would
     require a separate unit registry (which is why I made separate registries easier)
 ============================================================================================#
+"""
+An abstract object representing a unit transformation formula. 
+Any object that subtypes this is made callable.
+
+# Callable form 
+utrans = uconvert(u"°C", u"°F")
+utrans(0.0)
+31.999999999999986
+
+# Shorthand callable form (syntactic sugar)
+(u"°C" |> u"°F")(0.0)
+31.999999999999986
+"""
 abstract type AbstractUnitTransform end
 
+Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
+(utrans::AbstractUnitTransform)(x) = uconvert(utrans, x)
+uconvert(utrans::AbstractUnitTransform, x) = ArgumentError("Conversion formulas not yet implemented for $(utrans)")
+
+
+"""
+    |>(u1::AbstractUnitLike, u2::Union{AbstractUnitLike, AbstractQuantity})
+
+Using `q |> qout` is an alias for `uconvert(u, q)`.
+"""
+Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
+Base.:(|>)(q::AbstractQuantity, u::AbstractUnitLike,) = uconvert(u, q)
+
+
+#============================================================================================
+Affine transformations
+============================================================================================#
 """
     AffineTransform
 
 A type representing an affine transfomration that can be
 used to convert values from one unit to another. This is the
-output type of `uconvert(u::AbstractUnitLike, u0::AbstractUnitLike)`
+output type of `uconvert(u::AbstractUnitLike, u0::AbstractUnitLike)`.
+This object is callable.
 
 # Fields
 - scale :: Float64
@@ -28,27 +59,18 @@ struct AffineTransform <: AbstractUnitTransform
     offset :: Float64
 end
 AffineTransform(;scale, offset) = AffineTransform(scale, offset)
-Base.broadcastable(trans::AffineTransform) = Ref(trans)
 
 """
-    transform(x, trans::AbstractUnitTransform)
+    uconvert(utrans::AffineTransform, x)
 
-Apply an affine transform to "x", can be used to apply unit conversions on unitless values
+Apply the unit conversion formula "utrans" to value "x", can be used to apply unit conversions on unitless values
 
-julia> transform(1.0, u"m/s"|>u"km/hr")
+julia> uconvert(u"m/s"|>u"km/hr", 1.0)
 3.5999999999999996
 """
-transform(x, trans::AffineTransform) = muladd(x, trans.scale, trans.offset)
-transform(x::AbstractArray, trans::AffineTransform) = transform.(x, trans)
-transform(x::Tuple, trans::AffineTransform) = map(Base.Fix2(transform, trans), x)
-
-"""
-    |>(u1::AbstractUnitLike, u2::Union{AbstractUnitLike, AbstractQuantity})
-
-Using `q |> qout` is an alias for `uconvert(u, q)`.
-"""
-Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
-Base.:(|>)(q::AbstractQuantity, u::AbstractUnitLike,) = uconvert(u, q)
+uconvert(utrans::AffineTransform, x) = muladd(x, utrans.scale, utrans.offset)
+uconvert(utrans::AffineTransform, x::AbstractArray) = utrans.(x)
+uconvert(utrans::AffineTransform, x::Tuple) = map(utrans, x)
 
 """
     uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
@@ -71,8 +93,8 @@ end
 Converts quantity `q` to the equivalent quantity having units `u`
 """
 function uconvert(u::AbstractUnitLike, q::AbstractQuantity)
-    newval = transform(ustrip(q), uconvert(u, unit(q)))
-    return quantity(newval, u)
+    utrans = uconvert(u, unit(q))
+    return quantity(utrans(ustrip(q)), u)
 end
 
 """
@@ -83,8 +105,8 @@ Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 ubase(q::AbstractQuantity{<:Any,<:AbstractDimensions}) = q
 function ubase(q::AbstractQuantity{<:Any,<:AbstractAffineUnits})
     u = unit(q)
-    trans = AffineTransform(scale=uscale(u), offset=uoffset(u))
-    return quantity(transform(ustrip(q), trans), dimension(u))
+    utrans = AffineTransform(scale=uscale(u), offset=uoffset(u))
+    return quantity(utrans(ustrip(q)), dimension(u))
 end 
 
 """
@@ -92,7 +114,7 @@ end
 
 Converts quantity `q` to units `q`` equivalent and removes units
 """
-ustrip(u::AbstractUnitLike, q::AbstractQuantity) = transform(ustrip(q), uconvert(u, unit(q)))
+ustrip(u::AbstractUnitLike, q::AbstractQuantity) = uconvert(u, unit(q))(ustrip(q))
 ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
 
 """
@@ -100,7 +122,7 @@ ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
 
 Converts quantity `q` to its raw dimensional equivalent and removes units
 """
-ustrip_base(q::AbstractQuantity) = ustrip(dimension(q), q)
+ustrip_base(q::AbstractQuantity) = ustrip(ubase(q))
 
 """
     ustrip_dimensionless(q::AbstractQuantity)
