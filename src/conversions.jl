@@ -27,12 +27,54 @@ uconvert(utrans::AbstractUnitTransform, x) = ArgumentError("Conversion formulas 
 
 
 """
+    uconvert(u::AbstractUnitLike, q::AbstractQuantity)
+
+Converts quantity `q` to the equivalent quantity having units `u`
+"""
+function uconvert(u::AbstractUnitLike, q::AbstractQuantity)
+    utrans = uconvert(u, unit(q))
+    return quantity(utrans(ustrip(q)), u)
+end
+
+
+"""
+    ubase(q::AbstractQuantity)
+
+Converts quantity `q` to its raw dimensional equivalent (such as SI units)
+"""
+ubase(q::AbstractQuantity{<:Any,<:AbstractDimensions}) = q
+
+
+"""
     |>(u1::AbstractUnitLike, u2::Union{AbstractUnitLike, AbstractQuantity})
 
 Using `q |> qout` is an alias for `uconvert(u, q)`.
 """
 Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
 Base.:(|>)(q::AbstractQuantity, u::AbstractUnitLike,) = uconvert(u, q)
+
+"""
+    ustrip(u::AbstractUnitLike, q::AbstractQuantity)
+
+Converts quantity `q` to units `q`` equivalent and removes units
+"""
+ustrip(u::AbstractUnitLike, q::AbstractQuantity) = uconvert(u, unit(q))(ustrip(q))
+ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
+
+"""
+    ustrip_base(q::AbstractQuantity)
+
+Converts quantity `q` to its raw dimensional equivalent and removes units
+"""
+ustrip_base(q::AbstractQuantity) = ustrip(ubase(q))
+
+"""
+    ustrip_dimensionless(q::AbstractQuantity)
+
+Converts quantity `q` to its raw dimensional equivalent, asserts 
+a dimensionless result, and then removes units
+"""
+ustrip_dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
 
 
 #============================================================================================
@@ -61,18 +103,6 @@ end
 AffineTransform(;scale, offset) = AffineTransform(scale, offset)
 
 """
-    uconvert(utrans::AffineTransform, x)
-
-Apply the unit conversion formula "utrans" to value "x", can be used to apply unit conversions on unitless values
-
-julia> uconvert(u"m/s"|>u"km/hr", 1.0)
-3.5999999999999996
-"""
-uconvert(utrans::AffineTransform, x) = muladd(x, utrans.scale, utrans.offset)
-uconvert(utrans::AffineTransform, x::AbstractArray) = utrans.(x)
-uconvert(utrans::AffineTransform, x::Tuple) = map(utrans, x)
-
-"""
     uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
 
 Produces an AffineTransform that can convert a quantity with `current`
@@ -87,50 +117,26 @@ function uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
     )
 end
 
-"""
-    uconvert(u::AbstractUnitLike, q::AbstractQuantity)
-
-Converts quantity `q` to the equivalent quantity having units `u`
-"""
-function uconvert(u::AbstractUnitLike, q::AbstractQuantity)
-    utrans = uconvert(u, unit(q))
-    return quantity(utrans(ustrip(q)), u)
-end
 
 """
-    ubase(q::AbstractQuantity)
+    uconvert(utrans::AffineTransform, x)
 
-Converts quantity `q` to its raw dimensional equivalent (such as SI units)
+Apply the unit conversion formula "utrans" to value "x", can be used to apply unit conversions on unitless values
+
+julia> uconvert(u"m/s"|>u"km/hr", 1.0)
+3.5999999999999996
 """
-ubase(q::AbstractQuantity{<:Any,<:AbstractDimensions}) = q
+uconvert(utrans::AffineTransform, x) = muladd(x, utrans.scale, utrans.offset)
+uconvert(utrans::AffineTransform, x::AbstractArray) = utrans.(x)
+uconvert(utrans::AffineTransform, x::Tuple) = map(utrans, x)
+
 function ubase(q::AbstractQuantity{<:Any,<:AbstractAffineUnits})
     u = unit(q)
     utrans = AffineTransform(scale=uscale(u), offset=uoffset(u))
     return quantity(utrans(ustrip(q)), dimension(u))
 end 
 
-"""
-    ustrip(u::AbstractUnitLike, q::AbstractQuantity)
 
-Converts quantity `q` to units `q`` equivalent and removes units
-"""
-ustrip(u::AbstractUnitLike, q::AbstractQuantity) = uconvert(u, unit(q))(ustrip(q))
-ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
-
-"""
-    ustrip_base(q::AbstractQuantity)
-
-Converts quantity `q` to its raw dimensional equivalent and removes units
-"""
-ustrip_base(q::AbstractQuantity) = ustrip(ubase(q))
-
-"""
-    ustrip_dimensionless(q::AbstractQuantity)
-
-Converts quantity `q` to its raw dimensional equivalent, asserts 
-a dimensionless result, and then removes units
-"""
-ustrip_dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
 
 """
     asunit(q::AbstractQuantity{<:Number})
