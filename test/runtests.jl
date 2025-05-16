@@ -407,6 +407,7 @@ end
     @test 0u"K" |> °C  == -273.15°C
     @test °C |> °F isa AffineTransform
     @test 0°C |> °F == 32°F
+    @test (°C |> °F)(0) ≈ 32
 
     @test AffineUnits(dims=u"Pa") == u"Pa"
     @test_throws NotDimensionError AffineUnits(dims=u"kPa")
