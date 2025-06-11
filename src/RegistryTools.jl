@@ -211,9 +211,8 @@ function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnit
 end
 
 # Expression parsing (for dynamic and macros) ==============================================================
-function uparse_expr(str0::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    str = _expr_preprocessing(str0)
-    parsed = Meta.parse(str)
+function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    parsed = Meta.parse(_expr_preprocessing(str))
     
     if !(parsed isa PARSE_CASES)
         throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as $(PARSE_CASES)"))
@@ -223,9 +222,8 @@ function uparse_expr(str0::String, reg::AbstractDict{Symbol, U}) where U <: Abst
     end
 end
 
-function qparse_expr(str0::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    str = _expr_preprocessing(str0)
-    parsed = Meta.parse(str)
+function qparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    parsed = Meta.parse(_expr_preprocessing(str))
 
     if !(parsed isa PARSE_CASES)
         throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as $(PARSE_CASES)"))
