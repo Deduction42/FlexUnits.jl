@@ -445,6 +445,7 @@ end
     @test q"1.0" == 1.0u""
     @test qparse("1%") == 0.01u""
     @test qparse("1.0") == 1.0u""
+    @test qparse("5  5kg") == 25u"kg"
 
     #Test showerror 
     testio = IOBuffer()

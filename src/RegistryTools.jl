@@ -286,7 +286,12 @@ function change_symbol(u::U, s::Symbol) where U<:AbstractAffineUnits
     return constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=s)
 end
 
-_expr_preprocessing(str::String) = replace(str, " "=>"", "%"=>"percent")
+function _expr_preprocessing(str1::AbstractString)
+    space2mult = r"([\%\w]) +([\%\w])" => s"\1*\2"
+    str2 = replace(str1, space2mult) #Spaces between words are multiplications
+    str3 = replace(str2, space2mult) #Spaces between words are multiplications
+    return replace(str3, " "=>"", "%"=>"percent") #Eliminates extra spaces 
+end
 
 end
 
