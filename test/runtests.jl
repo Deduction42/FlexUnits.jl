@@ -440,6 +440,11 @@ end
     @test q"5 kg/s" == 5u"kg/s"
     @test uparse("1.0") == u""
     @test qparse("10 km/hr") == 10*u"km/hr"
+    @test u"%" == u"percent"
+    @test q"1%" == 0.01u""
+    @test q"1.0" == 1.0u""
+    @test qparse("1%") == 0.01u""
+    @test qparse("1.0") == 1.0u""
 
     #Test showerror 
     testio = IOBuffer()

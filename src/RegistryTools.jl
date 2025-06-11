@@ -212,11 +212,11 @@ end
 
 # Expression parsing (for dynamic and macros) ==============================================================
 function uparse_expr(str0::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    str = replace(str0, " "=>"")
+    str = _expr_preprocessing(str0)
     parsed = Meta.parse(str)
     
     if !(parsed isa PARSE_CASES)
-        throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as an Expr or Symbol"))
+        throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as $(PARSE_CASES)"))
     else
         ex = uparse_expr(parsed, reg)
         return :($change_symbol($(ex), $(str)))
@@ -224,10 +224,11 @@ function uparse_expr(str0::String, reg::AbstractDict{Symbol, U}) where U <: Abst
 end
 
 function qparse_expr(str0::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    str = replace(str0, " "=>"")
-    parsed = Meta.parse(replace(str, " "=>""))
+    str = _expr_preprocessing(str0)
+    parsed = Meta.parse(str)
+
     if !(parsed isa PARSE_CASES)
-        throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as an Expr or Symbol"))
+        throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as $(PARSE_CASES)"))
     else
         return qparse_expr(parsed, reg)
     end
@@ -255,7 +256,7 @@ function _parse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: Abstract
 end
 
 function _parse_expr(ex::Symbol, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    return lookup_unit_expr(reg, ex)
+    return lookup_unit_expr(reg, ex) #If expresion parsed as Symbol, lookup value
 end
 
 function _parse_expr(ex::Nothing, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike 
@@ -263,7 +264,7 @@ function _parse_expr(ex::Nothing, reg::AbstractDict{Symbol, U}) where U <: Abstr
 end
 
 function _parse_expr(ex::Real, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike 
-    return :($(ex)*$dimtype($U)()) #If expresion parsed as Nothing, return dimensionless
+    return :($(ex)*$dimtype($U)()) #If expresion parsed as Real return dimensionless value
 end
 
 # Lookup utitilities ======================================================================================
@@ -286,6 +287,8 @@ change_symbol(u::AbstractUnitLike, s::String) = change_symbol(u, Symbol(s))
 function change_symbol(u::U, s::Symbol) where U<:AbstractAffineUnits
     return constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=s)
 end
+
+_expr_preprocessing(str::String) = replace(str, " "=>"", "%"=>"percent")
 
 end
 
