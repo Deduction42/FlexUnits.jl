@@ -12,7 +12,6 @@ Tasks:
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
 3. Announce the package
-4. Consier supporting ArrayQuantity (can use some Quantity methods as fallbacks)
 
 
 import DynamicQuantities
