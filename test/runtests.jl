@@ -65,6 +65,8 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
     @test vq[1] == 1*u"m/s"
     @test vq[CartesianIndex(1)] == 1*u"m/s"
     @test all([q for q in vq] .== vq)
+    @test vq[begin] == 1*u"m/s"
+    @test vq[end] == 2*u"m/s"
 
     #Size indicators for quantities
     tx = [1, 3.6, 501.3]
