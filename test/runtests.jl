@@ -12,7 +12,7 @@ julia --startup-file=no --depwarn=yes --threads=auto coverage.jl
 #To see the actual coverage in VSCode, install the Coverage Gutters extension
 #https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters
 
-using Revise
+#using Revise
 using Test
 using BenchmarkTools
 using FlexUnits, .UnitRegistry
