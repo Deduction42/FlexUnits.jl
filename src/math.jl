@@ -178,8 +178,8 @@ for f in (:isfinite, :isinf, :isnan, :isreal, :isempty, :one)
     @eval Base.$f(q::AbstractQuantity) = $f(ustrip(q))
 end
 
-#Single-argument functions with dimensionless output that don't work with non-scalar units
-for f in (:iszero, :signbit, :angle)
+#Single-argument functions with dimensionless output that only work with scalar units (no offset)
+for f in (:iszero, :angle, :signbit, :sign)
     @eval Base.$f(q::AbstractQuantity) = (assert_scalar(unit(q)); $f(ustrip_base(q)))
 end
 
