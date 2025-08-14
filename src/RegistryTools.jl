@@ -207,7 +207,7 @@ function uparse(str::String, reg::AbstractDict{Symbol, U}) where {U<:AbstractUni
 end
 
 function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnitLike}
-    return eval(qparse_expr(str, reg)) :: Quantity{Float64, dimtype(U)}
+    return eval(qparse_expr(str, reg)) :: Quantity{Float64, U}
 end
 
 # Expression parsing (for dynamic and macros) ==============================================================
@@ -239,9 +239,9 @@ end
 
 
 function qparse_expr(ex::PARSE_CASES, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    Q  = Quantity{Float64, dimtype(U)}
-    ex = _parse_expr(ex, reg)
-    return :($convert($Q, ubase($ex)))
+    Q  = Quantity{Float64, U}
+    ex_new = _parse_expr(ex, reg)
+    return :($convert($Q, $ex_new))
 end
 
 # Casing out parsing ======================================================================================
