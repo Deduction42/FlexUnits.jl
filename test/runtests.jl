@@ -259,8 +259,8 @@ end
     @test ustrip(x) == 1.3
     @test ustrip_base(x) == 1300  # SI base units
     @test x == q"1.3km/s^2"
-    @test x !== q"1.3km/s^2"
-    @test abs(x) === q"1.3km/s^2"
+    @test typeof(x) == typeof(q"1.3km/s^2")
+    @test abs(x) === ubase(q"1.3km/s^2")
 
     y = 0.9u"sqrt(mΩ)"
     @test typeof(y) == Quantity{Float64, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
@@ -275,11 +275,11 @@ end
     y32 = convert(Quantity{Float32, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}, y)
     @test typeof(y32) == Quantity{Float32, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
 
-    z = 1*u"yr"
+    z = 1.0*u"yr"
     @test ustrip_base(z) ≈ 60 * 60 * 24 * 365.25
-    @test z == 1*uparse("yr")
-    @test z == qparse("1yr")
-    @test 1/z == qparse("1/yr")
+    @test z === 1.0*uparse("yr")
+    @test z === qparse("1yr")
+    @test 1/z === ubase(qparse("1/yr"))
     @test_throws MethodError qparse("yr")
 
     # Test type stability of extreme range of units
