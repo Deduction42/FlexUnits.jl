@@ -35,6 +35,7 @@ end
 #Default Rational Base, common factors of prime numbers multiplying to less than sqrt(typemax(Int32))
 const DEFAULT_NUMERATOR_TYPE = Int32
 const DEFAULT_DENOM = 2^4 * 3^2 * 5^2 * 7
+FixedRational(x::FixedRational) = x
 FixedRational(x::Real)    = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}(x)
 FixedRational(x::Integer) = FixedRational{DEFAULT_DENOM}(x)
 Numerator(x::FixedRational) = Numerator(x.num)
@@ -78,8 +79,8 @@ Base.isone(x::FixedRational)  = (numerator(x) == denominator(x))
 Base.isinteger(x::FixedRational) = iszero(numerator(x) % denominator(x))
 
 #Fixed rational conversions
-Base.convert(::Type{F}, x::FixedRational{B}) where {B,F<:FixedRational{B}} = F(Numerator(x)) #Same-base shortcut
-Base.convert(::Type{F}, x::FixedRational) where {F<:FixedRational} = F(numerator(x)/denominator(x))
+(::Type{F})(x::FixedRational{B}) where {B,F<:FixedRational{B}} = F(Numerator(x)) #Same-base shortcut
+(::Type{F})(x::FixedRational) where {F<:FixedRational} = F(numerator(x)/denominator(x))
 
 #Promotion rules:
 function Base.promote_rule(::Type{FixedRational{B1,T1}}, ::Type{FixedRational{B2,T2}}) where {B1,B2,T1,T2}
