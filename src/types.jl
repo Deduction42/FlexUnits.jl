@@ -127,11 +127,7 @@ function Base.show(io::IO, u::AffineUnits; pretty=PRETTY_DIM_OUTPUT[])
         return print(io, usymbol(u))
     else
         print(io, "AffineUnits(scale=", uscale(u), ", offset=", uoffset(u), ", dims=")
-        if pretty
-            show(io, dimension(u), pretty=true)
-        else
-            show(io, dimension(u), pretty=false)
-        end
+        show(io, dimension(u); pretty)
         return print(io, ")")
     end
 end
