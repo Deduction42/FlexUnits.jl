@@ -113,11 +113,11 @@ println("\nS5) Affine units (°C/°F) handling: PV = nRT at 25°C, 101.3kPa, n=1
 Tc = 25 .+ randn(Ns);
 Tu = (Tc .+ 273.15) .* Unitful.u"K";
 Td = [Tci * DynamicQuantities.ua"degC" for Tci in Tc];
-Tf = Tc .* UnitRegistry.u"°C";
+Tf = ubase.(Tc .* UnitRegistry.u"°C");
 
 pu, nu = 101.3 * Unitful.u"kPa", 1.0 * Unitful.u"mol";
 pd, nd = 101.3 * DynamicQuantities.u"kPa", 1.0 * DynamicQuantities.u"mol";
-pf, nf = 101.3 * UnitRegistry.u"kPa", 1.0 * UnitRegistry.u"mol";
+pf, nf = ubase(101.3 * UnitRegistry.u"kPa"), ubase(1.0 * UnitRegistry.u"mol");
 
 print("Unitful:\t")
 @btime ($nu .* U_R .* $Tu) ./ $pu;
