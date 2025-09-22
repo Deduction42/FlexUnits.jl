@@ -17,9 +17,8 @@ const D_R = 8.314 * DynamicQuantities.u"J/(mol*K)"
 const F_R = 8.314 * UnitRegistry.u"J/(mol*K)"
 
 # Sizes
-const N  = 20_000
-const Np = 20_000
-const Ns = 20_000
+const N  = 1000
+const Ns = 1000
 
 # ========== S1. Scalar ops (units inferable) ==========
 println("S1) Scalar operations where units are inferable\n")
@@ -87,7 +86,7 @@ print("FlexU ubase:\t")
 # ========== S4.1. upreferred ==========
 println("\nS4.1) upreferred\n")
 
-base_array = rand(Np)
+base_array = rand(Ns)
 l_uni = base_array .* Unitful.u"cm"
 l_dyn = base_array .* DynamicQuantities.us"cm"
 l_flex = base_array .* UnitRegistry.u"cm"
