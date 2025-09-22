@@ -1,11 +1,11 @@
 name = "FlexUnits"
 uuid = "76e01b6b-c995-4ce6-8559-91e72a3d4e95"
 authors = ["Ruben Gonzalez <ruben.carbonbased@gmail.com> and contributors"]
-version = "0.2.5"
+version = "0.2.6"
 
 [compat]
+Test = "1.10"
 julia = "1.10"
-Test  = "1.10"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
