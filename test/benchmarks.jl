@@ -17,7 +17,7 @@ const D_R = 8.314 * DynamicQuantities.u"J/(mol*K)"
 const F_R = 8.314 * UnitRegistry.u"J/(mol*K)"
 
 # Sizes
-const N  = 1000
+const N  = 20000
 const Ns = 1000
 
 # ========== S1. Scalar ops (units inferable) ==========
@@ -62,6 +62,8 @@ xd = randn(N) .* DynamicQuantities.u"km/s"
 yd = (0.3 .+ randn(N)) .* DynamicQuantities.u"km/s"
 xqd = QuantityArray(xd);
 yqd = QuantityArray(yd);
+xsd = DynamicQuantities.uconvert.(DynamicQuantities.us"km/s", xd)
+ysd = DynamicQuantities.uconvert.(DynamicQuantities.us"km/s", yd)
 
 xf = randn(N) .* UnitRegistry.u"km/s"
 yf = (0.3 .+ randn(N)) .* UnitRegistry.u"km/s"
@@ -74,13 +76,19 @@ g(x, y) = (x.^2) .+ 2.0.*x.*y .+ (y.^2)
 print("Unitful:\t")
 @btime g($xu, $yu);
 
-print("DynamicQ:\t")
+print("DynamicQ Sym:\t")
+@btime g($xsd, $ysd);
+
+print("DynamicQ Dim:\t")
+@btime g($xd, $yd);
+
+print("DynamicQ Array:\t")
 @btime g($xqd, $yqd);
 
-print("FlexU  :\t")
+print("FlexU Affine:\t")
 @btime g($xf, $yf);
 
-print("FlexU ubase:\t")
+print("FlexU Dim:\t")
 @btime g($xfb, $yfb);
 
 # ========== S4.1. upreferred ==========
