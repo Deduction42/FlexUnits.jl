@@ -70,7 +70,7 @@ yf = (0.3 .+ randn(N)) .* UnitRegistry.u"km/s"
 xfb = ubase.(randn(N) .* UnitRegistry.u"km/s")
 yfb = ubase.((0.3 .+ randn(N)) .* UnitRegistry.u"km/s")
 
-g(x, y) = (x .^ 2) .+ 2 .* x .* y .+ y .^ 2
+g(x, y) = (x.^2) .+ 2.0.*x.*y .+ (y.^2)
 
 print("Unitful:\t")
 @btime g($xu, $yu);
@@ -89,24 +89,33 @@ println("\nS4.1) upreferred\n")
 
 base_array = rand(Np)
 l_uni = base_array .* Unitful.u"cm"
-l_dyn = base_array .* DynamicQuantities.u"cm"
+l_dyn = base_array .* DynamicQuantities.us"cm"
 l_flex = base_array .* UnitRegistry.u"cm"
 
 print("Unitful:\t")
 @btime Unitful.upreferred.($l_uni);
 print("DynamicQ:\t")
-@btime $base_array .* DynamicQuantities.u"cm";
+@btime uexpand.($l_dyn);
 print("FlexU:  \t")
 @btime ubase.($l_flex);
 
 # ========== S4.2. ustrip ==========
 println("\nS4.2) ustrip\n")
 print("Unitful:\t")
-@btime Unitful.ustrip.(Unitful.u"m", $l_uni);
+@btime Unitful.ustrip.(Unitful.u"mm", $l_uni);
 print("DynamicQ:\t")
-@btime DynamicQuantities.ustrip.(DynamicQuantities.u"m", $l_dyn);
+@btime DynamicQuantities.ustrip.(DynamicQuantities.u"mm", $l_dyn);
 print("FlexU:  \t")
-@btime [ubase(l).value for l in $l_flex];
+@btime FlexUnits.ustrip.(UnitRegistry.u"mm", $l_flex);
+
+# ========== S4.3. uconvert ==========
+println("\nS4.3) uconvert to arbitrary units\n")
+print("Unitful:\t")
+@btime Unitful.uconvert.(Unitful.u"ft", $l_uni);
+print("DynamicQ:\t")
+@btime DynamicQuantities.uconvert.(DynamicQuantities.us"ft", $l_dyn);
+print("FlexU:  \t")
+@btime FlexUnits.uconvert.(UnitRegistry.u"ft", $l_flex);
 
 # ========== S5. Affine units (°C/°F) ==========
 println("\nS5) Affine units (°C/°F) handling: PV = nRT at 25°C, 101.3kPa, n=1 mol\n")
@@ -139,14 +148,18 @@ struct UState{TK,TP}
     p::TP
 end
 
-# DynamicQuantities / FlexUnits: single concrete type works
+# DynamicQuantities single concrete type works
+const UD = typeof(1.0*DynamicQuantities.u"K")
 struct DState
-    T::DynamicQuantities.Quantity
-    p::DynamicQuantities.Quantity
+    T::UD
+    p::UD
 end
+
+# FlexUnits single concrete type works
+const UF = typeof(ubase(1.0*UnitRegistry.u"K"))
 struct FState
-    T::FlexUnits.Quantity
-    p::FlexUnits.Quantity
+    T::UF
+    p::UF
 end
 
 function build_states_unitful(n)
@@ -167,7 +180,7 @@ function build_states_flex(n)
         (90.0 + rand() * 30) * UnitRegistry.u"kPa") for _ = 1:n]
 end
 
-println("S6.1) Construct\n")
+println("\nS6.1) Construct\n")
 print("Unitful:\t")
 @btime build_states_unitful($Ns);
 print("DynamicQ:\t")
@@ -175,7 +188,7 @@ print("DynamicQ:\t")
 print("FlexU:  \t")
 @btime build_states_flex($Ns);
 
-println("S6.2) Access\n")
+println("\nS6.2) Access\n")
 sumT_u(v) = sum(s -> s.T, v)
 sumT_d(v) = sum(s -> s.T, v)
 sumT_f(v) = sum(s -> s.T, v)
@@ -191,7 +204,7 @@ print("DynamicQ:\t")
 print("FlexU:  \t")
 @btime sumT_f($vf);
 
-println("S6.3) Heterogeneous states (different units across elements)\n")
+println("\nS6.3) Heterogeneous states (different units across elements)\n")
 vdh = [DState(300 * DynamicQuantities.u"K", 100 * DynamicQuantities.u"kPa"),
     DState(27 * DynamicQuantities.ua"degC", 14 * DynamicQuantities.u"Pa")]
 vfh = [FState(300 * UnitRegistry.u"K", 100 * UnitRegistry.u"kPa"),
