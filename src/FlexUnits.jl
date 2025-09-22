@@ -15,7 +15,7 @@ export Dimensions, NoDims, AffineUnits, Quantity, UnitfulCallable, AbstractQuant
 export RegistryTools, UnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units
 export assert_scalar, assert_dimension, assert_dimensionless
-export dimensionalize, quantity, ustrip, unit, unitful_call
+export with_ubase, quantity, ustrip, unit, unitful_call
 export ubase, uconvert, ustrip_base, ustrip_dimensionless
 
 
