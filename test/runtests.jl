@@ -170,6 +170,13 @@ end
         @test oneunit(Quantity{T, AffineUnits{Dimensions{R}}}) == Quantity(one(T), zero(AffineUnits{Dimensions{R}}))
         @test oneunit(Quantity{T, Dimensions{R}}) == Quantity(one(T), zero(Dimensions{R}))
 
+        @test min(0.0u"kg/hr", 1.2u"lb/s") == 0u"kg/s"
+        @test max(0.0u"kg/hr", 1.2u"lb/s") == 1.2u"lb/s"
+        @test max(0.0u"°C", 0.0u"°F") == ubase(0.0u"°C")
+        @test maximum([1.0u"lb/hr", 1.0u"kg/hr", 1.0u"kg/s"]) == 1.0u"kg/s"
+        @test minimum([1.0u"lb/hr", 1.0u"kg/hr", 1.0u"kg/s"]) == 1.0u"lb/hr"
+        @test sort([1.0u"kg/s", 1.0u"lb/hr", 1.0u"kg/hr"]) == [1.0u"lb/hr", 1.0u"kg/hr", 1.0u"kg/s"]
+
         #Cannot check iszero on non-affine units 
         @test_throws NotScalarError iszero(5u"°C")
 

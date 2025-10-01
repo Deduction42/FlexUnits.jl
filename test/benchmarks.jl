@@ -33,11 +33,6 @@ print("DynamicQ:\t")
 print("FlexU:     \t")
 @btime f1($(1.23 * UnitRegistry.u"m/s"), $(0.7 * UnitRegistry.u"m/s"));
 
-print("FlexU ubase:\t")
-aa = ubase(1.23 * UnitRegistry.u"m/s")
-bb = ubase(0.7 * UnitRegistry.u"m/s")
-@btime f1($(aa), $(bb));
-
 # ========== S2. Scalar ops (NON-inferable units / mixed dims) ==========
 println("\nS2) Scalar ops on heterogeneous units (non-inferable)\n")
 

@@ -160,7 +160,7 @@ Base.one(::Type{<:AbstractQuantity{T}}) where T = one(T) #unitless
 Base.oneunit(::Type{<:AbstractQuantity{T,D}}) where {T,D} = quantity(one(T), zero(D)) #unitless with type
 
 #Comparison functions
-for f in (:<, :<=)
+for f in (:<, :<=, :isless)
     @eval function Base.$f(q1::AbstractQuantity, q2::AbstractQuantity)
         (b1, b2) = (ubase(q1), ubase(q2))
         unit(b1) == unit(b2) || throw(DimensionError(unit(b1), unit(b2)))
