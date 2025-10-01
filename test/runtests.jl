@@ -172,6 +172,7 @@ end
 
         @test min(0.0u"kg/hr", 1.2u"lb/s") == 0u"kg/s"
         @test max(0.0u"kg/hr", 1.2u"lb/s") == 1.2u"lb/s"
+        @test max(0.0u"°C", 0.0u"°F") == ubase(0.0u"°C")
         @test maximum([1.0u"lb/hr", 1.0u"kg/hr", 1.0u"kg/s"]) == 1.0u"kg/s"
         @test minimum([1.0u"lb/hr", 1.0u"kg/hr", 1.0u"kg/s"]) == 1.0u"lb/hr"
         @test sort([1.0u"kg/s", 1.0u"lb/hr", 1.0u"kg/hr"]) == [1.0u"lb/hr", 1.0u"kg/hr", 1.0u"kg/s"]
