@@ -212,7 +212,7 @@ end
 
 # Expression parsing (for dynamic and macros) ==============================================================
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    parsed = Meta.parse(_expr_preprocessing(str))
+    parsed = Meta.parse(_unit_preprocessing(str))
     
     if !(parsed isa PARSE_CASES)
         throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as $(PARSE_CASES)"))
@@ -223,7 +223,7 @@ function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: Abstr
 end
 
 function qparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    parsed = Meta.parse(_expr_preprocessing(str))
+    parsed = Meta.parse(_unit_preprocessing(str))
 
     if !(parsed isa PARSE_CASES)
         throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as $(PARSE_CASES)"))
@@ -286,12 +286,27 @@ function change_symbol(u::U, s::Symbol) where U<:AbstractAffineUnits
     return constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=s)
 end
 
-function _expr_preprocessing(str1::AbstractString)
+function _unit_preprocessing(str1::AbstractString)
     space2mult = r"([\%\w]) +([\%\w])" => s"\1*\2"
     str2 = replace(str1, space2mult) #Spaces between words are multiplications
     str3 = replace(str2, space2mult) #Spaces between words are multiplications
     return replace(str3, " "=>"", "%"=>"percent") #Eliminates extra spaces 
 end
+
+function _quant_preprocessing(str1::AbstractString)
+    scicapt = r"(^\s*[+-]?\d*\.?\d*(?:[eE][+-]?\d+)?)(.*)"
+    #numcapt = r"(^\s*[+-]?\d*\.?\d*)(.*)"
+    scisplit = match(scicapt, str1)
+
+    v = isempty(scisplit[1]) ? 1.0 : parse(Float64, scisplit[1])
+    u = _unit_preprocessing(scisplit[2])
+
+    return (v, u)
+end
+
+
+
+
 
 end
 
