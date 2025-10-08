@@ -287,7 +287,7 @@ end
     @test z === 1.0*uparse("yr")
     @test z === qparse("1yr")
     @test 1/z === ubase(qparse("1/yr"))
-    @test_throws MethodError qparse("yr")
+    @test qparse("yr") == 1*u"yr"
 
     # Test type stability of extreme range of units
     U = typeof(first(values(UnitRegistry.UNITS)))
