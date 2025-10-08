@@ -211,6 +211,14 @@ function qparse(str::String, reg::AbstractDict{Symbol,U}) where {U<:AbstractUnit
 end
 
 # Expression parsing (for dynamic and macros) ==============================================================
+function qparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    Q = Quantity{Float64, U}
+    (nf64, ustr) = _quant_preprocessing(str)
+    uex = uparse_expr(ustr, reg)
+
+    return :($Q($nf64, $uex))
+end
+
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     parsed = Meta.parse(_unit_preprocessing(str))
     
@@ -222,27 +230,11 @@ function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: Abstr
     end
 end
 
-function qparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    parsed = Meta.parse(_unit_preprocessing(str))
-
-    if !(parsed isa PARSE_CASES)
-        throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as $(PARSE_CASES)"))
-    else
-        return qparse_expr(parsed, reg)
-    end
-end
-
 function uparse_expr(ex::PARSE_CASES, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     ex_new = _parse_expr(ex, reg)
     return :($convert($U, $ex_new))
 end
 
-
-function qparse_expr(ex::PARSE_CASES, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
-    Q  = Quantity{Float64, U}
-    ex_new = _parse_expr(ex, reg)
-    return :($convert($Q, $ex_new))
-end
 
 # Casing out parsing ======================================================================================
 function _parse_expr(ex::Expr, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
@@ -300,6 +292,10 @@ function _quant_preprocessing(str1::AbstractString)
 
     v = isempty(scisplit[1]) ? 1.0 : parse(Float64, scisplit[1])
     u = _unit_preprocessing(scisplit[2])
+
+    if startswith(u, "/")
+        u = "1"*u
+    end
 
     return (v, u)
 end
