@@ -1,6 +1,8 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
+0.  "1.0*kg/s" now fails because "*" is not a unary operator 
+        (case out the "*" prepending, where you delete "*" because it's not needed)
 1.  Build out documentation and a docs badge
     -   Include all-stops-out tutorial on defining a new dimension "RadDims"
     -   Add angle to the dimension list
