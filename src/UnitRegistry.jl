@@ -28,6 +28,10 @@ macro q_str(str)
     return esc(qparse_expr(str, UNITS))
 end
 
+#Add these functions to facilitate knowing types ahead of time, DO NOT EXPORT IF MULTIPLE REGISTRIES ARE USED
+unittype() = RegistryTools.unittype(UNITS)
+dimtype()  = RegistryTools.dimtype(UNITS)
+
 #Registry is exported but these functions/macros are not (in case user wants their own verison)
 #You can import these by invoking `using .Registry`
 export @u_str, uparse, @q_str, qparse, register_unit

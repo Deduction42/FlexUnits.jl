@@ -3,7 +3,7 @@ module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits, ..AbstractAffineUnits, ..AbstractDimensions
 import ..AffineUnits, ..Dimensions, ..AbstractQuantity, ..Quantity, ..DEFAULT_DIMENSONS
-import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit,  ..ubase, ..constructorof, ..dimtype
+import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit,  ..ubase, ..constructorof, ..dimtype, ..unittype
 
 export 
     AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractDimensions, DEFAULT_DIMENSONS,
@@ -68,6 +68,20 @@ function register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{String,
         throw(ArgumentError("Invalid unit registration name for $(k), it did not parse as a Symbol"))
     end
 end
+
+"""
+    unittype(reg::AbstractDict{Symbol,<:AbstractUnitLike})
+
+Returns the unit type of a registry
+"""
+unittype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = U
+
+"""
+    dimtype(reg::AbstractDict{Symbol,<:AbstractUnitLike})
+
+Returns the dimension type of a registry
+"""
+dimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 
 function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol,<:AbstractUnitLike})
     (k,v) = p

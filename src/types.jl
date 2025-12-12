@@ -154,6 +154,8 @@ Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
 ustrip(q::Quantity) = q.value
 unit(q::Quantity) = q.unit
 dimension(q::Quantity) = dimension(unit(q))
+unittype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = U
+dimtype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = dimtype(U)
 
 AffineUnits(scale, offset::Quantity, dims::AbstractDimensions, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
 AffineUnits(scale, offset::Quantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)

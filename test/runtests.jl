@@ -23,6 +23,9 @@ const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
 const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
 
 @testset "Basic utilities" begin
+    @test UnitRegistry.unittype() === DEFAULT_UNIT_TYPE
+    @test UnitRegistry.dimtype() === DEFAULT_DIM_TYPE
+
     d = Dimensions(length=2, mass=1, time=-2)
     @test d.length == 2
     @test d.mass == 1
