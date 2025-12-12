@@ -287,13 +287,12 @@ end
 
 function _quant_preprocessing(str1::AbstractString)
     scicapt = r"(^\s*[+-]?\d*\.?\d*(?:[eE][+-]?\d+)?)(.*)"
-    #numcapt = r"(^\s*[+-]?\d*\.?\d*)(.*)"
     scisplit = match(scicapt, str1)
 
     v = isempty(scisplit[1]) ? 1.0 : parse(Float64, scisplit[1])
     u = _unit_preprocessing(scisplit[2])
 
-    if startswith(u, "/")
+    if occursin(r"^(\/|\*)", u)
         u = "1"*u
     end
 

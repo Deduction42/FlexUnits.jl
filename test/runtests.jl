@@ -287,6 +287,7 @@ end
     @test z === 1.0*uparse("yr")
     @test z === qparse("1yr")
     @test 1/z === ubase(qparse("1/yr"))
+    @test ubase(z) === ubase(qparse("1*yr"))
     @test qparse("yr") == 1*u"yr"
 
     # Test type stability of extreme range of units
@@ -655,10 +656,13 @@ end
     Aqua.test_all(FlexUnits)
 end
 
+#=
+#Benchmark testing
 R = Ref(8.314 * u"J/(mol*K)")
 @benchmark let R=R[]
     v_satp = R * (25u"°C") / (101.3u"kPa")
 end
+=#
 
 #Profiling diagnostic if benchmarks are off 
 #=
