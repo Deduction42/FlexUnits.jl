@@ -23,6 +23,9 @@ const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
 const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
 
 @testset "Basic utilities" begin
+    @test UnitRegistry.unittype() === DEFAULT_UNIT_TYPE
+    @test UnitRegistry.dimtype() === DEFAULT_DIM_TYPE
+
     d = Dimensions(length=2, mass=1, time=-2)
     @test d.length == 2
     @test d.mass == 1
@@ -287,6 +290,7 @@ end
     @test z === 1.0*uparse("yr")
     @test z === qparse("1yr")
     @test 1/z === ubase(qparse("1/yr"))
+    @test ubase(z) === ubase(qparse("1*yr"))
     @test qparse("yr") == 1*u"yr"
 
     # Test type stability of extreme range of units
@@ -655,10 +659,13 @@ end
     Aqua.test_all(FlexUnits)
 end
 
+#=
+#Benchmark testing
 R = Ref(8.314 * u"J/(mol*K)")
 @benchmark let R=R[]
     v_satp = R * (25u"°C") / (101.3u"kPa")
 end
+=#
 
 #Profiling diagnostic if benchmarks are off 
 #=

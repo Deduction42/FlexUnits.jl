@@ -11,7 +11,21 @@ Tasks:
     -   This can be done without documentation 
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
-3. Announce the package
+3. Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
+    -   For a matrix multiplication with a column vector to work, the matrix must be dimensionally consistent
+    -   All quantity transforms mQ can be broken down into mQ.scale, mQ.units = {mU.rownum, mU.rowdenom}
+        -   Multiplication of a vector quantity "v" with a quantity transform mQ can be expressed as 
+            -   mQ.rownumer.*(mQ.scale)*(v./mQ.rowdenom)
+        -   Let mU be a matrix of units
+        -   Every valid transform can be decomposed to (rownumer, rowdenom)
+        -   rowdenom = unit.(mQ[begin,:])/unit(mQ[begin,begin])
+            -   Must be the same for every row otherwise it is inconsistent
+        -   rownumer = unit.(mQ[:,begin])
+        -   The expression mQ.rownumer.*(mQ.scale)*(v./mQ.rowdenom) can be further simplified to
+            -   rowunit = unit(v[ii])/mQ.rowdenom[ii] (must be the same for all elements)
+            -   new expression is (mQ.scale*value.(v)).*rowunit.*mQ.rownumer
+        -   mU can be easily inverted
+            -   inv(mU) = UnitTransform(rownum=inv.(mU.rowdenom), rowdenom=inv.(mU.rownum))
 
 
 import DynamicQuantities
