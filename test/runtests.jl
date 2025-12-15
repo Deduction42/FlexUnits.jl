@@ -4,7 +4,7 @@ using TestItemRunner
 
 #============================================================================================================================
 Run these commands at startup to see coverage
-julia --startup-file=no --depwarn=yes --threads=auto -e 'using Coverage; clean_folder(\"src\"); clean_folder(\"test\")'
+julia --startup-file=no --depwarn=yes --threads=auto -e 'using Coverage; clean_folder(\"src\"); clean_folder(\"test\"); clean_folder(\"ext\") '
 julia --startup-file=no --depwarn=yes --threads=auto --code-coverage=user --project=. -e 'using Pkg; Pkg.test(coverage=true)'
 julia --startup-file=no --depwarn=yes --threads=auto coverage.jl
 ============================================================================================================================#
@@ -18,6 +18,7 @@ using BenchmarkTools
 using FlexUnits, .UnitRegistry
 using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions
 using Aqua
+import Unitful
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
 const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
@@ -653,7 +654,18 @@ register_unit("psig" => AffineUnits(scale=uscale(u"psi"), offset=101.3u"kPa", di
     @test reg[:kg] === AffineUnits(dims=IntDimType(mass=1), symbol=:kg)    
 end
 
+@testset "Unitful integration" begin
+    q1 = 5.0*Unitful.u"km/hr"
+    q2 = 10.0*u"°C"
 
+    @test uconvert(Unitful.unit(q1), uconvert(u"m/s", q1)) == q1
+    @test Quantity(q1) == 5.0*u"km/hr"
+    @test Quantity{Float64}(q1) == 5.0*u"km/hr"
+    @test convert(Quantity{Float64, UnitRegistry.unittype()}, q1) == 5.0*u"km/hr"
+    @test_throws DimensionError uconvert(u"kPa", q1)
+    @test Unitful.ustrip(uconvert(Unitful.u"K", q2)) == ustrip(uconvert(u"K", q2))
+
+end
 
 @testset "Aqua.jl" begin
     Aqua.test_all(FlexUnits)
