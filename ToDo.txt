@@ -1,6 +1,8 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
+0.  Add extension for Unitful.jl
+    -   This is a must-have for wider adoption
 1.  Build out documentation and a docs badge
     -   Include all-stops-out tutorial on defining a new dimension "RadDims"
     -   Add angle to the dimension list
@@ -13,7 +15,7 @@ Tasks:
         -   Iterate over registry and list other units that match the query dimension
 3. Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
     -   For a matrix multiplication with a column vector to work, the matrix must be dimensionally consistent
-    -   All quantity transforms mQ can be broken down into mQ.scale, mQ.units = {mU.rownum, mU.rowdenom}
+    -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units = {mU.rownum, mU.rowdenom}
         -   Multiplication of a vector quantity "v" with a quantity transform mQ can be expressed as 
             -   mQ.rownumer.*(mQ.scale)*(v./mQ.rowdenom)
         -   Let mU be a matrix of units
@@ -26,6 +28,12 @@ Tasks:
             -   new expression is (mQ.scale*value.(v)).*rowunit.*mQ.rownumer
         -   mU can be easily inverted
             -   inv(mU) = UnitTransform(rownum=inv.(mU.rowdenom), rowdenom=inv.(mU.rownum))
+    -   All SELF-CONSISTENT quantity transforms (SelfQuantTransform) mQ can be further broken down as mQ.units = {mU.bulkdim, mU.rownum} 
+        -   Unit matrix can be reconstructed as mU = mU.bulkdim.*inv.(mU.rownum).*mU.rownum'
+        -   This is essentially an eigendecomposition of a rank-1 matrix (single eigvenvalue/eigenvector pair)
+        -   Self-consistent matrices can be "powered"
+        -   Self-consistent matrices with a dimensionless "bulkdim" can be exponentiated
+    -   This is a KILLER FEATURE because this makes common matrix operations MUCH faster than Unitful
 
 
 import DynamicQuantities
