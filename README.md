@@ -86,7 +86,7 @@ julia> x_out = [FlexUnits.Quantity(velocity), FlexUnits.Quantity(force), FlexUni
  2.0 (m kg)/s²
  283.15 K
 ```
-Using both packages together should feel natural due to their similar API and can provide the best of both worlds. However, when combining these packages, care must be taken to manually import functions needed from both packages.
+Using both packages together should feel natural due to their similar API and can provide the best of both worlds. However, these similarities also means that care must be taken to manually import any functions that needed from both packages.
 
 ## Benchmarks
 FlexUnits.jl and DynamicQuantities.jl both greatly outperform Unitful.jl when the compiler cannot infer the units.

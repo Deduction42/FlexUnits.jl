@@ -1,8 +1,6 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Tasks:
-0.  Add extension for Unitful.jl
-    -   This is a must-have for wider adoption
 1.  Build out documentation and a docs badge
     -   Include all-stops-out tutorial on defining a new dimension "RadDims"
     -   Add angle to the dimension list
