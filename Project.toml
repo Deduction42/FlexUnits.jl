@@ -1,10 +1,17 @@
 name = "FlexUnits"
 uuid = "76e01b6b-c995-4ce6-8559-91e72a3d4e95"
+version = "0.2.10"
 authors = ["Ruben Gonzalez <ruben.carbonbased@gmail.com> and contributors"]
-version = "0.2.9"
+
+[weakdeps]
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[extensions]
+FlexUnitfulExt = "Unitful"
 
 [compat]
 Test = "1.10"
+Unitful = "1.27.0"
 julia = "1.10"
 
 [extras]
