@@ -7,12 +7,12 @@ import Unitful: @u_str
 
 
 @generated function validate_upreferred()
-    si_units = unitful_dimensions()
+    si_units = (length=u"m", mass=u"kg", time=u"s", current=u"A", temperature=u"K", luminosity=u"cd", amount=u"mol")
+
     for k in keys(si_units)
-        if Unitful.upreferred(si_units[k]) !== si_units[k]
-            return :(error("Found custom `Unitful.preferunits`. FlexUnits interop only works with the default SI option for `Unitful.upreferred`"))
-        end
+        Unitful.upreferred(si_units[k]) == si_units[k] || error("Found custom `Unitful.preferunits`: FlexUnits only supporsts the default SI option for `Unitful.upreferred`")
     end
+    
     return true
 end
 
@@ -86,11 +86,5 @@ function Base.convert(::Type{FlexUnits.Dimensions{R}}, dims::Unitful.Dimension{D
     D == :Amount && return FlexDim(amount=dims.power)
     error("Unknown dimension: $D")
 end
-
-function unitful_dimensions()
-    return (length=u"m", mass=u"kg", time=u"s", current=u"A", temperature=u"K", luminosity=u"cd", amount=u"mol")
-end
-unitful_dimension(fn::Symbol) = unitful_dimensions[fn]
-
 
 end

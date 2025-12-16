@@ -7,6 +7,9 @@ Run these commands at startup to see coverage
 julia --startup-file=no --depwarn=yes --threads=auto -e 'using Coverage; clean_folder(\"src\"); clean_folder(\"test\"); clean_folder(\"ext\") '
 julia --startup-file=no --depwarn=yes --threads=auto --code-coverage=user --project=. -e 'using Pkg; Pkg.test(coverage=true)'
 julia --startup-file=no --depwarn=yes --threads=auto coverage.jl
+
+Run this command for testing invalidations
+julia --startup-file=no --depwarn=yes --threads=auto --project=. test/invalidations.jl
 ============================================================================================================================#
 
 #To see the actual coverage in VSCode, install the Coverage Gutters extension
@@ -657,6 +660,7 @@ end
 @testset "Unitful integration" begin
     q1 = 5.0*Unitful.u"km/hr"
     q2 = 10.0*u"°C"
+    q3 = 15*Unitful.u"cd/mol"
 
     @test uconvert(Unitful.unit(q1), uconvert(u"m/s", q1)) == q1
     @test Quantity(q1) == 5.0*u"km/hr"
@@ -664,7 +668,7 @@ end
     @test convert(Quantity{Float64, UnitRegistry.unittype()}, q1) == 5.0*u"km/hr"
     @test_throws DimensionError uconvert(u"kPa", q1)
     @test Unitful.ustrip(uconvert(Unitful.u"K", q2)) == ustrip(uconvert(u"K", q2))
-
+    @test Unitful.ustrip(Unitful.uconvert(Unitful.u"cd/mol", q3)) == ustrip(uconvert(u"cd/mol", q3))
 end
 
 @testset "Aqua.jl" begin
