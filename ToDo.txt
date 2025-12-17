@@ -12,26 +12,34 @@ Tasks:
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
 3. Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
-    -   For a matrix multiplication with a column vector to work, the matrix must be dimensionally consistent
-    -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units = {mU.rownum, mU.rowdenom}
-        -   Multiplication of a vector quantity "v" with a quantity transform mQ can be expressed as 
-            -   mQ.rownumer.*(mQ.scale)*(v./mQ.rowdenom)
-        -   Let mU be a matrix of units
-        -   Every valid transform can be decomposed to (rownumer, rowdenom)
-        -   rowdenom = unit.(mQ[begin,:])/unit(mQ[begin,begin])
-            -   Must be the same for every row otherwise it is inconsistent
-        -   rownumer = unit.(mQ[:,begin])
-        -   The expression mQ.rownumer.*(mQ.scale)*(v./mQ.rowdenom) can be further simplified to
-            -   rowunit = unit(v[ii])/mQ.rowdenom[ii] (must be the same for all elements)
-            -   new expression is (mQ.scale*value.(v)).*rowunit.*mQ.rownumer
-        -   mU can be easily inverted
-            -   inv(mU) = UnitTransform(rownum=inv.(mU.rowdenom), rowdenom=inv.(mU.rownum))
-    -   All SELF-CONSISTENT quantity transforms (SelfQuantTransform) mQ can be further broken down as mQ.units = {mU.bulkdim, mU.rownum} 
-        -   Unit matrix can be reconstructed as mU = mU.bulkdim.*inv.(mU.rownum).*mU.rownum'
-        -   This is essentially an eigendecomposition of a rank-1 matrix (single eigvenvalue/eigenvector pair)
-        -   Self-consistent matrices can be "powered"
-        -   Self-consistent matrices with a dimensionless "bulkdim" can be exponentiated
-    -   This is a KILLER FEATURE because this makes common matrix operations MUCH faster than Unitful
+    -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all
+    -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units
+        -   For a matrix multiplication with a column vector to work, the matrix must be DIMENSINALLY CONSISTENT and COMPATIBLE with the vector
+            -   Consider a type QuantTransorm{scale::T, units::AbstractUnitTransform}
+        -   Multiplication of a vector quantity "v" with a quantity transform mQ can be expressed as
+            -   mU = mQ.units::UnitTransform{colfac::AbstractVector{Dimensions{T}}, rowfac::AbstractVector{Dimensions{T}}} 
+            -   Matrix(mU::UnitTransform) = mU.colfac .* mU.rowfac'
+            -   mQ*v = mU.colfac.*(mQ.scale).*(mU.rowfac')*v
+            -   scale  = ustrip_base.(mQ)
+            -   colfac = dimension.(mQ[:,begin])
+            -   rowfac = dimension.(mQ[ii,:])/colfac[ii]
+                -   Result for rowfac must be the same for all ii
+        -   UnitTransform mU can be easily inverted
+            -   inv(mU) = UnitTransform(colfac=inv.(mU.rowfac), rowfac=inv.(mU.colfac))
+        -   L-Divide can be done in stages (scalars first, and then units)
+            -   y = fill(0.0*u"", size(mQ,1), size(x,2))
+            -   y .= mQ.scale\ustrip_base.(x)
+            -   y .*= inv(mQ.units)*x
+    -   All SELF-CONSISTENT unit transforms ScalarUnitTransform can be factorized as mU = uscale.*(colfac.*inv.(colfac'))
+        -   ScalarUnitTransform{scale::Dimensions{T}, colfac::AbstractVector{Dimensions{T}}} 
+            -   The term (colfac.*inv.(colfac')) is idempotent for vectors with compatible dimensions
+        -   ScalarUnitTransform can have many different operations
+            -   Matrix Power -> mU^x = ScalarUnitTransform(uscale=mU.scale^x, colfac=mU.colfac)
+            -   Transpose -> transpose(mU) = ScalarUnitTransform(uscale=mU.scale, colfac=inv.(mU.colfac))
+            -   Matrix EXP -> exp(mU) = mU if mU.scale == u""
+            -   Eigendecomposition -> eigenvalue .= mU.scale, eigenvectors .= mU.colfac.*inv.(colfac')
+            -   Cholesky decomposition -> L = ScalarUnitTransform(sqrt(mU.scale), mU.colfac), R = ScalarUnitTransform(sqrt(mU.scale), inv.(mU.colfac))
+
 
 
 import DynamicQuantities
