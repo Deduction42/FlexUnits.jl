@@ -12,6 +12,11 @@ Tasks:
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
 3.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
+    -   I may still need to build "zero(::Type{Quantity{T, D}})" to produce a special "Union{D{R},UnknownDims}"
+        -   There's too many "zero(T)" calls in base library, need to define UknownDims{P}()
+        -   You can add any quantity to "Quantity(0, UknownDims())" to return just adding the numbers
+        -   This logic is done at the "equaldims" function
+        
     -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all
     -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units
         -   For a matrix multiplication with a column vector to work, the matrix must be DIMENSINALLY CONSISTENT and COMPATIBLE with the vector
