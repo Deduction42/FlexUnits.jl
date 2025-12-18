@@ -45,7 +45,9 @@ Base.:*(x::ARITHMETICS, u::AbstractUnitLike) = quantity(x, u)
 Base.:/(x::ARITHMETICS, u::AbstractUnitLike) = quantity(x, inv(u))
 
 Base.:*(q::AbstractQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)*u)
+Base.:*(u::AbstractUnitLike, q::AbstractQuantity) = q*u
 Base.:/(q::AbstractQuantity, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)/u)
+Base.:/(u::AbstractUnitLike, q::AbstractQuantity) = quantity(inv(ustrip(q)), u/unit(q))
 
 function Base.:*(u1::U, u2::U) where U <: AbstractUnits
     return constructorof(U)(scale=*(map(uscale, (u1, u2))...), dims=*(map(scalar_dimension, (u1, u2))...))

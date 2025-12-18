@@ -11,7 +11,7 @@ Tasks:
     -   This can be done without documentation 
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
-3. Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
+3.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
     -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all
     -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units
         -   For a matrix multiplication with a column vector to work, the matrix must be DIMENSINALLY CONSISTENT and COMPATIBLE with the vector
