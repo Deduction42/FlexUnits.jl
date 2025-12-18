@@ -7,14 +7,17 @@ end
 
 Base.getindex(m::DimTransform, ii::Integer, jj::Integer) = m.colfac[ii]*m.rowfac[jj]
 Base.size(m::DimTransform) = (length(m.colfac), length(m.rowfac))
-Base.inv(m::DimTransform) = DimTransform(colfac=inv.(m.rowfac), rowfac=inv.(m.colfac))
+
+#Units of an adjoint are the same as an inverse, adjoint is broader because it doesn't imply one-to-one mapping
+Base.adjoint(m::DimTransform) = DimTransform(colfac=inv.(m.rowfac), rowfac=inv.(m.colfac))
+Base.inv(m::DimTransform) = adjoint(m)
 
 function DimTransform(mq::AbstractMatrix{<:Union{AbstractQuantity,AbstractUnitLike}})
     colfac = dimension.(mq[:,begin])
     rowfac = dimension.(mq[begin,:])./colfac[begin]
 
     #Check for dimensional consistency
-    for jj in axes(mq,1), ii in axes(mq,2)
+    for jj in axes(mq,2), ii in axes(mq,1)
         (dimension(mq[ii,jj])/colfac[ii] == rowfac[jj]) || error("Unit inconsistency around index $([ii,jj]), expected dimension of $(colfac[ii]*rowfac[jj])")
     end
 

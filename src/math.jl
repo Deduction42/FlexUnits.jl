@@ -30,6 +30,7 @@ Base.:^(d::AbstractDimensions{R}, p::Real) where {R} = map_dimensions(Base.Fix1(
 Base.sqrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 2))
 Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
 Base.abs2(d::AbstractDimensions) = d^2
+Base.adjoint(d::AbstractDimensions) = inv(d) #Adjoint of units is an inverse (unitful applications of x=A*y)
 
 @inline Base.literal_pow(::typeof(^), d::D, ::Val{0}) where {D <: AbstractDimensions} = D()
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{1}) = d 
@@ -71,6 +72,7 @@ Base.:/(u1::AbstractUnitLike, u2::AbstractUnitLike) = /(promote(u1,u2)...)
 
 Base.sqrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 2))
 Base.cbrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 3))
+Base.adjoint(u::AbstractUnits) = inv(u)
 
 #Equality does not compare symbols
 Base.:(==)(u1::AbstractAffineUnits, u2::AbstractAffineUnits) = (uscale(u1) == uscale(u2)) & (uoffset(u1) == uoffset(u2)) & (dimension(u1) == dimension(u2))
@@ -142,6 +144,7 @@ Base.:/(q0::AbstractQuantity, x::ARITHMETICS) = (q = ubase(q0); quantity(ustrip(
 Base.:/(x::ARITHMETICS, q0::AbstractQuantity) = (q = ubase(q0); quantity(x/ustrip(q), inv(unit(q))))
 Base.:/(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(/, q1, q2)
 Base.:inv(q::AbstractQuantity) = with_ubase(inv, q)
+Base.adjoint(q::AbstractQuantity) = with_ubase(adjoint, q)
 
 Base.:^(q::AbstractQuantity, p::Number) = with_ubase(Base.Fix2(^, p), q)
 Base.:^(q::Number, p::AbstractQuantity) = q^dimensionless(p)
@@ -172,8 +175,7 @@ end
 
 #Functions that return the same unit
 for f in (
-        :float, :abs, :real, :imag, :conj, :adjoint,
-        :transpose, :significand, :zero, :oneunit, :typemax
+        :float, :abs, :real, :imag, :conj, :significand, :zero, :oneunit, :typemax, :transpose
     )
     @eval Base.$f(u::AbstractDimensions) = u
     @eval Base.$f(q::AbstractQuantity) = with_ubase($f, q)
