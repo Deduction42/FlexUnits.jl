@@ -12,13 +12,8 @@ Tasks:
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
 3.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
-    -   I may still need to build "zero(::Type{Quantity{T, D}})" to produce a special "Union{D{R},UnknownDims}"
-        -   There's too many "zero(T)" calls in base library, need to define a sentinel value
-        -   D(missing) gives you the sentinel value (typemax in all dimensions)
-        -   sameunits now has three branches
-            -   If equal, return first value
-            -   ElseIf first value is unkown, return second value
-            -   Else throw error
+    -   I will need to modify +/ to allow for adding unitful numbers to 0.0u""
+        -   0.0u"" is the safest sentinel value (typemax may break multiplication)
         
     -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all
     -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units

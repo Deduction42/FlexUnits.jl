@@ -19,6 +19,12 @@ function (::Type{D})(x::AbstractDimensions) where {P, D<:AbstractDimensions{P}}
     return D(map(Base.Fix1(getproperty, x), static_fieldnames(D))...)
 end
 
+#Assign a single value to all dimensions
+function (::Type{D})(x::Union{Real,Missing}) where {P, D<:AbstractDimensions{P}}
+    f(anything) = x
+    return D(map(f, static_fieldnames(D))...)
+end
+
 uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
 uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
 dimension(u::AbstractDimensions) = u
