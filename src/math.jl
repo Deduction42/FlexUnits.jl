@@ -80,8 +80,8 @@ Base.:(==)(u1::AbstractAffineUnits, u2::AbstractAffineUnits) = (uscale(u1) == us
 @inline equaldims(arg1::AbstractDimensions) = arg1
 
 function equaldims(arg1::AbstractDimensions, arg2::AbstractDimensions)
-    (arg1, arg2) = promote(arg1, arg2)
-    return (arg1 == arg2) ? arg1 : throw(DimensionError((arg1,arg2)))
+    (d1, d2) = promote(arg1, arg2)
+    return (d1 == d2) ? d1 : throw(DimensionError((arg1,arg2)))
 end
 
 
