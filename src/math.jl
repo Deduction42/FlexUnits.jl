@@ -163,14 +163,14 @@ Base.oneunit(::Type{<:AbstractQuantity{T,D}}) where {T,D} = quantity(one(T), zer
 for f in (:<, :<=, :isless)
     @eval function Base.$f(q1::AbstractQuantity, q2::AbstractQuantity)
         (b1, b2) = (ubase(q1), ubase(q2))
-        unit(b1) == unit(b2) || throw(DimensionError(unit(b1), unit(b2)))
+        equaldims(unit(b1), unit(b2))
         return $f(ustrip(b1), ustrip(b2))
     end
 end
 
 #Functions that return the same unit
 for f in (
-        :float, :abs, :real, :imag, :conj, :significand, :zero, :oneunit, :typemax, :transpose
+        :float, :abs, :real, :imag, :conj, :significand, :zero, :oneunit, :typemax, :typemin, :transpose
     )
     @eval Base.$f(u::AbstractDimensions) = u
     @eval Base.$f(q::AbstractQuantity) = with_ubase($f, q)

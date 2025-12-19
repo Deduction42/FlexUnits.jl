@@ -12,8 +12,16 @@ Tasks:
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
 3.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
-    -   I will need to modify +/ to allow for adding unitful numbers to 0.0u""
-        -   0.0u"" is the safest sentinel value (typemax may break multiplication)
+    -   I will need to create a new branch that supports MissingDims()
+        -   Constructor AbstractDimensions{P}(missing) = MissingDims()
+        -   Dimensional math needs a special case of MissingDims()
+            - typical operators, which return the non-missing dimension (+-*/)
+            - redefine other two-argument operators like max/min
+                [(:sum, :add_sum), (:prod, :mul_prod), (:maximum, :max), (:minimum, :min), (:extrema, :_extrema_rf)]
+            - allow typed functions like (zero, one, typemin, typemax) to specify MissingDims
+        -   Raise any errors or bugs that come out of this, becuase julia/base/reducedim.jl has some serious issues
+            - initialization needs to work (it doesn't allow you to specify a matrix for init)
+            - type when non-initialized needs to be Quantity{T, Union{D,MissingDims}}
         
     -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all
     -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units
