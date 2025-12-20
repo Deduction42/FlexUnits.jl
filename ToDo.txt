@@ -13,16 +13,11 @@ Tasks:
         -   Iterate over registry and list other units that match the query dimension
 3.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
     -   I will need to create a new branch that supports MirrorDims()
-        -   Becuase most operations on MirrorDims requires another dimension type, that type will need to be included as a parameter
-            -   MirrorDims will always show up in a Quantity as a Union between itself and the dimension that called it 
-            -   Operations on MirrorDims unions will remove the union and the combining information
-            -   MirrorDims{P,D<:AbstractDimensions{P}} <: AbstractDimensions{P}
-            -   Constructing a quantity from mirror dims will need to automatically expand the unit parameter to a union
-            -   Quantity(x::T, u::MirrorDims{P,D}) = Quantity{T, Union{D, MirrorDims{P,D}}}(x, u)
-            -   create a function "nomirrors" to assert that it doesn't contain a mirror (to remove the union)
-                -   nomirrors(Quantity{T, Union{D, MirrorDims{P,D}}}(x, u)) = Quantity{T,D}(x,u)
-                -   the current code structure tends to lead to dissappearing mirrors anyway, but this is a good force 
-            -   Make sure we aren't allowed to convert from one dimension type to another (quiet wrong answers happened already)
+        -   var(X, dims=1) is still broken
+            -    X = (randn(30,3)*rand(3,3)).*[u"kg/s" u"kW" u"Hz"]
+            -    var(X, dims=1)
+            -    I think it has something to do with mirror_union(mirror_union(D))
+            -    I need to prevent recursive mirror dimensions
         -   Allow typed functions like (zero, one, typemin, typemax) to specify MirrorDims
         
     -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all

@@ -10,7 +10,7 @@ include("RegistryTools.jl")
 include("UnitRegistry.jl")
 
 export AbstractUnitLike, AbstractDimensions, AbstractUnits, AbstractAffineUnits, AbstractUnitTransform
-export ConversionError, DimensionError, NotScalarError, NotDimensionError
+export ConversionError, DimensionError, NotScalarError, NotDimensionError, FixRat32
 export Dimensions, NoDims, MirrorDims, AffineUnits, Quantity, UnitfulCallable, AbstractQuantity, AffineTransform
 export RegistryTools, UnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units

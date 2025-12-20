@@ -83,21 +83,7 @@ NoDims() = NoDims{DEFAULT_RATIONAL}()
 Base.getproperty(::NoDims{P}, ::Symbol) where {P} = zero(P)
 unit_symbols(::Type{<:NoDims}) = NoDims{Symbol}()
 
-"""
-    MirrorDims
 
-A dimension that represents a placeholder value that mirrors any dimension that is combined
-with it (useful for initialization when units are unknown). For example 
-
-julia> 1u"m/s" + 0*MirrorDims()
-1 m/s
-
-julia> max(1u"m/s", -Inf*MirrorDims())
-1 m/s
-"""
-struct MirrorDims{P} <: AbstractDimensions{P} end
-MirrorDims() = MirrorDims{DEFAULT_RATIONAL}()
-unit_symbols(::Type{<:MirrorDims}) = MirrorDims{Symbol}()
 
 """
     dimension_names(::Type{<:AbstractDimensions})
@@ -202,6 +188,38 @@ constructorof(::Type{T}) where T = Base.typename(T).wrapper
 constructorof(::Type{<:Dimensions}) = Dimensions
 constructorof(::Type{<:AffineUnits}) = AffineUnits 
 constructorof(::Type{<:Quantity}) = Quantity
+
+
+"""
+    MirrorDims
+
+A dimension that represents a placeholder value that mirrors any dimension that is combined
+with it (useful for initialization when units are unknown). For example 
+
+julia> 1u"m/s" + 0*MirrorDims()
+1 m/s
+
+julia> max(1u"m/s", -Inf*MirrorDims())
+1 m/s
+"""
+struct MirrorDims{P,D<:AbstractDimensions{P}} <: AbstractDimensions{P} end
+MirrorDims() = MirrorDims{FixRat32, Dimensions{FixRat32}}()
+MirrorDims(::Type{D}) where {P, D<:AbstractDimensions{P}} = MirrorDims{P,D}()
+mirror_union(::Type{D}) where {P, D<:AbstractDimensions{P}} = Union{D, MirrorDims{P,D}}
+unit_symbols(::Type{<:MirrorDims}) = NoDims{Symbol}()
+function Base.show(io::IO, ::Type{MD}) where {R,D,MD<:MirrorDims{R,D}}
+    return print(io, "MirrorDims($(D))")
+end
+promote_rule(d1::D, d2::MirrorDims) where {D<:AbstractDimensions} = mirror_union(D)
+function nomirror(x::Quantity)
+    u = unit(x)
+    return (u isa MirrorDims) ? throw(ArgumentError("Mirror dimensions found")) : Quantity(ustrip(x), u)
+end
+
+
+#Quantities with mirror dimensions should include a union
+Quantity(x::T, u::MirrorDims{P,D}) where {T,P,D<:AbstractDimensions{P}} = Quantity{T, mirror_union(D)}(x, u)
+Quantity{<:Any, <:MirrorDims}(x, u) = error("MirrorDims should not be a type parameter in a Quantity constructor. use Quantity{T, mirror_union(D)}")
 
 """
     UnitfulCallable{T<:Any, UI<:Any, UO<:Any}

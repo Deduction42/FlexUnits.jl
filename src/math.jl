@@ -124,6 +124,7 @@ function with_ubase(f, args::AbstractQuantity...)
     return Quantity(scaleval, f(basedims...))
 end
 
+#=
 function with_ubase(f, args::AbstractQuantity{<:Any, Union{U,MirrorDims{P}}}...) where {P, U<:AbstractUnitLike}
     scaleval  = f(map(ustrip_base, args)...)
     resultdim = f(map(dimension, args)...)
@@ -135,6 +136,7 @@ function with_ubase(f, args::AbstractQuantity{<:Any, MirrorDims{P}}...) where P
     scaleval  = f(map(ustrip_base, args)...)
     return Quantity(scaleval, MirrorDims{P}())
 end
+=#
 
 function Base.:(==)(q1::AbstractQuantity, q2::AbstractQuantity)
     qb1 = ubase(q1)
@@ -185,8 +187,7 @@ Base.zero(::Type{D}) where D<:AbstractDimensions = D()
 Base.zero(::Type{U}) where U<:AffineUnits = U(dims=dimtype(U)())
 
 function Base.zero(::Type{<:AbstractQuantity{T, D}}) where {T, D<:AbstractDimensions} 
-    MD = MirrorDims{dimpowtype(D)}
-    return Quantity{T,Union{D,MD}}(zero(T), MD())
+    return Quantity(zero(T), MirrorDims(D))
 end
 Base.zero(::Type{<:AbstractQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = zero(Quantity{T,D})
 Base.one(::Type{<:AbstractQuantity{T}}) where T = one(T) #unitless
