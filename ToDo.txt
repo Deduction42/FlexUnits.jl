@@ -13,13 +13,17 @@ Tasks:
         -   Iterate over registry and list other units that match the query dimension
 3.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
     -   I will need to create a new branch that supports MirrorDims()
-        - For some reason iterables like mean strip the original dimension info away when applied to a union quantity
-                julia> typeof(sum(zero(Quantity{Int64, AffineUnits{Dimensions{FixRat32}}})))
-                Quantity{Float64, MirrorDims{FixRat32}} #This should retain Union spec
-            I will need to fix this 
+        -   Becuase most operations on MirrorDims requires another dimension type, that type will need to be included as a parameter
+            -   MirrorDims will always show up in a Quantity as a Union between itself and the dimension that called it 
+            -   Operations on MirrorDims unions will remove the union and the combining information
+            -   MirrorDims{P,D<:AbstractDimensions{P}} <: AbstractDimensions{P}
+            -   Constructing a quantity from mirror dims will need to automatically expand the unit parameter to a union
+            -   Quantity(x::T, u::MirrorDims{P,D}) = Quantity{T, Union{D, MirrorDims{P,D}}}(x, u)
+            -   create a function "nomirrors" to assert that it doesn't contain a mirror (to remove the union)
+                -   nomirrors(Quantity{T, Union{D, MirrorDims{P,D}}}(x, u)) = Quantity{T,D}(x,u)
+                -   the current code structure tends to lead to dissappearing mirrors anyway, but this is a good force 
+            -   Make sure we aren't allowed to convert from one dimension type to another (quiet wrong answers happened already)
         -   Allow typed functions like (zero, one, typemin, typemax) to specify MirrorDims
-        -   Raise any errors or bugs that come out of this, becuase julia/base/reducedim.jl has some serious issues
-            - initialization needs to work (it doesn't allow you to specify a matrix for init)
         
     -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all
     -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units
