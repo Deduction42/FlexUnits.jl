@@ -127,15 +127,14 @@ end
 function with_ubase(f, args::AbstractQuantity{<:Any, Union{U,MirrorDims{P}}}...) where {P, U<:AbstractUnitLike}
     scaleval  = f(map(ustrip_base, args)...)
     resultdim = f(map(dimension, args)...)
+    
     return Quantity{typeof(scaleval), Union{dimtype(U),MirrorDims{P}}}(scaleval, resultdim)
 end
 
-#=
 function with_ubase(f, args::AbstractQuantity{<:Any, MirrorDims{P}}...) where P
     scaleval  = f(map(ustrip_base, args)...)
     return Quantity(scaleval, MirrorDims{P}())
 end
-=#
 
 function Base.:(==)(q1::AbstractQuantity, q2::AbstractQuantity)
     qb1 = ubase(q1)

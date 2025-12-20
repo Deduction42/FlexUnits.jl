@@ -13,7 +13,7 @@ Base.ndims(::Type{<:AbstractQuantity{T}}) where {T} = ndims(T)
 Base.iterate(q::Q, maybe_state...) where Q<:AbstractQuantity = 
     let subiterate = iterate(ustrip(q), maybe_state...)
         subiterate === nothing && return nothing
-        return constructorof(Q)(subiterate[1], unit(q)), subiterate[2]
+        return Q(subiterate[1], unit(q)), subiterate[2]
     end
 
 Base.size(u::AbstractUnitLike) = ()
