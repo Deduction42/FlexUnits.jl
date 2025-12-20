@@ -32,6 +32,8 @@ usymbol(u::AbstractDimensions) = DEFAULT_USYMBOL
 Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
 dimtype(::Type{<:AbstractUnits{D}}) where D = D
 dimtype(::Type{D}) where D<:AbstractDimensions = D
+dimpowtype(::Type{D}) where {P, D<:AbstractDimensions{P}} = P
+dimpowtype(::Type{U}) where {U<:AbstractUnitLike} = dimpowtype(dimtype(U))
 
 #=======================================================================================
 Basic SI dimensions
@@ -81,6 +83,21 @@ NoDims() = NoDims{DEFAULT_RATIONAL}()
 Base.getproperty(::NoDims{P}, ::Symbol) where {P} = zero(P)
 unit_symbols(::Type{<:NoDims}) = NoDims{Symbol}()
 
+"""
+    MirrorDims
+
+A dimension that represents a placeholder value that mirrors any dimension that is combined
+with it (useful for initialization when units are unknown). For example 
+
+julia> 1u"m/s" + 0*MirrorDims()
+1 m/s
+
+julia> max(1u"m/s", -Inf*MirrorDims())
+1 m/s
+"""
+struct MirrorDims{P} <: AbstractDimensions{P} end
+MirrorDims() = MirrorDims{DEFAULT_RATIONAL}()
+unit_symbols(::Type{<:MirrorDims}) = MirrorDims{Symbol}()
 
 """
     dimension_names(::Type{<:AbstractDimensions})

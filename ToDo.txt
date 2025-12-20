@@ -12,16 +12,14 @@ Tasks:
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
 3.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
-    -   I will need to create a new branch that supports MissingDims()
-        -   Constructor AbstractDimensions{P}(missing) = MissingDims()
-        -   Dimensional math needs a special case of MissingDims()
-            - typical operators, which return the non-missing dimension (+-*/)
-            - redefine other two-argument operators like max/min
-                [(:sum, :add_sum), (:prod, :mul_prod), (:maximum, :max), (:minimum, :min), (:extrema, :_extrema_rf)]
-            - allow typed functions like (zero, one, typemin, typemax) to specify MissingDims
+    -   I will need to create a new branch that supports MirrorDims()
+        - For some reason iterables like mean strip the original dimension info away when applied to a union quantity
+                julia> typeof(sum(zero(Quantity{Int64, AffineUnits{Dimensions{FixRat32}}})))
+                Quantity{Float64, MirrorDims{FixRat32}} #This should retain Union spec
+            I will need to fix this 
+        -   Allow typed functions like (zero, one, typemin, typemax) to specify MirrorDims
         -   Raise any errors or bugs that come out of this, becuase julia/base/reducedim.jl has some serious issues
             - initialization needs to work (it doesn't allow you to specify a matrix for init)
-            - type when non-initialized needs to be Quantity{T, Union{D,MissingDims}}
         
     -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all
     -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units
