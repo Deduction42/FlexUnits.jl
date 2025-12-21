@@ -14,10 +14,14 @@ Tasks:
 3.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
     -   I will need to create a new branch that supports MirrorDims()
         -   var(X, dims=1) is still broken
-            -    X = (randn(30,3)*rand(3,3)).*[u"kg/s" u"kW" u"Hz"]
-            -    var(X, dims=1)
-            -    I think it has something to do with mirror_union(mirror_union(D))
-            -    I need to prevent recursive mirror dimensions
+            -   X = (randn(30,3)*rand(3,3)).*[u"kg/s" u"kW" u"Hz"]
+            -   var(X, dims=1)
+            -   I think it has something to do with mirror_union(mirror_union(D))
+            -   I need to prevent recursive mirror dimensions
+            -   I may need to instroduce "AbstractDimLike" as a supertype of Dimension 
+                -   This means that MirrorDims doesn't need P 
+                -   This also means we can't have MirrorDims{MirrorDims}
+                -   Math is already explicit with MirrorDims
         -   Allow typed functions like (zero, one, typemin, typemax) to specify MirrorDims
         
     -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all
