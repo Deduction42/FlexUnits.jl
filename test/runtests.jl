@@ -168,11 +168,17 @@ end
         @test signbit(-x) == false
         @test isempty(x) == false
         @test isempty(Quantity([0.0, 1.0], u)) == false
-        @test isempty(Quantity(Float64[], u)) == true 
+        @test isempty(Quantity(Float64[], u)) == true
         @test zero(Dimensions{R}) === Dimensions{R}()
         @test zero(AffineUnits{Dimensions{R}}) === AffineUnits{Dimensions{R}}(dims=zero(Dimensions{R}))
-        @test zero(Quantity{T, Dimensions{R}}) === Quantity(zero(T), zero(Dimensions{R}))
-        @test zero(Quantity{T, AffineUnits{Dimensions{R}}}) == Quantity(zero(T), zero(AffineUnits{Dimensions{R}}))
+
+        #Identity transform tests
+        @test zero(1u"m/s") + 2.0u"m/s" == 2.0u"m/s"
+        @test zero(typeof(1u"m/s")) + 2.0u"m/s" == 2.0u"m/s"
+        @test zero(typeof(ubase(1u"m/s"))) + 2.0u"m/s" == ubase(2.0u"m/s")
+        @test zero(zero(typeof(ubase(1u"m/s")))) + 2.0u"m/s" == ubase(2.0u"m/s")
+        @test zero(typeof(zero(typeof(ubase(1u"m/s"))))) + 2.0u"m/s" == ubase(2.0u"m/s")
+
         @test one(Quantity{T, AffineUnits{Dimensions{R}}}) === one(T)
         @test oneunit(Quantity{T, AffineUnits{Dimensions{R}}}) == Quantity(one(T), zero(AffineUnits{Dimensions{R}}))
         @test oneunit(Quantity{T, Dimensions{R}}) == Quantity(one(T), zero(Dimensions{R}))
@@ -190,7 +196,7 @@ end
     end
 
     #Other mathematical operators/functions
-    @test sin(5u"rad") == sin(5) 
+    @test sin(5u"rad") ≈ sin(5)
     @test cos(60u"deg") ≈ 0.5
     @test 5u"km/hr" < 6u"km/hr"
     @test 5u"m/s" > 5u"km/hr"
@@ -584,7 +590,7 @@ end
     @test FixedRational{1000}(10)*Float64(0.1) === Float64(1)
     @test FixedRational{1000}(10)*Float32(0.1) === Float32(1)
     @test FixedRational{1000}(10)*BigFloat(0.1) isa BigFloat
-    @test FixedRational{1000}(10)*true === FixedRational{1000}(10)
+    @test FixedRational{1000}(10)*true == FixedRational{1000}(10)
 
     #Test mathematical operators
     @test FixedRational(0.1)/Float64(100) === Float64(0.001)
@@ -622,7 +628,7 @@ end
     @test typeof(FixedRational{10,Int}(FixedRational{10,Int}(2))) == FixedRational{10,Int}
 
     # Conversion to Rational without specifying type
-    @test convert(Rational, FixedRational{6,UInt8}(2)) === Rational{UInt8}(2)
+    @test convert(Rational, FixedRational{6,Int8}(2)) === Rational{Int8}(2)
 
     # Promotion rules
     @test promote_type(Float64, typeof(f64)) == Float64

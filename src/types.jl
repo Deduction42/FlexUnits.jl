@@ -343,12 +343,9 @@ assert_dimension(u::AbstractAffineUnits) = isone(uscale(u)) & iszero(uoffset(u))
 
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
 assert_dimensionless(q::AbstractQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
-dimensionless(u::AbstractUnitLike) = (assert_dimensionless(u); NoDims())
+dimensionless(u::AbstractUnitLike) = dimension(assert_dimensionless(u))
 dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
 dimensionless(n::Number) = n
 
-function Base.iszero(u::U) where U<:AbstractDimensions
-    zero_dimension(obj::AbstractDimensions, fn::Symbol) = iszero(getproperty(obj, fn))
-    return all(Base.Fix1(zero_dimension, u), dimension_names(U)) 
-end
 isdimensionless(u::AbstractUnitLike) = iszero(dimension(u))
+Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))

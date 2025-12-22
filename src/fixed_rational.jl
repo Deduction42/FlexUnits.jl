@@ -97,7 +97,7 @@ end
 function Base.promote_rule(::Type{FixedRational{B,I}}, ::Type{Rational{T}}) where {B,I,T}
     return Rational{promote_type(I,T)}
 end
-function Base.promote_rule(::Type{F}, ::Type{<:Signed}) where {F<:FixedRational}
+function Base.promote_rule(::Type{F}, ::Type{<:Integer}) where {F<:FixedRational}
     return F
 end
 

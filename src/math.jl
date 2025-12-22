@@ -154,6 +154,10 @@ function Base.:(≈)(q1::AbstractQuantity, q2::AbstractQuantity)
     qb2 = ubase(q2)
     return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
 end
+Base.:(≈)(q1::AbstractQuantity, q2::T) where T<:ARITHMETICS = (convert(T, q1) ≈ q2)
+Base.:(≈)(q1::T, q2::AbstractQuantity) where T<:ARITHMETICS = (convert(T, q2) ≈ q1)
+Base.:(≈)(q1::Missing, q2::AbstractQuantity) = missing 
+Base.:(≈)(q2::AbstractQuantity, q1::Missing) = missing 
 
 Base.:+(q::AbstractQuantity, x::ARITHMETICS) = dimensionless(q) + x 
 Base.:+(x::ARITHMETICS, q::AbstractQuantity) = dimensionless(q) + x
