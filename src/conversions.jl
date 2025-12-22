@@ -42,7 +42,7 @@ end
 
 Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 """
-ubase(q::AbstractQuantity{<:Any,<:AbstractDimensions}) = q
+ubase(q::AbstractQuantity{<:Any,<:AbstractDimLike}) = q
 
 
 """

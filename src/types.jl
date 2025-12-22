@@ -2,7 +2,8 @@ const DEFAULT_RATIONAL = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}
 const DEFAULT_USYMBOL = :_
 
 abstract type AbstractUnitLike end
-abstract type AbstractDimensions{P} <: AbstractUnitLike end
+abstract type AbstractDimLike <: AbstractUnitLike end
+abstract type AbstractDimensions{P} <: AbstractDimLike end
 abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
 abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
 
@@ -25,14 +26,14 @@ function (::Type{D})(x::Union{Real,Missing}) where {P, D<:AbstractDimensions{P}}
     return D(map(f, static_fieldnames(D))...)
 end
 
-uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
-uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
-dimension(u::AbstractDimensions) = u
-usymbol(u::AbstractDimensions) = DEFAULT_USYMBOL
-Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
+uscale(u::AbstractDimLike) = 1 # All AbstractDimensions have unity scale
+uoffset(u::AbstractDimLike) = 0 # All AbstractDimensions have no offset
+dimension(u::AbstractDimLike) = u
+usymbol(u::AbstractDimLike) = DEFAULT_USYMBOL
 dimtype(::Type{<:AbstractUnits{D}}) where D = D
-dimtype(::Type{D}) where D<:AbstractDimensions = D
+dimtype(::Type{D}) where D<:AbstractDimLike = D
 dimpowtype(::Type{D}) where {P, D<:AbstractDimensions{P}} = P
+Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
 dimpowtype(::Type{U}) where {U<:AbstractUnitLike} = dimpowtype(dimtype(U))
 
 #=======================================================================================
@@ -202,15 +203,11 @@ julia> 1u"m/s" + 0*MirrorDims()
 julia> max(1u"m/s", -Inf*MirrorDims())
 1 m/s
 """
-struct MirrorDims{P,D<:AbstractDimensions{P}} <: AbstractDimensions{P} end
+struct MirrorDims{D<:AbstractDimensions} <: AbstractDimLike end
 MirrorDims() = MirrorDims{FixRat32, Dimensions{FixRat32}}()
-MirrorDims(::Type{D}) where {P, D<:AbstractDimensions{P}} = MirrorDims{P,D}()
-mirror_union(::Type{D}) where {P, D<:AbstractDimensions{P}} = Union{D, MirrorDims{P,D}}
-unit_symbols(::Type{<:MirrorDims}) = NoDims{Symbol}()
-function Base.show(io::IO, ::Type{MD}) where {R,D,MD<:MirrorDims{R,D}}
-    return print(io, "MirrorDims($(D))")
-end
-promote_rule(d1::D, d2::MirrorDims) where {D<:AbstractDimensions} = mirror_union(D)
+MirrorDims(::Type{D}) where {D<:AbstractDimensions} = MirrorDims{D}()
+mirror_union(::Type{D}) where {D<:AbstractDimensions} = Union{D, MirrorDims{D}}
+promote_rule(::Type{D}, ::Type{<:MirrorDims}) where {D<:AbstractDimensions} = mirror_union(D)
 function nomirror(x::Quantity)
     u = unit(x)
     return (u isa MirrorDims) ? throw(ArgumentError("Mirror dimensions found")) : Quantity(ustrip(x), u)
@@ -218,7 +215,7 @@ end
 
 
 #Quantities with mirror dimensions should include a union
-Quantity(x::T, u::MirrorDims{P,D}) where {T,P,D<:AbstractDimensions{P}} = Quantity{T, mirror_union(D)}(x, u)
+Quantity(x::T, u::MirrorDims{D}) where {T,D<:AbstractDimensions} = Quantity{T, mirror_union(D)}(x, u)
 Quantity{<:Any, <:MirrorDims}(x, u) = error("MirrorDims should not be a type parameter in a Quantity constructor. use Quantity{T, mirror_union(D)}")
 
 """

@@ -32,22 +32,21 @@ end
 #=============================================================================================
  Mathematical operations on dimensions
 =============================================================================================#
-@inline Base.:+(arg1::AbstractDimensions) = arg1
-@inline Base.:+(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(arg1, arg2)
-@inline Base.:-(arg1::AbstractDimensions) = arg1
-@inline Base.:-(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(arg1, arg2)
+@inline Base.:+(arg1::AbstractDimLike) = arg1
+@inline Base.:+(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
+@inline Base.:-(arg1::AbstractDimLike) = arg1
+@inline Base.:-(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
+Base.min(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
+Base.max(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
 Base.:*(arg1::AbstractDimensions, arg2::AbstractDimensions) = map_dimensions(+, arg1, arg2)
 Base.:/(arg1::AbstractDimensions, arg2::AbstractDimensions) = map_dimensions(-, arg1, arg2)
 Base.inv(arg::AbstractDimensions) = map_dimensions(-, arg)
 Base.:^(d::AbstractDimensions, p::Integer) = map_dimensions(Base.Fix1(*, p), d)
 Base.:^(d::AbstractDimensions{R}, p::Real) where {R} = map_dimensions(Base.Fix1(*, R(dimensionless(p))), d)
-Base.:^(d::MirrorDims, p::Real) = d
 Base.sqrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 2))
 Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
 Base.abs2(d::AbstractDimensions) = d^2
 Base.adjoint(d::AbstractDimensions) = d
-Base.min(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(arg1, arg2)
-Base.max(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(arg1, arg2)
 
 @inline Base.literal_pow(::typeof(^), d::D, ::Val{0}) where {D <: AbstractDimensions} = D()
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{1}) = d 
@@ -62,6 +61,12 @@ for op in (:*, :/)
     @eval Base.$op(d1::MirrorDims, d2::AbstractDimensions) = d2
     @eval Base.$op(d1::MirrorDims, d2::MirrorDims) = d1
 end
+
+#Mirror dimensions on single argument functions
+for op in (:inv, :sqrt, :cbrt, :abs2, :adjoint)
+    @eval Base.$op(d::MirrorDims) = d
+end
+Base.:^(d::MirrorDims, p::Real) = d
 
 #=============================================================================================
  Mathematical operations on abstract units (mostly for parsing)
@@ -206,7 +211,7 @@ end
 for f in (
         :float, :abs, :real, :imag, :conj, :significand, :zero, :oneunit, :typemax, :typemin, :transpose
     )
-    @eval Base.$f(u::AbstractDimensions) = u
+    @eval Base.$f(u::AbstractDimLike) = u
     @eval Base.$f(q::AbstractQuantity) = with_ubase($f, q)
 end
 

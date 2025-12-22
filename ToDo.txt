@@ -1,29 +1,28 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
-Tasks:
-1.  Build out documentation and a docs badge
-    -   Include all-stops-out tutorial on defining a new dimension "RadDims"
-    -   Add angle to the dimension list
-    -   Create a new unit registry with that dimension 
-    -   Re-tool sin, cos, tan rules on this particular dimension
-2.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
-    -   Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
-    -   This can be done without documentation 
-        -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
-        -   Iterate over registry and list other units that match the query dimension
-3.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
-    -   I will need to create a new branch that supports MirrorDims()
-        -   var(X, dims=1) is still broken
-            -   X = (randn(30,3)*rand(3,3)).*[u"kg/s" u"kW" u"Hz"]
-            -   var(X, dims=1)
-            -   I think it has something to do with mirror_union(mirror_union(D))
-            -   I need to prevent recursive mirror dimensions
-            -   I may need to instroduce "AbstractDimLike" as a supertype of Dimension 
-                -   This means that MirrorDims doesn't need P 
-                -   This also means we can't have MirrorDims{MirrorDims}
-                -   Math is already explicit with MirrorDims
-        -   Allow typed functions like (zero, one, typemin, typemax) to specify MirrorDims
-        
+Current Tasks:
+1.  Add support to MirrorDims() to allow zero(Quantity{T,D}) + Quantity{T,D}(...) = Quantity{T,D}(...)
+    -   I may need to instroduce "AbstractDimLike" as a supertype of AbstractDimension 
+        -   This means that MirrorDims doesn't need P 
+        -   This also means we can't have MirrorDims{MirrorDims}
+        -   Math is already explicit with MirrorDims
+    -   var(X, dims=1) is still broken
+        -   X = (randn(30,3)*rand(3,3)).*[u"kg/s" u"kW" u"Hz"]
+        -   var(X, dims=1)
+        -   I think it has something to do with mirror_union(mirror_union(D))
+        -   I need to prevent recursive mirror dimensions
+    -   Allow typed functions like (zero, one, typemin, typemax) to specify MirrorDims
+    -   Remove NoDims() (it's unneeded)
+    -   See if we can remove "constructorof" and "quantity"
+
+2.  Build out "transform" objects 
+    -   UnitTransform{U<:Union{AbstractUnits, AbstractDimensions}, input::Vector, output::Vector} <: UnitLike (add "Pair" constructors)
+    -   SUnitTransform{U<:Union{AbstractUnits, AbstractDimensions}, input::Vector, scale::U} <: UnitLike
+    -   QuantTransform{M<:AbstractMatrix, U<:UnitTransform} <: AbstractMatrix{Quantity{D}}
+    -   Deprecate UnitfulCallable and replace with Quantity{Function, UnitTransform}
+    -   QuantTransform adjoint inverts units but matrix adjoints don't (think Eigenvectors)
+
+X.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}        
     -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all
     -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units
         -   For a matrix multiplication with a column vector to work, the matrix must be DIMENSINALLY CONSISTENT and COMPATIBLE with the vector
@@ -51,6 +50,27 @@ Tasks:
             -   Matrix EXP -> exp(mU) = mU if mU.scale == u""
             -   Eigendecomposition -> eigenvalue .= mU.scale, eigenvectors .= mU.colfac.*inv.(colfac')
             -   Cholesky decomposition -> L = ScalarUnitTransform(sqrt(mU.scale), mU.colfac), R = ScalarUnitTransform(sqrt(mU.scale), inv.(mU.colfac))
+
+
+Backlog:
+1.  Build out documentation and a docs badge
+    -   Include all-stops-out tutorial on defining a new dimension "RadDims"
+    -   Add angle to the dimension list
+    -   Create a new unit registry with that dimension 
+    -   Re-tool sin, cos, tan rules on this particular dimension
+2.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
+    -   Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
+    -   This can be done without documentation 
+        -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
+        -   Iterate over registry and list other units that match the query dimension
+3.  Consider support for static Unitful-like quantities (SQuantity?) THIS COULD BE THE ONE PACKAGE TO RULE THEM ALL!!!
+    -   Units are a parameter, not a field, everything else should just work
+        -   SQuantity(x::T, u) => SQuantity{T,u}(x)
+        -   Dimensions WORK THIS IS HUGE!!! (other units don't but that's okay)
+    -   Eager conversion to SI should reduce over-specialization
+        -   String-macro "sq" will produce a "static quantity" in SI
+        -   suconvert(u"...", q) will produce static quantities
+    -   Promotion of quantities will revert to regular dynamic quantities
 
 
 

@@ -49,7 +49,7 @@ function pretty_print_units(x::Bool)
     return x 
 end
 
-function Base.show(io::IO, q::AbstractQuantity{<:Any, <:AbstractDimensions}; pretty=PRETTY_DIM_OUTPUT[])
+function Base.show(io::IO, q::AbstractQuantity{<:Any, <:AbstractDimLike}; pretty=PRETTY_DIM_OUTPUT[])
     if pretty
         return _pretty_print_quantity(io, q)
     else
