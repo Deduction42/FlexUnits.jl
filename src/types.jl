@@ -70,21 +70,6 @@ function unit_symbols(::Type{<:Dimensions})
     )
 end
 
-"""
-    NoDims{P}
-
-A unitless dimension, compatible with any other dimension
-
-Calling `getproperty` will always return `zero(P)`
-promote(Type{<:NoDims}, D<:AbstractDimension) will return D 
-convert(Type{D}, NoDims) where D<:AbstractDimensions will return D()
-"""
-struct NoDims{P} <: AbstractDimensions{P} end
-NoDims() = NoDims{DEFAULT_RATIONAL}()
-Base.getproperty(::NoDims{P}, ::Symbol) where {P} = zero(P)
-unit_symbols(::Type{<:NoDims}) = NoDims{Symbol}()
-
-
 
 """
     dimension_names(::Type{<:AbstractDimensions})
@@ -176,7 +161,6 @@ AffineUnits(scale, offset::Quantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL
 Overloading constructor for various quantities
 """
 quantity(x, u::AbstractUnitLike) = Quantity(x, u)
-quantity(x, u::NoDims) = x
 quantity(x::Tuple, u::Tuple) = map(quantity, x, u)
 
 """

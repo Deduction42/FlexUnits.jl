@@ -42,11 +42,6 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
     @test uoffset(d) == 0
     @test FlexUnits.usymbol(d) == FlexUnits.DEFAULT_USYMBOL
 
-    d = NoDims()
-    @test d.length == 0
-    @test d.mass == 0
-    @test FlexUnits.unit_symbols(NoDims) ==  NoDims{Symbol}()
-
     @test FlexUnits.remove_offset(u"°C") == u"K"
 
     @test FlexUnits.constructorof(typeof(Dimensions())) == Dimensions
@@ -341,7 +336,6 @@ end
     @test_throws DimensionError xv + 1
     @test_throws DimensionError 1 + xv
 
-    @test xv*NoDims() == xv
     @test xv*1 == 1u"m/s"
     @test xv*1 !== 1u"m/s"
     @test xv*1 === ubase(1u"m/s")
@@ -531,12 +525,10 @@ end
     # Test conversion of unit types 
     @test convert(DEFAULT_DIM_TYPE, u"m") === Dimensions(length=1)
     @test_throws NotDimensionError convert(DEFAULT_DIM_TYPE, u"mm")
-    @test convert(DEFAULT_DIM_TYPE, NoDims()) === Dimensions(length=0)
     @test convert(AffineUnits{DEFAULT_DIM_TYPE}, ubase(2u"m")) == AffineUnits(scale=2.0, offset=0.0, dims=dimension(u"m"))
     @test convert(AffineUnits{DEFAULT_DIM_TYPE}, 2u"°C") == AffineUnits(scale=2.0, offset=273.15, dims=dimension(u"K"))
     @test convert(Quantity{Float64, DEFAULT_DIM_TYPE}, 2u"m") === Quantity{Float64, DEFAULT_DIM_TYPE}(2.0, dimension(u"m")) 
     @test_throws NotScalarError convert(Quantity{Float64, DEFAULT_DIM_TYPE}, u"°C") 
-    @test promote_type(DEFAULT_DIM_TYPE, NoDims{Int64}) == DEFAULT_DIM_TYPE
     @test promote_type(Quantity{Float32, DEFAULT_DIM_TYPE}, Quantity{Float64, DEFAULT_UNIT_TYPE}) == Quantity{Float64, DEFAULT_DIM_TYPE}
 
     # Test that adding different dimension subtypes still works

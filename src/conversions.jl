@@ -174,7 +174,6 @@ end
 # Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = (u isa U) ? u : U(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=usymbol(u))
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : D(dimension(assert_dimension(u)))
-Base.convert(::Type{D}, u::NoDims) where D<:AbstractDimensions = D()
 
 # Converting between units and quantities ====================================================
 Base.convert(::Type{U}, q::AbstractQuantity) where U<:AbstractUnits = convert(U, asunit(q))
@@ -187,12 +186,6 @@ end
 Base.convert(::Type{T}, q::AbstractQuantity) where {T<:Number} = convert(T, dimensionless(q))
 
 # Promotion rules ======================================================
-
-#We assume dimension types match except for NoDims
-function Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:NoDims}
-    return constructorof(D1){promote_type(eltype(D1), eltype(D2))}
-end
-
 function Base.promote_rule(::Type{<:Dimensions{P1}}, ::Type{<:Dimensions{P2}}) where {P1, P2}
     return Dimensions{promote_type(P1,P2)}
 end
