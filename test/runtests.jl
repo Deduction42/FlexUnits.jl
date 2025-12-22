@@ -48,7 +48,7 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
     @test FlexUnits.constructorof(typeof(u"m")) == AffineUnits
     @test FlexUnits.constructorof(typeof(1.0*u"m")) == Quantity
     @test FlexUnits.constructorof(typeof((1.0+im)*u"m")) == Quantity
-    @test FlexUnits.constructorof(typeof(quantity("this", u"m"))) == Quantity
+    @test FlexUnits.constructorof(typeof(Quantity("this", u"m"))) == Quantity
     @test FlexUnits.constructorof(Array{Float64}) == Array
 
     @test string(AffineUnits(scale=1, offset=0, dims=dimension(u"m"), symbol=:_)) == "AffineUnits(scale=1.0, offset=0.0, dims=m)"
@@ -62,10 +62,10 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
     @test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=false) == "(1.0)m/s^2"
 
     #Vector operations
-    vq = quantity([1,2], u"m/s")
+    vq = Quantity([1,2], u"m/s")
     @test [1,2].*u"m/s" == [1u"m/s", 2u"m/s"]
     @test [1,2].*(5u"m/s") == [5.0u"m/s", 10.0u"m/s"]
-    @test vq[:] == quantity([1,2], u"m/s")
+    @test vq[:] == Quantity([1,2], u"m/s")
     @test vq[1] == 1*u"m/s"
     @test vq[CartesianIndex(1)] == 1*u"m/s"
     @test all([q for q in vq] .== vq)
@@ -224,6 +224,7 @@ end
 
 end
 
+#=
 @testset "UnitfulCallable" begin
     #Test callable application
     angle_coords(θ::Real, r::Real) = r.*(cos(θ), sin(θ))
@@ -261,9 +262,10 @@ end
     unitful_const()
 
 end
+=#
 
 @testset "Basic unit functionality" begin
-    x = quantity(0.2, Dimensions(length=1, mass=2.5, time=-1))
+    x = Quantity(0.2, Dimensions(length=1, mass=2.5, time=-1))
     u = ustrip(x)
 
     #Test round-trip parsing

@@ -33,7 +33,7 @@ Converts quantity `q` to the equivalent quantity having units `u`
 """
 function uconvert(u::AbstractUnitLike, q::AbstractQuantity)
     utrans = uconvert(u, unit(q))
-    return quantity(utrans(ustrip(q)), u)
+    return Quantity(utrans(ustrip(q)), u)
 end
 
 
@@ -133,7 +133,7 @@ uconvert(utrans::AffineTransform, x::Tuple) = map(utrans, x)
 function ubase(q::AbstractQuantity{<:Any,<:AbstractAffineUnits})
     u = unit(q)
     utrans = AffineTransform(scale=uscale(u), offset=uoffset(u))
-    return quantity(utrans(ustrip(q)), dimension(u))
+    return Quantity(utrans(ustrip(q)), dimension(u))
 end 
 
 

@@ -13,7 +13,7 @@ Base.ndims(::Type{<:AbstractQuantity{T}}) where {T} = ndims(T)
 Base.iterate(q::Q, maybe_state...) where Q<:AbstractQuantity = 
     let subiterate = iterate(ustrip(q), maybe_state...)
         subiterate === nothing && return nothing
-        return Quantity(subiterate[1], unit(q)), subiterate[2]
+        return constructorof(Q)(subiterate[1], unit(q)), subiterate[2]
     end
 
 Base.size(u::AbstractUnitLike) = ()
@@ -25,9 +25,9 @@ Base.iterate(u::AbstractUnitLike) = (u, nothing)
 
 Base.broadcastable(q::Q) where Q<:AbstractQuantity = Q(Base.broadcastable(ustrip_base(q)), dimension(q))
 Base.getindex(q::Q) where Q<:AbstractQuantity = Q(getindex(ustrip(q)), unit(q))
-Base.getindex(q::Q, inds) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), inds), unit(q))
-Base.getindex(q::Q, inds::CartesianIndex{0}) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), inds), unit(q))
-Base.getindex(q::Q, ind::Integer, inds::Integer...) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), ind, inds...), unit(q))
+Base.getindex(q::Q, inds) where Q<:AbstractQuantity = constructorof(Q)(getindex(ustrip(q), inds), unit(q))
+Base.getindex(q::Q, inds::CartesianIndex{0}) where Q<:AbstractQuantity = constructorof(Q)(getindex(ustrip(q), inds), unit(q))
+Base.getindex(q::Q, ind::Integer, inds::Integer...) where Q<:AbstractQuantity = constructorof(Q)(getindex(ustrip(q), ind, inds...), unit(q))
 Base.firstindex(q::Q) where Q<:AbstractQuantity = firstindex(ustrip(q))
 Base.lastindex(q::Q) where Q<:AbstractQuantity = lastindex(ustrip(q))
 

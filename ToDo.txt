@@ -7,62 +7,67 @@ Major Changes:
     -   Behaviour also applies to `typemin` and `typemax` as well
 2.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
 3.  (breaking) `quantity` removed, use Quantity instead
-4.  (breaking) promotion rules convert to quantities
-4.  FixRat32 is now exported
+4.  (breaking) `UnitfulCallable` removed in favor of Quantity(f::Function, u::UnitTransform)
+5.  (breaking) `AbstractUnitTransform` is renamed to `AbstractUnitConverter` (AffineTrnasform is now AffineConverter)
+6.  (breaking) promotion rules convert to quantities
+7.  FixRat32 is now exported
 
 
 Current Tasks:
 1.  Add support to MirrorDims() to allow zero(Quantity{T,D}) + Quantity{T,D}(...) = Quantity{T,D}(...)
-    -   Remove NoDims() (it's unneeded)
-    -   See if we can remove "constructorof" and "quantity"
+    -   Renaming for clarity: AbstractUnitTransform => AbstractUnitConverter, AffineTransform => AffineConverter
     -   Change promotion rules so that Quantity{T<:ARITHMETICS} + ARITHMETICS promotes to Quantity{T} using Quantity(x, D())
 
-2.  Build out "transform" objects 
-    -   UnitTransform{U<:Union{AbstractUnits, AbstractDimensions}, input::Vector, output::Vector} <: UnitLike (add "Pair" constructors)
-    -   SUnitTransform{U<:Union{AbstractUnits, AbstractDimensions}, input::Vector, scale::U} <: UnitLike
-    -   QuantTransform{M<:AbstractMatrix, U<:UnitTransform} <: AbstractMatrix{Quantity{D}}
-    -   Deprecate UnitfulCallable and replace with Quantity{Function, UnitTransform}
+2.  Build out "unit mapping" objects 
+    -   UnitMap{U<:Union{AbstractUnits, AbstractDimensions}, input::Vector, output::Vector} <: UnitLike (add "Pair" constructors)
+    -   ScaleUnitMap{U<:Union{AbstractUnits, AbstractDimensions}, input::Vector, scale::U} <: UnitLike
+    -   QuantTransform{M<:AbstractMatrix, U<:UnitMap} <: AbstractMatrix{Quantity{D}}
+    -   Deprecate UnitfulCallable and replace with Quantity{Function, UnitMap}
     -   QuantTransform adjoint inverts units but matrix adjoints don't (think Eigenvectors)
 
-X.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}        
+X.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitMap)<:AbstractArray{<:Quantity}        
     -   This is a KILLER FEATURE because Unitful CANT DO THIS with mixed dimensions, and DynamicQuantities can't do this at all
     -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units
         -   For a matrix multiplication with a column vector to work, the matrix must be DIMENSINALLY CONSISTENT and COMPATIBLE with the vector
-            -   Consider a type QuantTransorm{scale::T, units::AbstractUnitTransform}
+            -   Consider a type QuantTransorm{scale::T, units::AbstractUnitMap}
         -   Multiplication of a vector quantity "v" with a quantity transform mQ can be expressed as
-            -   mU = mQ.units::UnitTransform{colfac::AbstractVector{Dimensions{T}}, rowfac::AbstractVector{Dimensions{T}}} 
-            -   Matrix(mU::UnitTransform) = mU.colfac .* mU.rowfac'
+            -   mU = mQ.units::UnitMap{colfac::AbstractVector{Dimensions{T}}, rowfac::AbstractVector{Dimensions{T}}} 
+            -   Matrix(mU::UnitMap) = mU.colfac .* mU.rowfac'
             -   mQ*v = mU.colfac.*(mQ.scale).*(mU.rowfac')*v
             -   scale  = ustrip_base.(mQ)
             -   colfac = dimension.(mQ[:,begin])
             -   rowfac = dimension.(mQ[ii,:])/colfac[ii]
                 -   Result for rowfac must be the same for all ii
-        -   UnitTransform mU can be easily inverted
-            -   inv(mU) = UnitTransform(colfac=inv.(mU.rowfac), rowfac=inv.(mU.colfac))
+        -   UnitMap mU can be easily inverted
+            -   inv(mU) = UnitMap(colfac=inv.(mU.rowfac), rowfac=inv.(mU.colfac))
         -   L-Divide can be done in stages (scalars first, and then units)
             -   y = fill(0.0*u"", size(mQ,1), size(x,2))
             -   y .= mQ.scale\ustrip_base.(x)
             -   y .*= inv(mQ.units)*x
-    -   All SELF-CONSISTENT unit transforms ScalarUnitTransform can be factorized as mU = uscale.*(colfac.*inv.(colfac'))
-        -   ScalarUnitTransform{scale::Dimensions{T}, colfac::AbstractVector{Dimensions{T}}} 
+    -   All SELF-CONSISTENT unit transforms ScalarUnitMap can be factorized as mU = uscale.*(colfac.*inv.(colfac'))
+        -   ScalarUnitMap{scale::Dimensions{T}, colfac::AbstractVector{Dimensions{T}}} 
             -   The term (colfac.*inv.(colfac')) is idempotent for vectors with compatible dimensions
-        -   ScalarUnitTransform can have many different operations
-            -   Matrix Power -> mU^x = ScalarUnitTransform(uscale=mU.scale^x, colfac=mU.colfac)
-            -   Transpose -> transpose(mU) = ScalarUnitTransform(uscale=mU.scale, colfac=inv.(mU.colfac))
+        -   ScalarUnitMap can have many different operations
+            -   Matrix Power -> mU^x = ScalarUnitMap(uscale=mU.scale^x, colfac=mU.colfac)
+            -   Transpose -> transpose(mU) = ScalarUnitMap(uscale=mU.scale, colfac=inv.(mU.colfac))
             -   Matrix EXP -> exp(mU) = mU if mU.scale == u""
             -   Eigendecomposition -> eigenvalue .= mU.scale, eigenvectors .= mU.colfac.*inv.(colfac')
-            -   Cholesky decomposition -> L = ScalarUnitTransform(sqrt(mU.scale), mU.colfac), R = ScalarUnitTransform(sqrt(mU.scale), inv.(mU.colfac))
+            -   Cholesky decomposition -> L = ScalarUnitMap(sqrt(mU.scale), mU.colfac), R = ScalarUnitMap(sqrt(mU.scale), inv.(mU.colfac))
 
 
 Backlog:
-1.  Consider support for Unitful-like static-dimension quantities (SdQuantity?) THIS COULD BE THE ONE PACKAGE TO RULE THEM ALL!!!
+1.  Consider support for Unitful-like static-dimension quantities (SQuantity?) MAJOR FEATURE!!!
+    -   Allows FlexUnits to be the best of both DynamicQuantities and Unitful
     -   Dimensions are a parameter, not a field, everything else should just work
-        -   SdQuantity(x::T, u) => SdQuantity{T,u}(x)
+        -   SQuantity(x::T, u) => SQuantity{T,u}(x)
         -   Dimensions work as a parameter. THIS IS HUGE!!!
-        -   Units don't work, but this doens't matter, compiling dimensions only reduces specialization
+        -   Units don't work, but this doesn't matter because only using dimensions has many benefits
+            -   Less over-specialization
+            -   No scalar conversions, which means theroetically zero overhead
+            -   Use 'su"..."' to create a StaticUnit{D,T<:AbstractUnitTranform}
     -   Eager conversion to SI should reduce over-specialization
-        -   String-macro "sdq" will produce a "static quantity" in SI
-        -   sdconvert(u"...", q) will produce static quantities to the dimensions of "u"
+        -   String-macro "su" will produce a StaticQuantity (dimensions with the converter object)
+        -   uconvert(su"...", q) will produce static quantities to the dimensions of "u"
     -   Promotion of quantities will revert to regular dynamic quantities
         -   This looks like it can be handled at the "with_ubase" interface level
 2.  Build out documentation and a docs badge
@@ -76,8 +81,21 @@ Backlog:
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
 
+#Static quantity that does compile-time unit conversion
+struct SQuantity{T, D<:AbstractDimensions}
+    value :: T
+end
+SQuantity(x::Any, u::AbstractDimensions) = SQuantity{typeof(x), u}(x)
 
+#Static unit that contains a dimension parameter and the transform to get the unit to said dimension
+struct StaticUnit{D, T<:AbstractUnitConverter}
+    converter :: T
+    symbol :: Symbol
+end
+StaticUnit(u::AffineUnits{D}) where D<:AbstractDimension = StaticUnit{dimension(u), AffineConverter}(uconvert(dimension(u), u))
 
+#Multiplication with static units becomes easy thanks to the elegance of unit transforms
+Base.*(x::T, u::StaticUnit{D}) where {T<:ARITHMETICS, D<:AbstractDimensions} = SQuantity{T,D}(u.transform(x))
 
 import DynamicQuantities
 import Unitful

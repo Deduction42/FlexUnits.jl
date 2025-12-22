@@ -16,25 +16,20 @@ import Unitful: @u_str
     return true
 end
 
-function FlexUnits.quantity(q::Unitful.Quantity)
+function FlexUnits.Quantity(q::Unitful.Quantity)
     validate_upreferred()
     flex_dim   = convert(UnitRegistry.dimtype(), Unitful.dimension(q))
     base_scale = Unitful.ustrip(Unitful.upreferred(q))
-    return FlexUnits.quantity(base_scale, flex_dim)
-end
-
-function FlexUnits.Quantity(q::Unitful.Quantity) 
-    flexq = FlexUnits.quantity(q)
-    return FlexUnits.Quantity(FlexUnits.ustrip(flexq), FlexUnits.unit(flexq))
+    return FlexUnits.Quantity(base_scale, flex_dim)
 end
 
 function FlexUnits.Quantity{T}(q::Unitful.Quantity) where {T}
-    flexq = FlexUnits.quantity(q)
+    flexq = FlexUnits.Quantity(q)
     return FlexUnits.Quantity{T}(FlexUnits.ustrip(flexq), FlexUnits.unit(flexq))
 end
 
 function FlexUnits.Quantity{T,U}(q::Unitful.Quantity) where {T,U}
-    flexq = FlexUnits.quantity(q)
+    flexq = FlexUnits.Quantity(q)
     return FlexUnits.Quantity{T,U}(FlexUnits.ustrip(flexq), FlexUnits.unit(flexq))
 end
 

@@ -155,13 +155,6 @@ dimtype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = dimtype(U)
 AffineUnits(scale, offset::Quantity, dims::AbstractDimensions, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
 AffineUnits(scale, offset::Quantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
 
-"""
-    quantity(x, u::AbstractUnitLike)
-
-Overloading constructor for various quantities
-"""
-quantity(x, u::AbstractUnitLike) = Quantity(x, u)
-quantity(x::Tuple, u::Tuple) = map(quantity, x, u)
 
 """
     constructorof(::Type{T}) where T = Base.typename(T).wrapper
@@ -204,7 +197,11 @@ Quantity(x::T, u::MirrorDims{D}) where {T,D<:AbstractDimensions} = Quantity{T, M
 Quantity{<:Any, <:MirrorDims}(x, u) = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
 
 function Base.show(io::IO, d::MirrorDims{D}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    return print(io, "MirrorDims{$(D)}()")
+    if pretty
+        return print(io, "?/?")
+    else
+        return print(io, "MirrorDims{$(D)}()")
+    end
 end
 
 function Base.show(io::IO, ::Type{MirrorDims{D}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
@@ -215,7 +212,7 @@ function Base.show(io::IO, ::Type{MirrorUnion{D}}; pretty=PRETTY_DIM_OUTPUT[]) w
     return print(io, "MirrorUnion{$(D)}")
 end
 
-
+#=
 """
     UnitfulCallable{T<:Any, UI<:Any, UO<:Any}
 
@@ -250,21 +247,21 @@ UnitfulCallable(p::Pair) = UnitfulCallable(nothing, p)
 unitful_call(f, bb::UnitfulCallable, x...)  = _apply_unit_pair(f, bb.units, x...)
 
 function _apply_unit_pair(f, u::Pair)
-    return quantity(f(), u[2])
+    return Quantity(f(), u[2])
 end
 
 function _apply_unit_pair(f, u::Pair, x)
     (ui, uo) = u
     raw_args = ustrip(ui, x)
-    return quantity(f(raw_args), uo)
+    return Quantity(f(raw_args), uo)
 end
 
 function _apply_unit_pair(f, u::Pair, x1, xs...)
     (ui, uo) = u
     raw_args = map(ustrip, ui, (x1, xs...))
-    return quantity(f(raw_args...), uo)
+    return Quantity(f(raw_args...), uo)
 end
-
+=#
 
 
 #=============================================================================================
