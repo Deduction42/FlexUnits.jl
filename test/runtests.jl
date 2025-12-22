@@ -21,6 +21,8 @@ using BenchmarkTools
 using FlexUnits, .UnitRegistry
 using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions
 using Aqua
+using LinearAlgebra
+using Statistics
 import Unitful
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
@@ -576,6 +578,24 @@ end
     x2 = x .|> u"g"
     @test typeof(x2) <: Vector{<:Quantity{Float64,<:AffineUnits{<:Any}}}
     @test x2[2] ≈ (2000u"g")
+end
+
+@testset "Stats and Linear Algebra" begin
+    import Random
+    Random.seed!(1234)
+
+    #Generate a correlated test set
+    U = [u"kg/s", u"kW", u"Hz"]
+    X = (rand(30,3)*rand(3,3) .+ 0.001.*randn(30,3))
+    Q = X .* U'
+
+    #Test summations, stats and some linear algebra
+    @test all(sum(Q, dims=1) .≈ sum(X, dims=1).*U')
+    @test all(mean(Q, dims=1) .≈ mean(X, dims=1).*U')
+    @test all(var(Q, dims=1) .≈ var(X, dims=1).*(U.^2)')
+    @test all(cov(Q) .≈ cov(X).*U.*U')
+    @test sum(Q*inv.(U)) ≈ sum(X)
+
 end
 
 @testset "Additional tests of FixedRational" begin

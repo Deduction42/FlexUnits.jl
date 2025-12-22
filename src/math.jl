@@ -101,7 +101,7 @@ Base.:/(u1::AbstractUnitLike, u2::AbstractUnitLike) = /(promote(u1,u2)...)
 
 Base.sqrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 2))
 Base.cbrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 3))
-Base.adjoint(u::AbstractUnits) = inv(u)
+Base.adjoint(u::AbstractUnits) = u
 
 #Equality does not compare symbols
 Base.:(==)(u1::AbstractAffineUnits, u2::AbstractAffineUnits) = (uscale(u1) == uscale(u2)) & (uoffset(u1) == uoffset(u2)) & (dimension(u1) == dimension(u2))
