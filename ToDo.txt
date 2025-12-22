@@ -1,19 +1,22 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
+Major Changes:
+1.  (breaking) `zero(::Quantity{T,D})` now outputs a new quanitity type Quantity{T, MirrorUnion{D}}
+    -   This allows an "additive identity" as MirrorUnion{D} mirrors the dimensions in the other argument
+    -   Enables functionality like var(X, dims=1) where X is a matrix of mixed units
+    -   Behaviour also applies to `typemin` and `typemax` as well
+2.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
+3.  (breaking) `quantity` removed, use Quantity instead
+4.  (breaking) promotion rules convert to quantities
+4.  FixRat32 is now exported
+
+
 Current Tasks:
 1.  Add support to MirrorDims() to allow zero(Quantity{T,D}) + Quantity{T,D}(...) = Quantity{T,D}(...)
-    -   I may need to instroduce "AbstractDimLike" as a supertype of AbstractDimension 
-        -   This means that MirrorDims doesn't need P 
-        -   This also means we can't have MirrorDims{MirrorDims}
-        -   Math is already explicit with MirrorDims
-    -   var(X, dims=1) is still broken
-        -   X = (randn(30,3)*rand(3,3)).*[u"kg/s" u"kW" u"Hz"]
-        -   var(X, dims=1)
-        -   I think it has something to do with mirror_union(mirror_union(D))
-        -   I need to prevent recursive mirror dimensions
-    -   Allow typed functions like (zero, one, typemin, typemax) to specify MirrorDims
+    -   Allow typed functions like (zero, typemin, typemax) to specify MirrorDims
     -   Remove NoDims() (it's unneeded)
     -   See if we can remove "constructorof" and "quantity"
+    -   Change promotion rules so that Quantity{T<:ARITHMETICS} + ARITHMETICS promotes to Quantity{T} using Quantity(x, D())
 
 2.  Build out "transform" objects 
     -   UnitTransform{U<:Union{AbstractUnits, AbstractDimensions}, input::Vector, output::Vector} <: UnitLike (add "Pair" constructors)
@@ -53,24 +56,27 @@ X.  Consider a special object QuantTransform(scale::AbstractArray, units::UnitTr
 
 
 Backlog:
-1.  Build out documentation and a docs badge
+1.  Consider support for Unitful-like static-dimension quantities (SdQuantity?) THIS COULD BE THE ONE PACKAGE TO RULE THEM ALL!!!
+    -   Dimensions are a parameter, not a field, everything else should just work
+        -   SdQuantity(x::T, u) => SdQuantity{T,u}(x)
+        -   Dimensions work as a parameter. THIS IS HUGE!!!
+        -   Units don't work, but this doens't matter, compiling dimensions only reduces specialization
+    -   Eager conversion to SI should reduce over-specialization
+        -   String-macro "sdq" will produce a "static quantity" in SI
+        -   sdconvert(u"...", q) will produce static quantities to the dimensions of "u"
+    -   Promotion of quantities will revert to regular dynamic quantities
+        -   This looks like it can be handled at the "with_ubase" interface level
+2.  Build out documentation and a docs badge
     -   Include all-stops-out tutorial on defining a new dimension "RadDims"
     -   Add angle to the dimension list
     -   Create a new unit registry with that dimension 
     -   Re-tool sin, cos, tan rules on this particular dimension
-2.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
+3.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
     -   Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
     -   This can be done without documentation 
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
-3.  Consider support for static Unitful-like quantities (SQuantity?) THIS COULD BE THE ONE PACKAGE TO RULE THEM ALL!!!
-    -   Units are a parameter, not a field, everything else should just work
-        -   SQuantity(x::T, u) => SQuantity{T,u}(x)
-        -   Dimensions WORK THIS IS HUGE!!! (other units don't but that's okay)
-    -   Eager conversion to SI should reduce over-specialization
-        -   String-macro "sq" will produce a "static quantity" in SI
-        -   suconvert(u"...", q) will produce static quantities
-    -   Promotion of quantities will revert to regular dynamic quantities
+
 
 
 

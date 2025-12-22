@@ -206,17 +206,23 @@ julia> max(1u"m/s", -Inf*MirrorDims())
 struct MirrorDims{D<:AbstractDimensions} <: AbstractDimLike end
 MirrorDims() = MirrorDims{FixRat32, Dimensions{FixRat32}}()
 MirrorDims(::Type{D}) where {D<:AbstractDimensions} = MirrorDims{D}()
-mirror_union(::Type{D}) where {D<:AbstractDimensions} = Union{D, MirrorDims{D}}
-promote_rule(::Type{D}, ::Type{<:MirrorDims}) where {D<:AbstractDimensions} = mirror_union(D)
+
+
+const MirrorUnion{D} = Union{D, MirrorDims{D}}
+promote_rule(::Type{D}, ::Type{<:MirrorDims}) where {D<:AbstractDimensions} = MirrorUnion{D}
 function nomirror(x::Quantity)
     u = unit(x)
-    return (u isa MirrorDims) ? throw(ArgumentError("Mirror dimensions found")) : Quantity(ustrip(x), u)
+    return (u isa MirrorDims) ? throw(ArgumentError("Mirror dimensions found, cannot convert to non-mirror version")) : Quantity(ustrip(x), u)
 end
 
-
 #Quantities with mirror dimensions should include a union
-Quantity(x::T, u::MirrorDims{D}) where {T,D<:AbstractDimensions} = Quantity{T, mirror_union(D)}(x, u)
-Quantity{<:Any, <:MirrorDims}(x, u) = error("MirrorDims should not be a type parameter in a Quantity constructor. use Quantity{T, mirror_union(D)}")
+Quantity(x::T, u::MirrorDims{D}) where {T,D<:AbstractDimensions} = Quantity{T, MirrorUnion{D}}(x, u)
+Quantity{<:Any, <:MirrorDims}(x, u) = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
+
+function Base.show(io::IO, ::Type{MirrorUnion{D}}) where {D<:AbstractDimensions}
+    return print(io, "MirrorUnion{$(D)}")
+end
+
 
 """
     UnitfulCallable{T<:Any, UI<:Any, UO<:Any}

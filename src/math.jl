@@ -187,16 +187,18 @@ Base.cbrt(q::AbstractQuantity) = with_ubase(cbrt, q)
 Base.abs2(q::AbstractQuantity) = with_ubase(abs2, q)
 Base.max(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(max, q1, q2)
 Base.min(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(min, q1, q2)
-
 Base.zero(::Type{D}) where D<:AbstractDimensions = D()
 Base.zero(::Type{U}) where U<:AffineUnits = U(dims=dimtype(U)())
 
-function Base.zero(::Type{<:AbstractQuantity{T, D}}) where {T, D<:AbstractDimensions} 
-    return Quantity(zero(T), MirrorDims(D))
-end
-Base.zero(::Type{<:AbstractQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = zero(Quantity{T,D})
+#Common functions for initializers
 Base.one(::Type{<:AbstractQuantity{T}}) where T = one(T) #unitless
 Base.oneunit(::Type{<:AbstractQuantity{T,D}}) where {T,D} = quantity(one(T), zero(D)) #unitless with type
+
+Base.zero(::Type{<:AbstractQuantity{T, D}}) where {T, D<:AbstractDimensions} = Quantity(zero(T), MirrorDims(D))
+Base.zero(::Type{<:AbstractQuantity{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = zero(Quantity{T,D})
+Base.zero(::Type{<:AbstractQuantity{T, <:MirrorUnion{D}}}) where {T, D<:AbstractDimensions} = zero(Quantity{T,D})
+Base.zero(::Type{<:AbstractQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = zero(Quantity{T,D})
+
 
 #Comparison functions (returns a bool)
 for f in (:<, :<=, :isless)
