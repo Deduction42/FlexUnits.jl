@@ -198,11 +198,12 @@ Base.zero(::Type{U}) where U<:AffineUnits = U(dims=dimtype(U)())
 Base.one(::Type{<:AbstractQuantity{T}}) where T = one(T) #unitless
 Base.oneunit(::Type{<:AbstractQuantity{T,D}}) where {T,D} = quantity(one(T), zero(D)) #unitless with type
 
-Base.zero(::Type{<:AbstractQuantity{T, D}}) where {T, D<:AbstractDimensions} = Quantity(zero(T), MirrorDims(D))
-Base.zero(::Type{<:AbstractQuantity{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = zero(Quantity{T,D})
-Base.zero(::Type{<:AbstractQuantity{T, <:MirrorUnion{D}}}) where {T, D<:AbstractDimensions} = zero(Quantity{T,D})
-Base.zero(::Type{<:AbstractQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = zero(Quantity{T,D})
-
+for f in (:zero, :typemin, :typemax)
+    @eval Base.$f(::Type{<:AbstractQuantity{T, D}}) where {T, D<:AbstractDimensions} = Quantity($f(T), MirrorDims(D))
+    @eval Base.$f(::Type{<:AbstractQuantity{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
+    @eval Base.$f(::Type{<:AbstractQuantity{T, <:MirrorUnion{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
+    @eval Base.$f(::Type{<:AbstractQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
+end
 
 #Comparison functions (returns a bool)
 for f in (:<, :<=, :isless)

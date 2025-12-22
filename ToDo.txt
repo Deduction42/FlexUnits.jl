@@ -13,7 +13,6 @@ Major Changes:
 
 Current Tasks:
 1.  Add support to MirrorDims() to allow zero(Quantity{T,D}) + Quantity{T,D}(...) = Quantity{T,D}(...)
-    -   Allow typed functions like (zero, typemin, typemax) to specify MirrorDims
     -   Remove NoDims() (it's unneeded)
     -   See if we can remove "constructorof" and "quantity"
     -   Change promotion rules so that Quantity{T<:ARITHMETICS} + ARITHMETICS promotes to Quantity{T} using Quantity(x, D())

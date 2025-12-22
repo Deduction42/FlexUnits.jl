@@ -180,6 +180,10 @@ end
         @test zero(typeof(ubase(1u"m/s"))) + 2.0u"m/s" == ubase(2.0u"m/s")
         @test zero(zero(typeof(ubase(1u"m/s")))) + 2.0u"m/s" == ubase(2.0u"m/s")
         @test zero(typeof(zero(typeof(ubase(1u"m/s"))))) + 2.0u"m/s" == ubase(2.0u"m/s")
+        @test max(typemin(1.0u"m/s"), 0.0u"m/s") == 0.0u"m/s"
+        @test max(typemin(typeof(1.0u"m/s")), 0.0u"m/s") == 0.0u"m/s"
+        @test min(typemax(-1.0u"m/s"), 0.0u"m/s") == 0.0u"m/s"
+        @test min(typemax(typeof(1.0u"m/s")), 0.0u"m/s") == 0.0u"m/s"
 
         @test one(Quantity{T, AffineUnits{Dimensions{R}}}) === one(T)
         @test oneunit(Quantity{T, AffineUnits{Dimensions{R}}}) == Quantity(one(T), zero(AffineUnits{Dimensions{R}}))
@@ -594,8 +598,10 @@ end
     @test all(mean(Q, dims=1) .≈ mean(X, dims=1).*U')
     @test all(var(Q, dims=1) .≈ var(X, dims=1).*(U.^2)')
     @test all(cov(Q) .≈ cov(X).*U.*U')
+    @test all(cor(Q) .≈ cor(X))
     @test sum(Q*inv.(U)) ≈ sum(X)
-
+    @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
+    @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
 end
 
 @testset "Additional tests of FixedRational" begin
