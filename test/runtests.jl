@@ -425,12 +425,12 @@ end
     # Test conversions
     @test 1°C |> K isa Quantity{<:Real, <:AffineUnits}
     @test 1°C |> unit(ubase(1K)) isa Quantity{<:Real, <:Dimensions}
-    @test  °C |> unit(ubase(1K)) isa AffineTransform
+    @test  °C |> unit(ubase(1K)) isa AffineConverter
 
     @test 0°C |> u"K" == 273.15u"K"
     @test 1u"K" |> °C isa Quantity{<:Real, <:AffineUnits}
     @test 0u"K" |> °C  == -273.15°C
-    @test °C |> °F isa AffineTransform
+    @test °C |> °F isa AffineConverter
     @test 0°C |> °F == 32°F
     @test (°C |> °F)(0) ≈ 32
 
