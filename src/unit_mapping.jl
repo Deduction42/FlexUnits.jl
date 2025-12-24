@@ -10,19 +10,30 @@ include("UnitRegistry.jl")
 const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
 
-abstract type AbstractUnitMap{U, V<:ScalarOrVec{U}} <: AbstractMatrix{U} end
+abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} <: AbstractMatrix{U} end
 
 #Units of an adjoint are the same as an inverse, adjoint is broader because it doesn't imply one-to-one mapping
 Base.adjoint(m::AbstractUnitMap) = inv(m)
 
-@kwdef struct UnitMap{U<:UnitOrDims, V<:ScalarOrVec{U}} <: AbstractUnitMap{U,V}
-    u_out :: V
-    u_in :: V
+"""
+struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+    u_in  :: TI
+    u_out :: TO
+end
+
+Used to represent a unit transformation from input units 'u_in' to outpout units 'u_out'.
+This is often applied to matrices or functions of vectors.
+"""
+@kwdef struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+    u_in  :: TI
+    u_out :: TO
 end
 
 Base.getindex(m::UnitMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]
 Base.size(m::UnitMap) = (length(m.u_out), length(m.u_in))
-Base.inv(m::AbstractUnitMap) = UnitMap(u_out=inv.(m.u_in), u_in=inv.(m.u_out))
+Base.inv(m::AbstractUnitMap) = UnitMap(u_out=m.u_in, u_in=m.u_out)
+uoutput(m::UnitMap) = m.u_out
+uinput(m::UnitMap) = m.u_in
 
 function UnitMap(mq::AbstractMatrix{<:Union{AbstractQuantity,AbstractUnitLike}})
     u_out = dimension.(mq[:,begin])
@@ -36,15 +47,27 @@ function UnitMap(mq::AbstractMatrix{<:Union{AbstractQuantity,AbstractUnitLike}})
     return UnitMap(u_out=u_out, u_in=u_in)
 end
 
-
-@kwdef struct RUnitMap{U<:UnitOrDims, V<:ScalarOrVec{U}} <: AbstractUnitMap{U,V}
+"""
+struct RUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
     u_scale :: U
-    u_in :: V
+    u_in :: TI
+end
+
+Used to represent a special kind of unit transformation (a recursive or repeatable transformation) of units 'u_in'.
+output units are 'u_in*u_scale', and if 'u_scale' is dimensionless, the unit transformation is idempotent (same output 
+units as input). This enables certain kinds of operations such as matrix powers (whose unit transform must be recursive).
+Idempotence enables even more transformations like matrix exponentials.
+"""
+@kwdef struct RUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+    u_scale :: U
+    u_in :: TI
 end
 
 Base.getindex(m::RUnitMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]/m.u_in[jj]
 Base.size(m::RUnitMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::RUnitMap)  = RUnitMap(u_scale=inv(m.u_scale), u_in=m.u_in)
+uoutput(m::RUnitMap) = map(Base.Fix1(*, m.u_in), m.u_scale)
+uinput(m::RUnitMap) = m.u_in
 
 function RUnitMap(md::UnitMap)
     #Matrix must be square
@@ -70,6 +93,16 @@ UnitMap(md::RUnitMap) = UnitMap(u_out=md.u_in.*md.u_scale, u_in=inv.(md.u_in))
 
 const UnitMaps{U,V} = Union{UnitMap{U,V}, RUnitMap{U,V}}
 
+"""
+struct UnitfulLinMap{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
+    values :: M
+    units :: U
+end
+
+A unitful linear map. A special kind of matrix that is intended to be used for multiplying vectors of quantities.
+It is a matrix of quantities that will transorm the units of an input vector to a set ouf output units. Because
+units must be consistent, calculating the resulting units is an order (M+2N) operation while value calculations are M*N
+"""
 struct UnitfulLinMap{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
     units :: U

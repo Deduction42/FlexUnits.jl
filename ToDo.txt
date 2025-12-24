@@ -79,6 +79,37 @@ Backlog:
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
 
+
+#====================================================================================================
+Strategy #1 Regular `Quantity` with StaticUnit types
+====================================================================================================#
+struct StaticDim{D} 
+    function StaticDim{D}() where D
+        return (D isa AbstractDimension) ? new{D}() : error("Type parameter must be a dimension")
+    end
+end #(where D is a dimenison)
+StaticDim(D) = StaticDim{D}()
+StaticDim{D}(d::AbstractDimension) = (D == d) ? StaticDim{D} : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
+
+struct StaticUnit{D, T<:AbstractUnitConverter} #(where D is a dimenison)
+    todims :: T
+    symbol :: Symbol
+    function StaticUnit{D}(conv::T, symb=DEFAULT_USYMBOL::Symbol) where {D, T<:AbstractUnitConverter}
+        return (D isa AbstractDimension) ? new{D}(conv, symb) : error("Type parameter must be a dimension")
+    end
+end
+
+StaticUnit(u::AffineUnits) = StaticUnit{dimension(u)}(uconvert(dimension(u), u), u.symbol)
+uconvert(utarget::StaticDim{D}, ucurrent::StaticUnit{D}) = ucurrent.todims
+
+function ubase(q::AbstractQuantity{T, StaticUnit{D}}) where {T,D}
+    x = unit(q).converter(ustrip(q))
+    return Quantity{typeof(x), StaticDim{D}}(x, StaticDim{D}())
+end
+
+#====================================================================================================
+Strategy #2 (if #1 fails)
+====================================================================================================#
 #Static quantity that does compile-time unit conversion
 struct SQuantity{T, D<:AbstractDimensions}
     value :: T
@@ -95,6 +126,14 @@ StaticUnit(u::AffineUnits{D}) where D<:AbstractDimension = StaticUnit{dimension(
 #Multiplication with static units becomes easy thanks to the elegance of unit transforms
 Base.*(x::T, u::StaticUnit{D}) where {T<:ARITHMETICS, D<:AbstractDimensions} = SQuantity{T,D}(u.transform(x))
 
+
+
+
+
+
+#====================================================================================================
+Some benchmarks
+====================================================================================================#
 import DynamicQuantities
 import Unitful
 using BenchmarkTools
