@@ -47,52 +47,98 @@ function UnitMap(mq::AbstractMatrix{<:Union{AbstractQuantity,AbstractUnitLike}})
 end
 
 """
-struct RUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+struct RepUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
     u_scale :: U
     u_in :: TI
 end
 
-Used to represent a special kind of unit transformation (a recursive or repeatable transformation) of units 'u_in'.
-If "U" is recursive, "U*U*...*U*x" is a valid operation; under such circumstances, the units of "U*x" are the same as "x" 
-ith a potential uniform unit scale, "u_scale". If 'u_scale' is dimensionless, the unit transformation is idempotent (same output 
-units as input). This structure enables certain kinds of operations such as matrix powers (whose unit transform must be recursive).
+Used to represent a special kind of unit transformation (a repeatable transformation) of units 'u_in'.
+If "U" is repeatable, "U*U*...*U*x" is a valid operation and the units of "U*x" are similar to the units of "x".
+If 'u_scale' is dimensionless, the unit transformation is idempotent (same output units as input). 
+This structure enables certain kinds of operations such as matrix powers (whose unit transform must be repeatable).
 Idempotence enables even more transformations like matrix exponentials.
 """
-@kwdef struct RUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+@kwdef struct RepUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
     u_scale :: U
     u_in :: TI
 end
 
-Base.getindex(m::RUnitMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]/m.u_in[jj]
-Base.size(m::RUnitMap) = (length(m.u_in), length(m.u_in))
-Base.inv(m::RUnitMap)  = RUnitMap(u_scale=inv(m.u_scale), u_in=m.u_in)
-Base.adjoint(m::RUnitMap) = RUnitMap(u_scale=m.u_scale, u_in=inv.(m.u_in))
-uoutput(m::RUnitMap) = map(Base.Fix1(*, m.u_in), m.u_scale)
-uinput(m::RUnitMap) = m.u_in
+Base.getindex(m::RepUnitMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]/m.u_in[jj]
+Base.size(m::RepUnitMap) = (length(m.u_in), length(m.u_in))
+Base.inv(m::RepUnitMap)  = RepUnitMap(u_scale=inv(m.u_scale), u_in=m.u_in)
+Base.adjoint(m::RepUnitMap) = RepUnitMap(u_scale=m.u_scale, u_in=inv.(m.u_in))
+uoutput(m::RepUnitMap) = map(Base.Fix1(*, m.u_in), m.u_scale)
+uinput(m::RepUnitMap) = m.u_in
 
-function RUnitMap(md::UnitMap)
+function RepUnitMap(md::UnitMap)
     #Matrix must be square
     sz = size(md)
-    sz[1] == sz[2] || throw(DimensionMismatch("Recursive Unit Mapping must be square: dimensions are $(sz)"))
+    sz[1] == sz[2] || throw(DimensionMismatch("Repeatable Unit Mapping must be square: dimensions are $(sz)"))
 
     #Calculate the uniform scale
     u_scale = md.u_out[begin]/md.u_in[begin]
 
     #Verify that uniform scale is consistent 
     for (u_out, u_in) in zip(md.u_out, md.u_in)
-        u_out/u_in == u_scale || error("Cannot convert to Recursive Unit Mapping: $(md.u_out) and $(md.u_in) must share a common factor")
+        u_out/u_in == u_scale || error("Cannot convert to Repeatable Unit Mapping: $(md.u_out) and $(md.u_in) must share a common factor")
     end
 
-    return RUnitMap(u_scale=u_scale, u_in=md.u_in./u_scale)
+    return RepUnitMap(u_scale=u_scale, u_in=md.u_in)
 end
 
-function RUnitMap(mq::AbstractMatrix{<:Union{AbstractQuantity,AbstractUnitLike}})
-    return RUnitMap(UnitMap(mq))
+function RepUnitMap(mq::AbstractMatrix{<:Union{AbstractQuantity,AbstractUnitLike}})
+    return RepUnitMap(UnitMap(mq))
 end
 
-UnitMap(md::RUnitMap) = UnitMap(u_out=md.u_in.*md.u_scale, u_in=inv.(md.u_in))
+UnitMap(md::RepUnitMap) = UnitMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
-const UnitMaps{U,V} = Union{UnitMap{U,V}, RUnitMap{U,V}}
+
+
+"""
+struct SymUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+    u_scale :: U
+    u_in :: TI
+end
+
+Used to represent a special kind of unit transformation (a symmetric transformation) of units 'u_in'.
+If "U" is symmetric, then "x'U*x" is a valid operation and the units of "U*x" are similar to the inverse units of "x".
+This unit structure enables certain kinds of operations reserved for symmetric matrices.
+"""
+@kwdef struct SymUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+    u_scale :: U
+    u_in :: TI
+end
+
+Base.getindex(m::SymUnitMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]*m.u_in[jj]
+Base.size(m::SymUnitMap) = (length(m.u_in), length(m.u_in))
+Base.inv(m::SymUnitMap)  = SymUnitMap(u_scale=inv(m.u_scale), u_in=m.u_in)
+Base.adjoint(m::SymUnitMap) = SymUnitMap(u_scale=m.u_scale, u_in=inv.(m.u_in))
+uoutput(m::SymUnitMap) = map(Base.Fix1(*, m.u_uscale), m.u_in)
+uinput(m::SymUnitMap) = m.u_in
+
+function SymUnitMap(md::UnitMap)
+    #Matrix must be square
+    sz = size(md)
+    sz[1] == sz[2] || throw(DimensionMismatch("Symmetric Unit Mapping must be square: dimensions are $(sz)"))
+
+    #Calculate the uniform scale
+    u_scale = md.u_out[begin]*md.u_in[begin]
+
+    #Verify that the uniform scale is consistent
+    for (u_out, u_in) in zip(md.u_out, md.u_in)
+        u_out*u_in == u_scale || error("Cannot convert to Symmetric Unit Mapping: $(md.u_in) and $(md.u_out) must be similar inverses")
+    end
+
+    return SymUnitMap(u_scale=u_scale, u_in=inv.(md.u_in))
+end
+
+function SymUnitMap(mq::AbstractMatrix{<:Union{AbstractQuantity,AbstractUnitLike}})
+    return SymUnitMap(UnitMap(mq))
+end
+
+UnitMap(md::SymUnitMap) = UnitMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
+
+
 
 """
 struct LinMapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
@@ -104,7 +150,7 @@ A linear mapping quantity. A special kind of matrix that is intended to be used 
 such matrices must be dimensionally consistent and can be represented by a UnitMap. These constraints lead to much faster 
 unit inference and a smaller memory footprint (M+N instead of M*N for units).
 """
-struct LinMapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
+struct LinMapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractUnitMap{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
     units :: U
 end
@@ -140,16 +186,44 @@ Shortcut multiplication strategies
       = DimTransform(u_out=U1.u_out.*dot(U1.u_in, U2.u_out), u_in=U2.u_in) 
 *(U1::ScaleDimTransform, U2::ScaleDimTransform) = DimTransform(u_scale=U1.u_scale*U2.u_scale, u_out=U1.u_out) iff U1.u_out == U2.u_out
 ======================================================================================================================#
+using Test
 import .UnitRegistry.@u_str
 
-#Quck tests 
-u1 = [u"lbf*ft", u"kW", u"rpm"]
-u2 = [u"kg/s", u"m^3/hr", u"kW"]
+@testset "Linear Mapping Basics" begin
+    
+    import Random
+    using Statistics
+    Random.seed!(1234)
 
-xm = randn(3,3)
-qm = LinMapQuant(UnitMap, xm.*u2./u1')
+    #Quck tests 
+    u1 = [u"lbf*ft", u"kW", u"rpm"]
+    u2 = [u"kg/s", u"m^3/hr", u"kW"]
 
-x = randn(3).*u1
-y = qm*x
-inv(qm)*y
+    xm = randn(3,3)
+    qM = LinMapQuant(UnitMap, xm.*u2./u1')
 
+    #Matrix inversion
+    x = randn(3).*u1
+    y = qM*x
+    @test all(x .≈ inv(qM)*y)
+
+    #Matrix transpose
+    @test all(Matrix(y') .≈ Matrix(x'*qM'))
+
+    #Square matrices
+    Σ = cov(randn(20,3)*rand(3,3))
+    x = randn(3).*u2
+
+    #Symmetric matrix
+    rS = Σ.*inv.(u2).*inv.(u2)'
+    qS = LinMapQuant(SymUnitMap, rS)
+    @test all(qS .≈ ubase.(rS))
+    @test x'*(rS)*x ≈ x'*qS*x
+
+    #Repeatable matrix
+    rR = Σ.*u2.*inv.(u2)'
+    qR = LinMapQuant(RepUnitMap, rR)
+    @test all(qR .≈ ubase.(rR))
+    @test all(rR^2*x .≈ qR^2*x)
+
+end

@@ -11,19 +11,14 @@ Major Changes:
 5.  (breaking) `AbstractUnitTransform` is renamed to `AbstractUnitConverter` (AffineTrnasform is now AffineConverter)
 6.  Added more promotion rules to convert to quantities
 7.  FixRat32 is now exported
-8.  Add "dstrip" as shorthand for "ustrip_base"
-9.  Add "dconvert" to convert to the dimensions of the unit
+8.  Added "dstrip" as shorthand for "ustrip_base"
+9.  Added "dconvert" to convert to the dimensions of the unit
 
 
 Current Tasks:
-1.  Build out "unit mapping" objects 
-    -   UnitOrDim{D} = Union{AbstractUnits{D}, D} where D<:AbstractDimensions
-    -   UnitMap{U<:UnitOrDim, V<:AbstractVector{U}}(input::Vector{U}, output::Vector{U}) <: UnitLike (add "Pair" constructors)
-    -   RUnitMap{U<:UnitOrDim, V::AbstractVector{U}}(input::V, scale::U=U()) <: UnitLike #Repeatable/Recursive unit map
-    -   UnitMaps{U} = Union{UnitMap{U}, RUnitMap{U}}
-    -   QuantLinMap{M<:AbstractMatrix, U<:UnitMap{D<:AbstractDimension}} <: AbstractMatrix{Quantity{D}} #Quantity matrix with linear mapping properties
-    -   Deprecate UnitfulCallable and replace with Quantity{Function, UnitMap{U}}
-    -   QuantLinMap adjoint inverts units but matrix adjoints don't (think Eigenvectors vs Covariance)
+1.  Build out "unit mapping" objects
+    -   Add "SymUnitMap" for symmetric
+    -   Build out Quantity(::Function, UnitMap) functionality
 
     Notes on above:      
     -   Matrix multiplication is ONLY valid with QuantLinMap and will ALWAYS produce a QuantLinMap
