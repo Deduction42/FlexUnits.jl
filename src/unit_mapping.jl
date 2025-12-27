@@ -141,32 +141,60 @@ UnitMap(md::SymUnitMap) = UnitMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
 
 """
-struct LinMapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
+struct QuantLinMap{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
     units :: U
 end
 
-A linear mapping quantity. A special kind of matrix that is intended to be used for multiplying vectors of quantities;
+A linear mapping of quantities. A special kind of matrix that is intended to be used for multiplying vectors of quantities;
 such matrices must be dimensionally consistent and can be represented by a UnitMap. These constraints lead to much faster 
 unit inference and a smaller memory footprint (M+N instead of M*N for units).
 """
-struct LinMapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractUnitMap{D}} <: AbstractMatrix{Quantity{T,D}}
+struct QuantLinMap{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractUnitMap{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
     units :: U
 end
 
-function LinMapQuant(::Type{U}, m::AbstractMatrix{<:Quantity}) where U <: AbstractUnitMap
+function QuantLinMap(::Type{U}, m::AbstractMatrix{<:Quantity}) where U <: AbstractUnitMap
     values = ustrip_base.(m)
     units  = U(dimension.(m))
-    return LinMapQuant(values, units)
+    return QuantLinMap(values, units)
 end
 
-LinMapQuant(m::AbstractMatrix{<:Quantity}) = LinMapQuant(UnitMap, m)
+QuantLinMap(m::AbstractMatrix{<:Quantity}) = QuantLinMap(UnitMap, m)
 
-Base.getindex(q::LinMapQuant, ii::Integer, jj::Integer) = q.values[ii,jj] * q.units[ii,jj]
-Base.size(q::LinMapQuant) = size(q.values)
-Base.inv(q::LinMapQuant) = LinMapQuant(inv(q.values), inv(q.units))
+Base.getindex(q::QuantLinMap, ii::Integer, jj::Integer) = q.values[ii,jj] * q.units[ii,jj]
+Base.size(q::QuantLinMap) = size(q.values)
+Base.inv(q::QuantLinMap) = QuantLinMap(inv(q.values), inv(q.units))
 
+
+#======================================================================================================================
+Nonlinear mapping
+======================================================================================================================#
+"""
+struct QuantMapping{F, U<:AbstractUnitMap}
+    func  :: F
+    units :: U
+end
+
+A generic mapping with units. Useful for applying units to unitless functions that assume units for inputs.
+"""
+struct QuantMapping{F, U<:AbstractUnitMap}
+    func  :: F
+    units :: U
+end
+
+function (qmap::QuantMapping)(x)
+    fmap = qmap.func
+    umap = qmap.units
+    xraw = _strictmap(ustrip, uinput(umap), x)
+    return _strictmap(*, fmap(xraw), uoutput(umap))
+end
+
+function _strictmap(f, args...)
+    allequal(map(length, args)) || throw(ArgumentError("All arguments must be of equal length"))
+    return map(f, args...)
+end
 
 #======================================================================================================================
 Linear algebra relationships with "Matrix" 
@@ -175,7 +203,7 @@ The outer type specializes first, so something like
 Will be skipped in the case of Matrix{<:Quantity} (it will use inv(m::Matrix) in Base instead)
 Because of this, such code will have to specify all desired concrete matrix types
 ======================================================================================================================#
-Base.inv(q::Matrix{<:Quantity}) = inv(LinMapQuant(UnitMap, q))
+Base.inv(q::Matrix{<:Quantity}) = inv(QuantLinMap(UnitMap, q))
 
 
 #======================================================================================================================
@@ -188,11 +216,30 @@ Shortcut multiplication strategies
 ======================================================================================================================#
 using Test
 import .UnitRegistry.@u_str
+using StaticArrays
+import Random
+using Statistics
+
+#Nonlinear map
+@kwdef struct PumpInput{T} <: FieldVector{2,T}
+    current :: T 
+    voltage :: T
+end
+
+@kwdef struct PumpOutput{T} <: FieldVector{3,T}
+    power :: T 
+    pressure :: T
+    flow :: T 
+end
+
+function pumpfunc(x::PumpInput)
+    p = x.current*x.voltage*0.9   
+    return PumpOutput(power = p, pressure = sqrt(p), flow = sqrt(p))
+end
+pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
+
 
 @testset "Linear Mapping Basics" begin
-    
-    import Random
-    using Statistics
     Random.seed!(1234)
 
     #Quck tests 
@@ -200,7 +247,7 @@ import .UnitRegistry.@u_str
     u2 = [u"kg/s", u"m^3/hr", u"kW"]
 
     xm = randn(3,3)
-    qM = LinMapQuant(UnitMap, xm.*u2./u1')
+    qM = QuantLinMap(UnitMap, xm.*u2./u1')
 
     #Matrix inversion
     x = randn(3).*u1
@@ -216,14 +263,20 @@ import .UnitRegistry.@u_str
 
     #Symmetric matrix
     rS = Σ.*inv.(u2).*inv.(u2)'
-    qS = LinMapQuant(SymUnitMap, rS)
+    qS = QuantLinMap(SymUnitMap, rS)
     @test all(qS .≈ ubase.(rS))
     @test x'*(rS)*x ≈ x'*qS*x
 
     #Repeatable matrix
     rR = Σ.*u2.*inv.(u2)'
-    qR = LinMapQuant(RepUnitMap, rR)
+    qR = QuantLinMap(RepUnitMap, rR)
     @test all(qR .≈ ubase.(rR))
     @test all(rR^2*x .≈ qR^2*x)
+
+    #Nonlinear mapping
+    pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))
+    upumpfunc = QuantMapping(pumpfunc, pumpunits)
+    qinput = PumpInput(current=500*u"mA", voltage=6u"V")
+    @test all(upumpfunc(qinput) .≈ pumpfunc(ustrip.(uinput(pumpunits), qinput)).*uoutput(pumpunits))
 
 end

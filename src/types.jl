@@ -7,6 +7,10 @@ abstract type AbstractDimensions{P} <: AbstractDimLike end
 abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
 abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
 
+const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
+const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
+abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} <: AbstractMatrix{U} end
+
 const AbstractAffineLike{D} = Union{D, AbstractAffineUnits{D}} where D <: AbstractDimensions
 #Base.@assume_effects :consistent static_fieldnames(t::Type) = Base.fieldnames(t)
 static_fieldnames(t::Type) = Base.fieldnames(t)

@@ -17,8 +17,9 @@ Major Changes:
 
 Current Tasks:
 1.  Build out "unit mapping" objects
-    -   Add "SymUnitMap" for symmetric
     -   Build out Quantity(::Function, UnitMap) functionality
+    -   Build out shortcuts for matrix +,-,*,/,\
+        -   Make sure operations convert to LinMapQuant and output that type
 
     Notes on above:      
     -   Matrix multiplication is ONLY valid with QuantLinMap and will ALWAYS produce a QuantLinMap
