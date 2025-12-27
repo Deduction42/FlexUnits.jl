@@ -36,6 +36,13 @@ function uconvert(u::AbstractUnitLike, q::AbstractQuantity)
     return Quantity(utrans(ustrip(q)), u)
 end
 
+"""
+    dconvert(u::AbstractUnitLike, q::AbstractQuantity)
+
+Converts quantity `q` to the equivalent dimensional quantity having the same dimensions as `u`
+"""
+dconvert(u::AbstractUnitLike, q::AbstractQuantity) = uconvert(dimension(u), q)
+
 
 """
     ubase(q::AbstractQuantity)
@@ -62,11 +69,13 @@ ustrip(u::AbstractUnitLike, q::AbstractQuantity) = uconvert(u, unit(q))(ustrip(q
 ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
 
 """
-    ustrip_base(q::AbstractQuantity)
+    dstrip(q::AbstractQuantity)
 
 Converts quantity `q` to its raw dimensional equivalent and removes units
 """
-ustrip_base(q::AbstractQuantity) = ustrip(ubase(q))
+dstrip(q::AbstractQuantity) = ustrip(ubase(q))
+ustrip_base(q::AbstractQuantity) = dstrip(q)
+
 
 """
     ustrip_dimensionless(q::AbstractQuantity)
@@ -116,7 +125,6 @@ function uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
         offset = (uoffset(ucurrent) - uoffset(utarget))/uscale(utarget)
     )
 end
-
 
 """
     uconvert(utrans::AffineConverter, x)

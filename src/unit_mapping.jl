@@ -12,9 +12,6 @@ const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
 
 abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} <: AbstractMatrix{U} end
 
-#Units of an adjoint are the same as an inverse, adjoint is broader because it doesn't imply one-to-one mapping
-Base.adjoint(m::AbstractUnitMap) = inv(m)
-
 """
 struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
     u_in  :: TI
@@ -31,7 +28,9 @@ end
 
 Base.getindex(m::UnitMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]
 Base.size(m::UnitMap) = (length(m.u_out), length(m.u_in))
-Base.inv(m::AbstractUnitMap) = UnitMap(u_out=m.u_in, u_in=m.u_out)
+Base.inv(m::UnitMap) = UnitMap(u_out=m.u_in, u_in=m.u_out)
+Base.adjoint(m::UnitMap) = UnitMap(u_out=inv.(m.u_in), u_in=inv.(m.u_out))
+Base.transpose(m::UnitMap) = adjoint(m)
 uoutput(m::UnitMap) = m.u_out
 uinput(m::UnitMap) = m.u_in
 
@@ -54,8 +53,9 @@ struct RUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
 end
 
 Used to represent a special kind of unit transformation (a recursive or repeatable transformation) of units 'u_in'.
-output units are 'u_in*u_scale', and if 'u_scale' is dimensionless, the unit transformation is idempotent (same output 
-units as input). This enables certain kinds of operations such as matrix powers (whose unit transform must be recursive).
+If "U" is recursive, "U*U*...*U*x" is a valid operation; under such circumstances, the units of "U*x" are the same as "x" 
+ith a potential uniform unit scale, "u_scale". If 'u_scale' is dimensionless, the unit transformation is idempotent (same output 
+units as input). This structure enables certain kinds of operations such as matrix powers (whose unit transform must be recursive).
 Idempotence enables even more transformations like matrix exponentials.
 """
 @kwdef struct RUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -66,6 +66,7 @@ end
 Base.getindex(m::RUnitMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]/m.u_in[jj]
 Base.size(m::RUnitMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::RUnitMap)  = RUnitMap(u_scale=inv(m.u_scale), u_in=m.u_in)
+Base.adjoint(m::RUnitMap) = RUnitMap(u_scale=m.u_scale, u_in=inv.(m.u_in))
 uoutput(m::RUnitMap) = map(Base.Fix1(*, m.u_in), m.u_scale)
 uinput(m::RUnitMap) = m.u_in
 
@@ -94,29 +95,31 @@ UnitMap(md::RUnitMap) = UnitMap(u_out=md.u_in.*md.u_scale, u_in=inv.(md.u_in))
 const UnitMaps{U,V} = Union{UnitMap{U,V}, RUnitMap{U,V}}
 
 """
-struct UnitfulLinMap{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
+struct LinMapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
     units :: U
 end
 
-A unitful linear map. A special kind of matrix that is intended to be used for multiplying vectors of quantities.
-It is a matrix of quantities that will transorm the units of an input vector to a set ouf output units. Because
-units must be consistent, calculating the resulting units is an order (M+2N) operation while value calculations are M*N
+A linear mapping quantity. A special kind of matrix that is intended to be used for multiplying vectors of quantities;
+such matrices must be dimensionally consistent and can be represented by a UnitMap. These constraints lead to much faster 
+unit inference and a smaller memory footprint (M+N instead of M*N for units).
 """
-struct UnitfulLinMap{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
+struct LinMapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
     units :: U
 end
 
-function UnitfulLinMap(::Type{U}, m::AbstractMatrix{<:Quantity}) where U <: AbstractUnitMap
+function LinMapQuant(::Type{U}, m::AbstractMatrix{<:Quantity}) where U <: AbstractUnitMap
     values = ustrip_base.(m)
     units  = U(dimension.(m))
-    return UnitfulLinMap(values, units)
+    return LinMapQuant(values, units)
 end
 
-Base.getindex(q::UnitfulLinMap, ii::Integer, jj::Integer) = q.values[ii,jj] * q.units[ii,jj]
-Base.size(q::UnitfulLinMap) = size(q.values)
-Base.inv(q::UnitfulLinMap) = UnitfulLinMap(inv(q.values), inv(q.units))
+LinMapQuant(m::AbstractMatrix{<:Quantity}) = LinMapQuant(UnitMap, m)
+
+Base.getindex(q::LinMapQuant, ii::Integer, jj::Integer) = q.values[ii,jj] * q.units[ii,jj]
+Base.size(q::LinMapQuant) = size(q.values)
+Base.inv(q::LinMapQuant) = LinMapQuant(inv(q.values), inv(q.units))
 
 
 #======================================================================================================================
@@ -126,7 +129,7 @@ The outer type specializes first, so something like
 Will be skipped in the case of Matrix{<:Quantity} (it will use inv(m::Matrix) in Base instead)
 Because of this, such code will have to specify all desired concrete matrix types
 ======================================================================================================================#
-Base.inv(q::Matrix{<:Quantity}) = inv(UnitfulLinMap(UnitMap, q))
+Base.inv(q::Matrix{<:Quantity}) = inv(LinMapQuant(UnitMap, q))
 
 
 #======================================================================================================================
@@ -144,7 +147,7 @@ u1 = [u"lbf*ft", u"kW", u"rpm"]
 u2 = [u"kg/s", u"m^3/hr", u"kW"]
 
 xm = randn(3,3)
-qm = UnitfulLinMap(UnitMap, xm.*u2./u1')
+qm = LinMapQuant(UnitMap, xm.*u2./u1')
 
 x = randn(3).*u1
 y = qm*x
