@@ -207,7 +207,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     #function apply_trig_func(f, q::AbstractQuantity{<:Any, <:RadDimensions{T}}) where T
     #   baseq = ubase(q)
     #   assert_radians(unit(baseq))
-    #   return quantity(f(ustrip(baseq)), RadDimensions{T}())
+    #   return Quantity(f(ustrip(baseq)), RadDimensions{T}())
     #end
 
     #sin(q::AbstractQuantity{<:RadDimensions}) = apply_trig_func(sin, q)

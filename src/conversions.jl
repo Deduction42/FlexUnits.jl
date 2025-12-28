@@ -1,13 +1,13 @@
 #============================================================================================
-Unit Transforms are the backbone of the conversion process
-    uconvert(u1::AbstractUnit, u2::AbstractUnit) produces a kind of unit transformation
-    unit transformations can be applied directly to quantities to do the conversion 
+Unit Converters are the backbone of the conversion process
+    uconvert(u1::AbstractUnit, u2::AbstractUnit) produces a kind of unit transformation forumula
+    unit transformation formulas can be applied directly to quantities to do the conversion 
 Currently, only conversions between affine units are supported, 
     but other conversions (such as log units) are conceivably possible but they would
     require a separate unit registry (which is why I made separate registries easier)
 ============================================================================================#
 """
-An abstract object representing a unit transformation formula. 
+An abstract object representing a unit conversion formula. 
 Any object that subtypes this is made callable.
 
 # Callable form 
@@ -19,11 +19,11 @@ utrans(0.0)
 (u"°C" |> u"°F")(0.0)
 31.999999999999986
 """
-abstract type AbstractUnitTransform end
+abstract type AbstractUnitConverter end
 
-Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
-(utrans::AbstractUnitTransform)(x) = uconvert(utrans, x)
-uconvert(utrans::AbstractUnitTransform, x) = ArgumentError("Conversion formulas not yet implemented for $(utrans)")
+Base.broadcastable(utrans::AbstractUnitConverter) = Ref(utrans)
+(utrans::AbstractUnitConverter)(x) = uconvert(utrans, x)
+uconvert(utrans::AbstractUnitConverter, x) = ArgumentError("Conversion formulas not yet implemented for $(utrans)")
 
 
 """
@@ -33,8 +33,15 @@ Converts quantity `q` to the equivalent quantity having units `u`
 """
 function uconvert(u::AbstractUnitLike, q::AbstractQuantity)
     utrans = uconvert(u, unit(q))
-    return quantity(utrans(ustrip(q)), u)
+    return Quantity(utrans(ustrip(q)), u)
 end
+
+"""
+    dconvert(u::AbstractUnitLike, q::AbstractQuantity)
+
+Converts quantity `q` to the equivalent dimensional quantity having the same dimensions as `u`
+"""
+dconvert(u::AbstractUnitLike, q::AbstractQuantity) = uconvert(dimension(u), q)
 
 
 """
@@ -42,7 +49,7 @@ end
 
 Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 """
-ubase(q::AbstractQuantity{<:Any,<:AbstractDimensions}) = q
+ubase(q::AbstractQuantity{<:Any,<:AbstractDimLike}) = q
 
 
 """
@@ -62,11 +69,13 @@ ustrip(u::AbstractUnitLike, q::AbstractQuantity) = uconvert(u, unit(q))(ustrip(q
 ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
 
 """
-    ustrip_base(q::AbstractQuantity)
+    dstrip(q::AbstractQuantity)
 
 Converts quantity `q` to its raw dimensional equivalent and removes units
 """
-ustrip_base(q::AbstractQuantity) = ustrip(ubase(q))
+dstrip(q::AbstractQuantity) = ustrip(ubase(q))
+ustrip_base(q::AbstractQuantity) = dstrip(q)
+
 
 """
     ustrip_dimensionless(q::AbstractQuantity)
@@ -81,7 +90,7 @@ ustrip_dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)
 Affine transformations
 ============================================================================================#
 """
-    AffineTransform
+    AffineConverter
 
 A type representing an affine transfomration that can be
 used to convert values from one unit to another. This is the
@@ -93,47 +102,46 @@ This object is callable.
 - offset :: Float64
 
 # Constructors
-- AffineTransform(scale::Real, offset::Real)
-- AffineTransform(; scale, offset)
+- AffineConverter(scale::Real, offset::Real)
+- AffineConverter(; scale, offset)
 """
-struct AffineTransform <: AbstractUnitTransform
+struct AffineConverter <: AbstractUnitConverter
     scale :: Float64
     offset :: Float64
 end
-AffineTransform(;scale, offset) = AffineTransform(scale, offset)
+AffineConverter(;scale, offset) = AffineConverter(scale, offset)
 
 """
     uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
 
-Produces an AffineTransform that can convert a quantity with `current`
+Produces an AffineConverter that can convert a quantity with `current`
 units to a quantity with `target` units
 """
 function uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
     dimension(utarget) == dimension(ucurrent) || throw(ConversionError(utarget, ucurrent))
 
-    return AffineTransform(
+    return AffineConverter(
         scale  = uscale(ucurrent)/uscale(utarget),
         offset = (uoffset(ucurrent) - uoffset(utarget))/uscale(utarget)
     )
 end
 
-
 """
-    uconvert(utrans::AffineTransform, x)
+    uconvert(utrans::AffineConverter, x)
 
 Apply the unit conversion formula "utrans" to value "x", can be used to apply unit conversions on unitless values
 
 julia> uconvert(u"m/s"|>u"km/hr", 1.0)
 3.5999999999999996
 """
-uconvert(utrans::AffineTransform, x) = muladd(x, utrans.scale, utrans.offset)
-uconvert(utrans::AffineTransform, x::AbstractArray) = utrans.(x)
-uconvert(utrans::AffineTransform, x::Tuple) = map(utrans, x)
+uconvert(utrans::AffineConverter, x) = muladd(x, utrans.scale, utrans.offset)
+uconvert(utrans::AffineConverter, x::AbstractArray) = utrans.(x)
+uconvert(utrans::AffineConverter, x::Tuple) = map(utrans, x)
 
 function ubase(q::AbstractQuantity{<:Any,<:AbstractAffineUnits})
     u = unit(q)
-    utrans = AffineTransform(scale=uscale(u), offset=uoffset(u))
-    return quantity(utrans(ustrip(q)), dimension(u))
+    utrans = AffineConverter(scale=uscale(u), offset=uoffset(u))
+    return Quantity(utrans(ustrip(q)), dimension(u))
 end 
 
 
@@ -174,7 +182,6 @@ end
 # Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = (u isa U) ? u : U(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=usymbol(u))
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : D(dimension(assert_dimension(u)))
-Base.convert(::Type{D}, u::NoDims) where D<:AbstractDimensions = D()
 
 # Converting between units and quantities ====================================================
 Base.convert(::Type{U}, q::AbstractQuantity) where U<:AbstractUnits = convert(U, asunit(q))
@@ -184,15 +191,10 @@ function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:AbstractQuantity
 end
 
 # Converting between generic numbers and quantity types 
-Base.convert(::Type{T}, q::AbstractQuantity) where {T<:Number} = convert(T, dimensionless(q))
+Base.convert(::Type{T}, q::AbstractQuantity) where {T<:Union{Number,AbstractArray}} = convert(T, dimensionless(q))
+Base.convert(::Type{Q}, x::Union{Number,AbstractArray}) where {Q<:AbstractQuantity} = Q(x, dimtype(Q)(0))
 
 # Promotion rules ======================================================
-
-#We assume dimension types match except for NoDims
-function Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:NoDims}
-    return constructorof(D1){promote_type(eltype(D1), eltype(D2))}
-end
-
 function Base.promote_rule(::Type{<:Dimensions{P1}}, ::Type{<:Dimensions{P2}}) where {P1, P2}
     return Dimensions{promote_type(P1,P2)}
 end
@@ -206,10 +208,18 @@ function Base.promote_rule(::Type{AffineUnits{D1}}, ::Type{AffineUnits{D2}}) whe
 end
 
 #Quantity promotion (favors Dimensions, as converting quantities to SI does not result in information loss)
-function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1, U2}
+function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1<:AbstractUnitLike, U2<:AbstractUnitLike}
     D = promote_type(dimtype(U1), dimtype(U2))
     T = promote_type(T1, T2)
     return Quantity{T, D}
 end
 
+#Conversion to dimensions doesn't happen if quantities only differ by value type
+function Base.promote_rule(::Type{Quantity{T1,U}}, ::Type{Quantity{T2,U}}) where {T1, T2, U<:AbstractUnitLike}
+    return Quantity{promote_type(T1, T2), U}
+end
 
+#Cases where values are updated to quantities
+Base.promote_rule(::Type{Quantity{T,U}}, ::Type{T}) where {T,U<:AbstractUnitLike} = Quantity{T}
+Base.promote_rule(::Type{Quantity{T1,U}}, ::Type{T2}) where {T1<:Number, T2<:Number, U<:AbstractUnitLike} = Quantity{promote_type(T1,T2), U}
+Base.promote_rule(::Type{Quantity{T1,U}}, ::Type{T2}) where {T1<:AbstractArray, T2<:AbstractArray, U<:AbstractUnitLike} = Quantity{promote_type(T1,T2), U}

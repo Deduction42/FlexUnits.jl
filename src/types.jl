@@ -1,10 +1,15 @@
-const DEFAULT_RATIONAL = FixedRational{DEFAULT_DENOM, DEFAULT_NUMERATOR_TYPE}
+const DEFAULT_RATIONAL = FixRat32
 const DEFAULT_USYMBOL = :_
 
 abstract type AbstractUnitLike end
-abstract type AbstractDimensions{P} <: AbstractUnitLike end
+abstract type AbstractDimLike <: AbstractUnitLike end
+abstract type AbstractDimensions{P} <: AbstractDimLike end
 abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
 abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
+
+const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
+const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
+abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} <: AbstractMatrix{U} end
 
 const AbstractAffineLike{D} = Union{D, AbstractAffineUnits{D}} where D <: AbstractDimensions
 #Base.@assume_effects :consistent static_fieldnames(t::Type) = Base.fieldnames(t)
@@ -19,13 +24,21 @@ function (::Type{D})(x::AbstractDimensions) where {P, D<:AbstractDimensions{P}}
     return D(map(Base.Fix1(getproperty, x), static_fieldnames(D))...)
 end
 
-uscale(u::AbstractDimensions) = 1 # All AbstractDimensions have unity scale
-uoffset(u::AbstractDimensions) = 0 # All AbstractDimensions have no offset
-dimension(u::AbstractDimensions) = u
-usymbol(u::AbstractDimensions) = DEFAULT_USYMBOL
-Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
+#Assign a single value to all dimensions
+function (::Type{D})(x::Union{Real,Missing}) where {P, D<:AbstractDimensions{P}}
+    f(anything) = x
+    return D(map(f, static_fieldnames(D))...)
+end
+
+uscale(u::AbstractDimLike) = 1 # All AbstractDimensions have unity scale
+uoffset(u::AbstractDimLike) = 0 # All AbstractDimensions have no offset
+dimension(u::AbstractDimLike) = u
+usymbol(u::AbstractDimLike) = DEFAULT_USYMBOL
 dimtype(::Type{<:AbstractUnits{D}}) where D = D
-dimtype(::Type{D}) where D<:AbstractDimensions = D
+dimtype(::Type{D}) where D<:AbstractDimLike = D
+dimpowtype(::Type{D}) where {P, D<:AbstractDimensions{P}} = P
+Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
+dimpowtype(::Type{U}) where {U<:AbstractUnitLike} = dimpowtype(dimtype(U))
 
 #=======================================================================================
 Basic SI dimensions
@@ -60,20 +73,6 @@ function unit_symbols(::Type{<:Dimensions})
         length=:m, mass=:kg, time=:s, current=:A, temperature=:K, luminosity=:cd, amount=:mol
     )
 end
-
-"""
-    NoDims{P}
-
-A unitless dimension, compatible with any other dimension
-
-Calling `getproperty` will always return `zero(P)`
-promote(Type{<:NoDims}, D<:AbstractDimension) will return D 
-convert(Type{D}, NoDims) where D<:AbstractDimensions will return D()
-"""
-struct NoDims{P} <: AbstractDimensions{P} end
-NoDims() = NoDims{DEFAULT_RATIONAL}()
-Base.getproperty(::NoDims{P}, ::Symbol) where {P} = zero(P)
-unit_symbols(::Type{<:NoDims}) = NoDims{Symbol}()
 
 
 """
@@ -160,14 +159,6 @@ dimtype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = dimtype(U)
 AffineUnits(scale, offset::Quantity, dims::AbstractDimensions, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
 AffineUnits(scale, offset::Quantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
 
-"""
-    quantity(x, u::AbstractUnitLike)
-
-Overloading constructor for various quantities
-"""
-quantity(x, u::AbstractUnitLike) = Quantity(x, u)
-quantity(x, u::NoDims) = x
-quantity(x::Tuple, u::Tuple) = map(quantity, x, u)
 
 """
     constructorof(::Type{T}) where T = Base.typename(T).wrapper
@@ -180,6 +171,52 @@ constructorof(::Type{<:Dimensions}) = Dimensions
 constructorof(::Type{<:AffineUnits}) = AffineUnits 
 constructorof(::Type{<:Quantity}) = Quantity
 
+
+"""
+    MirrorDims
+
+A dimension that represents a placeholder value that mirrors any dimension that is combined
+with it (useful for initialization when units are unknown). For example 
+
+julia> 1u"m/s" + 0*MirrorDims()
+1 m/s
+
+julia> max(1u"m/s", -Inf*MirrorDims())
+1 m/s
+"""
+struct MirrorDims{D<:AbstractDimensions} <: AbstractDimLike end
+MirrorDims() = MirrorDims{FixRat32, Dimensions{FixRat32}}()
+MirrorDims(::Type{D}) where {D<:AbstractDimensions} = MirrorDims{D}()
+
+
+const MirrorUnion{D} = Union{D, MirrorDims{D}}
+promote_rule(::Type{D}, ::Type{<:MirrorDims}) where {D<:AbstractDimensions} = MirrorUnion{D}
+function nomirror(x::Quantity)
+    u = unit(x)
+    return (u isa MirrorDims) ? throw(ArgumentError("Mirror dimensions found, cannot convert to non-mirror version")) : Quantity(ustrip(x), u)
+end
+
+#Quantities with mirror dimensions should include a union
+Quantity(x::T, u::MirrorDims{D}) where {T,D<:AbstractDimensions} = Quantity{T, MirrorUnion{D}}(x, u)
+Quantity{<:Any, <:MirrorDims}(x, u) = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
+
+function Base.show(io::IO, d::MirrorDims{D}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
+    if pretty
+        return print(io, "?/?")
+    else
+        return print(io, "MirrorDims{$(D)}()")
+    end
+end
+
+function Base.show(io::IO, ::Type{MirrorDims{D}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
+    return print(io, "MirrorDims{$(D)}")
+end
+
+function Base.show(io::IO, ::Type{MirrorUnion{D}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
+    return print(io, "MirrorUnion{$(D)}")
+end
+
+#=
 """
     UnitfulCallable{T<:Any, UI<:Any, UO<:Any}
 
@@ -214,21 +251,21 @@ UnitfulCallable(p::Pair) = UnitfulCallable(nothing, p)
 unitful_call(f, bb::UnitfulCallable, x...)  = _apply_unit_pair(f, bb.units, x...)
 
 function _apply_unit_pair(f, u::Pair)
-    return quantity(f(), u[2])
+    return Quantity(f(), u[2])
 end
 
 function _apply_unit_pair(f, u::Pair, x)
     (ui, uo) = u
     raw_args = ustrip(ui, x)
-    return quantity(f(raw_args), uo)
+    return Quantity(f(raw_args), uo)
 end
 
 function _apply_unit_pair(f, u::Pair, x1, xs...)
     (ui, uo) = u
     raw_args = map(ustrip, ui, (x1, xs...))
-    return quantity(f(raw_args...), uo)
+    return Quantity(f(raw_args...), uo)
 end
-
+=#
 
 
 #=============================================================================================
@@ -299,12 +336,9 @@ assert_dimension(u::AbstractAffineUnits) = isone(uscale(u)) & iszero(uoffset(u))
 
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
 assert_dimensionless(q::AbstractQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
-dimensionless(u::AbstractUnitLike) = (assert_dimensionless(u); NoDims())
+dimensionless(u::AbstractUnitLike) = dimension(assert_dimensionless(u))
 dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
 dimensionless(n::Number) = n
 
-function Base.iszero(u::U) where U<:AbstractDimensions
-    zero_dimension(obj::AbstractDimensions, fn::Symbol) = iszero(getproperty(obj, fn))
-    return all(Base.Fix1(zero_dimension, u), dimension_names(U)) 
-end
 isdimensionless(u::AbstractUnitLike) = iszero(dimension(u))
+Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))

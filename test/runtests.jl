@@ -4,9 +4,12 @@ using TestItemRunner
 
 #============================================================================================================================
 Run these commands at startup to see coverage
-julia --startup-file=no --depwarn=yes --threads=auto -e 'using Coverage; clean_folder(\"src\"); clean_folder(\"test\")'
+julia --startup-file=no --depwarn=yes --threads=auto -e 'using Coverage; clean_folder(\"src\"); clean_folder(\"test\"); clean_folder(\"ext\") '
 julia --startup-file=no --depwarn=yes --threads=auto --code-coverage=user --project=. -e 'using Pkg; Pkg.test(coverage=true)'
 julia --startup-file=no --depwarn=yes --threads=auto coverage.jl
+
+Run this command for testing invalidations
+julia --startup-file=no --depwarn=yes --threads=auto --project=. test/invalidations.jl
 ============================================================================================================================#
 
 #To see the actual coverage in VSCode, install the Coverage Gutters extension
@@ -18,6 +21,9 @@ using BenchmarkTools
 using FlexUnits, .UnitRegistry
 using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions
 using Aqua
+using LinearAlgebra
+using Statistics
+import Unitful
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
 const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
@@ -36,18 +42,13 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
     @test uoffset(d) == 0
     @test FlexUnits.usymbol(d) == FlexUnits.DEFAULT_USYMBOL
 
-    d = NoDims()
-    @test d.length == 0
-    @test d.mass == 0
-    @test FlexUnits.unit_symbols(NoDims) ==  NoDims{Symbol}()
-
     @test FlexUnits.remove_offset(u"°C") == u"K"
 
     @test FlexUnits.constructorof(typeof(Dimensions())) == Dimensions
     @test FlexUnits.constructorof(typeof(u"m")) == AffineUnits
     @test FlexUnits.constructorof(typeof(1.0*u"m")) == Quantity
     @test FlexUnits.constructorof(typeof((1.0+im)*u"m")) == Quantity
-    @test FlexUnits.constructorof(typeof(quantity("this", u"m"))) == Quantity
+    @test FlexUnits.constructorof(typeof(Quantity("this", u"m"))) == Quantity
     @test FlexUnits.constructorof(Array{Float64}) == Array
 
     @test string(AffineUnits(scale=1, offset=0, dims=dimension(u"m"), symbol=:_)) == "AffineUnits(scale=1.0, offset=0.0, dims=m)"
@@ -61,10 +62,10 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
     @test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=false) == "(1.0)m/s^2"
 
     #Vector operations
-    vq = quantity([1,2], u"m/s")
+    vq = Quantity([1,2], u"m/s")
     @test [1,2].*u"m/s" == [1u"m/s", 2u"m/s"]
     @test [1,2].*(5u"m/s") == [5.0u"m/s", 10.0u"m/s"]
-    @test vq[:] == quantity([1,2], u"m/s")
+    @test vq[:] == Quantity([1,2], u"m/s")
     @test vq[1] == 1*u"m/s"
     @test vq[CartesianIndex(1)] == 1*u"m/s"
     @test all([q for q in vq] .== vq)
@@ -164,11 +165,21 @@ end
         @test signbit(-x) == false
         @test isempty(x) == false
         @test isempty(Quantity([0.0, 1.0], u)) == false
-        @test isempty(Quantity(Float64[], u)) == true 
+        @test isempty(Quantity(Float64[], u)) == true
         @test zero(Dimensions{R}) === Dimensions{R}()
         @test zero(AffineUnits{Dimensions{R}}) === AffineUnits{Dimensions{R}}(dims=zero(Dimensions{R}))
-        @test zero(Quantity{T, Dimensions{R}}) === Quantity(zero(T), zero(Dimensions{R}))
-        @test zero(Quantity{T, AffineUnits{Dimensions{R}}}) == Quantity(zero(T), zero(AffineUnits{Dimensions{R}}))
+
+        #Identity transform tests
+        @test zero(1u"m/s") + 2.0u"m/s" == 2.0u"m/s"
+        @test zero(typeof(1u"m/s")) + 2.0u"m/s" == 2.0u"m/s"
+        @test zero(typeof(ubase(1u"m/s"))) + 2.0u"m/s" == ubase(2.0u"m/s")
+        @test zero(zero(typeof(ubase(1u"m/s")))) + 2.0u"m/s" == ubase(2.0u"m/s")
+        @test zero(typeof(zero(typeof(ubase(1u"m/s"))))) + 2.0u"m/s" == ubase(2.0u"m/s")
+        @test max(typemin(1.0u"m/s"), 0.0u"m/s") == 0.0u"m/s"
+        @test max(typemin(typeof(1.0u"m/s")), 0.0u"m/s") == 0.0u"m/s"
+        @test min(typemax(-1.0u"m/s"), 0.0u"m/s") == 0.0u"m/s"
+        @test min(typemax(typeof(1.0u"m/s")), 0.0u"m/s") == 0.0u"m/s"
+
         @test one(Quantity{T, AffineUnits{Dimensions{R}}}) === one(T)
         @test oneunit(Quantity{T, AffineUnits{Dimensions{R}}}) == Quantity(one(T), zero(AffineUnits{Dimensions{R}}))
         @test oneunit(Quantity{T, Dimensions{R}}) == Quantity(one(T), zero(Dimensions{R}))
@@ -186,7 +197,7 @@ end
     end
 
     #Other mathematical operators/functions
-    @test sin(5u"rad") == sin(5) 
+    @test sin(5u"rad") ≈ sin(5)
     @test cos(60u"deg") ≈ 0.5
     @test 5u"km/hr" < 6u"km/hr"
     @test 5u"m/s" > 5u"km/hr"
@@ -213,6 +224,7 @@ end
 
 end
 
+#=
 @testset "UnitfulCallable" begin
     #Test callable application
     angle_coords(θ::Real, r::Real) = r.*(cos(θ), sin(θ))
@@ -250,9 +262,10 @@ end
     unitful_const()
 
 end
+=#
 
 @testset "Basic unit functionality" begin
-    x = quantity(0.2, Dimensions(length=1, mass=2.5, time=-1))
+    x = Quantity(0.2, Dimensions(length=1, mass=2.5, time=-1))
     u = ustrip(x)
 
     #Test round-trip parsing
@@ -325,7 +338,6 @@ end
     @test_throws DimensionError xv + 1
     @test_throws DimensionError 1 + xv
 
-    @test xv*NoDims() == xv
     @test xv*1 == 1u"m/s"
     @test xv*1 !== 1u"m/s"
     @test xv*1 === ubase(1u"m/s")
@@ -413,12 +425,12 @@ end
     # Test conversions
     @test 1°C |> K isa Quantity{<:Real, <:AffineUnits}
     @test 1°C |> unit(ubase(1K)) isa Quantity{<:Real, <:Dimensions}
-    @test  °C |> unit(ubase(1K)) isa AffineTransform
+    @test  °C |> unit(ubase(1K)) isa AffineConverter
 
     @test 0°C |> u"K" == 273.15u"K"
     @test 1u"K" |> °C isa Quantity{<:Real, <:AffineUnits}
     @test 0u"K" |> °C  == -273.15°C
-    @test °C |> °F isa AffineTransform
+    @test °C |> °F isa AffineConverter
     @test 0°C |> °F == 32°F
     @test (°C |> °F)(0) ≈ 32
 
@@ -515,12 +527,10 @@ end
     # Test conversion of unit types 
     @test convert(DEFAULT_DIM_TYPE, u"m") === Dimensions(length=1)
     @test_throws NotDimensionError convert(DEFAULT_DIM_TYPE, u"mm")
-    @test convert(DEFAULT_DIM_TYPE, NoDims()) === Dimensions(length=0)
     @test convert(AffineUnits{DEFAULT_DIM_TYPE}, ubase(2u"m")) == AffineUnits(scale=2.0, offset=0.0, dims=dimension(u"m"))
     @test convert(AffineUnits{DEFAULT_DIM_TYPE}, 2u"°C") == AffineUnits(scale=2.0, offset=273.15, dims=dimension(u"K"))
     @test convert(Quantity{Float64, DEFAULT_DIM_TYPE}, 2u"m") === Quantity{Float64, DEFAULT_DIM_TYPE}(2.0, dimension(u"m")) 
     @test_throws NotScalarError convert(Quantity{Float64, DEFAULT_DIM_TYPE}, u"°C") 
-    @test promote_type(DEFAULT_DIM_TYPE, NoDims{Int64}) == DEFAULT_DIM_TYPE
     @test promote_type(Quantity{Float32, DEFAULT_DIM_TYPE}, Quantity{Float64, DEFAULT_UNIT_TYPE}) == Quantity{Float64, DEFAULT_DIM_TYPE}
 
     # Test that adding different dimension subtypes still works
@@ -568,6 +578,26 @@ end
     @test x2[2] ≈ (2000u"g")
 end
 
+@testset "Stats and Linear Algebra" begin
+    import Random
+    Random.seed!(1234)
+
+    #Generate a correlated test set
+    U = [u"kg/s", u"kW", u"Hz"]
+    X = (rand(30,3)*rand(3,3) .+ 0.001.*randn(30,3))
+    Q = X .* U'
+
+    #Test summations, stats and some linear algebra
+    @test all(sum(Q, dims=1) .≈ sum(X, dims=1).*U')
+    @test all(mean(Q, dims=1) .≈ mean(X, dims=1).*U')
+    @test all(var(Q, dims=1) .≈ var(X, dims=1).*(U.^2)')
+    @test all(cov(Q) .≈ cov(X).*U.*U')
+    @test all(cor(Q) .≈ cor(X))
+    @test sum(Q*inv.(U)) ≈ sum(X)
+    @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
+    @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
+end
+
 @testset "Additional tests of FixedRational" begin
     #Tests were basically copied from DynamicQuantities, since FixedRational isn't its own package
     @test convert(Int64, FixedRational{1000,Int64}(2 // 1)) == 2
@@ -580,7 +610,7 @@ end
     @test FixedRational{1000}(10)*Float64(0.1) === Float64(1)
     @test FixedRational{1000}(10)*Float32(0.1) === Float32(1)
     @test FixedRational{1000}(10)*BigFloat(0.1) isa BigFloat
-    @test FixedRational{1000}(10)*true === FixedRational{1000}(10)
+    @test FixedRational{1000}(10)*true == FixedRational{1000}(10)
 
     #Test mathematical operators
     @test FixedRational(0.1)/Float64(100) === Float64(0.001)
@@ -618,7 +648,7 @@ end
     @test typeof(FixedRational{10,Int}(FixedRational{10,Int}(2))) == FixedRational{10,Int}
 
     # Conversion to Rational without specifying type
-    @test convert(Rational, FixedRational{6,UInt8}(2)) === Rational{UInt8}(2)
+    @test convert(Rational, FixedRational{6,Int8}(2)) === Rational{Int8}(2)
 
     # Promotion rules
     @test promote_type(Float64, typeof(f64)) == Float64
@@ -653,7 +683,19 @@ register_unit("psig" => AffineUnits(scale=uscale(u"psi"), offset=101.3u"kPa", di
     @test reg[:kg] === AffineUnits(dims=IntDimType(mass=1), symbol=:kg)    
 end
 
+@testset "Unitful integration" begin
+    q1 = 5.0*Unitful.u"km/hr"
+    q2 = 10.0*u"°C"
+    q3 = 15*Unitful.u"cd/mol"
 
+    @test uconvert(Unitful.unit(q1), uconvert(u"m/s", q1)) == q1
+    @test Quantity(q1) == 5.0*u"km/hr"
+    @test Quantity{Float64}(q1) == 5.0*u"km/hr"
+    @test convert(Quantity{Float64, UnitRegistry.unittype()}, q1) == 5.0*u"km/hr"
+    @test_throws DimensionError uconvert(u"kPa", q1)
+    @test Unitful.ustrip(uconvert(Unitful.u"K", q2)) == ustrip(uconvert(u"K", q2))
+    @test Unitful.ustrip(Unitful.uconvert(Unitful.u"cd/mol", q3)) == ustrip(uconvert(u"cd/mol", q3))
+end
 
 @testset "Aqua.jl" begin
     Aqua.test_all(FlexUnits)

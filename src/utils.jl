@@ -25,9 +25,9 @@ Base.iterate(u::AbstractUnitLike) = (u, nothing)
 
 Base.broadcastable(q::Q) where Q<:AbstractQuantity = Q(Base.broadcastable(ustrip_base(q)), dimension(q))
 Base.getindex(q::Q) where Q<:AbstractQuantity = Q(getindex(ustrip(q)), unit(q))
-Base.getindex(q::Q, inds) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), inds), unit(q))
-Base.getindex(q::Q, inds::CartesianIndex{0}) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), inds), unit(q))
-Base.getindex(q::Q, ind::Integer, inds::Integer...) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), ind, inds...), unit(q))
+Base.getindex(q::Q, inds) where Q<:AbstractQuantity = constructorof(Q)(getindex(ustrip(q), inds), unit(q))
+Base.getindex(q::Q, inds::CartesianIndex{0}) where Q<:AbstractQuantity = constructorof(Q)(getindex(ustrip(q), inds), unit(q))
+Base.getindex(q::Q, ind::Integer, inds::Integer...) where Q<:AbstractQuantity = constructorof(Q)(getindex(ustrip(q), ind, inds...), unit(q))
 Base.firstindex(q::Q) where Q<:AbstractQuantity = firstindex(ustrip(q))
 Base.lastindex(q::Q) where Q<:AbstractQuantity = lastindex(ustrip(q))
 
@@ -49,7 +49,7 @@ function pretty_print_units(x::Bool)
     return x 
 end
 
-function Base.show(io::IO, q::AbstractQuantity{<:Any, <:AbstractDimensions}; pretty=PRETTY_DIM_OUTPUT[])
+function Base.show(io::IO, q::AbstractQuantity{<:Any, <:AbstractDimLike}; pretty=PRETTY_DIM_OUTPUT[])
     if pretty
         return _pretty_print_quantity(io, q)
     else

@@ -25,6 +25,69 @@ The flexible units package. FlexUnits.jl was heavily inspired by DynamicQuantiti
 7. `Quantity` in FlexUnits.jl does not subtype to `Number` in order to support more value types (such as a Distribution or Array)
 
 
+## General Use
+Much like other unit packages, you can use string macros to build units and quantities. Unlike other packages, you must manually "use" the default registry `UnitRegistry`, this is done so as to not be overly opinionated as to what registry to use (users can create and use their own registries instead).
+```
+julia> using FlexUnits, .UnitRegistry
+
+julia> u = u"J/(mol*K)"
+J/(mol*K)
+
+julia> R = 8.314*u
+8.314 J/(mol*K)
+
+julia> v_satp = R*(25u"°C")/(101.3u"kPa") #Temperature is auto-converted to Kelvin
+0.024470079960513324 m³/mol
+```
+You can register units using other units or quantities as follows:
+```
+julia> register_unit("bbl" => 0.158987*u"m^3")
+FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+  :Ω      => Ω
+  :μs     => μs
+  :μV     => μV
+```
+However, due to the nature of macros, these dictionaries are permanent. You can re-register units with the same values (so that you can re-run scripts) but changing them is not allowed.
+```
+julia> register_unit("bbl" => 0.158987*u"m^3")
+FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+  :Ω      => Ω
+  :μs     => μs
+  :μV     => μV
+
+julia> register_unit("bbl" => 22.5*u"m^3")
+ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
+```
+
+## Interfacing with Unitful.jl
+FlexUnits.jl and Unitful.jl focus on different use cases and can be considered complementary. Unitful.jl shines when explicitly referring to units inside the code (especially at low-level operations) while FlexUnits.jl is much better at high-level operations when units tend to be unknown (for example, when parsing strings). Because of this, FlexUnits (as of version v0.2.10) provides an extension to Unitful that allows for converting between types. A useful example is converting `FlexUnits.Quanity` to a Unitful equivalent through `uconvert`. Note that because both packages have significant overlap in their function/object names, you will have to use `import` on at least one of the packages.
+```
+julia> using Unitful
+julia> import FlexUnits
+julia> import FlexUnits.UnitRegistry
+julia> import FlexUnits.uconvert
+
+julia> x = UnitRegistry.qparse.(["5.0 km/hr", "2.0 N", "10 °C"])
+
+julia> velocity = uconvert(u"km/hr", x[1])
+18.0 km hr^-1
+
+julia> force = uconvert(u"N", x[2])
+2.0 N
+
+julia> temperature = uconvert(u"°F", x[3])
+49.99999999999994 °F
+```
+This pattern would be useful when performing low-level calculations on `force`, `velocity` and `temperature` inside a function that takes a mixed-unit vector. Similarly, if one wishes to collect results of dissimilar units, one can simply output them as a type-stable FlexUnit vector
+```
+julia> x_out = [FlexUnits.Quantity(velocity), FlexUnits.Quantity(force), FlexUnits.Quantity(temperature)]
+3-element Vector{FlexUnits.Quantity{Float64, FlexUnits.Dimensions{FlexUnits.FixedRational{25200, Int32}}}}:
+ 1.3888888888888888 m/s
+ 2.0 (m kg)/s²
+ 283.15 K
+```
+Using both packages together should feel natural due to their similar API and can provide the best of both worlds. However, these similarities also means that care must be taken to manually import any functions that needed from both packages.
+
 ## Benchmarks
 FlexUnits.jl and DynamicQuantities.jl both greatly outperform Unitful.jl when the compiler cannot infer the units.
 ```
@@ -58,38 +121,4 @@ t1flex = ubase.([1.0u"m/s", 1.0u"m/s", 1.0u"m/s"])
   86.472 ns (1 allocation: 48 bytes)
 @btime sum(x->x*x, t1flex)
   86.260 ns (1 allocation: 48 bytes)
-```
-
-## General Use
-Much like other unit packages, you can use string macros to build units and quantities. Unlike other packages, you must manually "use" the default registry `UnitRegistry`, this is done so as to not be overly opinionated as to what registry to use (users can create and use their own registries instead).
-```
-julia> using FlexUnits, .UnitRegistry
-
-julia> u = u"J/(mol*K)"
-J/(mol*K)
-
-julia> R = 8.314*u
-8.314 J/(mol*K)
-
-julia> v_satp = R*(25u"°C")/(101.3u"kPa") #Temperature is auto-converted to Kelvin
-0.024470079960513324 m³/mol
-```
-You can register units using other units or quantities as follows:
-```
-julia> register_unit("bbl" => 0.158987*u"m^3")
-FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
-  :Ω      => Ω
-  :μs     => μs
-  :μV     => μV
-```
-However, due to the nature of macros, these dictionaries are permanent. You can re-register units with the same values (so that you can re-run scripts) but changing them is not allowed.
-```
-julia> register_unit("bbl" => 0.158987*u"m^3")
-FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
-  :Ω      => Ω
-  :μs     => μs
-  :μV     => μV
-
-julia> register_unit("bbl" => 22.5*u"m^3")
-ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
 ```
