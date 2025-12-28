@@ -7,7 +7,7 @@ Major Changes:
     -   Behaviour also applies to `typemin` and `typemax` as well
 2.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
 3.  (breaking) `quantity` removed, use Quantity instead
-4.  (breaking) `UnitfulCallable` removed in favor of Quantity(f::Function, u::UnitMap)
+4.  (breaking) `UnitfulCallable` removed in favor of QuantMapping(f::Function, u::UnitMap)
 5.  (breaking) `AbstractUnitTransform` is renamed to `AbstractUnitConverter` (AffineTrnasform is now AffineConverter)
 6.  Added more promotion rules to convert to quantities
 7.  FixRat32 is now exported
@@ -16,10 +16,10 @@ Major Changes:
 
 
 Current Tasks:
-1.  Build out "unit mapping" objects
-    -   Build out Quantity(::Function, UnitMap) functionality
-    -   Build out shortcuts for matrix +,-,*,/,\
-        -   Make sure operations convert to LinMapQuant and output that type
+1.  Build out unit mapping functions for +,-,*,/,\,^,exp, (matrix trigs)
+        -   This consists of building shortcuts for UnitMap types
+        -   Output should be "UnitMap" the most specific type possible
+        -   Make sure operations convert to QuantLinMap and output that type
 
     Notes on above:      
     -   Matrix multiplication is ONLY valid with QuantLinMap and will ALWAYS produce a QuantLinMap
@@ -47,18 +47,19 @@ Current Tasks:
             -   If 'A' is recursive, then you want to use "inv(E)" to transform back
 
 Backlog:
-1.  Consider support for Unitful-like static-dimension quantities (SQuantity?) MAJOR FEATURE!!!
-    -   Allows FlexUnits to be the best of both DynamicQuantities and Unitful
+1.  MAJOR FEATURE: Consider support for StaticDims{D} and StaticUnits{U,C}
+    -   StaticDims have dimensions as a type parameter
+        -   Mixed StaticDims get promoted to Dimensions
+        -   Best of both Unitful and DynamicQuantities
     -   Dimensions are a parameter, not a field, everything else should just work
-        -   SQuantity(x::T, u) => SQuantity{T,u}(x)
         -   Dimensions work as a parameter. THIS IS HUGE!!!
         -   Units don't work, but this doesn't matter because only using dimensions has many benefits
             -   Less over-specialization
             -   No scalar conversions, which means theroetically zero overhead
             -   Use 'su"..."' to create a StaticUnit{D,T<:AbstractUnitTranform}
     -   Eager conversion to SI should reduce over-specialization
-        -   String-macro "su" will produce a StaticQuantity (dimensions with the converter object)
-        -   uconvert(su"...", q) will produce static quantities to the dimensions of "u"
+        -   String-macro "su" will produce StaticUnits (dimensions with the converter object)
+        -   Multiplying static units eagerly converts to Dimensions (for performance reasons)
     -   Promotion of quantities will revert to regular dynamic quantities
         -   This looks like it can be handled at the "with_ubase" interface level
 2.  Build out documentation and a docs badge
@@ -66,7 +67,8 @@ Backlog:
     -   Add angle to the dimension list
     -   Create a new unit registry with that dimension 
     -   Re-tool sin, cos, tan rules on this particular dimension
-3.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
+3.  Add LinearAlgebra extensions for QuantLinMap
+4.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
     -   Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
     -   This can be done without documentation 
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
@@ -84,10 +86,10 @@ end #(where D is a dimenison)
 StaticDim(D) = StaticDim{D}()
 StaticDim{D}(d::AbstractDimension) = (D == d) ? StaticDim{D} : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
 
-struct StaticUnit{D, T<:AbstractUnitConverter} #(where D is a dimenison)
-    todims :: T
+struct StaticUnit{D, C<:AbstractUnitConverter} #(where D is a dimenison)
+    todims :: C
     symbol :: Symbol
-    function StaticUnit{D}(conv::T, symb=DEFAULT_USYMBOL::Symbol) where {D, T<:AbstractUnitConverter}
+    function StaticUnit{D}(conv::C, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitConverter}
         return (D isa AbstractDimension) ? new{D}(conv, symb) : error("Type parameter must be a dimension")
     end
 end
