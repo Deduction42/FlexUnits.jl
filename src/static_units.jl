@@ -61,8 +61,8 @@ Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimtype(D2))
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimtype(D1), dimtype(D2))
 
-#Promote static units to static dimenions 
-function Base.promote_rule(::Type{Quantity{T1,<:StaticUnits{D}}}, ::Type{Quantity{T2,<:StaticDims{D}}}) where {T1, T2, D}
+#Promote static units to static dimenions
+function Base.promote_rule(::Type{Quantity{T1,StaticUnits{D,C}}}, ::Type{Quantity{T2,StaticDims{D}}}) where {T1, T2, D, C}
     T = promote_type(T1, T2)
     return Quantity{T, StaticDims{D}}
 end
