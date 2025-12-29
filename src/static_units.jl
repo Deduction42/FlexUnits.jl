@@ -33,9 +33,9 @@ StaticUnits(u::AffineUnits) = StaticUnits{dimension(u)}(uconvert(dimension(u), u
 AffineUnits(u::StaticUnits) = AffineUnits{dimtype(u)}(scale=u.todims.scale, offset=u.todims.offset, dims=dimval(u), symbol=u.symbol)
 udynamic(u::StaticUnits{D, U}) where {D, U<:AffineConverter} = AffineUnits(u)
 
-dimtype(::Type{<:StaticUnits{D,C}}) where {D,C} = typeof(D)
+dimtype(::Type{StaticUnits{D,C}}) where {D,C} = typeof(D)
 dimtype(d::StaticUnits) = dimtype(typeof(d))
-dimval(::Type{<:StaticUnits{D,C}}) where {D,C} = D
+dimval(::Type{StaticUnits{D,C}}) where {D,C} = D
 dimval(d::StaticUnits) = dimval(typeof(d))
 
 dimtype(q::Quantity) = dimtype(unit(q))
@@ -61,12 +61,17 @@ Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimtype(D2))
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimtype(D1), dimtype(D2))
 
-#Promote static units to static dimenions
-function Base.promote_rule(::Type{Quantity{T1,StaticUnits{D,C}}}, ::Type{Quantity{T2,StaticDims{D}}}) where {T1, T2, D, C}
+#Promote static units to static dimenions, double definition needed for specificity
+function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1<:StaticUnits, U2<:StaticDims}
+    D = equaldims(dimval(U1), dimval(U2))
     T = promote_type(T1, T2)
     return Quantity{T, StaticDims{D}}
 end
-
+function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1<:StaticDims, U2<:StaticUnits}
+    D = equaldims(dimval(U1), dimval(U2))
+    T = promote_type(T1, T2)
+    return Quantity{T, StaticDims{D}}
+end
 
 #============================================================================================================================
 Utilities
@@ -111,8 +116,13 @@ import .UnitRegistry.@u_str
 @testset "Static Dimensions" begin
     @test 1*StaticUnits(u"km/hr") isa Quantity{<:Any, <:StaticDims}
 
+    #Test promotion rules
     q1 = Quantity{Float64, StaticUnits{dimension(u"km/hr"), AffineConverter}}(5, StaticUnits(u"km/hr"))
     q2 = 20.0*StaticUnits(u"m/s")
-    [q1,q2]
+    q3 = 10*StaticUnits(u"kg/s")
+
+    @test eltype([q1,q1]) <: Quantity{Float64, <:StaticUnits{dimension(u"m/s")}} #StaticUnits preserved
+    @test eltype([q1,q2]) <: Quantity{Float64, <:StaticDims{dimension(u"m/s")}} #StaticUnits and StaticDims promote to StaticDims if dimension is the same
+    @test eltype([q1,q2,q3]) <: Quantity{Float64, <:Dimensions} #Different dimensions promote to "Dimensions"
 
 end
