@@ -109,7 +109,7 @@ struct AffineConverter <: AbstractUnitConverter
     scale :: Float64
     offset :: Float64
 end
-AffineConverter(;scale, offset) = AffineConverter(scale, offset)
+AffineConverter(;scale=1, offset=0) = AffineConverter(scale, offset)
 
 """
     uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
