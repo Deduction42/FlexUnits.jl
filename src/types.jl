@@ -189,16 +189,16 @@ MirrorDims() = MirrorDims{FixRat32, Dimensions{FixRat32}}()
 MirrorDims(::Type{D}) where {D<:AbstractDimensions} = MirrorDims{D}()
 
 
-const MirrorUnion{D} = Union{D, MirrorDims{D}}
-promote_rule(::Type{D}, ::Type{<:MirrorDims}) where {D<:AbstractDimensions} = MirrorUnion{D}
+const MirrorUnion{D} = Union{D, MirrorDims{D}} where D<:AbstractDimensions
+Base.promote_rule(::Type{D}, ::Type{<:MirrorDims}) where {D<:AbstractDimensions} = MirrorUnion{D}
 function nomirror(x::Quantity)
     u = unit(x)
     return (u isa MirrorDims) ? throw(ArgumentError("Mirror dimensions found, cannot convert to non-mirror version")) : Quantity(ustrip(x), u)
 end
 
 #Quantities with mirror dimensions should include a union
-Quantity(x::T, u::MirrorDims{D}) where {T,D<:AbstractDimensions} = Quantity{T, MirrorUnion{D}}(x, u)
-Quantity{<:Any, <:MirrorDims}(x, u) = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
+Quantity(x::T, u::MirrorDims{D}) where {T, D<:AbstractDimensions} = Quantity{T, MirrorUnion{D}}(x, u)
+Quantity{T, MirrorDims{D}}(x, u) where {T, D<:AbstractDimensions} = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
 
 function Base.show(io::IO, d::MirrorDims{D}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
     if pretty
@@ -212,7 +212,7 @@ function Base.show(io::IO, ::Type{MirrorDims{D}}; pretty=PRETTY_DIM_OUTPUT[]) wh
     return print(io, "MirrorDims{$(D)}")
 end
 
-function Base.show(io::IO, ::Type{MirrorUnion{D}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
+function Base.show(io::IO, ::Type{Union{D,MirrorDims{D}}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
     return print(io, "MirrorUnion{$(D)}")
 end
 
