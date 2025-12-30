@@ -19,11 +19,11 @@ utrans(0.0)
 (u"°C" |> u"°F")(0.0)
 31.999999999999986
 """
-abstract type AbstractUnitConverter end
+abstract type AbstractUnitTransform end
 
-Base.broadcastable(utrans::AbstractUnitConverter) = Ref(utrans)
-(utrans::AbstractUnitConverter)(x) = uconvert(utrans, x)
-uconvert(utrans::AbstractUnitConverter, x) = ArgumentError("Conversion formulas not yet implemented for $(utrans)")
+Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
+(utrans::AbstractUnitTransform)(x) = uconvert(utrans, x)
+uconvert(utrans::AbstractUnitTransform, x) = ArgumentError("Conversion formulas not yet implemented for $(utrans)")
 
 
 """
@@ -90,7 +90,7 @@ ustrip_dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)
 Affine transformations
 ============================================================================================#
 """
-    AffineConverter
+    AffineTransform
 
 A type representing an affine transfomration that can be
 used to convert values from one unit to another. This is the
@@ -102,45 +102,45 @@ This object is callable.
 - offset :: Float64
 
 # Constructors
-- AffineConverter(scale::Real, offset::Real)
-- AffineConverter(; scale, offset)
+- AffineTransform(scale::Real, offset::Real)
+- AffineTransform(; scale, offset)
 """
-struct AffineConverter <: AbstractUnitConverter
+struct AffineTransform <: AbstractUnitTransform
     scale :: Float64
     offset :: Float64
 end
-AffineConverter(;scale=1, offset=0) = AffineConverter(scale, offset)
+AffineTransform(;scale=1, offset=0) = AffineTransform(scale, offset)
 
 """
     uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
 
-Produces an AffineConverter that can convert a quantity with `current`
+Produces an AffineTransform that can convert a quantity with `current`
 units to a quantity with `target` units
 """
 function uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
     dimension(utarget) == dimension(ucurrent) || throw(ConversionError(utarget, ucurrent))
 
-    return AffineConverter(
+    return AffineTransform(
         scale  = uscale(ucurrent)/uscale(utarget),
         offset = (uoffset(ucurrent) - uoffset(utarget))/uscale(utarget)
     )
 end
 
 """
-    uconvert(utrans::AffineConverter, x)
+    uconvert(utrans::AffineTransform, x)
 
 Apply the unit conversion formula "utrans" to value "x", can be used to apply unit conversions on unitless values
 
 julia> uconvert(u"m/s"|>u"km/hr", 1.0)
 3.5999999999999996
 """
-uconvert(utrans::AffineConverter, x) = muladd(x, utrans.scale, utrans.offset)
-uconvert(utrans::AffineConverter, x::AbstractArray) = utrans.(x)
-uconvert(utrans::AffineConverter, x::Tuple) = map(utrans, x)
+uconvert(utrans::AffineTransform, x) = muladd(x, utrans.scale, utrans.offset)
+uconvert(utrans::AffineTransform, x::AbstractArray) = utrans.(x)
+uconvert(utrans::AffineTransform, x::Tuple) = map(utrans, x)
 
 function ubase(q::AbstractQuantity{<:Any,<:AbstractAffineUnits})
     u = unit(q)
-    utrans = AffineConverter(scale=uscale(u), offset=uoffset(u))
+    utrans = AffineTransform(scale=uscale(u), offset=uoffset(u))
     return Quantity(utrans(ustrip(q)), dimension(u))
 end 
 

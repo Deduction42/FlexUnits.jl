@@ -22,16 +22,16 @@ dimval(::Type{<:StaticDims{D}}) where D = D
 dimval(d::StaticDims) = dimval(typeof(d))
 udynamic(u::StaticDims{D}) where D = D
 
-struct StaticUnits{D, C<:AbstractUnitConverter} <: AbstractUnitLike
+struct StaticUnits{D, C<:AbstractUnitTransform} <: AbstractUnitLike
     todims :: C
     symbol :: Symbol
-    function StaticUnits{D}(conv::C, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitConverter}
+    function StaticUnits{D}(conv::C, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitTransform}
         return (D isa AbstractDimensions) ? new{D,C}(conv, symb) : error("Type parameter must be a dimension")
     end
 end
 StaticUnits(u::AffineUnits) = StaticUnits{dimension(u)}(uconvert(dimension(u), u), u.symbol)
 AffineUnits(u::StaticUnits) = AffineUnits{dimtype(u)}(scale=u.todims.scale, offset=u.todims.offset, dims=dimval(u), symbol=u.symbol)
-udynamic(u::StaticUnits{D, U}) where {D, U<:AffineConverter} = AffineUnits(u)
+udynamic(u::StaticUnits{D, U}) where {D, U<:AffineTransform} = AffineUnits(u)
 
 dimtype(::Type{StaticUnits{D,C}}) where {D,C} = typeof(D)
 dimtype(d::StaticUnits) = dimtype(typeof(d))
@@ -117,7 +117,7 @@ import .UnitRegistry.@u_str
     @test 1*StaticUnits(u"km/hr") isa Quantity{<:Any, <:StaticDims}
 
     #Test promotion rules
-    q1 = Quantity{Float64, StaticUnits{dimension(u"km/hr"), AffineConverter}}(5, StaticUnits(u"km/hr"))
+    q1 = Quantity{Float64, StaticUnits{dimension(u"km/hr"), AffineTransform}}(5, StaticUnits(u"km/hr"))
     q2 = 20.0*StaticUnits(u"m/s")
     q3 = 10*StaticUnits(u"kg/s")
 
