@@ -197,8 +197,8 @@ function nomirror(x::Quantity)
 end
 
 #Quantities with mirror dimensions should include a union
-Quantity(x::T, u::MirrorDims{D}) where {T, D<:AbstractDimensions} = Quantity{T, MirrorUnion{D}}(x, u)
-Quantity{T, MirrorDims{D}}(x, u) where {T, D<:AbstractDimensions} = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
+Quantity(x::T, u::MirrorDims{D}) where {T, D} = Quantity{T, MirrorUnion{D}}(x, u)
+Quantity{T, MirrorDims{D}}(x, u) where {T, D} = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
 
 function Base.show(io::IO, d::MirrorDims{D}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
     if pretty
