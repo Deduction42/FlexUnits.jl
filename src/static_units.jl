@@ -89,7 +89,7 @@ Static dimension ops
 ============================================================================================================================#
 equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) ? arg1 : throw(DimensionError((arg1,arg2)))
 equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (dimval(arg1) == arg2) ? arg2 : throw(DimensionError((arg1,arg2)))
-equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimal(arg2))  ? arg1 : throw(DimensionError((arg1,arg2)))
+equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2))  ? arg1 : throw(DimensionError((arg1,arg2)))
 
 Base.:*(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1*D2}()
 Base.:/(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1/D2}()
@@ -111,7 +111,9 @@ Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 
 #Tests
 using Test
+using BenchmarkTools
 import .UnitRegistry.@u_str
+
 
 @testset "Static Dimensions" begin
     @test 1*StaticUnits(u"km/hr") isa Quantity{<:Any, <:StaticDims}
@@ -126,3 +128,18 @@ import .UnitRegistry.@u_str
     @test eltype([q1,q2,q3]) <: Quantity{Float64, <:Dimensions} #Different dimensions promote to "Dimensions"
 
 end
+
+
+#=
+# This is an example where static FlexUnits VASTLY outperforms Unitful due to the design choice of sticking with dimensions
+import Unitful
+import DynamicQuantities
+
+v1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s"]
+v1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s"]
+v1flex = [1.0*StaticUnits(u"m/s"), 1.0*StaticUnits(u"m/s"), 1.0*StaticUnits(u"m/s")]
+
+@btime sum(x->x^2.0, v1uni)
+@btime sum(x->x^2.0, $v1dyn)
+@btime sum(x->x^2.0, $v1flex)
+=#
