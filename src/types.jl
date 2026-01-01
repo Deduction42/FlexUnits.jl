@@ -30,19 +30,59 @@ function (::Type{D})(x::Union{Real,Missing}) where {P, D<:AbstractDimensions{P}}
     return D(map(f, static_fieldnames(D))...)
 end
 
-uscale(u::AbstractDimLike) = 1 # All AbstractDimensions have unity scale
-uoffset(u::AbstractDimLike) = 0 # All AbstractDimensions have no offset
 dimension(u::AbstractDimLike) = u
 usymbol(u::AbstractDimLike) = DEFAULT_USYMBOL
+uscale(u::AbstractUnitLike) = uscale(todims(u))
+uoffset(u::AbstractUnitLike) = uoffset(todims(u))
 dimtype(::Type{<:AbstractUnits{D}}) where D = D
 dimtype(::Type{D}) where D<:AbstractDimLike = D
 dimpowtype(::Type{D}) where {P, D<:AbstractDimensions{P}} = P
 Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
 dimpowtype(::Type{U}) where {U<:AbstractUnitLike} = dimpowtype(dimtype(U))
+is_dimension(u::AbstractUnitLike) = is_identity(todims(u))
+
+"""
+AbstractUnitTransform
+
+An abstract object representing a unit conversion formula. 
+Any object that subtypes this is made callable.
+
+# Callable form 
+utrans = uconvert(u"°C", u"°F")
+utrans(0.0)
+31.999999999999986
+
+# Shorthand callable form (syntactic sugar)
+(u"°C" |> u"°F")(0.0)
+31.999999999999986
+"""
+abstract type AbstractUnitTransform end
+
+Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
+(t2::AbstractUnitTransform)(t1::AbstractUnitTransform) = t2 ∘ t1
+
 
 #=======================================================================================
-Basic SI dimensions
+Basic SI dimensions and transforms
 =======================================================================================#
+"""
+NoTransform object, the default transform returned by todims(x::AbstractDimensionLike). Calling it results in 
+an identity.
+t = NoTransform()
+t(x) = x
+"""
+struct NoTransform end 
+(t::NoTransform)(x) = x
+
+Base.:∘(t1::NoTransform, t2::AbstractUnitTransform) = t2 
+Base.:∘(t1::AbstractUnitTransform, t2::NoTransform) = t1 
+Base.:∘(t1::NoTransform, t2::NoTransform) = t1 
+Base.inv(t::NoTransform) = t
+uscale(t::NoTransform)  = 1
+uoffset(t::NoTransform) = 0
+todims(u::AbstractDimLike) = NoTransform()
+is_identity(t::NoTransform) = true
+
 """
     Dimensions{P}
 
@@ -64,16 +104,13 @@ Basic SI dimensions:
     luminosity::P = FixedRational(0)
     amount::P = FixedRational(0)
 end
-const DEFAULT_DIMENSONS = Dimensions{DEFAULT_RATIONAL}
-Dimensions(args...) = Dimensions{DEFAULT_RATIONAL}(args...)
-#Dimensions(d::AbstractDimensions) = Dimensions{DEFAULT_RATIONAL}(d)
+Dimensions(args...) = Dimensions{FixRat32}(args...)
 
 function unit_symbols(::Type{<:Dimensions})
     return Dimensions{Symbol}(
         length=:m, mass=:kg, time=:s, current=:A, temperature=:K, luminosity=:cd, amount=:mol
     )
 end
-
 
 """
     dimension_names(::Type{<:AbstractDimensions})
@@ -85,6 +122,47 @@ Can use this to overload the default "fieldnames" behaviour
 @inline function dimension_names(::Type{D}) where {D<:AbstractDimensions}
     return static_fieldnames(D)
 end
+
+#=======================================================================================
+Affine Units and Transforms
+=======================================================================================#
+"""
+    AffineTransform
+
+A type representing an affine transfomration formula that can be
+used to convert values from one affine unit to another. This object is callable.
+
+# Fields
+- scale :: Float64
+- offset :: Float64
+
+# Constructors
+- AffineTransform(scale::Real, offset::Real)
+- AffineTransform(; scale, offset)
+"""
+@kwdef struct AffineTransform <: AbstractUnitTransform
+    scale  :: Float64 = 1
+    offset :: Float64 = 0
+end
+(t::AffineTransform)(x) = muladd(x, t.scale, t.offset)
+(t::AffineTransform)(x::AbstractArray) = t.(x)
+(t::AffineTransform)(x::Tuple) = map(t, x)
+(t::AffineTransform)(t0::AbstractUnitTransform) = t ∘ t0
+
+function Base.:∘(t2::AffineTransform, t1::AffineTransform)
+    return AffineTransform(
+        scale  = t1.scale*t2.scale,
+        offset = t2.offset + t2.scale*t1.offset 
+    )
+end
+
+Base.inv(t::AffineTransform) = AffineTransform(scale=inv(t.scale), offset=-t.offset/t.scale)
+
+uscale(t::AffineTransform) = t.scale 
+uoffset(t::AffineTransform) = t.offset
+is_identity(t::AffineTransform) = isone(t.scale) & iszero(t.offset)
+is_scalar(t::AffineTransform) = iszero(t.offset)
+remove_offset(t::AffineTransform) = AffineTransform(scale=t.scale, offset=0)
 
 """
     AffineUnits{D<:AbstractDimensions}(scale::Float64, offset::Float64, dims::D, symbol::Symbol)
@@ -106,27 +184,28 @@ julia> (5u"°C" + 2u"°C") |> u"°C" #Operation adds values in Kelvin, results c
 julia> (ustrip(5u"°C") + ustrip(2u"°C"))*u"°C" #Strips, adds raw quantity values, converts raw number to Celsius
 7 °C
 """
-@kwdef struct AffineUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D}
-    scale::Float64 = 1
-    offset::Float64 = 0
-    dims::D
-    symbol::Symbol=DEFAULT_USYMBOL 
+struct AffineUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D}
+    dims   :: D
+    todims :: AffineTransform
+    symbol :: Symbol
 end
+AffineUnits(dims::D, todims::AffineTransform, symbol=DEFAULT_USYMBOL) where D<:AbstractDimensions = AffineUnits{D}(dims, todims, symbol)
+AffineUnits(;dims, scale=1, offset=0, symbol=DEFAULT_USYMBOL) = AffineUnits(dims, AffineTransform(scale=scale, offset=offset), symbol)
+AffineUnits{D}(;dims, scale=1, offset=0, symbol=DEFAULT_USYMBOL) where {D} = AffineUnits{D}(dims, AffineTransform(scale=scale, offset=offset), symbol)
+AffineUnits(units::D, todims::AffineTransform, symbol=DEFAULT_USYMBOL) where D<:AbstractUnits = AffineUnits(dimension(assert_dimension(units)), todims, symbol)
 
-AffineUnits(scale, offset, dims::D, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = AffineUnits{D}(scale, offset, dims, symbol)
-AffineUnits(scale, offset, dims::AbstractUnits{D}, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = AffineUnits(scale, offset, convert(D, dims), symbol)
-
-uscale(u::AffineUnits) = u.scale
-uoffset(u::AffineUnits) = u.offset 
+todims(u::AffineUnits) = u.todims
 dimension(u::AffineUnits) = u.dims 
 usymbol(u::AffineUnits) = u.symbol
-remove_offset(u::U) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=0, dims=dimension(u))
+remove_offset(u::AffineUnits) = AffineUnits(dimension(u), remove_offset(u.todims))
+is_scalar(u::AffineUnits) = is_scalar(todims(u))
+is_dimension(u::AffineUnits) = is_identity(todims(u))
 
 function Base.show(io::IO, u::AffineUnits; pretty=PRETTY_DIM_OUTPUT[])
     if usymbol(u) != DEFAULT_USYMBOL
         return print(io, usymbol(u))
     else
-        print(io, "AffineUnits(scale=", uscale(u), ", offset=", uoffset(u), ", dims=")
+        print(io, "AffineUnits(todims=$(todims(u)), dims=")
         show(io, dimension(u); pretty)
         return print(io, ")")
     end
@@ -156,8 +235,7 @@ dimension(q::Quantity) = dimension(unit(q))
 unittype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = U
 dimtype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = dimtype(U)
 
-AffineUnits(scale, offset::Quantity, dims::AbstractDimensions, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
-AffineUnits(scale, offset::Quantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
+AffineTransform(scale::Real, offset::Quantity) = AffineTransform(scale=scale, offset=dstrip(offset))
 
 
 """
@@ -328,11 +406,11 @@ Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", 
 
 
 assert_scalar(u::AbstractDimensions)  = u
-assert_scalar(u::AbstractAffineUnits) = iszero(uoffset(u)) ? u : throw(NotScalarError(u))
+assert_scalar(u::AbstractAffineUnits) = is_scalar(u) ? u : throw(NotScalarError(u))
 scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
 
-assert_dimension(u::AbstractDimensions) =  u
-assert_dimension(u::AbstractAffineUnits) = isone(uscale(u)) & iszero(uoffset(u)) ? u : throw(NotDimensionError(u))
+assert_dimension(u::AbstractDimensions)  =  u
+assert_dimension(u::AbstractAffineUnits) = is_dimension(u) ? u : throw(NotDimensionError(u))
 
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
 assert_dimensionless(q::AbstractQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))

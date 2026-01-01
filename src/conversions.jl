@@ -1,39 +1,23 @@
 #============================================================================================
-Unit Converters are the backbone of the conversion process
-    uconvert(u1::AbstractUnit, u2::AbstractUnit) produces a kind of unit transformation forumula
-    unit transformation formulas can be applied directly to quantities to do the conversion 
-Currently, only conversions between affine units are supported, 
-    but other conversions (such as log units) are conceivably possible but they would
-    require a separate unit registry (which is why I made separate registries easier)
+uconvert with transformation objects
 ============================================================================================#
-"""
-An abstract object representing a unit conversion formula. 
-Any object that subtypes this is made callable.
+#Generic transformation generator
+uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) = inv(todims(u_target)) ∘ todims(u_current)
+uconvert(ft::AbstractUnitTransform, x) = ft(x)
 
-# Callable form 
-utrans = uconvert(u"°C", u"°F")
-utrans(0.0)
-31.999999999999986
-
-# Shorthand callable form (syntactic sugar)
-(u"°C" |> u"°F")(0.0)
-31.999999999999986
-"""
-abstract type AbstractUnitTransform end
-
-Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
-(utrans::AbstractUnitTransform)(x) = uconvert(utrans, x)
-uconvert(utrans::AbstractUnitTransform, x) = ArgumentError("Conversion formulas not yet implemented for $(utrans)")
-
-
+#============================================================================================
+uconvert with quantities
+============================================================================================#
 """
     uconvert(u::AbstractUnitLike, q::AbstractQuantity)
 
 Converts quantity `q` to the equivalent quantity having units `u`
 """
 function uconvert(u::AbstractUnitLike, q::AbstractQuantity)
-    utrans = uconvert(u, unit(q))
-    return Quantity(utrans(ustrip(q)), u)
+    dimension(u) == dimension(q) || throw(ConversionError(u, unit(q)))
+    ft = uconvert(u, unit(q))
+    newval = ft(ustrip(q))
+    return Quantity{typeof(newval), typeof(u)}(newval, u)
 end
 
 """
@@ -49,8 +33,12 @@ dconvert(u::AbstractUnitLike, q::AbstractQuantity) = uconvert(dimension(u), q)
 
 Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 """
+function ubase(q::AbstractQuantity{<:Any,<:AbstractUnitLike})
+    u  = unit(q)
+    ft = todims(u)
+    return Quantity(ft(ustrip(q)), dimension(u))
+end 
 ubase(q::AbstractQuantity{<:Any,<:AbstractDimLike}) = q
-
 
 """
     |>(u1::AbstractUnitLike, u2::Union{AbstractUnitLike, AbstractQuantity})
@@ -86,31 +74,7 @@ a dimensionless result, and then removes units
 ustrip_dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
 
 
-#============================================================================================
-Affine transformations
-============================================================================================#
-"""
-    AffineTransform
-
-A type representing an affine transfomration that can be
-used to convert values from one unit to another. This is the
-output type of `uconvert(u::AbstractUnitLike, u0::AbstractUnitLike)`.
-This object is callable.
-
-# Fields
-- scale :: Float64
-- offset :: Float64
-
-# Constructors
-- AffineTransform(scale::Real, offset::Real)
-- AffineTransform(; scale, offset)
-"""
-struct AffineTransform <: AbstractUnitTransform
-    scale :: Float64
-    offset :: Float64
-end
-AffineTransform(;scale=1, offset=0) = AffineTransform(scale, offset)
-
+#=
 """
     uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
 
@@ -125,35 +89,20 @@ function uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
         offset = (uoffset(ucurrent) - uoffset(utarget))/uscale(utarget)
     )
 end
+=#
 
 """
-    uconvert(utrans::AffineTransform, x)
+   AffineUnits(q::AbstractQuantity{<:Number})
 
-Apply the unit conversion formula "utrans" to value "x", can be used to apply unit conversions on unitless values
-
-julia> uconvert(u"m/s"|>u"km/hr", 1.0)
-3.5999999999999996
+Convert quantity `q` into an affine unit of the same magnitude
 """
-uconvert(utrans::AffineTransform, x) = muladd(x, utrans.scale, utrans.offset)
-uconvert(utrans::AffineTransform, x::AbstractArray) = utrans.(x)
-uconvert(utrans::AffineTransform, x::Tuple) = map(utrans, x)
-
-function ubase(q::AbstractQuantity{<:Any,<:AbstractAffineUnits})
+AffineUnits(q::AbstractQuantity{<:Number, <:Dimensions}) = AffineUnits(dims=dimension(q), scale=ustrip(q))
+function AffineUnits(q::AbstractQuantity{<:Number, <:AffineUnits})
     u = unit(q)
-    utrans = AffineTransform(scale=uscale(u), offset=uoffset(u))
-    return Quantity(utrans(ustrip(q)), dimension(u))
-end 
-
-
-
-"""
-    asunit(q::AbstractQuantity{<:Number})
-
-Convert quantity `q` into a unit of the same magnitude
-"""
-asunit(q::AbstractQuantity{<:Number, <:Dimensions})  = AffineUnits(scale=ustrip(q), dims=dimension(q))
-asunit(q::AbstractQuantity{<:Number, <:AffineUnits}) = ( u = unit(q); AffineUnits(scale=ustrip(q)*uscale(u), offset=uoffset(u), dims=dimension(q)) )
-asunit(u::AbstractUnitLike) = u
+    is_scalar(u) || throw(ArgumentError("Cannot convert an affine quantity to a unit, quanity-to-unit conversions only work with scalar units"))
+    return AffineUnits(dims=dimension(q), scale=ustrip(q)*uscale(u))
+end
+AffineUnits(u::AffineUnits) = u
 
 #=================================================================================================
 Conversion and Promotion
@@ -184,7 +133,7 @@ Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = (u isa U) ? 
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : D(dimension(assert_dimension(u)))
 
 # Converting between units and quantities ====================================================
-Base.convert(::Type{U}, q::AbstractQuantity) where U<:AbstractUnits = convert(U, asunit(q))
+Base.convert(::Type{U}, q::AbstractQuantity) where U<:AbstractAffineUnits = convert(U, AffineUnits(q))
 function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:AbstractQuantity{<:Any, <:AbstractDimensions}}
     assert_scalar(u)
     return Q(uscale(u), dimension(u))

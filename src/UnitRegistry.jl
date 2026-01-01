@@ -5,7 +5,7 @@ module UnitRegistry
 using ..RegistryTools
 
 const UNIT_LOCK = ReentrantLock()
-const UNITS = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
+const UNITS = PermanentDict{Symbol, AffineUnits{Dimensions{FixRat32}}}()
 
 #Fill the UNITS registry with default values
 registry_defaults!(UNITS)
