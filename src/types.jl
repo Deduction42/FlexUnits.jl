@@ -234,6 +234,7 @@ unit(q::Quantity) = q.unit
 dimension(q::Quantity) = dimension(unit(q))
 unittype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = U
 dimtype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = dimtype(U)
+dimtype(q::Quantity) = dimtype(unit(q))
 
 AffineTransform(scale::Real, offset::Quantity) = AffineTransform(scale=scale, offset=dstrip(offset))
 

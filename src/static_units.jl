@@ -31,14 +31,19 @@ struct StaticUnits{D, C<:AbstractUnitTransform} <: AbstractUnitLike
 end
 StaticUnits(u::AffineUnits) = StaticUnits{dimension(u)}(uconvert(dimension(u), u), u.symbol)
 AffineUnits(u::StaticUnits) = AffineUnits{dimtype(u)}(scale=u.todims.scale, offset=u.todims.offset, dims=dimval(u), symbol=u.symbol)
+todims(u::StaticUnits) = u.todims
 udynamic(u::StaticUnits{D, U}) where {D, U<:AffineTransform} = AffineUnits(u)
-
 dimtype(::Type{StaticUnits{D,C}}) where {D,C} = typeof(D)
 dimtype(d::StaticUnits) = dimtype(typeof(d))
 dimval(::Type{StaticUnits{D,C}}) where {D,C} = D
 dimval(d::StaticUnits) = dimval(typeof(d))
+dimension(::Type{StaticUnits{D,T}}) where {D,T} = StaticDims{D}()
+dimension(d::StaticUnits) = dimension(typeof(d))
 
-dimtype(q::Quantity) = dimtype(unit(q))
+
+
+Base.:(==)(d1::AbstractDimensions, d2::StaticDims) = (d1 == dimval(d2))
+Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
 
 #============================================================================================================================
 Conversions
@@ -129,6 +134,7 @@ import .UnitRegistry.@u_str
     @test eltype([q1,q2,q3]) <: Quantity{Float64, <:Dimensions} #Different dimensions promote to "Dimensions"
 
 end
+
 
 
 #=

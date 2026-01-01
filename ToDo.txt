@@ -29,10 +29,6 @@ Prioritize making StaticUnits more robust, as significant performance gains have
     -   u"km/hr" will produce StaticUnits, 5.0u"km/hr" will eagerly convert to SI
     -   ud"km/hr" will produce AffineUnits and will not eagerly convert
 
-3.  Fix issues with StaticDims{dimension(u"m/s")} == dimension(u"m/s") -> false 
-    -   StaticDims{D} and D should be considered equal 
-
-
 Backlog:
 1.  Finish basic QuantLinMap functionality for +,-,*,/,\,^,exp, (and matrix trigs)
     -   This consists of building shortcuts for UnitMap types
