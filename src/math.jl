@@ -69,8 +69,27 @@ end
 Base.:^(d::MirrorDims, p::Real) = d
 
 #=============================================================================================
- Mathematical operations on abstract units (mostly for parsing)
+ Mathematical operations on abstract units and transforms (mostly for parsing)
 =============================================================================================#
+Base.:+(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset + x, scale = t.scale)
+Base.:+(x::Real, t::AffineTransform) = t + x 
+Base.:-(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset - x, scale = t.scale)
+
+function Base.:*(t1::AffineTransform, t2::AffineTransform) 
+    is_scalar(t1) & is_scalar(t2) || throw(ArgumentError("Operation only allowed on scalar transforms"))
+    return AffineTransform(scale = t1.scale*t2.scale, offset = 0) 
+end
+
+function Base.:/(t1::AffineTransform, t2::AffineTransform) 
+    is_scalar(t1) & is_scalar(t2) || throw(ArgumentError("Operation only allowed on scalar transforms"))
+    return AffineTransform(scale = t1.scale/t2.scale, offset = 0) 
+end
+
+function Base.:^(t::AffineTransform, p::Real) 
+    is_scalar(t) || throw(ArgumentError("Operation only allowed on scalar transforms"))
+    return AffineTransform(scale = t.scale^p, offset = 0) 
+end
+
 Base.:*(x::ARITHMETICS, u::AbstractUnitLike) = Quantity(x, u)
 Base.:/(x::ARITHMETICS, u::AbstractUnitLike) = Quantity(x, inv(u))
 
@@ -80,20 +99,19 @@ Base.:/(q::AbstractQuantity, u::AbstractUnitLike) = Quantity(ustrip(q), unit(q)/
 Base.:/(u::AbstractUnitLike, q::AbstractQuantity) = Quantity(inv(ustrip(q)), u/unit(q))
 
 function Base.:*(u1::U, u2::U) where U <: AbstractUnits
-    return constructorof(U)(scale=*(map(uscale, (u1, u2))...), dims=*(map(scalar_dimension, (u1, u2))...))
+    return constructorof(U)(scalar_dimension(u1)*scalar_dimension(u2), todims(u1)*todims(u2))
 end
 
 function Base.:/(u1::U, u2::U) where U <: AbstractUnits
-    return constructorof(U)(scale=/(map(uscale, (u1, u2))...), dims=/(map(scalar_dimension, (u1, u2))...))
+    return constructorof(U)(scalar_dimension(u1)/scalar_dimension(u2), todims(u1)/todims(u2))
 end
 
-function Base.:inv(arg::U) where U <: AbstractUnits
-    return constructorof(U)(scale=inv(uscale(arg)), dims=inv(scalar_dimension(arg)))
+function Base.:inv(u::U) where U <: AbstractUnits
+    return constructorof(U)(inv(scalar_dimension(u)), inv(todims(u)))
 end
 
 function Base.:^(u::U, p::Real) where U <:AbstractUnits
-    pn = dimensionless(p)
-    return constructorof(U)(scale=uscale(u)^pn, dims=scalar_dimension(u)^pn)
+    return constructorof(U)(scalar_dimension(u)^p, todims(u)^p)
 end
 
 Base.:*(u1::AbstractUnitLike, u2::AbstractUnitLike) = *(promote(u1,u2)...)

@@ -17,13 +17,15 @@ Major Changes:
 
 Current Tasks:
 Prioritize making StaticUnits more robust, as significant performance gains have been found (even over Unitful.jl)
-1.  Deprecate AffineUnits entirely, rename it to Units{D,T<:AffineTransform} 
-    -   This increases consistency with StaticUnits
-    -   This increases generality to extend to logarithmic dimensions
-    -   Any unit will now have fields "dims::AbstractDimensions, todims::AbstractTransform, symbol::Symbol"
-    -   Define operators for AffineTrasnform
+1.  Deprecate AffineUnits entirely, rename it to Units{D,T<:AffineTransform}
+    1   Define operators for AffineTrasnform (just before "Unit math")
         -   +(t::AffineTrnasform, x::Number) (add x to the offset)
         -   *(t::AffineTransform, x::Number) (multiply the scale by x)
+        -   (-,/)
+    2   Replace all calls to AffineUnits with appropriate Units versions
+        -   Should be done manually
+    3   Include "trasnform type" T under AbstractUnits{D,T}
+    4   Subtype StaticUnits{D,T} under AbstractUnits{D,T}
 
 2.  Make string macros produce static units (for performance reasons)
     -   u"km/hr" will produce StaticUnits, 5.0u"km/hr" will eagerly convert to SI

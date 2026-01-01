@@ -40,6 +40,7 @@ dimpowtype(::Type{D}) where {P, D<:AbstractDimensions{P}} = P
 Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
 dimpowtype(::Type{U}) where {U<:AbstractUnitLike} = dimpowtype(dimtype(U))
 is_dimension(u::AbstractUnitLike) = is_identity(todims(u))
+is_scalar(u::AbstractUnitLike) = is_scalar(todims(u))
 
 """
 AbstractUnitTransform
@@ -82,6 +83,7 @@ uscale(t::NoTransform)  = 1
 uoffset(t::NoTransform) = 0
 todims(u::AbstractDimLike) = NoTransform()
 is_identity(t::NoTransform) = true
+is_scalar(t::NoTransform) = true
 
 """
     Dimensions{P}
