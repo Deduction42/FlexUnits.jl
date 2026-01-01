@@ -17,7 +17,8 @@ Major Changes:
 
 Current Tasks:
 Prioritize making StaticUnits more robust, as significant performance gains have been found (even over Unitful.jl)
-1.  Deprecate AffineUnits entirely, instead have Units{D,T<:AffineTransform} 
+1.  Deprecate AffineUnits entirely, rename it to Units{D,T<:AffineTransform} 
+    -   This increases consistency with StaticUnits
     -   This increases generality to extend to logarithmic dimensions
     -   Any unit will now have fields "dims::AbstractDimensions, todims::AbstractTransform, symbol::Symbol"
     -   Define operators for AffineTrasnform
