@@ -16,14 +16,26 @@ Major Changes:
 
 
 Current Tasks:
-0.  Test out the new StaticUnit/StaticDims performance
-    -   Use an iterative Peng-Robinson Volume calculation
-        -   Type-stable Unitful vs DynamicQuantities vs StaticUnit (NamedTuple)
-        -   Type-unstable Unitful vs DynamicQuantities vs StaticUnit-promote (FieldVector)
+Prioritize making StaticUnits more robust, as significant performance gains have been found (even over Unitful.jl)
+1.  Deprecate AffineUnits entirely, instead have Units{D,T<:AffineTransform} 
+    -   This increases generality to extend to logarithmic dimensions
+    -   Any unit will now have fields "dims::AbstractDimensions, todims::AbstractTransform, symbol::Symbol"
+    -   Define operators for AffineTrasnform
+        -   +(t::AffineTrnasform, x::Number) (add x to the offset)
+        -   *(t::AffineTransform, x::Number) (multiply the scale by x)
 
-1.  Build out unit mapping functions for +,-,*,/,\,^,exp, (matrix trigs)
+2.  Make string macros produce static units (for performance reasons)
+    -   u"km/hr" will produce StaticUnits, 5.0u"km/hr" will eagerly convert to SI
+    -   ud"km/hr" will produce AffineUnits and will not eagerly convert
+
+3.  Fix issues with StaticDims{dimension(u"m/s")} == dimension(u"m/s") -> false 
+    -   StaticDims{D} and D should be considered equal 
+
+
+Backlog:
+1.  Finish basic QuantLinMap functionality for +,-,*,/,\,^,exp, (and matrix trigs)
     -   This consists of building shortcuts for UnitMap types
-    -   Output should be "UnitMap" the most specific type possible
+    -   Output should be the most specific form of unit mapping possible
     -   Make sure operations convert to QuantLinMap and output that type
 
     Notes on above:      
@@ -31,49 +43,15 @@ Current Tasks:
         -   Multiplication should convert both AbstractMatrix{Quantity} to QuantLinMap
         -   This may result in more allocations, but is more reliable in pointing out errors
         -   It is recommendable to only store matrices as QuantLinMap if linear algebra is intended
-    -   Transpose of a unit transform is different form an inverse
-        -   y = A*x produces units of y
-        -   inv(A)*y produces units of x
-            -   Thise meanse that output units ut2 = UnitMap(u_out=ut1.u_in, u_in=ut1.u_out)
-        -   x'A' = y' should hold true
-            -   This means that output units ut2 = UnitMap(u_out=inv.(ut1.u_in), u_in=inv.(ut1.u_out))
-    -   Support basic matrix operations out-of-the-box (inv, \, /, exp, ^)
-        -   For later versions, add a LinearAlgebra extension for factorizations like cholesky and eigen
-    -   There are two kinds of special unit factorizations: Recursive and Symmetric
-        -   `A` is recursive if A*A*...*A*x is possible
-            -   This happens when u_out = s*u_in
-        -   `A` is symmetric if x'*A*x is possible
-            -   This happens when u_out = s*inv.(u_in)
-        -   cholesky requires A to be symmetric
-        -   matrix exponentials require A to be recursive
-        -   eigendecomposition works on both because inv(E) == E'
-            -   The problem is inv(E) != E' for units
-            -   If 'A' is symmetric, then you want to use "E'" to transform to "inverse space"
-            -   If 'A' is recursive, then you want to use "inv(E)" to transform back
 
-Backlog:
-1.  MAJOR FEATURE: Consider support for StaticDims{D} and StaticUnits{U,C}
-    -   StaticDims have dimensions as a type parameter
-        -   Mixed StaticDims get promoted to Dimensions
-        -   Best of both Unitful and DynamicQuantities
-    -   Dimensions are a parameter, not a field, everything else should just work
-        -   Dimensions work as a parameter. THIS IS HUGE!!!
-        -   Units don't work, but this doesn't matter because only using dimensions has many benefits
-            -   Less over-specialization
-            -   No scalar conversions, which means theroetically zero overhead
-            -   Use 'su"..."' to create a StaticUnit{D,T<:AbstractUnitTranform}
-    -   Eager conversion to SI should reduce over-specialization
-        -   String-macro "su" will produce StaticUnits (dimensions with the converter object)
-        -   Multiplying static units eagerly converts to Dimensions (for performance reasons)
-    -   Promotion of quantities will revert to regular dynamic quantities
-        -   This looks like it can be handled at the "with_ubase" interface level
-2.  Revamp AffineUnits to have an AffineTransform as a field (todims) instead of "scale" and "offset"
-    -   This increases generality to extend to logarithmic dimensions
-    -   Any unit will now have fields "dims::AbstractDimensions, todims::AbstractTransform, symbol::Symbol"
-    -   Build an AffineTransform algebra
-        -   trans = trans1 ∘ trans2 #Chain transformations together, produces an AffineTransform if arguments are Affine
-        -   converter = trans1 ∘ inv(trans2) #This is what is produced when converting from trans1 to trans2 (also Affine)
-    -   Build a NoTransform object (automatically produced by AbstractDimensions when called by "todims")
+2.  Add LinearAlgebra extensions for certain factorizations
+    -   cholesky (requries symmetric transform)
+    -   eigen (confusing becasue it can use both idempotent and symmetric) 
+        -   E' == inv(E) DOES NOT hold 
+        -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
+    -   consider other transformations as well
+
+
 3.  Build out documentation and a docs badge
     -   Include all-stops-out tutorial on defining a new dimension "RadDims"
     -   Add angle to the dimension list

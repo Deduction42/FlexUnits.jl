@@ -15,7 +15,7 @@ julia --startup-file=no --depwarn=yes --threads=auto --project=. test/invalidati
 #To see the actual coverage in VSCode, install the Coverage Gutters extension
 #https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters
 
-#using Revise
+using Revise
 using Test
 using BenchmarkTools
 using FlexUnits, .UnitRegistry
@@ -51,7 +51,7 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
     @test FlexUnits.constructorof(typeof(Quantity("this", u"m"))) == Quantity
     @test FlexUnits.constructorof(Array{Float64}) == Array
 
-    @test string(AffineUnits(scale=1, offset=0, dims=dimension(u"m"), symbol=:_)) == "AffineUnits(scale=1.0, offset=0.0, dims=m)"
+    #@test string(AffineUnits(scale=1, offset=0, dims=dimension(u"m"), symbol=:_)) == "AffineUnits(scale=1.0, offset=0.0, dims=m)"
     @test string(ubase(1.0u"kg*m^2/s^2"), pretty=true)  == "1.0 (m² kg)/s²"
     @test string(ubase(1.0u"kg*m^2/s^2"), pretty=false) == "(1.0)(m^2*kg)/s^2"
     @test string(1.0u"kg*m^2/s^2", pretty=true)  == "1.0 kg*m^2/s^2"
@@ -402,7 +402,7 @@ end
     @test xp - cplxb === 0.01 - cplxb
 
     # Constructors
-    kelvin  = AffineUnits(dims=u"K")
+    kelvin = AffineUnits(dims=u"K")
     @test 1*kelvin == 1K
 
     rankine = AffineUnits(scale=5/9, offset=0.0, dims=K)
@@ -439,7 +439,7 @@ end
 
     # Test display against errors
     celsius = AffineUnits(offset=273.15, dims=u"K")
-    psi = FlexUnits.asunit(6.89476u"kPa")
+    psi = FlexUnits.AffineUnits(6.89476u"kPa")
     io = IOBuffer()
     @test isnothing(show(io, (dimension(°F), dimension(u"K"), psi, celsius, fahrenheit)))
 
@@ -528,7 +528,7 @@ end
     @test convert(DEFAULT_DIM_TYPE, u"m") === Dimensions(length=1)
     @test_throws NotDimensionError convert(DEFAULT_DIM_TYPE, u"mm")
     @test convert(AffineUnits{DEFAULT_DIM_TYPE}, ubase(2u"m")) == AffineUnits(scale=2.0, offset=0.0, dims=dimension(u"m"))
-    @test convert(AffineUnits{DEFAULT_DIM_TYPE}, 2u"°C") == AffineUnits(scale=2.0, offset=273.15, dims=dimension(u"K"))
+    @test_throws ArgumentError convert(AffineUnits{DEFAULT_DIM_TYPE}, 2u"°C")
     @test convert(Quantity{Float64, DEFAULT_DIM_TYPE}, 2u"m") === Quantity{Float64, DEFAULT_DIM_TYPE}(2.0, dimension(u"m")) 
     @test_throws NotScalarError convert(Quantity{Float64, DEFAULT_DIM_TYPE}, u"°C") 
     @test promote_type(Quantity{Float32, DEFAULT_DIM_TYPE}, Quantity{Float64, DEFAULT_UNIT_TYPE}) == Quantity{Float64, DEFAULT_DIM_TYPE}

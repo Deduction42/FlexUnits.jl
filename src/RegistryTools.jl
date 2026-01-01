@@ -2,12 +2,12 @@
 module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits, ..AbstractAffineUnits, ..AbstractDimensions
-import ..AffineUnits, ..Dimensions, ..AbstractQuantity, ..Quantity, ..DEFAULT_DIMENSONS
-import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit,  ..ubase, ..constructorof, ..dimtype, ..unittype
+import ..AffineUnits, ..Dimensions, ..AffineTransform,  ..AbstractQuantity, ..Quantity, ..FixRat32, ..FixRat64
+import ..uscale, ..uoffset, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype
 
 export 
-    AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractDimensions, DEFAULT_DIMENSONS,
-    AffineUnits, Dimensions, AbstractQuantity, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
+    AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractDimensions, FixRat32, FixRat64,
+    AffineUnits, Dimensions, AffineTransform, AbstractQuantity, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
     PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, dimtype
 
 const UnitOrQuantity = Union{AbstractUnitLike, AbstractQuantity}
@@ -90,14 +90,14 @@ function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol
 end
 
 function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol, <:AbstractQuantity})
-    return _register_unit!(reg, p[1]=>asunit(p[2]))
+    return _register_unit!(reg, p[1]=>AffineUnits(p[2]))
 end
 
 function add_prefixes!(reg::AbstractDict{Symbol,<:AffineUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
     original = reg[u]
     for (name, scale) in pairs(prefixes)
         newname = Symbol(string(name)*string(u))
-        reg[newname] = AffineUnits{D}(scale=uscale(original)*scale, dims=dimension(original), symbol=newname)
+        reg[newname] = AffineUnits(scale=uscale(original)*scale, dims=dimension(original), symbol=newname)
     end
     return reg
 end
