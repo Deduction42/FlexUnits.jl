@@ -5,6 +5,8 @@ import Unitful as UF
 import DynamicQuantities as DQ
 using FlexUnits, .UnitRegistry
 
+const N_ITER = Ref(10)
+
 @kwdef struct PengRobinson{NT} <: FieldVector{10,NT}
     T  :: NT 
     P  :: NT 
@@ -38,7 +40,7 @@ function volume(state)
     V = R*T/P
 
     #Use the residual error of the ideal gas law to predict V and iterate
-    for ii in 1:10
+    for ii in 1:N_ITER[]
         Ph = pressure(state)
         Zr = Ph/P #Residual compressibility factor
         V  = V*Zr #Use compressibility to predict volume at P
