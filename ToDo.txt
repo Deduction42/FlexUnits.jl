@@ -19,18 +19,12 @@ Major Changes:
 
 Current Tasks:
 Prioritize making StaticUnits more robust, as significant performance gains have been found (even over Unitful.jl)
-1.  Deprecate AffineUnits entirely, rename it to Units{D,T<:AffineTransform}
-    1   Replace all calls to AffineUnits with appropriate Units versions
-        -   Should be done manually
-    2   Add "udynamic(x)" methods for quantities, units and dimensions
-2.  Move StaticUnits and StaticDims under "types.jl" and rename "static_units" to "math_static.jl"
-    -   Make sure to add unique items like "zero" and "typemax"
-    -   May need to generalize some elements of "math.jl"
-3.  Achieve 95% coverage with new tests
+1.  Achieve 95% coverage with new tests
     -   Replicate appropriate tests with "ud" macro
-4.  Add FlexUnits support for static transform (to prevent recalculation) uconvert(u, q, t)
+2.  Add FlexUnits support for static transform (to prevent recalculation) uconvert(u, q, t)
     -   Add this to the "uconvert" option to the benchmarks
     -   Break down "broadcast into large arrays" between "uniform units" and "nonuniform units"
+3.  Improve realism of PengRobinson benchmark by adding convergence criteria
 
 
 Backlog:

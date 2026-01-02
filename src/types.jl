@@ -73,6 +73,7 @@ t(x) = x
 """
 struct NoTransform <: AbstractUnitTransform end 
 (t::NoTransform)(x) = x
+(t::NoTransform)(t0::AbstractUnitTransform) = t0
 
 Base.:∘(t1::NoTransform, t2::AbstractUnitTransform) = t2 
 Base.:∘(t1::AbstractUnitTransform, t2::NoTransform) = t1 
@@ -216,9 +217,9 @@ todims(u::Units) = u.todims
 dimension(u::Units) = u.dims 
 usymbol(u::Units) = u.symbol
 remove_offset(u::U) where U<:AbstractUnits = constructorof(U)(dimension(u), remove_offset(u.todims))
-is_scalar(u::Units) = is_scalar(todims(u))
-is_dimension(u::Units) = is_identity(todims(u))
-affine_units(;dims, scale=1, offset=0, symbol=DEFAULT_USYMBOL) = Units(dims=dims, todims=AffineTransform(scale=scale, offset=offset), symbol=symbol)
+is_scalar(u::AbstractUnits) = is_scalar(todims(u))
+is_dimension(u::AbstractUnits) = is_identity(todims(u))
+#affine_units(;dims, scale=1, offset=0, symbol=DEFAULT_USYMBOL) = Units(dims=dims, todims=AffineTransform(scale=scale, offset=offset), symbol=symbol)
 udynamic(u::Units) = u
 
 function Base.show(io::IO, u::Units; pretty=PRETTY_DIM_OUTPUT[])
@@ -250,7 +251,7 @@ StaticUnits(d::AbstractDimensions, todims::AbstractUnitTransform, symb=DEFAULT_U
 StaticUnits(d::StaticDims{D}, todims::AbstractUnitTransform, symb=DEFAULT_USYMBOL) where D = StaticUnits{D}(todims, symb)
 
 constructorof(::Type{<:StaticUnits}) = StaticUnits
-Units(u::StaticUnits) = Units{dimtype(u)}(dimval(u), todims(u), usymol(u))
+Units(u::StaticUnits) = Units{dimtype(u)}(dimval(u), todims(u), usymbol(u))
 udynamic(u::StaticUnits) = Units(u)
 todims(u::StaticUnits) = u.todims
 dimtype(::Type{StaticUnits{D,C}}) where {D,C} = typeof(D)
@@ -259,6 +260,7 @@ dimval(::Type{StaticUnits{D,C}}) where {D,C} = D
 dimval(d::StaticUnits) = dimval(typeof(d))
 dimension(::Type{StaticUnits{D,T}}) where {D,T} = StaticDims{D}()
 dimension(d::StaticUnits) = dimension(typeof(d))
+usymbol(u::StaticUnits) = u.symbol
 
 #=================================================================================================
 Quantity types
@@ -457,11 +459,11 @@ end
 Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim, " cannot be treated as dimension, operation only valid for dimension units")
 
 
-assert_scalar(u::AbstractDimensions)  = u
+assert_scalar(u::AbstractDimLike) = u
 assert_scalar(u::AbstractUnits) = is_scalar(u) ? u : throw(NotScalarError(u))
 scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
 
-assert_dimension(u::AbstractDimensions)  =  u
+assert_dimension(u::AbstractDimLike) =  u
 assert_dimension(u::AbstractUnits) = is_dimension(u) ? u : throw(NotDimensionError(u))
 
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))

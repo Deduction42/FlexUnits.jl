@@ -225,6 +225,7 @@ Base.oneunit(::Type{<:AbstractQuantity{T,D}}) where {T,D} = Quantity(one(T), zer
 
 for f in (:zero, :typemin, :typemax)
     @eval Base.$f(::Type{<:AbstractQuantity{T, D}}) where {T, D<:AbstractDimensions} = Quantity($f(T), MirrorDims(D))
+    @eval Base.$f(::Type{<:AbstractQuantity{T, D}}) where {T, D<:StaticDims} = Quantity($f(T), D())
     @eval Base.$f(::Type{<:AbstractQuantity{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
     @eval Base.$f(::Type{<:AbstractQuantity{T, <:MirrorUnion{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
     @eval Base.$f(::Type{<:AbstractQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
@@ -255,7 +256,7 @@ for f in (
         :coth, :asech, :acsch, :acoth, :log, :log2, :log10, :log1p, :exp, :exp2, :exp10, 
         :expm1, :frexp, :exponent,
     )
-    @eval Base.$f(u::AbstractDimensions) = dimensionless(u)
+    @eval Base.$f(u::AbstractDimLike) = dimensionless(u)
     @eval Base.$f(q::AbstractQuantity) = with_ubase($f, q)
 end
 
