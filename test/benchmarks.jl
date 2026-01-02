@@ -63,9 +63,6 @@ ysd = DynamicQuantities.uconvert.(DynamicQuantities.us"km/s", yd)
 xf = randn(N) .* UnitRegistry.u"km/s"
 yf = (0.3 .+ randn(N)) .* UnitRegistry.u"km/s"
 
-xfb = ubase.(randn(N) .* UnitRegistry.u"km/s")
-yfb = ubase.((0.3 .+ randn(N)) .* UnitRegistry.u"km/s")
-
 g(x, y) = (x.^2) .+ 2.0.*x.*y .+ (y.^2)
 
 print("Unitful:\t")
@@ -80,11 +77,8 @@ print("DynamicQ Dim:\t")
 print("DynamicQ Array:\t")
 @btime g($xqd, $yqd);
 
-print("FlexU Affine:\t")
+print("FlexU:\t")
 @btime g($xf, $yf);
-
-print("FlexU Dim:\t")
-@btime g($xfb, $yfb);
 
 # ========== S4.1. upreferred ==========
 println("\nS4.1) upreferred\n")
