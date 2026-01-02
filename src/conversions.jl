@@ -4,6 +4,7 @@ uconvert with transformation objects
 #Generic transformation generator
 uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) = inv(todims(u_target)) ∘ todims(u_current)
 uconvert(ft::AbstractUnitTransform, x) = ft(x)
+uconvert(utarget::StaticDims{D}, ucurrent::StaticUnits{D}) where D = ucurrent.todims
 
 #============================================================================================
 uconvert with quantities
@@ -20,12 +21,16 @@ function uconvert(u::AbstractUnitLike, q::AbstractQuantity)
     return Quantity{typeof(newval), typeof(u)}(newval, u)
 end
 
+
+
 """
     dconvert(u::AbstractUnitLike, q::AbstractQuantity)
 
 Converts quantity `q` to the equivalent dimensional quantity having the same dimensions as `u`
 """
 dconvert(u::AbstractUnitLike, q::AbstractQuantity) = uconvert(dimension(u), q)
+
+
 
 
 """
@@ -38,6 +43,10 @@ function ubase(q::AbstractQuantity{<:Any,<:AbstractUnitLike})
     ft = todims(u)
     return Quantity(ft(ustrip(q)), dimension(u))
 end 
+function ubase(q::AbstractQuantity{T, <:StaticUnits{D}}) where {T,D}
+    x = unit(q).todims(ustrip(q))
+    return Quantity{typeof(x), StaticDims{D}}(x, StaticDims{D}())
+end
 ubase(q::AbstractQuantity{<:Any,<:AbstractDimLike}) = q
 
 """
@@ -92,17 +101,12 @@ end
 =#
 
 """
-   AffineUnits(q::AbstractQuantity{<:Number})
+   Units(q::AbstractQuantity{<:Number})
 
-Convert quantity `q` into an affine unit of the same magnitude
+Convert quantity `q` into a unit of the same magnitude
 """
-AffineUnits(q::AbstractQuantity{<:Number, <:Dimensions}) = AffineUnits(dims=dimension(q), scale=ustrip(q))
-function AffineUnits(q::AbstractQuantity{<:Number, <:AffineUnits})
-    u = unit(q)
-    is_scalar(u) || throw(ArgumentError("Cannot convert an affine quantity to a unit, quanity-to-unit conversions only work with scalar units"))
-    return AffineUnits(dims=dimension(q), scale=ustrip(q)*uscale(u))
-end
-AffineUnits(u::AffineUnits) = u
+Units(q::AbstractQuantity{<:Number, <:AbstractUnitLike}) = Units(dims=dimension(q), todims=todims(unit(q))*ustrip(q), symbol=DEFAULT_USYMBOL)
+Units(u::Units) = u
 
 #=================================================================================================
 Conversion and Promotion
@@ -129,11 +133,16 @@ function Base.convert(::Type{Q}, q::AbstractQuantity) where Q<:AbstractQuantity{
 end
 
 # Converting unit types ====================================================
-Base.convert(::Type{U}, u::AbstractUnitLike) where U<:AffineUnits = (u isa U) ? u : U(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=usymbol(u))
-Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = (u isa D) ? u : D(dimension(assert_dimension(u)))
+Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), todims=todims(u), symbol=usymbol(u))
+Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = D(dimension(assert_dimension(u)))
+Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)
+
+
+# Converting transform types ===============================================
+Base.convert(::Type{T}, t::NoTransform) where T <: AbstractUnitTransform = T()
 
 # Converting between units and quantities ====================================================
-Base.convert(::Type{U}, q::AbstractQuantity) where U<:AbstractAffineUnits = convert(U, AffineUnits(q))
+Base.convert(::Type{U}, q::AbstractQuantity) where U<:Units = Units(q)
 function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:AbstractQuantity{<:Any, <:AbstractDimensions}}
     assert_scalar(u)
     return Q(uscale(u), dimension(u))
@@ -143,17 +152,40 @@ end
 Base.convert(::Type{T}, q::AbstractQuantity) where {T<:Union{Number,AbstractArray}} = convert(T, dimensionless(q))
 Base.convert(::Type{Q}, x::Union{Number,AbstractArray}) where {Q<:AbstractQuantity} = Q(x, dimtype(Q)(0))
 
+#Static conversions
+Base.convert(::Type{Q}, q::AbstractQuantity{<:Any, <:StaticUnits{D}}) where {T,D,Q<:Quantity{T,StaticDims{D}}} = Q(dstrip(q), StaticDims{D}())
+Base.convert(::Type{Q}, q::AbstractQuantity{<:Any, <:StaticDims{D}}) where {T,D,Q<:Quantity{T,StaticDims{D}}}  = Q(dstrip(q), StaticDims{D}())
+Base.convert(::Type{Q}, q::AbstractQuantity{<:Any, <:StaticDims{D}}) where {T,D,C,Q<:Quantity{T,StaticUnits{D,C}}} = Q(ustrip(q), StaticUnits{D}(C()))
+Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D, dimval(d))
+
 # Promotion rules ======================================================
 function Base.promote_rule(::Type{<:Dimensions{P1}}, ::Type{<:Dimensions{P2}}) where {P1, P2}
     return Dimensions{promote_type(P1,P2)}
 end
+Base.promote_rule(::Type{T1}, ::Type{T2}) where {T1<:NoTransform, T2<:AbstractUnitTransform} = T2
 
-#Unit promotion (favors AffineDimensiosn due to information loss)
-function Base.promote_rule(::Type{D1}, ::Type{AffineUnits{D2}}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
-    return AffineUnits{promote_type(D1, D2)}
+#Conflicting or uncertain static dimensions get promoted to dynamic version
+Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimtype(D2))
+Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimtype(D1), dimtype(D2))
+
+#Promote static units to static dimenions, double definition needed for specificity
+function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1<:StaticUnits, U2<:StaticDims}
+    D = equaldims(dimval(U1), dimval(U2))
+    T = promote_type(T1, T2)
+    return Quantity{T, StaticDims{D}}
 end
-function Base.promote_rule(::Type{AffineUnits{D1}}, ::Type{AffineUnits{D2}}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
-    return AffineUnits{promote_type(D1, D2)}
+function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1<:StaticDims, U2<:StaticUnits}
+    D = equaldims(dimval(U1), dimval(U2))
+    T = promote_type(T1, T2)
+    return Quantity{T, StaticDims{D}}
+end
+
+#Unit promotion
+function Base.promote_rule(::Type{D1}, ::Type{Units{D2,T2}}) where {D1<:AbstractDimensions, D2<:AbstractDimensions, T2<:AbstractUnitTransform}
+    return Units{promote_type(D1, D2), T2}
+end
+function Base.promote_rule(::Type{Units{D1,T1}}, ::Type{Units{D2,T2}}) where {D1<:AbstractDimensions, D2<:AbstractDimensions, T1<:AbstractUnitTransform, T2<:AbstractUnitTransform}
+    return Units{promote_type(D1, D2), promote_type(T1,T2)}
 end
 
 #Quantity promotion (favors Dimensions, as converting quantities to SI does not result in information loss)

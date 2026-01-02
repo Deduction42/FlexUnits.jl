@@ -27,6 +27,7 @@ import Unitful
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
 const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
+const AT = AffineTransform
 
 @testset "Basic utilities" begin
     @test UnitRegistry.unittype() === DEFAULT_UNIT_TYPE
@@ -45,21 +46,19 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
     @test FlexUnits.remove_offset(u"°C") == u"K"
 
     @test FlexUnits.constructorof(typeof(Dimensions())) == Dimensions
-    @test FlexUnits.constructorof(typeof(u"m")) == AffineUnits
+    @test FlexUnits.constructorof(typeof(u"m")) == StaticUnits
     @test FlexUnits.constructorof(typeof(1.0*u"m")) == Quantity
     @test FlexUnits.constructorof(typeof((1.0+im)*u"m")) == Quantity
-    @test FlexUnits.constructorof(typeof(Quantity("this", u"m"))) == Quantity
+    @test FlexUnits.constructorof(typeof(Quantity("this", ud"m"))) == Quantity
     @test FlexUnits.constructorof(Array{Float64}) == Array
 
     #@test string(AffineUnits(scale=1, offset=0, dims=dimension(u"m"), symbol=:_)) == "AffineUnits(scale=1.0, offset=0.0, dims=m)"
-    @test string(ubase(1.0u"kg*m^2/s^2"), pretty=true)  == "1.0 (m² kg)/s²"
-    @test string(ubase(1.0u"kg*m^2/s^2"), pretty=false) == "(1.0)(m^2*kg)/s^2"
-    @test string(1.0u"kg*m^2/s^2", pretty=true)  == "1.0 kg*m^2/s^2"
-    @test string(1.0u"kg*m^2/s^2", pretty=false) == "(1.0)kg*m^2/s^2"
-    @test string(ubase(1.0u"1/s^2"), pretty=true)  == "1.0 1/s²"
-    @test string(ubase(1.0u"1/s^2"), pretty=false) == "(1.0)1/s^2"
-    @test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=true) == "1.0 m/s²"
-    @test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=false) == "(1.0)m/s^2"
+    @test string(1.0u"kg*m^2/s^2", pretty=true)  == "1.0 (m² kg)/s²"
+    @test string(1.0u"kg*m^2/s^2", pretty=false) == "(1.0)(m^2*kg)/s^2"
+    @test string(1.0u"1/s^2", pretty=true)  == "1.0 1/s²"
+    @test string(1.0u"1/s^2", pretty=false) == "(1.0)1/s^2"
+    #@test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=true) == "1.0 m/s²"
+    #@test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=false) == "(1.0)m/s^2"
 
     #Vector operations
     vq = Quantity([1,2], u"m/s")
@@ -167,7 +166,7 @@ end
         @test isempty(Quantity([0.0, 1.0], u)) == false
         @test isempty(Quantity(Float64[], u)) == true
         @test zero(Dimensions{R}) === Dimensions{R}()
-        @test zero(AffineUnits{Dimensions{R}}) === AffineUnits{Dimensions{R}}(dims=zero(Dimensions{R}))
+        @test zero(Units{Dimensions{R}, AT}) === Units{Dimensions{R}, AT}(dims=zero(Dimensions{R}))
 
         #Identity transform tests
         @test zero(1u"m/s") + 2.0u"m/s" == 2.0u"m/s"
@@ -180,8 +179,8 @@ end
         @test min(typemax(-1.0u"m/s"), 0.0u"m/s") == 0.0u"m/s"
         @test min(typemax(typeof(1.0u"m/s")), 0.0u"m/s") == 0.0u"m/s"
 
-        @test one(Quantity{T, AffineUnits{Dimensions{R}}}) === one(T)
-        @test oneunit(Quantity{T, AffineUnits{Dimensions{R}}}) == Quantity(one(T), zero(AffineUnits{Dimensions{R}}))
+        @test one(Quantity{T, Units{Dimensions{R}, AT}}) === one(T)
+        @test oneunit(Quantity{T, Units{Dimensions{R}, AT}}) == Quantity(one(T), zero(Units{Dimensions{R},AT}))
         @test oneunit(Quantity{T, Dimensions{R}}) == Quantity(one(T), zero(Dimensions{R}))
 
         @test min(0.0u"kg/hr", 1.2u"lb/s") == 0u"kg/s"
@@ -264,7 +263,7 @@ end
 end
 =#
 
-@testset "Basic unit functionality" begin
+@testset "Dynamic unit functionality" begin
     x = Quantity(0.2, Dimensions(length=1, mass=2.5, time=-1))
     u = ustrip(x)
 
@@ -278,38 +277,38 @@ end
     @test ubase(xp) ≈ ubase(x)
 
 
-    x = 1.3u"km/s^2"
+    x = 1.3ud"km/s^2"
     @test ustrip(x) == 1.3
     @test ustrip_base(x) == 1300  # SI base units
     @test x == q"1.3km/s^2"
     @test typeof(x) == typeof(q"1.3km/s^2")
     @test abs(x) === ubase(q"1.3km/s^2")
 
-    y = 0.9u"sqrt(mΩ)"
-    @test typeof(y) == Quantity{Float64, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
+    y = 0.9ud"sqrt(mΩ)"
+    @test typeof(y) == Quantity{Float64, Units{Dimensions{DEFAULT_RATIONAL}, AT}}
     @test typeof(ubase(y)) == Quantity{Float64, Dimensions{DEFAULT_RATIONAL}}
     @test ustrip_base(y) ≈ 0.02846049894151541
     @test y ≈ q"(0.9*sqrt(mΩ))"
 
-    y = BigFloat(0.3) * u"mΩ"
+    y = BigFloat(0.3) * ud"mΩ"
     @test typeof(y) == Quantity{BigFloat, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
     @test ustrip_base(y) ≈ 0.0003
 
     y32 = convert(Quantity{Float32, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}, y)
     @test typeof(y32) == Quantity{Float32, AffineUnits{Dimensions{DEFAULT_RATIONAL}}}
 
-    z = 1.0*u"yr"
+    z = 1.0*ud"yr"
     @test ustrip_base(z) ≈ 60 * 60 * 24 * 365.25
     @test z === 1.0*uparse("yr")
     @test z === qparse("1yr")
     @test 1/z === ubase(qparse("1/yr"))
     @test ubase(z) === ubase(qparse("1*yr"))
-    @test qparse("yr") == 1*u"yr"
+    @test qparse("yr") == 1*ud"yr"
 
     # Test type stability of extreme range of units
     U = typeof(first(values(UnitRegistry.UNITS)))
-    @test typeof(u"s"^2) == U
-    @test typeof(u"Ω") == U
+    @test typeof(ud"s"^2) == U
+    @test typeof(ud"Ω") == U
 
     @test_throws ArgumentError uparse(":x")
     @test_throws ArgumentError qparse(":x")
@@ -317,61 +316,61 @@ end
     @test_throws "Unexpected expression" uparse("import ..Units")
     @test_throws "Unexpected expression" uparse("(m, m)")
     @test_throws LoadError eval(:(us"x"))
-    @test_throws NotScalarError u"J/°C"
+    @test_throws NotScalarError ud"J/°C"
 
 
     #Basic mathematical operations
-    xp = 1u"percent"
-    xv = 1u"m/s"
+    xp = 1ud"percent"
+    xv = 1ud"m/s"
 
     @test +(xp, xp, xp) + 1 == 1.03
     @test xp + 1 == 1.01
     @test 1 + xp == 1.01
-    @test xv + xv == 2u"m/s"
+    @test xv + xv == 2ud"m/s"
     @test (xv + xv) isa Quantity{Float64, <:Dimensions}
 
     @test 1 - xp == 0.99 
     @test xp - 1 == -0.99
-    @test xv - xv == 0u"m/s"
+    @test xv - xv == 0ud"m/s"
     @test (xv - xv) isa Quantity{Float64, <:Dimensions}
 
     @test_throws DimensionError xv + 1
     @test_throws DimensionError 1 + xv
 
-    @test xv*1 == 1u"m/s"
-    @test xv*1 !== 1u"m/s"
-    @test xv*1 === ubase(1u"m/s")
-    @test xp*1 == 0.01*u""
-    @test xv*xv == 1u"m^2/s^2"
-    @test *(xv,xv,xv) == 1u"m^3/s^3"
-    @test cbrt(*(xv,xv,xv)) == 1u"m/s"
-    @test u"m/s" / unit(ubase(1u"m/s")) == u""
-    @test cbrt(u"m^3/s^3") == u"m/s"
-    @test abs2(dimension(u"m/s")) == dimension(u"m^2/s^2")
+    @test xv*1 == 1ud"m/s"
+    @test xv*1 !== 1ud"m/s"
+    @test xv*1 === ubase(1ud"m/s")
+    @test xp*1 == 0.01*ud""
+    @test xv*xv == 1ud"m^2/s^2"
+    @test *(xv,xv,xv) == 1ud"m^3/s^3"
+    @test cbrt(*(xv,xv,xv)) == 1ud"m/s"
+    @test ud"m/s" / unit(ubase(1ud"m/s")) == ud""
+    @test cbrt(ud"m^3/s^3") == ud"m/s"
+    @test abs2(dimension(ud"m/s")) == dimension(ud"m^2/s^2")
 
-    @test xv/1 == 1u"m/s"
-    @test xp/1 == 0.01*u""
-    @test xv/xv == 1u""
+    @test xv/1 == 1ud"m/s"
+    @test xp/1 == 0.01*ud""
+    @test xv/xv == 1ud""
 
-    @test sqrt(4*xv) == 2u"m^0.5/s^0.5"
-    @test (4*xv)^0.5 == 2u"m^0.5/s^0.5"
-    @test (2*xv)^2 == 4u"m^2/s^2"
+    @test sqrt(4*xv) == 2ud"m^0.5/s^0.5"
+    @test (4*xv)^0.5 == 2ud"m^0.5/s^0.5"
+    @test (2*xv)^2 == 4ud"m^2/s^2"
 
-    @test_throws DimensionError 2.0^(1u"m/s")
-    @test_throws DimensionError (1u"m/s")^(1u"m/s")
+    @test_throws DimensionError 2.0^(1ud"m/s")
+    @test_throws DimensionError (1ud"m/s")^(1ud"m/s")
 
     @test_throws ArgumentError uparse("s[1]")
     @test_throws ArgumentError uparse("pounds_per_hour")
 
 
     #Tests on truly affine units
-    °C  = u"°C"
-    °F  = u"°F"
-    K   = u"K"
+    °C  = ud"°C"
+    °F  = ud"°F"
+    K   = ud"K"
     @test dimension(°C).temperature == 1
     @test dimension(°C).length == 0
-    @test °C == u"degC"
-    @test °F == u"degF"
+    @test °C == ud"degC"
+    @test °F == ud"degF"
     @test 5°C - 4°C == 1K
     @test 5°C + 4°C == 282.15°C
     @test 5°C + 4°C - 0°C == 9°C
@@ -381,15 +380,15 @@ end
     #Ambiguity tests 
     cplx  = 1.0 + im 
     cplxb = Complex{Bool}(true + im)
-    @test xv*cplx  === ubase(Quantity(cplx, u"m/s"))
-    @test xv*cplxb === ubase(Quantity(cplxb, u"m/s"))
-    @test cplx*xv  === ubase(Quantity(cplx, u"m/s"))
-    @test cplxb*xv === ubase(Quantity(cplxb, u"m/s"))
+    @test xv*cplx  === ubase(Quantity(cplx, ud"m/s"))
+    @test xv*cplxb === ubase(Quantity(cplxb, ud"m/s"))
+    @test cplx*xv  === ubase(Quantity(cplx, ud"m/s"))
+    @test cplxb*xv === ubase(Quantity(cplxb, ud"m/s"))
 
-    @test xv/cplx  === ubase(Quantity(inv(cplx), u"m/s"))
-    @test xv/cplxb === ubase(Quantity(inv(cplxb), u"m/s"))
-    @test cplx/xv  === ubase(Quantity(cplx, inv(u"m/s")))
-    @test cplxb/xv === ubase(Quantity(cplxb, inv(u"m/s")))
+    @test xv/cplx  === ubase(Quantity(inv(cplx), ud"m/s"))
+    @test xv/cplxb === ubase(Quantity(inv(cplxb), ud"m/s"))
+    @test cplx/xv  === ubase(Quantity(cplx, inv(ud"m/s")))
+    @test cplxb/xv === ubase(Quantity(cplxb, inv(ud"m/s")))
 
     @test cplx + xp === cplx + 0.01
     @test xp + cplx === cplx + 0.01
@@ -402,16 +401,16 @@ end
     @test xp - cplxb === 0.01 - cplxb
 
     # Constructors
-    kelvin = AffineUnits(dims=u"K")
+    kelvin = Units(dims=ud"K", todims=AffineTransform())
     @test 1*kelvin == 1K
 
-    rankine = AffineUnits(scale=5/9, offset=0.0, dims=K)
+    rankine = Units(todims=AffineTransform(scale=5/9, offset=0.0), dims=K)
     @test 1*rankine == (5/9)K
 
-    fahrenheit = AffineUnits(scale=5/9, offset=(273.15-32*5/9), dims=K)
+    fahrenheit = Units(todims=AffineTransform(scale=5/9, offset=(273.15-32*5/9)), dims=K)
     @test 1*fahrenheit ≈ 1°F
 
-    celsius = AffineUnits(offset=273.15, dims=K)
+    celsius = Units(todims=AffineTransform(offset=273.15), dims=K)
     @test 1*celsius ≈ 1°C
 
     # Round-trip sanity checks
@@ -419,27 +418,27 @@ end
     @test -40.0*celsius ≈ -40.0*fahrenheit
     
     # Test promotion explicitly for coverage:
-    @test promote_type(AffineUnits{Dimensions{Int16}}, AffineUnits{Dimensions{Int32}}) === AffineUnits{Dimensions{Int32}}
-    @test promote_type(Dimensions{Int16}, AffineUnits{Dimensions{Int32}}) === AffineUnits{Dimensions{Int32}}
+    @test promote_type(Units{Dimensions{Int16}, AffineTransform}, Units{Dimensions{Int32}, AffineTransform}) === AffineUnits{Dimensions{Int32}}
+    @test promote_type(Dimensions{Int16}, Units{Dimensions{Int32}, AffineTransform}) === Units{Dimensions{Int32}, AffineTransform}
     
     # Test conversions
-    @test 1°C |> K isa Quantity{<:Real, <:AffineUnits}
+    @test 1°C |> K isa Quantity{<:Real, <:Units}
     @test 1°C |> unit(ubase(1K)) isa Quantity{<:Real, <:Dimensions}
     @test  °C |> unit(ubase(1K)) isa AffineTransform
 
     @test 0°C |> u"K" == 273.15u"K"
-    @test 1u"K" |> °C isa Quantity{<:Real, <:AffineUnits}
+    @test 1u"K" |> °C isa Quantity{<:Real, <:Units}
     @test 0u"K" |> °C  == -273.15°C
     @test °C |> °F isa AffineTransform
     @test 0°C |> °F == 32°F
     @test (°C |> °F)(0) ≈ 32
 
-    @test AffineUnits(dims=u"Pa") == u"Pa"
-    @test_throws NotDimensionError AffineUnits(dims=u"kPa")
+    @test Units(dims=u"Pa", todims=AffineTransform()) == u"Pa"
+    @test_throws NotDimensionError Units(dims=u"kPa", todims=AffineTransform())
 
     # Test display against errors
-    celsius = AffineUnits(offset=273.15, dims=u"K")
-    psi = FlexUnits.AffineUnits(6.89476u"kPa")
+    celsius = Units(todims=AffineTransform(offset=273.15), dims=u"K")
+    psi = Units(6.89476u"kPa")
     io = IOBuffer()
     @test isnothing(show(io, (dimension(°F), dimension(u"K"), psi, celsius, fahrenheit)))
 
@@ -461,36 +460,36 @@ end
     @test map_dimensions(Base.Fix1(*,2), dimension(u"m/s"))       == Dimensions(length=2, time=-2)
 
     # Parsing tests 
-    @test u"1.0" == u""
-    @test q"5 kg/s" == 5u"kg/s"
-    @test uparse("1.0") == u""
-    @test qparse("10 km/hr") == 10*u"km/hr"
-    @test u"%" == u"percent"
-    @test q"1%" == 0.01u""
-    @test q"1.0" == 1.0u""
-    @test qparse("1%") == 0.01u""
-    @test qparse("1.0") == 1.0u""
-    @test qparse("5  5kg") == 25u"kg"
+    @test ud"1.0" == ud""
+    @test q"5 kg/s" == 5ud"kg/s"
+    @test uparse("1.0") == ud""
+    @test qparse("10 km/hr") == 10*ud"km/hr"
+    @test ud"%" == ud"percent"
+    @test q"1%" == 0.01ud""
+    @test q"1.0" == 1.0ud""
+    @test qparse("1%") == 0.01ud""
+    @test qparse("1.0") == 1.0ud""
+    @test qparse("5  5kg") == 25ud"kg"
 
     #Test showerror 
     testio = IOBuffer()
 
-    showerror(testio, ConversionError(u"m/s", u"m"))
+    showerror(testio, ConversionError(ud"m/s", ud"m"))
     @test String(take!(testio)) == "ConversionError: Cannot convert unit 'm' to target unit 'm/s'. Consider multiplying 'm/s' by 's' or similar."
 
-    showerror(testio, DimensionError(dimension(u"m/s")))
+    showerror(testio, DimensionError(dimension(ud"m/s")))
     @test String(take!(testio)) == "DimensionError: m/s is not dimensionless"
 
-    showerror(testio, DimensionError(1u"m/s"))
+    showerror(testio, DimensionError(1ud"m/s"))
     @test String(take!(testio)) == "DimensionError: 1 m/s is not dimensionless"
 
-    showerror(testio, DimensionError((dimension(u"m/s"), dimension(u"s/m"))))
+    showerror(testio, DimensionError((dimension(ud"m/s"), dimension(ud"s/m"))))
     @test String(take!(testio)) == "DimensionError: (m/s, s/m) have incompatible dimensions"
 
-    showerror(testio, NotScalarError(u"°C"))
+    showerror(testio, NotScalarError(ud"°C"))
     @test String(take!(testio)) == "NotScalarError: °C cannot be treated as scalar, operation only valid for scalar units"
 
-    showerror(testio, NotDimensionError(u"kPa"))
+    showerror(testio, NotDimensionError(ud"kPa"))
     @test String(take!(testio)) == "NotDimensionError: kPa cannot be treated as dimension, operation only valid for dimension units"
 end
 

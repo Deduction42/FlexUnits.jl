@@ -5,7 +5,7 @@ module UnitRegistry
 using ..RegistryTools
 
 const UNIT_LOCK = ReentrantLock()
-const UNITS = PermanentDict{Symbol, AffineUnits{Dimensions{FixRat32}}}()
+const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform}}()
 
 #Fill the UNITS registry with default values
 registry_defaults!(UNITS)
@@ -38,6 +38,6 @@ dimtype()  = RegistryTools.dimtype(UNITS)
 
 #Registry is exported but these functions/macros are not (in case user wants their own verison)
 #You can import these by invoking `using .Registry`
-export @u_str, uparse, @q_str, qparse, register_unit
+export @u_str, @ud_str, uparse, @q_str, qparse, register_unit
 
 end

@@ -3,17 +3,18 @@ This package should look like Unitful.jl but behave like DynamicQuantities.jl un
 Major Changes:
 1.  (breaking) Static units are now supported, and the string macro @u_str now produces static units that eagery convert to SI units 
     (use @ud_str for old behaviour)
-2.  (breaking) `zero(::Quantity{T,D})` now outputs a new quanitity type Quantity{T, MirrorUnion{D}}
+2.  (breaking) `zero(::Quantity{T,D})` for dynamic units now outputs a new quanitity type Quantity{T, MirrorUnion{D}}
     -   This allows an "additive identity" as MirrorUnion{D} mirrors the dimensions in the other argument
     -   Enables functionality like var(X, dims=1) where X is a matrix of mixed units
     -   Behaviour also applies to `typemin` and `typemax` as well
 3.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
 4.  (breaking) `quantity` removed, use Quantity instead
 5.  (breaking) `UnitfulCallable` removed in favor of QuantMapping(f::Function, u::UnitMap)
-6.  Added more promotion rules to convert to quantities
-7.  FixRat32 is now exported
-8.  Added "dstrip" as shorthand for "ustrip_base"
-9.  Added "dconvert" to convert to the dimensions of the unit
+6.  `zero(::Quantity{T,D})` for static units behaves like Unitful
+7.  Added more promotion rules to convert numbers to quantities
+8.  FixRat32 is now exported
+9.  Added "dstrip" as shorthand for "ustrip_base"
+10. Added "dconvert" to convert to the dimensions of the unit
 
 
 Current Tasks:
@@ -21,10 +22,15 @@ Prioritize making StaticUnits more robust, as significant performance gains have
 1.  Deprecate AffineUnits entirely, rename it to Units{D,T<:AffineTransform}
     1   Replace all calls to AffineUnits with appropriate Units versions
         -   Should be done manually
-    3   Include "trasnform type" T under AbstractUnits{D,T}
-    4   Subtype StaticUnits{D,T} under AbstractUnits{D,T}
-2.  Achieve 95% coverage with new tests
+    2   Add "udynamic(x)" methods for quantities, units and dimensions
+2.  Move StaticUnits and StaticDims under "types.jl" and rename "static_units" to "math_static.jl"
+    -   Make sure to add unique items like "zero" and "typemax"
+    -   May need to generalize some elements of "math.jl"
+3.  Achieve 95% coverage with new tests
     -   Replicate appropriate tests with "ud" macro
+4.  Add FlexUnits support for static transform (to prevent recalculation) uconvert(u, q, t)
+    -   Add this to the "uconvert" option to the benchmarks
+    -   Break down "broadcast into large arrays" between "uniform units" and "nonuniform units"
 
 
 Backlog:

@@ -71,24 +71,31 @@ Base.:^(d::MirrorDims, p::Real) = d
 #=============================================================================================
  Mathematical operations on abstract units and transforms (mostly for parsing)
 =============================================================================================#
+const NON_SCALAR_ERROR = ArgumentError("Operation only allowed on scalar transforms")
+
 Base.:+(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset + x, scale = t.scale)
 Base.:+(x::Real, t::AffineTransform) = t + x 
 Base.:-(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset - x, scale = t.scale)
 
 function Base.:*(t1::AffineTransform, t2::AffineTransform) 
-    is_scalar(t1) & is_scalar(t2) || throw(ArgumentError("Operation only allowed on scalar transforms"))
+    is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
     return AffineTransform(scale = t1.scale*t2.scale, offset = 0) 
 end
+Base.:*(t::AffineTransform, x::Real) = is_scalar(t) ? AffineTransform(scale=t.scale*x, offset=0) : throw(NON_SCALAR_ERROR)
+Base.:*(t::NoTransform, x::Real) = AffineTransform(scale=x, offset=0)
 
 function Base.:/(t1::AffineTransform, t2::AffineTransform) 
-    is_scalar(t1) & is_scalar(t2) || throw(ArgumentError("Operation only allowed on scalar transforms"))
+    is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
     return AffineTransform(scale = t1.scale/t2.scale, offset = 0) 
 end
+Base.:/(t::AffineTransform, x::Real) = is_scalar(t) ? AffineTransform(scale=t.scale/x, offset=0) : throw(NON_SCALAR_ERROR)
+Base.:/(t1::NoTransform, x::Real) = AffineTransform(scale=inv(x), offset=0)
 
 function Base.:^(t::AffineTransform, p::Real) 
-    is_scalar(t) || throw(ArgumentError("Operation only allowed on scalar transforms"))
+    is_scalar(t) || throw(NON_SCALAR_ERROR)
     return AffineTransform(scale = t.scale^p, offset = 0) 
 end
+Base.:^(t1::NoTransform, p::Real) = t1
 
 Base.:*(x::ARITHMETICS, u::AbstractUnitLike) = Quantity(x, u)
 Base.:/(x::ARITHMETICS, u::AbstractUnitLike) = Quantity(x, inv(u))
@@ -210,7 +217,7 @@ Base.abs2(q::AbstractQuantity) = with_ubase(abs2, q)
 Base.max(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(max, q1, q2)
 Base.min(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(min, q1, q2)
 Base.zero(::Type{D}) where D<:AbstractDimensions = D()
-Base.zero(::Type{U}) where U<:AffineUnits = U(dims=dimtype(U)())
+Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), todims=T())
 
 #Common functions for initializers
 Base.one(::Type{<:AbstractQuantity{T}}) where T = one(T) #unitless

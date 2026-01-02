@@ -3,17 +3,11 @@
 [![Coverage Status](https://coveralls.io/repos/github/Deduction42/FlexUnits.jl/badge.svg?branch=main)](https://coveralls.io/github/Deduction42/FlexUnits.jl?branch=main)
 
 # FlexUnits.jl
-The flexible units package. FlexUnits.jl was heavily inspired by DynamicQuantities.jl and Unitful.jl and can be seen as a hybridization of the two. Under the hood, operations on quantities are executed similarly to DynamicQuantities.jl, allowing a single concrete unit type to represent a variety of units, but the API and unit support is designed to more closely relate to Unitful.jl. This means multiple quantities with different units can be stored inside a concretely-typed Array or Dict (which is not possible with Unitful.jl). However, unlike DynamicQuantities.jl, this package *fully* supports affine units (like °C and °F) and fully supports custom unit registries.
+FlexUnits.jl is a rewrite of Unitful.jl that maintains similar performance to Unitful.jl when units can be inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units cannot be statically inferred. Thus, this package blends concepts from Unitful and DynamicQuantities to achieve the best of both worlds. This is achieved through two major design decisions:
 
-#### Major differences between FlexUnits.jl and DynamicQuantities.jl
-1. Fully supports affine units (like °C and °F) and can potentially support logarithmic units (like dB) in a separate registry
-2. The string macro `u_str` and parsing function `uparse` are not automatically exported (allowing users to export their own registries)
-3. Easier to build your own unit registry (allowing differnet behaviour for `u_str` and `uparse`)
-4. While units are pretty-printed by default, you can enable parseable unit outputs by setting `pretty_print_units(false)` which is useful for outputting unit information in JSON
-5. More closely resembles the Unitful.jl API in many ways
-6. No symbolic units (everything eagerly evaluates to SI units)
-7. The function `uexpand` is replaced by `ubase`
-8. There is no `Quantity` type that subtypes to `Number` or `Real`. A `Quantity` in FlexUnits.jl is equivalent to a `GenericQuantity` in DynamicQuantities.jl This is a deliberate design decision to avoid ambiguities on numerical operations with user-defined types.
+1. Promotion rules that convert Unitful-like `StaticDims` into DynamicQuantities-like `Dimensions` when units are mismatched. Operations on `Dimensions` quantities are slower than `StaticDims` quantities because dimension operations need to be performed at runtime; however, dynamic dimension ops are type-stable, compilable, and still much faster than dynamic dispatch that Unitful falls back to.
+
+2. Quantities with units are converted to quantities with dimensions (i.e. SI units) before any calculation is performed. This greatly simplifies many calculation operations. When applied to `StaticDims`, this greatly reduces over-specialization, because there is only one unit for every dimension. For example, velocity is always in "m/s", temperature is always in "K", and pressure is always in "Pa"="kg/(m s²)". This decision tends to result in FlexUnits exhibiting better performance than Unitful in cases where variables are re-assigned during iteration (a common pattern in performance-sensitive code), but this comes at the cost of slower unit conversions. However, unit conversions are often only neccessary in high-level code; eager conversion to dimensional quantities removes the need for conversions in low-level code. 
 
 #### Major differences between FlexUnits.jl and Unitufl.jl
 1. Units are not specialized (u"m/s" returns the same concrete type as u"°C") which is much faster when units cannot be inferred

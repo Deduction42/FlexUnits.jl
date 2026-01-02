@@ -6,13 +6,14 @@ include("types.jl")
 include("utils.jl")
 include("conversions.jl")
 include("math.jl")
-include("static_units.jl")
+include("math_static.jl")
 include("RegistryTools.jl")
 include("UnitRegistry.jl")
 
-export AbstractUnitLike, AbstractDimensions, AbstractUnits, AbstractAffineUnits, AbstractUnitTransform
+export AbstractUnitLike, AbstractDimensions, AbstractUnits, AbstractUnitTransform
 export ConversionError, DimensionError, NotScalarError, NotDimensionError, FixRat32
-export Dimensions, AffineUnits, Quantity, AbstractQuantity, AffineTransform, MirrorDims, MirrorUnion
+export Dimensions, Units, Quantity, AbstractQuantity, AffineTransform, MirrorDims, MirrorUnion
+export StaticDims, StaticUnits
 export RegistryTools, UnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units
 export assert_scalar, assert_dimension, assert_dimensionless

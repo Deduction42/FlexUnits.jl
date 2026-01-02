@@ -117,6 +117,14 @@ function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractD
     return show(io, vals)
 end
 
+function Base.show(io::IO, u::StaticDims; pretty=PRETTY_DIM_OUTPUT[])
+    return show(io, udynamic(u), pretty=pretty)
+end
+
+function Base.show(io::IO, u::StaticUnits; pretty=PRETTY_DIM_OUTPUT[])
+    return show(io, udynamic(u), pretty=pretty)
+end
+
 function _parsable_print_quantity(io::IO, q::AbstractQuantity)
     print(io, "(", ustrip(q), ")")
     return _parsable_print_unit(io, unit(q))
