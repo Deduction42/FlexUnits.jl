@@ -1,3 +1,4 @@
+#=
 include("fixed_rational.jl")
 include("types.jl")
 include("utils.jl")
@@ -5,6 +6,7 @@ include("conversions.jl")
 include("math.jl")
 include("RegistryTools.jl")
 include("UnitRegistry.jl")
+=#
 
 #============================================================================================================================
 Type definitions
@@ -106,7 +108,7 @@ Base.cbrt(d::StaticDims{D}) where D = StaticDims{sqrt(D)}()
 Base.abs2(d::StaticDims{D}) where D = StaticDims{abs2(D)}()
 Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 
-@inline Base.literal_pow(::typeof(^), d::D, ::Val{0}) where {D <: AbstractDimensions} = D()
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = StaticDims{dimtype(d)()}
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{1}) = d 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{2}) = d*d 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{3}) = d*d*d
@@ -114,7 +116,7 @@ Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-2}) = inv(d*d)
 
 
-
+#=
 #Tests
 using Test
 using BenchmarkTools
@@ -149,4 +151,5 @@ v1flex = [1.0*StaticUnits(u"m/s"), 1.0*StaticUnits(u"m/s"), 1.0*StaticUnits(u"m/
 @btime sum(x->x^2.0, v1uni)
 @btime sum(x->x^2.0, $v1dyn)
 @btime sum(x->x^2.0, $v1flex)
+=#
 =#

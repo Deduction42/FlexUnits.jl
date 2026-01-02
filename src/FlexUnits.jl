@@ -6,6 +6,7 @@ include("types.jl")
 include("utils.jl")
 include("conversions.jl")
 include("math.jl")
+include("static_units.jl")
 include("RegistryTools.jl")
 include("UnitRegistry.jl")
 

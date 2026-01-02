@@ -77,7 +77,7 @@ struct NoTransform end
 
 Base.:∘(t1::NoTransform, t2::AbstractUnitTransform) = t2 
 Base.:∘(t1::AbstractUnitTransform, t2::NoTransform) = t1 
-Base.:∘(t1::NoTransform, t2::NoTransform) = t1 
+Base.:∘(t1::NoTransform, t2::NoTransform) = t1
 Base.inv(t::NoTransform) = t
 uscale(t::NoTransform)  = 1
 uoffset(t::NoTransform) = 0
@@ -157,7 +157,6 @@ function Base.:∘(t2::AffineTransform, t1::AffineTransform)
         offset = t2.offset + t2.scale*t1.offset 
     )
 end
-
 Base.inv(t::AffineTransform) = AffineTransform(scale=inv(t.scale), offset=-t.offset/t.scale)
 
 uscale(t::AffineTransform) = t.scale 

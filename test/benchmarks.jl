@@ -22,7 +22,7 @@ const Ns = 1000
 
 # ========== S1. Scalar ops (units inferable) ==========
 println("S1) Scalar operations where units are inferable\n")
-f1(x, y) = x * y + y * x            # result dimension is (x*y)
+f1(x, y) = x^2 * y^2 + y^2 * x^2            # result dimension is (x*y)
 
 print("Unitful:\t")
 @btime f1($(1.23 * Unitful.u"m/s"), $(0.7 * Unitful.u"m/s"));
@@ -38,7 +38,7 @@ println("\nS2) Scalar ops on heterogeneous units (non-inferable)\n")
 
 v_uni  = [1.0 * Unitful.u"m/s", 1.0 * Unitful.u"J/kg", 1.0 * Unitful.u"A/V"]
 v_dyn  = [1.0 * DynamicQuantities.u"m/s", 1.0 * DynamicQuantities.u"J/kg", 1.0 * DynamicQuantities.u"A/V"]
-v_flex = ubase.([1.0 * UnitRegistry.u"m/s", 1.0 * UnitRegistry.u"J/kg", 1.0 * UnitRegistry.u"A/V"])   # normalize to SI dims
+v_flex = [1.0 * UnitRegistry.u"m/s", 1.0 * UnitRegistry.u"J/kg", 1.0 * UnitRegistry.u"A/V"]
 
 print("Unitful:\t")
 @btime sum(x -> x^0.0, $v_uni);
@@ -158,10 +158,11 @@ struct DState
 end
 
 # FlexUnits single concrete type works
-const UF = typeof(ubase(1.0*UnitRegistry.u"K"))
-struct FState
-    T::UF
-    p::UF
+const FQK = typeof(1.0*UnitRegistry.u"K")
+const FQkPa = typeof(1.0*UnitRegistry.u"kPa")
+struct FState{TK,TP}
+    T::TK
+    p::TP
 end
 
 function build_states_unitful(n)
@@ -178,8 +179,11 @@ function build_states_dyn(n)
 end
 
 function build_states_flex(n)
-    [FState((290.0 + rand() * 20) * UnitRegistry.u"K",
-        (90.0 + rand() * 30) * UnitRegistry.u"kPa") for _ = 1:n]
+    v = Vector{FState{FQK,FQkPa}}(undef, n)
+    @inbounds for i = 1:n
+        v[i] = FState((290.0 + rand() * 20) * UnitRegistry.u"K", (90.0 + rand() * 30) * UnitRegistry.u"kPa")
+    end
+    return v
 end
 
 println("\nS6.1) Construct\n")

@@ -21,6 +21,10 @@ qparse(str::String) = RegistryTools.qparse(str, UNITS)
 
 #String macros are possible now that we are internally referring to UNITS
 macro u_str(str)
+    return esc(suparse_expr(str, UNITS))
+end
+
+macro ud_str(str)
     return esc(uparse_expr(str, UNITS))
 end
 

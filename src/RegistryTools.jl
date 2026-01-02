@@ -2,13 +2,13 @@
 module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits, ..AbstractAffineUnits, ..AbstractDimensions
-import ..AffineUnits, ..Dimensions, ..AffineTransform,  ..AbstractQuantity, ..Quantity, ..FixRat32, ..FixRat64
+import ..AffineUnits, ..Dimensions, ..AffineTransform, ..StaticUnits, ..AbstractQuantity, ..Quantity, ..FixRat32, ..FixRat64
 import ..uscale, ..uoffset, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype
 
 export 
     AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractDimensions, FixRat32, FixRat64,
     AffineUnits, Dimensions, AffineTransform, AbstractQuantity, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
-    PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, dimtype
+    PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, suparse_expr, dimtype
 
 const UnitOrQuantity = Union{AbstractUnitLike, AbstractQuantity}
 const PARSE_CASES = Union{Expr,Symbol,Real,Nothing}
@@ -231,6 +231,11 @@ function qparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: Abstr
     uex = uparse_expr(ustr, reg)
 
     return :($Q($nf64, $uex))
+end
+
+function suparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    uex = uparse_expr(str, reg)
+    return :($StaticUnits($uex))
 end
 
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike

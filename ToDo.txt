@@ -1,14 +1,15 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Major Changes:
-1.  (breaking) `zero(::Quantity{T,D})` now outputs a new quanitity type Quantity{T, MirrorUnion{D}}
+1.  (breaking) Static units are now supported, and the string macro @u_str now produces static units that eagery convert to SI units 
+    (use @ud_str for old behaviour)
+2.  (breaking) `zero(::Quantity{T,D})` now outputs a new quanitity type Quantity{T, MirrorUnion{D}}
     -   This allows an "additive identity" as MirrorUnion{D} mirrors the dimensions in the other argument
     -   Enables functionality like var(X, dims=1) where X is a matrix of mixed units
     -   Behaviour also applies to `typemin` and `typemax` as well
-2.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
-3.  (breaking) `quantity` removed, use Quantity instead
-4.  (breaking) `UnitfulCallable` removed in favor of QuantMapping(f::Function, u::UnitMap)
-5.  (breaking) `AbstractUnitTransform` is renamed to `AbstractUnitTransform` (AffineTrnasform is now AffineTransform)
+3.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
+4.  (breaking) `quantity` removed, use Quantity instead
+5.  (breaking) `UnitfulCallable` removed in favor of QuantMapping(f::Function, u::UnitMap)
 6.  Added more promotion rules to convert to quantities
 7.  FixRat32 is now exported
 8.  Added "dstrip" as shorthand for "ustrip_base"
@@ -18,18 +19,13 @@ Major Changes:
 Current Tasks:
 Prioritize making StaticUnits more robust, as significant performance gains have been found (even over Unitful.jl)
 1.  Deprecate AffineUnits entirely, rename it to Units{D,T<:AffineTransform}
-    1   Define operators for AffineTrasnform (just before "Unit math")
-        -   +(t::AffineTrnasform, x::Number) (add x to the offset)
-        -   *(t::AffineTransform, x::Number) (multiply the scale by x)
-        -   (-,/)
-    2   Replace all calls to AffineUnits with appropriate Units versions
+    1   Replace all calls to AffineUnits with appropriate Units versions
         -   Should be done manually
     3   Include "trasnform type" T under AbstractUnits{D,T}
     4   Subtype StaticUnits{D,T} under AbstractUnits{D,T}
+2.  Achieve 95% coverage with new tests
+    -   Replicate appropriate tests with "ud" macro
 
-2.  Make string macros produce static units (for performance reasons)
-    -   u"km/hr" will produce StaticUnits, 5.0u"km/hr" will eagerly convert to SI
-    -   ud"km/hr" will produce AffineUnits and will not eagerly convert
 
 Backlog:
 1.  Finish basic QuantLinMap functionality for +,-,*,/,\,^,exp, (and matrix trigs)
