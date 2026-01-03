@@ -34,7 +34,7 @@ print("FlexU:     \t")
 @btime f1($(1.23 * UnitRegistry.u"m/s"), $(0.7 * UnitRegistry.u"m/s"));
 
 # ========== S2. Scalar ops (NON-inferable units / mixed dims) ==========
-println("\nS2) Scalar ops on heterogeneous units (non-inferable)\n")
+println("\nS2.1) Scalar ops on heterogeneous units (non-inferable)\n")
 
 v_uni  = [1.0 * Unitful.u"m/s", 1.0 * Unitful.u"J/kg", 1.0 * Unitful.u"A/V"]
 v_dyn  = [1.0 * DynamicQuantities.u"m/s", 1.0 * DynamicQuantities.u"J/kg", 1.0 * DynamicQuantities.u"A/V"]
@@ -44,8 +44,22 @@ print("Unitful:\t")
 @btime sum(x -> x^0.0, $v_uni);
 print("DynamicQ:\t")
 @btime sum(x -> x^0.0, $v_dyn);
-print("FlexU ubase:\t")
+print("FlexU:\t")
 @btime sum(x -> x^0.0, $v_flex);
+
+
+# This is an example where static FlexUnits VASTLY outperforms Unitful due to the design choice of sticking with dimensions
+println("\nS2.1) Scalar ops on homogeneous units (theoretically inferrable)\n")
+v1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s"]
+v1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s"]
+v1flex = [1.0*UnitRegistry.u"m/s", 1.0*UnitRegistry.u"m/s", 1.0*UnitRegistry.u"m/s"]
+
+print("Unitful:\t")
+@btime sum(x->x^2, v1uni)
+print("DynamicQ:\t")
+@btime sum(x->x^2, $v1dyn)
+print("FlexU:\t")
+@btime sum(x->x^2, $v1flex)
 
 # ========== S3. Broadcasting on large arrays ==========
 println("\nS3) Broadcasting on large arrays\n")
@@ -114,7 +128,7 @@ print("FlexU:  \t")
 @btime FlexUnits.uconvert.(UnitRegistry.u"ft", $l_flex);
 
 # ========== S5. Affine units (°C/°F) ==========
-println("\nS5) Affine units (°C/°F) handling: PV = nRT at 25°C, 101.3kPa, n=1 mol\n")
+println("\nS5) Ideal gas law with affine units: PV = nRT at 25°C, 101.3kPa, n=1 mol\n")
 Tc = 25 .+ randn(Ns);
 Tu = (Tc .+ 273.15) .* Unitful.u"K";
 Td = [Tci * DynamicQuantities.ua"degC" for Tci in Tc];
@@ -132,6 +146,7 @@ print("DynamicQ:\t")
 
 print("FlexU  :\t")
 @btime ($nf .* F_R .* $Tf) ./ $pf;
+
 
 # ========== S6. Struct storage & field access ==========
 println("\nS6) Structs with quantities as fields")

@@ -515,6 +515,16 @@ end
     @test String(take!(testio)) == "NotDimensionError: kPa cannot be treated as dimension, operation only valid for dimension units"
 end
 
+@testset "Static unit functionality" begin
+    #Test promotion rules
+    q1 = 5.0u"km/hr" |> u"km/hr"
+    q2 = 20.0*u"m/s"
+    q3 = 10.0u"kg/s"
+
+    @test eltype([q1,q1]) <: Quantity{Float64, typeof(u"m/s")} #StaticUnits preserved
+    @test eltype([q1,q2]) <: Quantity{Float64, typeof(dimension(u"m/s"))} #StaticUnits and StaticDims promote to StaticDims if dimension is the same
+    @test eltype([q1,q2,q3]) <: Quantity{Float64, <:Dimensions} #Different dimensions promote to "Dimensions"
+end
 
 @testset "Type conversions" begin
     d = Dimensions{Rational{Int16}}(mass=2)
@@ -704,7 +714,7 @@ register_unit("psig" => Units(todims=AffineTransform(scale=uscale(ud"psi"), offs
     @test reg[:kg] === Units(todims=AffineTransform(), dims=IntDimType(mass=1), symbol=:kg)    
 end
 
-@testset "Unitful integration" begin
+@testset "Integration tests with Unitful" begin
     q1 = 5.0*Unitful.u"km/hr"
     q2 = 10.0*ud"°C"
     q3 = 15*Unitful.u"cd/mol"

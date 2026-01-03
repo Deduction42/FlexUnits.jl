@@ -68,6 +68,33 @@ for op in (:inv, :sqrt, :cbrt, :abs2, :adjoint)
 end
 Base.:^(d::MirrorDims, p::Real) = d
 
+
+#============================================================================================================================
+Static dimension ops
+============================================================================================================================#
+Base.:(==)(d1::AbstractDimensions, d2::StaticDims) = (d1 == dimval(d2))
+Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
+
+equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) ? arg1 : throw(DimensionError((arg1,arg2)))
+equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (dimval(arg1) == arg2) ? arg2 : throw(DimensionError((arg1,arg2)))
+equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2))  ? arg1 : throw(DimensionError((arg1,arg2)))
+
+Base.:*(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1*D2}()
+Base.:/(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1/D2}()
+Base.inv(arg::StaticDims{D}) where D = StaticDims{inv(D)}()
+Base.:^(d::StaticDims{D}, p::Real) where D = StaticDims{D^p}()
+Base.sqrt(d::StaticDims{D}) where D = StaticDims{sqrt(D)}()
+Base.cbrt(d::StaticDims{D}) where D = StaticDims{sqrt(D)}()
+Base.abs2(d::StaticDims{D}) where D = StaticDims{abs2(D)}()
+Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
+
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = StaticDims{dimtype(d)()}
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{1}) = d 
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{2}) = d*d 
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{3}) = d*d*d
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-1}) = inv(d) 
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-2}) = inv(d*d)
+
 #=============================================================================================
  Mathematical operations on abstract units and transforms (mostly for parsing)
 =============================================================================================#
