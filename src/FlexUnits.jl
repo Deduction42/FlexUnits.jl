@@ -9,9 +9,10 @@ include("math.jl")
 include("RegistryTools.jl")
 include("UnitRegistry.jl")
 
-export AbstractUnitLike, AbstractDimensions, AbstractUnits, AbstractAffineUnits, AbstractUnitTransform
+export AbstractUnitLike, AbstractDimensions, AbstractUnits, AbstractUnitTransform
 export ConversionError, DimensionError, NotScalarError, NotDimensionError, FixRat32
-export Dimensions, AffineUnits, Quantity, AbstractQuantity, AffineTransform, MirrorDims, MirrorUnion
+export Dimensions, Units, Quantity, AbstractQuantity, AffineTransform, MirrorDims, MirrorUnion
+export StaticDims, StaticUnits
 export RegistryTools, UnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units
 export assert_scalar, assert_dimension, assert_dimensionless

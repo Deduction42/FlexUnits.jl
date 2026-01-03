@@ -3,12 +3,9 @@ using BenchmarkTools
 
 import Unitful as UF
 import DynamicQuantities as DQ
+using FlexUnits, .UnitRegistry
 
-macro su_str(str)
-    rawex = UnitRegistry.uparse_expr(str, UnitRegistry.UNITS)
-    newex = :($StaticUnits($rawex))
-    return esc(newex)
-end
+const N_ITER = Ref(10)
 
 @kwdef struct PengRobinson{NT} <: FieldVector{10,NT}
     T  :: NT 
@@ -43,7 +40,7 @@ function volume(state)
     V = R*T/P
 
     #Use the residual error of the ideal gas law to predict V and iterate
-    for ii in 1:10
+    for ii in 1:N_ITER[]
         Ph = pressure(state)
         Zr = Ph/P #Residual compressibility factor
         V  = V*Zr #Use compressibility to predict volume at P
@@ -83,10 +80,10 @@ dq_t = (
 )
 
 fl_t = (
-    T=x.T*su"K", P=x.P*su"Pa", V=x.V*su"m^3/mol", 
-    a=x.a*su"J*m^3/mol^2", b=x.b*su"m^3/mol", ω=x.ω*su"m/m", 
-    Tc=x.Tc*su"K", Pc=x.Pc*su"Pa", Mw=x.Mw*su"kg/mol",
-    R=x.R*su"J/(K*mol)"
+    T=x.T*u"K", P=x.P*u"Pa", V=x.V*u"m^3/mol", 
+    a=x.a*u"J*m^3/mol^2", b=x.b*u"m^3/mol", ω=x.ω*u"m/m", 
+    Tc=x.Tc*u"K", Pc=x.Pc*u"Pa", Mw=x.Mw*u"kg/mol",
+    R=x.R*u"J/(K*mol)"
 )
 
 @info "Statically-Inferrable Peng-Robinson"

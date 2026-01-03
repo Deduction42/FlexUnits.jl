@@ -68,9 +68,62 @@ for op in (:inv, :sqrt, :cbrt, :abs2, :adjoint)
 end
 Base.:^(d::MirrorDims, p::Real) = d
 
+
+#============================================================================================================================
+Static dimension ops
+============================================================================================================================#
+Base.:(==)(d1::AbstractDimensions, d2::StaticDims) = (d1 == dimval(d2))
+Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
+
+equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) ? arg1 : throw(DimensionError((arg1,arg2)))
+equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (dimval(arg1) == arg2) ? arg2 : throw(DimensionError((arg1,arg2)))
+equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2))  ? arg1 : throw(DimensionError((arg1,arg2)))
+
+Base.:*(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1*D2}()
+Base.:/(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1/D2}()
+Base.inv(arg::StaticDims{D}) where D = StaticDims{inv(D)}()
+Base.:^(d::StaticDims{D}, p::Real) where D = StaticDims{D^p}()
+Base.sqrt(d::StaticDims{D}) where D = StaticDims{sqrt(D)}()
+Base.cbrt(d::StaticDims{D}) where D = StaticDims{sqrt(D)}()
+Base.abs2(d::StaticDims{D}) where D = StaticDims{abs2(D)}()
+Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
+
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = StaticDims{dimtype(d)()}
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{1}) = d 
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{2}) = d*d 
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{3}) = d*d*d
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-1}) = inv(d) 
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-2}) = inv(d*d)
+
 #=============================================================================================
- Mathematical operations on abstract units (mostly for parsing)
+ Mathematical operations on abstract units and transforms (mostly for parsing)
 =============================================================================================#
+const NON_SCALAR_ERROR = ArgumentError("Operation only allowed on scalar transforms")
+
+Base.:+(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset + x, scale = t.scale)
+Base.:+(x::Real, t::AffineTransform) = t + x 
+Base.:-(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset - x, scale = t.scale)
+
+function Base.:*(t1::AffineTransform, t2::AffineTransform) 
+    is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
+    return AffineTransform(scale = t1.scale*t2.scale, offset = 0) 
+end
+Base.:*(t::AffineTransform, x::Real) = is_scalar(t) ? AffineTransform(scale=t.scale*x, offset=0) : throw(NON_SCALAR_ERROR)
+Base.:*(t::NoTransform, x::Real) = AffineTransform(scale=x, offset=0)
+
+function Base.:/(t1::AffineTransform, t2::AffineTransform) 
+    is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
+    return AffineTransform(scale = t1.scale/t2.scale, offset = 0) 
+end
+Base.:/(t::AffineTransform, x::Real) = is_scalar(t) ? AffineTransform(scale=t.scale/x, offset=0) : throw(NON_SCALAR_ERROR)
+Base.:/(t1::NoTransform, x::Real) = AffineTransform(scale=inv(x), offset=0)
+
+function Base.:^(t::AffineTransform, p::Real) 
+    is_scalar(t) || throw(NON_SCALAR_ERROR)
+    return AffineTransform(scale = t.scale^p, offset = 0) 
+end
+Base.:^(t1::NoTransform, p::Real) = t1
+
 Base.:*(x::ARITHMETICS, u::AbstractUnitLike) = Quantity(x, u)
 Base.:/(x::ARITHMETICS, u::AbstractUnitLike) = Quantity(x, inv(u))
 
@@ -80,20 +133,19 @@ Base.:/(q::AbstractQuantity, u::AbstractUnitLike) = Quantity(ustrip(q), unit(q)/
 Base.:/(u::AbstractUnitLike, q::AbstractQuantity) = Quantity(inv(ustrip(q)), u/unit(q))
 
 function Base.:*(u1::U, u2::U) where U <: AbstractUnits
-    return constructorof(U)(scale=*(map(uscale, (u1, u2))...), dims=*(map(scalar_dimension, (u1, u2))...))
+    return constructorof(U)(scalar_dimension(u1)*scalar_dimension(u2), todims(u1)*todims(u2))
 end
 
 function Base.:/(u1::U, u2::U) where U <: AbstractUnits
-    return constructorof(U)(scale=/(map(uscale, (u1, u2))...), dims=/(map(scalar_dimension, (u1, u2))...))
+    return constructorof(U)(scalar_dimension(u1)/scalar_dimension(u2), todims(u1)/todims(u2))
 end
 
-function Base.:inv(arg::U) where U <: AbstractUnits
-    return constructorof(U)(scale=inv(uscale(arg)), dims=inv(scalar_dimension(arg)))
+function Base.:inv(u::U) where U <: AbstractUnits
+    return constructorof(U)(inv(scalar_dimension(u)), inv(todims(u)))
 end
 
 function Base.:^(u::U, p::Real) where U <:AbstractUnits
-    pn = dimensionless(p)
-    return constructorof(U)(scale=uscale(u)^pn, dims=scalar_dimension(u)^pn)
+    return constructorof(U)(scalar_dimension(u)^p, todims(u)^p)
 end
 
 Base.:*(u1::AbstractUnitLike, u2::AbstractUnitLike) = *(promote(u1,u2)...)
@@ -104,7 +156,7 @@ Base.cbrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(conve
 Base.adjoint(u::AbstractUnits) = u
 
 #Equality does not compare symbols
-Base.:(==)(u1::AbstractAffineUnits, u2::AbstractAffineUnits) = (uscale(u1) == uscale(u2)) & (uoffset(u1) == uoffset(u2)) & (dimension(u1) == dimension(u2))
+Base.:(==)(u1::AbstractUnits, u2::AbstractUnits) = (todims(u1) == todims(u2)) & (dimension(u1) == dimension(u2))
 
 
 #=============================================================================================
@@ -192,7 +244,7 @@ Base.abs2(q::AbstractQuantity) = with_ubase(abs2, q)
 Base.max(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(max, q1, q2)
 Base.min(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(min, q1, q2)
 Base.zero(::Type{D}) where D<:AbstractDimensions = D()
-Base.zero(::Type{U}) where U<:AffineUnits = U(dims=dimtype(U)())
+Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), todims=T())
 
 #Common functions for initializers
 Base.one(::Type{<:AbstractQuantity{T}}) where T = one(T) #unitless
@@ -200,6 +252,7 @@ Base.oneunit(::Type{<:AbstractQuantity{T,D}}) where {T,D} = Quantity(one(T), zer
 
 for f in (:zero, :typemin, :typemax)
     @eval Base.$f(::Type{<:AbstractQuantity{T, D}}) where {T, D<:AbstractDimensions} = Quantity($f(T), MirrorDims(D))
+    @eval Base.$f(::Type{<:AbstractQuantity{T, D}}) where {T, D<:StaticDims} = Quantity($f(T), D())
     @eval Base.$f(::Type{<:AbstractQuantity{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
     @eval Base.$f(::Type{<:AbstractQuantity{T, <:MirrorUnion{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
     @eval Base.$f(::Type{<:AbstractQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
@@ -230,7 +283,7 @@ for f in (
         :coth, :asech, :acsch, :acoth, :log, :log2, :log10, :log1p, :exp, :exp2, :exp10, 
         :expm1, :frexp, :exponent,
     )
-    @eval Base.$f(u::AbstractDimensions) = dimensionless(u)
+    @eval Base.$f(u::AbstractDimLike) = dimensionless(u)
     @eval Base.$f(q::AbstractQuantity) = with_ubase($f, q)
 end
 
