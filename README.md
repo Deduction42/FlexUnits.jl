@@ -76,7 +76,7 @@ v1flex = [1.0u"m/s", 1.0u"J/kg", 1.0u"A/V"]
   27.209 ns (0 allocations: 0 bytes)
 
 ```
-Notice the 'μ' instead of the 'n' on the Unitful result. In such uninferrable cases, FlexUnits and DynamicQuantities both more than a 175x speedup. In the case where all types *can* be inferred, Unitful and FlexUnits perform better than DynamicQuantities.
+Notice the 'μ' instead of the 'n' on the Unitful result. In such uninferrable cases, FlexUnits and DynamicQuantities both offer more than a 175x speedup. However, in the case where all types *can* be inferred, Unitful and FlexUnits perform better than DynamicQuantities.
 ```
 t1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s"]
 t1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s"]
@@ -89,7 +89,7 @@ t1flex = [1.0u"m/s", 1.0u"m/s", 1.0u"m/s"]
 @btime sum(x->x*x, $t1flex)
   2.900 ns (0 allocations: 0 bytes)
 ```
-In this case, the performance boost from static inference is only ~2.5x but in more demanding cases, the boosts can be greater (rouighly 5x). While DynamicQuantities can definitely smooth out performance issues in worst-case scenarios, FlexUnits can match it while also being able to leverage performance tricks for the statically inferrable cases. In most benchmarks, FlexUnits performance will tie with the better option of DynamicQuantities and Unitful with two notable exceptions:
+In this case, the performance boost from static inference is only ~2.5x but in more demanding cases, the boosts can be somewhat greater (rouighly 5x). While DynamicQuantities works much better than Unitful in worst-case scenarios, FlexUnits can match performance of both packages in their respective strengths. In most benchmarks, FlexUnits performance will tie with the better option of DynamicQuantities and Unitful with two notable exceptions:
 
 1. FlexUnits performance is between Unitful and DynamicQuantities in the area of unit conversion (as FlexUnits doesn't support static unit conversion, only static dimension tracking)
 2. FlexUnits outperforms both Unitful and DynamicQuantities in cases where units are staically inferrable but internal variables are repeatedly re-assigned (for example, iterative solvers that re-assign variables, as FlexUnits doesn't over-specialize on units)
