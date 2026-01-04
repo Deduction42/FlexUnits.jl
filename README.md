@@ -35,6 +35,22 @@ julia> R = 8.314*u
 julia> v_satp = R*(25u"°C")/(101.3u"kPa") #Temperature is auto-converted to Kelvin
 0.024470079960513324 m³/mol
 ```
+Static units are autoconverted to dimensions (due to performance focus of static units), but dynamic units are not
+```
+julia> 212u"°F"
+373.15 K
+
+julia> 212ud"°F"
+212 °F
+```
+The uconvert function however, will always result in the desired units, even if they're static. Note that much like DynamicQuantities, you can use the `|>` operator for unit conversions.
+```
+julia> uconvert(u"°F", 373.15*u"K")
+212.0 °F
+
+julia> 9u"μm/(m*K)" |> u"μm/(m*Ra)"
+5.0 μm/(m*Ra)
+```
 You can register units using other units or quantities as follows:
 ```
 julia> register_unit("bbl" => 0.158987*u"m^3")
@@ -94,6 +110,7 @@ In this case, the performance boost from static inference is only ~2.5x but in m
 1. FlexUnits performance is between Unitful and DynamicQuantities in the area of unit conversion (as FlexUnits doesn't support static unit conversion, only static dimension tracking)
 2. FlexUnits outperforms both Unitful and DynamicQuantities in cases where units are staically inferrable but internal variables are repeatedly re-assigned (for example, iterative solvers that re-assign variables, as FlexUnits doesn't over-specialize on units)
 
+More benchmarks can be accessed through the "benchmarks.jl" file in the "test" folder of this repo.
 
 ## Interfacing with Unitful.jl
 Previous versions of FlexUnits did not support static units, so an interface was provided to work with Unitful through uconvert to provide that performance boost where units could be statically inferred. However, now that FlexUnits supports static units with equivalent or better performance (including intelligent promotion to dynamic units), it is recommended to simply use FlexUnits (especially since similar method names between the two packages can lead to confusion). Nevertheless, this interface still exists to support legacy applications.

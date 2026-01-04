@@ -298,10 +298,10 @@ end
     pretty_print_units(true)
     @test ubase(xp) ≈ ubase(x)
 
-
+    #Ustrip tests
     x = 1.3ud"km/s^2"
     @test ustrip(x) == 1.3
-    @test ustrip_base(x) == 1300  # SI base units
+    @test dstrip(x) == 1300  # SI base units
     @test x == q"1.3km/s^2"
     @test typeof(x) == typeof(q"1.3km/s^2")
     @test abs(x) === ubase(q"1.3km/s^2")
@@ -309,18 +309,18 @@ end
     y = 0.9ud"sqrt(mΩ)"
     @test typeof(y) == Quantity{Float64, Units{Dimensions{DEFAULT_RATIONAL}, AT}}
     @test typeof(ubase(y)) == Quantity{Float64, Dimensions{DEFAULT_RATIONAL}}
-    @test ustrip_base(y) ≈ 0.02846049894151541
+    @test dstrip(y) ≈ 0.02846049894151541
     @test y ≈ q"(0.9*sqrt(mΩ))"
 
     y = BigFloat(0.3) * ud"mΩ"
     @test typeof(y) == Quantity{BigFloat, Units{Dimensions{DEFAULT_RATIONAL}, AT}}
-    @test ustrip_base(y) ≈ 0.0003
+    @test dstrip(y) ≈ 0.0003
 
     y32 = convert(Quantity{Float32, Units{Dimensions{DEFAULT_RATIONAL}, AT}}, y)
     @test typeof(y32) == Quantity{Float32, Units{Dimensions{DEFAULT_RATIONAL}, AT}}
 
     z = 1.0*ud"yr"
-    @test ustrip_base(z) ≈ 60 * 60 * 24 * 365.25
+    @test dstrip(z) ≈ 60 * 60 * 24 * 365.25
     @test z === 1.0*uparse("yr")
     @test z === qparse("1yr")
     @test 1/z === ubase(qparse("1/yr"))
@@ -377,6 +377,15 @@ end
     @test sqrt(4*xv) == 2ud"m^0.5/s^0.5"
     @test (4*xv)^0.5 == 2ud"m^0.5/s^0.5"
     @test (2*xv)^2 == 4ud"m^2/s^2"
+
+    @test (1.0ud"m")^0 == 1.0ud""
+    @test (1.0ud"m")^1 == 1.0ud"m"
+    @test (1.0ud"m")^2 == 1.0ud"m^2"
+    @test (1.0ud"m")^3 == 1.0ud"m^3"
+    @test (1.0ud"m")^4 == 1.0ud"m^4"
+    @test (1.0ud"m")^(-1) == 1.0ud"1/m"
+    @test (1.0ud"m")^(-2) == 1.0ud"m^(-2)"
+    @test (1.0ud"m")^(-3) == 1.0ud"1/m^3"
 
     @test_throws DimensionError 2.0^(1ud"m/s")
     @test_throws DimensionError (1ud"m/s")^(1ud"m/s")
@@ -524,6 +533,77 @@ end
     @test eltype([q1,q1]) <: Quantity{Float64, typeof(u"m/s")} #StaticUnits preserved
     @test eltype([q1,q2]) <: Quantity{Float64, typeof(dimension(u"m/s"))} #StaticUnits and StaticDims promote to StaticDims if dimension is the same
     @test eltype([q1,q2,q3]) <: Quantity{Float64, <:Dimensions} #Different dimensions promote to "Dimensions"
+    
+    #Addition/Sybtraction preserves static unit information but Multiplication/Division don't 
+    @test (1u"m/s" + 1ud"m/s") isa Quantity{Float64, <:StaticDims}
+    @test (1u"m/s" - 1ud"m/s") isa Quantity{Float64, <:StaticDims}
+    @test (1u"m/s" * 1ud"m/s") isa Quantity{Float64, <:Dimensions}
+    @test (1u"m/s" / 1ud"m/s") isa Quantity{Float64, <:Dimensions}
+
+    #Ustrip tests
+    x = 1.3u"km/s^2" |> u"km/s^2" 
+    @test ustrip(x) == 1.3
+    @test dstrip(x) == 1300  # SI base units
+    @test x == q"1.3km/s^2"
+    @test abs(x) === 1.3u"km/s^2"
+
+    y = 0.9u"sqrt(mΩ)"
+    @test FlexUnits.dimval(dimension(y)) == dimension(u"(m*kg^(1/2))/(s^(3/2)*A)")
+    @test dstrip(y) ≈ 0.02846049894151541
+    @test y ≈ q"(0.9*sqrt(mΩ))"
+
+    y = BigFloat(0.3) * u"mΩ"
+    @test typeof(y) == Quantity{BigFloat, StaticDims{FlexUnits.dimval(dimension(y))}}
+    @test dstrip(y) ≈ 0.0003
+
+    #Mixed conversions with dynamic units
+    y32 = convert(Quantity{Float32, Units{Dimensions{DEFAULT_RATIONAL}, AffineTransform}}, y)
+    @test typeof(y32) == Quantity{Float32, Units{Dimensions{DEFAULT_RATIONAL}, AffineTransform}}
+
+    z = 1.0*u"yr"
+    @test dstrip(z) ≈ 60 * 60 * 24 * 365.25
+    @test z == 1.0*uparse("yr")
+    @test z == qparse("1yr")
+    @test 1/z == ubase(qparse("1/yr"))
+    @test ubase(z) == ubase(qparse("1*yr"))
+    @test qparse("yr") == 1*ud"yr"
+
+    #Mathematical operations
+    xp = 1u"percent"
+    xv = 1u"m/s"
+    @test 1u"kg/s" + 1u"kg/s" === 2u"kg/s"
+    @test 1u"km/hr" - 1u"km/hr" === 0u"km/hr"
+    @test 5.0u"kW"/(5.0u"kW") === 1.0u""
+    @test 2.0u"m"*2.0u"m" === 4.0u"m^2"
+    @test xv*1 === 1u"m/s"
+    @test xv*1 !== 1u"m/s"|>u"m/s"
+    @test xv*1 === ubase(1u"m/s")
+    @test xp*1 == 0.01*ud""
+    @test xv*xv == 1ud"m^2/s^2"
+    @test *(xv,xv,xv) == 1u"m^3/s^3"
+    @test cbrt(*(xv,xv,xv)) == 1u"m/s"
+    @test u"m/s" / unit(1u"m/s") == u""
+    @test cbrt(u"m^3/s^3") == u"m/s"
+    @test abs2(dimension(u"m/s")) == dimension(u"m^2/s^2")
+
+    @test xv/1 == 1u"m/s"
+    @test xp/1 == 0.01*u""
+    @test xv/xv == 1u""
+
+    @test sqrt(4*xv) == 2u"m^0.5/s^0.5"
+    @test (4*xv)^0.5 == 2u"m^0.5/s^0.5"
+    @test (2*xv)^2 == 4u"m^2/s^2"
+
+    @test (1.0u"m")^0 === 1.0u""
+    @test (1.0u"m")^1 === 1.0u"m"
+    @test (1.0u"m")^2 === 1.0u"m^2"
+    @test (1.0u"m")^3 === 1.0u"m^3"
+    @test (1.0u"m")^4 === 1.0u"m^4"
+    @test (1.0u"m")^(-1) === 1.0u"1/m"
+    @test (1.0u"m")^(-2) === 1.0u"m^(-2)"
+    @test (1.0u"m")^(-3) === 1.0u"1/m^3"
+    
+
 end
 
 @testset "Type conversions" begin

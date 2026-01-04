@@ -134,9 +134,10 @@ end
 
 # Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), todims=todims(u), symbol=usymbol(u))
+Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:StaticUnits{D,T}} = (u isa StaticUnits{D,T}) ? u : StaticUnits{D,T}(todims=todims(u), symbol=usymbol(u))
+
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = D(dimension(assert_dimension(u)))
 Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)
-
 
 # Converting transform types ===============================================
 Base.convert(::Type{T}, t::NoTransform) where T <: AbstractUnitTransform = T()
@@ -186,6 +187,9 @@ function Base.promote_rule(::Type{D1}, ::Type{Units{D2,T2}}) where {D1<:Abstract
 end
 function Base.promote_rule(::Type{Units{D1,T1}}, ::Type{Units{D2,T2}}) where {D1<:AbstractDimensions, D2<:AbstractDimensions, T1<:AbstractUnitTransform, T2<:AbstractUnitTransform}
     return Units{promote_type(D1, D2), promote_type(T1,T2)}
+end
+function Base.promote_rule(::Type{StaticDims{D}}, ::Type{StaticUnits{D,T}}) where {D, T<:AbstractUnitTransform}
+    return StaticUnits{D,T}
 end
 
 #Quantity promotion (favors Dimensions, as converting quantities to SI does not result in information loss)

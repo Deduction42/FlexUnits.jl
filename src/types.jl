@@ -210,6 +210,7 @@ julia> (ustrip(5ud"°C") + ustrip(2ud"°C"))*u"°C" #Strips, adds raw quantity v
     todims :: T
     symbol :: Symbol = DEFAULT_USYMBOL
 end
+Units{D}(units, todims::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} = Units{D,T}(units, todims, symbol)
 Units(units::D, todims::AbstractUnitTransform) where D<:AbstractDimensions = Units(dimension(assert_dimension(units)), todims, DEFAULT_USYMBOL)
 Units(units::D, todims::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where D<:AbstractUnits = Units(dimension(assert_dimension(units)), todims, symbol)
 
@@ -239,9 +240,12 @@ A static version of units, where the value of dimensions "D" is a a parameter.
 Static units can generated through the `@u_str` macro. This improves performance when
 dimensions are statically inferrable.
 """
-struct StaticUnits{D, T<:AbstractUnitTransform} <: AbstractUnits{D,T}
+@kwdef struct StaticUnits{D, T<:AbstractUnitTransform} <: AbstractUnits{D,T}
     todims :: T
     symbol :: Symbol
+    function StaticUnits{D,C}(conv::AbstractUnitTransform, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitTransform}
+        return (D isa AbstractDimensions) ? new{D,C}(conv, symb) : error("Type parameter must be a dimension")
+    end
     function StaticUnits{D}(conv::C, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitTransform}
         return (D isa AbstractDimensions) ? new{D,C}(conv, symb) : error("Type parameter must be a dimension")
     end

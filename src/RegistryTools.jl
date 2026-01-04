@@ -190,6 +190,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
     _register_unit(:cup => 8*reg[:fl_oz])
     _register_unit(:pint => 2*reg[:cup])
     _register_unit(:quart => 2*reg[:pint])
+    _register_unit(:Ra => 5/9*reg[:K])
 
     #Strictly affine temperature measurements
     _register_unit(:°C => Units(dims=K, todims=Trans(offset=273.15)))

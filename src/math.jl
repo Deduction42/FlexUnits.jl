@@ -84,11 +84,11 @@ Base.:/(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D
 Base.inv(arg::StaticDims{D}) where D = StaticDims{inv(D)}()
 Base.:^(d::StaticDims{D}, p::Real) where D = StaticDims{D^p}()
 Base.sqrt(d::StaticDims{D}) where D = StaticDims{sqrt(D)}()
-Base.cbrt(d::StaticDims{D}) where D = StaticDims{sqrt(D)}()
+Base.cbrt(d::StaticDims{D}) where D = StaticDims{cbrt(D)}()
 Base.abs2(d::StaticDims{D}) where D = StaticDims{abs2(D)}()
 Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 
-@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = StaticDims{dimtype(d)()}
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = StaticDims{dimtype(d)()}()
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{1}) = d 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{2}) = d*d 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{3}) = d*d*d
@@ -100,9 +100,9 @@ Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 =============================================================================================#
 const NON_SCALAR_ERROR = ArgumentError("Operation only allowed on scalar transforms")
 
-Base.:+(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset + x, scale = t.scale)
-Base.:+(x::Real, t::AffineTransform) = t + x 
-Base.:-(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset - x, scale = t.scale)
+#Base.:+(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset + x, scale = t.scale)
+#Base.:+(x::Real, t::AffineTransform) = t + x 
+#Base.:-(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset - x, scale = t.scale)
 
 function Base.:*(t1::AffineTransform, t2::AffineTransform) 
     is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
@@ -151,8 +151,8 @@ end
 Base.:*(u1::AbstractUnitLike, u2::AbstractUnitLike) = *(promote(u1,u2)...)
 Base.:/(u1::AbstractUnitLike, u2::AbstractUnitLike) = /(promote(u1,u2)...)
 
-Base.sqrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 2))
-Base.cbrt(u::AbstractUnits{D}) where {R, D<:AbstractDimensions{R}} = u^inv(convert(R, 3))
+Base.sqrt(u::AbstractUnits) = u^inv(2)
+Base.cbrt(u::AbstractUnits) = u^inv(3)
 Base.adjoint(u::AbstractUnits) = u
 
 #Equality does not compare symbols
