@@ -25,9 +25,9 @@ Base.iterate(u::AbstractUnitLike) = (u, nothing)
 
 Base.broadcastable(q::Q) where Q<:AbstractQuantity = Q(Base.broadcastable(ustrip_base(q)), dimension(q))
 Base.getindex(q::Q) where Q<:AbstractQuantity = Q(getindex(ustrip(q)), unit(q))
-Base.getindex(q::Q, inds) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), inds), unit(q))
-Base.getindex(q::Q, inds::CartesianIndex{0}) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), inds), unit(q))
-Base.getindex(q::Q, ind::Integer, inds::Integer...) where Q<:AbstractQuantity = quantity(getindex(ustrip(q), ind, inds...), unit(q))
+Base.getindex(q::Q, inds) where Q<:AbstractQuantity = constructorof(Q)(getindex(ustrip(q), inds), unit(q))
+Base.getindex(q::Q, inds::CartesianIndex{0}) where Q<:AbstractQuantity = constructorof(Q)(getindex(ustrip(q), inds), unit(q))
+Base.getindex(q::Q, ind::Integer, inds::Integer...) where Q<:AbstractQuantity = constructorof(Q)(getindex(ustrip(q), ind, inds...), unit(q))
 Base.firstindex(q::Q) where Q<:AbstractQuantity = firstindex(ustrip(q))
 Base.lastindex(q::Q) where Q<:AbstractQuantity = lastindex(ustrip(q))
 
@@ -38,43 +38,103 @@ Displaying output
 #This value to "false" makes output parsable by default
 const PRETTY_DIM_OUTPUT = Ref(true)
 
-function Base.string(x::Union{AbstractUnitLike, AbstractQuantity}; pretty=PRETTY_DIM_OUTPUT[])
-    tmp_io = IOBuffer()
-    show(tmp_io, x, pretty=pretty)
-    return String(take!(tmp_io))
-end
-
 function pretty_print_units(x::Bool) 
     PRETTY_DIM_OUTPUT[] = x 
     return x 
 end
 
-function Base.show(io::IO, q::AbstractQuantity{<:Any, <:AbstractDimensions}; pretty=PRETTY_DIM_OUTPUT[])
-    if pretty
-        return _pretty_print_quantity(io, q)
-    else
-        return _parsable_print_quantity(io, q)
-    end
+#Dispatching show methods
+Base.show(io::IO, q::AbstractQuantity) = qshow(io, q, pretty=PRETTY_DIM_OUTPUT[])
+Base.string(q::AbstractQuantity) = qstring(q, pretty=PRETTY_DIM_OUTPUT[])
+Base.show(io::IO, u::AbstractUnitLike) = ushow(io, u, pretty=PRETTY_DIM_OUTPUT[])
+Base.string(u::AbstractUnitLike) = ustring(u, pretty=PRETTY_DIM_OUTPUT[])
+
+#=============================================================================================
+Displaying quantities
+=============================================================================================#
+function qstring(x::AbstractQuantity; pretty=PRETTY_DIM_OUTPUT[])
+    tmp_io = IOBuffer()
+    qshow(tmp_io, x, pretty=pretty)
+    return String(take!(tmp_io))
 end
 
-function Base.show(io::IO, q::AbstractQuantity{<:Any, <:AbstractUnits}; pretty=PRETTY_DIM_OUTPUT[])
+#Generic fallback for showing any uncaught quantity type
+qshow(io::IO, q::AbstractQuantity; pretty=PRETTY_DIM_OUTPUT[]) = Base.show_default(io, q)
+
+function qshow(io::IO, q::AbstractQuantity{<:Any, <:AbstractUnits}; pretty=PRETTY_DIM_OUTPUT[])
     if usymbol(unit(q)) != DEFAULT_USYMBOL #Print the unit symbol if it exists (not default)
         if pretty
-            return _pretty_print_quantity(io, q)
+            return qshow_pretty(io, q)
         else
-            return _parsable_print_quantity(io, q)
+            return qshow_parsable(io, q)
         end 
     else
-        return Base.show(io, ubase(q), pretty=pretty) #Print SI version (emphesizes that units are treated as SI quantities)
+        return qshow(io, ubase(q), pretty=pretty) #Print SI version (emphesizes that units are treated as SI quantities)
     end
 end
 
-#Fallback for showing pure units (don't pretty print)
-function Base.show(io::IO, u::AbstractUnits; pretty=PRETTY_DIM_OUTPUT[])
-    return Base.show_default(io, u)
+function qshow(io::IO, q::AbstractQuantity{<:Any, <:AbstractDimLike}; pretty=PRETTY_DIM_OUTPUT[])
+    if pretty
+        return qshow_pretty(io, q)
+    else
+        return qshow_parsable(io, q)
+    end
 end
-    
-function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<:AbstractDimensions{<:Real}
+
+function qshow_parsable(io::IO, q::AbstractQuantity)
+    print(io, "(", ustrip(q), ")")
+    return ushow(io, unit(q), pretty=false)
+end
+
+function qshow_pretty(io::IO, q::AbstractQuantity)
+    print(io, ustrip(q), " ")
+    return ushow(io, unit(q), pretty=true)
+end
+
+#=============================================================================================
+Displaying units and dimensions
+=============================================================================================#
+function ustring(x::AbstractUnitLike; pretty=PRETTY_DIM_OUTPUT[])
+    tmp_io = IOBuffer()
+    ushow(tmp_io, x, pretty=pretty)
+    return String(take!(tmp_io))
+end
+
+#Fallback for showing any other unit type 
+ushow(io::IO, u::AbstractUnitLike; pretty=PRETTY_DIM_OUTPUT[]) = Base.show_default(io, u)
+
+#Showing units (shows symbol by default, but falls back to Base.show_default)
+function ushow(io::IO, u::AbstractUnits; pretty=PRETTY_DIM_OUTPUT[])
+    usymb = usymbol(u)
+    if usymb == DEFAULT_USYMBOL
+        return Base.show_default(io, u)
+    else
+        return Base.print(io, usymb)
+    end
+end
+
+#Fallback for showing dimensions with generic values
+function ushow(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions
+    vals = map(fn->fn=>getproperty(d,fn), dimension_names(D))
+    return show(io, vals)
+end
+
+#StaticDims are shown exactly like dynamic ones
+function ushow(io::IO, u::StaticDims; pretty=PRETTY_DIM_OUTPUT[])
+    return ushow(io, udynamic(u), pretty=pretty)
+end
+
+#Mirror dims are shown as ?/? when pretty-printing
+function ushow(io::IO, d::MirrorDims; pretty=PRETTY_DIM_OUTPUT[])
+    if pretty
+        return print(io, "?/?")
+    else
+        return Base.show_default(io, d)
+    end
+end
+
+#Showing dimensions with numeric values
+function ushow(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<:AbstractDimensions{<:Real}
     dimnames = collect(static_fieldnames(D))
     dimunits = unit_symbols(D)
 
@@ -108,44 +168,9 @@ function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<:AbstractDi
     return nothing
 end
 
-function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions{<:Union{<:Real,Missing}}
-    return show(io, missing)
-end
-
-function Base.show(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions
-    vals = map(fn->fn=>getproperty(d,fn), dimension_names(D))
-    return show(io, vals)
-end
-
-function _parsable_print_quantity(io::IO, q::AbstractQuantity)
-    print(io, "(", ustrip(q), ")")
-    return _parsable_print_unit(io, unit(q))
-end
-
-function _pretty_print_quantity(io::IO, q::AbstractQuantity)
-    print(io, ustrip(q), " ")
-    return _print_pretty_unit(io, unit(q))
-end
-
-function _parsable_print_unit(io::IO, u::AbstractUnitLike)
-    usymb = usymbol(u)
-    if usymb == DEFAULT_USYMBOL
-        return Base.show(io, u, pretty=false)
-    else
-        return Base.print(io, usymb)
-    end
-end
-
-function _print_pretty_unit(io::IO, u::AbstractUnitLike)
-    usymb = usymbol(u)
-    if usymb == DEFAULT_USYMBOL
-        return Base.show(io, u, pretty=true)
-    else
-        return print(io, usymb)
-    end
-end
-
-
+#=============================================================================================
+Helper methods for showing numeric dimension powers
+=============================================================================================#
 function _unit_pwr_string(u::Symbol, p::Real; pretty=PRETTY_DIM_OUTPUT[])
     return pretty ? _pretty_unit_pwr(u, p) : _parsable_unit_pwr(u, p)
 end
@@ -185,3 +210,32 @@ function _pretty_unit_pwr(u::Symbol, p::Real)
     end
 end
 
+
+#=
+function ushow(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions{<:Union{<:Real,Missing}}
+    return show(io, missing)
+end
+=#
+
+#=
+function ushow(io::IO, u::Units; pretty=PRETTY_DIM_OUTPUT[])
+    if usymbol(u) != DEFAULT_USYMBOL
+        return print(io, usymbol(u))
+    else
+        print(io, "Units(todims=$(todims(u)), dims=")
+        show(io, dimension(u); pretty)
+        return print(io, ")")
+    end
+end
+=#
+
+#=
+function ushow(io::IO, ::Type{MirrorDims{D}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
+    return print(io, "MirrorDims{$(D)}")
+end
+=#
+#=
+function ushow(io::IO, ::Type{Union{D,MirrorDims{D}}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
+    return print(io, "MirrorUnion{$(D)}")
+end
+=#

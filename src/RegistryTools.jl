@@ -1,14 +1,14 @@
 
 module RegistryTools
 
-import ..AbstractUnitLike, ..AbstractUnits, ..AbstractAffineUnits, ..AbstractDimensions
-import ..AffineUnits, ..Dimensions, ..AbstractQuantity, ..Quantity, ..DEFAULT_DIMENSONS
-import ..uscale, ..uoffset, ..dimension, ..usymbol, ..asunit,  ..ubase, ..constructorof, ..dimtype, ..unittype
+import ..AbstractUnitLike, ..AbstractUnits,  ..AbstractDimensions, ..AbstractUnitTransform
+import ..Units, ..Dimensions, ..AffineTransform, ..StaticUnits, ..AbstractQuantity, ..Quantity, ..FixRat32, ..FixRat64
+import ..uscale, ..uoffset, ..todims, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype
 
 export 
-    AbstractUnitLike, AbstractUnits, AbstractAffineUnits, AbstractDimensions, DEFAULT_DIMENSONS,
-    AffineUnits, Dimensions, AbstractQuantity, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
-    PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, dimtype
+    AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64,
+    Units, Dimensions, AffineTransform, AbstractQuantity, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
+    PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, suparse_expr, dimtype
 
 const UnitOrQuantity = Union{AbstractUnitLike, AbstractQuantity}
 const PARSE_CASES = Union{Expr,Symbol,Real,Nothing}
@@ -53,12 +53,12 @@ end
 Base.delete!(d, k) = throw(PermanentDictError("Removing entries is prohibited"))
 
 """
-    register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{String,<:AbstractUnitLike})
+    register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{String,<:AbstractUnitLike})
 
 Registers a unit into the dictionary. This version should be used instead of the "Symbol" versions as 
 it will validate whether or not the proposed name can be parsed.
 """
-function register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{String,<:UnitOrQuantity})
+function register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{String,<:UnitOrQuantity})
     (k,v) = p
     name = Meta.parse(k)
 
@@ -83,28 +83,28 @@ Returns the dimension type of a registry
 """
 dimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 
-function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol,<:AbstractUnitLike})
+function _register_unit!(reg::AbstractDict{Symbol,Units{D,T}}, p::Pair{Symbol,<:AbstractUnitLike}) where {D,T<:AbstractUnitTransform}
     (k,v) = p
-    vn = AffineUnits(scale=uscale(v), offset=uoffset(v), dims=dimension(v), symbol=k)
+    vn = Units(dims=dimension(v), todims=convert(T, todims(v)), symbol=k)
     return setindex!(reg, vn, k)
 end
 
-function _register_unit!(reg::AbstractDict{Symbol,<:AffineUnits}, p::Pair{Symbol, <:AbstractQuantity})
-    return _register_unit!(reg, p[1]=>asunit(p[2]))
+function _register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{Symbol, <:AbstractQuantity})
+    return _register_unit!(reg, p[1]=>Units(p[2]))
 end
 
-function add_prefixes!(reg::AbstractDict{Symbol,<:AffineUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
+function add_prefixes!(reg::AbstractDict{Symbol,<:Units{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
     original = reg[u]
     for (name, scale) in pairs(prefixes)
         newname = Symbol(string(name)*string(u))
-        reg[newname] = AffineUnits{D}(scale=uscale(original)*scale, dims=dimension(original), symbol=newname)
+        reg[newname] = Units(dims=dimension(original), todims=todims(original)*scale, symbol=newname)
     end
     return reg
 end
 
 
-function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where Dims <: AbstractDimensions
-    #reg = PermanentDict{Symbol, AffineUnits{DEFAULT_DIMENSONS}}()
+function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where {Dims<:AbstractDimensions, Trans<:AbstractUnitTransform}
+    #reg = PermanentDict{Symbol, Units{DEFAULT_DIMENSONS}}()
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
     
     _register_unit(p::Pair) = _register_unit!(reg, p)
@@ -190,10 +190,11 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     _register_unit(:cup => 8*reg[:fl_oz])
     _register_unit(:pint => 2*reg[:cup])
     _register_unit(:quart => 2*reg[:pint])
+    _register_unit(:Ra => 5/9*reg[:K])
 
     #Strictly affine temperature measurements
-    _register_unit(:°C => AffineUnits(offset=273.15, dims=K))    
-    _register_unit(:°F => AffineUnits(scale=5/9, offset=(273.15 - 32*5/9), dims=K))
+    _register_unit(:°C => Units(dims=K, todims=Trans(offset=273.15)))
+    _register_unit(:°F => Units(dims=K, todims=Trans(scale=5/9, offset=(273.15 - 32*5/9))))
     _register_unit(:degC => reg[:°C])
     _register_unit(:degF => reg[:°F])
 
@@ -207,7 +208,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, AffineUnits{Dims}}) where 
     #function apply_trig_func(f, q::AbstractQuantity{<:Any, <:RadDimensions{T}}) where T
     #   baseq = ubase(q)
     #   assert_radians(unit(baseq))
-    #   return quantity(f(ustrip(baseq)), RadDimensions{T}())
+    #   return Quantity(f(ustrip(baseq)), RadDimensions{T}())
     #end
 
     #sin(q::AbstractQuantity{<:RadDimensions}) = apply_trig_func(sin, q)
@@ -231,6 +232,11 @@ function qparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: Abstr
     uex = uparse_expr(ustr, reg)
 
     return :($Q($nf64, $uex))
+end
+
+function suparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
+    uex = uparse_expr(str, reg)
+    return :($StaticUnits($uex))
 end
 
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
@@ -288,8 +294,8 @@ lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Any) = ex
 
 change_symbol(u::AbstractUnitLike, s::String) = change_symbol(u, Symbol(s))
 
-function change_symbol(u::U, s::Symbol) where U<:AbstractAffineUnits
-    return constructorof(U)(scale=uscale(u), offset=uoffset(u), dims=dimension(u), symbol=s)
+function change_symbol(u::U, s::Symbol) where U<:AbstractUnits
+    return constructorof(U)(dims=dimension(u), todims=todims(u), symbol=s)
 end
 
 function _unit_preprocessing(str1::AbstractString)

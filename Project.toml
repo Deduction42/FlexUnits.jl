@@ -1,6 +1,6 @@
 name = "FlexUnits"
 uuid = "76e01b6b-c995-4ce6-8559-91e72a3d4e95"
-version = "0.2.10"
+version = "0.3.0"
 authors = ["Ruben Gonzalez <ruben.carbonbased@gmail.com> and contributors"]
 
 [weakdeps]

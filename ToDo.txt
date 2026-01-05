@@ -1,39 +1,66 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
-Tasks:
-1.  Build out documentation and a docs badge
+Major Changes:
+1.  (breaking) Static units are now supported, and the string macro @u_str now produces static units that eagery convert to SI units 
+    (use @ud_str for old behaviour)
+2.  (breaking) `zero(::Quantity{T,D})` for dynamic units now outputs a new quanitity type Quantity{T, MirrorUnion{D}}
+    -   This allows an "additive identity" as MirrorUnion{D} mirrors the dimensions in the other argument
+    -   Enables functionality like var(X, dims=1) where X is a matrix of mixed units
+    -   Behaviour also applies to `typemin` and `typemax` as well
+3.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
+4.  (breaking) `quantity` removed, use Quantity instead
+5.  (breaking) `UnitfulCallable` removed in favor of QuantMapping(f::Function, u::UnitMap)
+6.  `zero(::Quantity{T,D})` for static units behaves like Unitful
+7.  Added more promotion rules to convert numbers to quantities
+8.  FixRat32 is now exported
+9.  Added "dstrip" as shorthand for "ustrip_base"
+10. Added "dconvert" to convert to the dimensions of the unit
+
+
+Current Tasks:
+
+Backlog:
+1.  Finish basic QuantLinMap functionality for +,-,*,/,\,^,exp, (and matrix trigs)
+    -   This consists of building shortcuts for UnitMap types
+    -   Output should be the most specific form of unit mapping possible
+    -   Make sure operations convert to QuantLinMap and output that type
+
+    Notes on above:      
+    -   Matrix multiplication is ONLY valid with QuantLinMap and will ALWAYS produce a QuantLinMap
+        -   Multiplication should convert both AbstractMatrix{Quantity} to QuantLinMap
+        -   This may result in more allocations, but is more reliable in pointing out errors
+        -   It is recommendable to only store matrices as QuantLinMap if linear algebra is intended
+
+2.  Add LinearAlgebra extensions for certain factorizations
+    -   cholesky (requries symmetric transform)
+    -   eigen (confusing becasue it can use both idempotent and symmetric) 
+        -   E' == inv(E) DOES NOT hold 
+        -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
+    -   consider other transformations as well
+
+
+3.  Build out documentation and a docs badge
     -   Include all-stops-out tutorial on defining a new dimension "RadDims"
     -   Add angle to the dimension list
     -   Create a new unit registry with that dimension 
     -   Re-tool sin, cos, tan rules on this particular dimension
-2.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
+4.  Add LinearAlgebra extensions for QuantLinMap
+5.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
     -   Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
     -   This can be done without documentation 
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
-3. Consider a special object QuantTransform(scale::AbstractArray, units::UnitTransform)<:AbstractArray{<:Quantity}
-    -   For a matrix multiplication with a column vector to work, the matrix must be dimensionally consistent
-    -   All CONSISTENT quantity transforms mQ can be broken down into mQ.scale, mQ.units = {mU.rownum, mU.rowdenom}
-        -   Multiplication of a vector quantity "v" with a quantity transform mQ can be expressed as 
-            -   mQ.rownumer.*(mQ.scale)*(v./mQ.rowdenom)
-        -   Let mU be a matrix of units
-        -   Every valid transform can be decomposed to (rownumer, rowdenom)
-        -   rowdenom = unit.(mQ[begin,:])/unit(mQ[begin,begin])
-            -   Must be the same for every row otherwise it is inconsistent
-        -   rownumer = unit.(mQ[:,begin])
-        -   The expression mQ.rownumer.*(mQ.scale)*(v./mQ.rowdenom) can be further simplified to
-            -   rowunit = unit(v[ii])/mQ.rowdenom[ii] (must be the same for all elements)
-            -   new expression is (mQ.scale*value.(v)).*rowunit.*mQ.rownumer
-        -   mU can be easily inverted
-            -   inv(mU) = UnitTransform(rownum=inv.(mU.rowdenom), rowdenom=inv.(mU.rownum))
-    -   All SELF-CONSISTENT quantity transforms (SelfQuantTransform) mQ can be further broken down as mQ.units = {mU.bulkdim, mU.rownum} 
-        -   Unit matrix can be reconstructed as mU = mU.bulkdim.*inv.(mU.rownum).*mU.rownum'
-        -   This is essentially an eigendecomposition of a rank-1 matrix (single eigvenvalue/eigenvector pair)
-        -   Self-consistent matrices can be "powered"
-        -   Self-consistent matrices with a dimensionless "bulkdim" can be exponentiated
-    -   This is a KILLER FEATURE because this makes common matrix operations MUCH faster than Unitful
 
 
+
+
+
+
+
+
+#====================================================================================================
+Some benchmarks
+====================================================================================================#
 import DynamicQuantities
 import Unitful
 using BenchmarkTools
