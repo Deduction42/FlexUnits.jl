@@ -17,7 +17,7 @@ using TestItems: @testitem
 using TestItemRunner
 using Test
 using BenchmarkTools
-using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval
+using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64
 using Aqua
 using LinearAlgebra
 using Statistics
@@ -28,10 +28,12 @@ const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
 const AT = AffineTransform
 
 @testset "Basic utilities" begin
+    #Basic Type operations
     @test UnitRegistry.unittype() === DEFAULT_UNIT_TYPE
     @test UnitRegistry.dimtype() === DEFAULT_DIM_TYPE
 
     d = Dimensions(length=2, mass=1, time=-2)
+    D = typeof(d)
     @test d.length == 2
     @test d.mass == 1
     @test d.time == -2
@@ -40,9 +42,21 @@ const AT = AffineTransform
     @test uscale(d) == 1
     @test uoffset(d) == 0
     @test FlexUnits.usymbol(d) == FlexUnits.DEFAULT_USYMBOL
+    @test eltype(D) == FixRat32
+    @test FlexUnits.dimpowtype(D) == FixRat32
+    @test FlexUnits.dimpowtype(typeof(ud"m/s")) == FixRat32
+    @test FlexUnits.is_dimension(u"m/s")
+    @test FlexUnits.is_dimension(dimension(u"m/s"))
+    @test FlexUnits.is_dimension(ud"m/s")
+    @test !FlexUnits.is_dimension(u"kPa")
+    @test FlexUnits.is_scalar(u"m/s")
+    @test FlexUnits.is_scalar(dimension(u"m/s"))
+    @test FlexUnits.is_scalar(ud"m/s")
+    @test !FlexUnits.is_scalar(u"°F")
+    @test udynamic(u"m/s") === ud"m/s"
+    @test udynamic(dimension(u"m/s")) === dimension(ud"m/s")
 
     @test FlexUnits.remove_offset(u"°C") == u"K"
-
     @test FlexUnits.constructorof(typeof(Dimensions())) == Dimensions
     @test FlexUnits.constructorof(typeof(u"m")) == StaticUnits
     @test FlexUnits.constructorof(typeof(1.0*u"m")) == Quantity
@@ -50,6 +64,44 @@ const AT = AffineTransform
     @test FlexUnits.constructorof(typeof(Quantity("this", ud"m"))) == Quantity
     @test FlexUnits.constructorof(Array{Float64}) == Array
 
+    t_none = NoTransform()
+    @test t_none(1) === 1
+    @test t_none(AffineTransform()) === AffineTransform()
+    @test uscale(t_none) == 1
+    @test uoffset(t_none) == 0
+    @test FlexUnits.is_identity(t_none)
+    @test FlexUnits.is_scalar(t_none)
+
+    @test StaticDims(dimension(ud"m/s")) == StaticDims{dimension(ud"m/s")}()
+    @test_throws ArgumentError StaticDims{dimension(ud"m/s")}(dimension(ud"kg/s"))
+    
+    t_affine = AffineTransform()
+    t_affine2 = AffineTransform(scale=2, offset=1)
+    @test t_affine((1,2,3)) == (1.0, 2.0, 3.0)
+    @test t_affine2((1,2,3)) == (3.0, 5.0, 7.0)
+    @test t_affine(t_affine2) == t_affine2
+    @test t_affine2(t_none) == t_affine2
+    @test uscale(t_affine2) == 2
+    @test uoffset(t_affine2) == 1
+
+    @test Units{Dimensions{FixRat32}}(Dimensions{FixRat64}(length=1), AffineTransform()) == ud"m" 
+    @test FlexUnits.dimtype(Units{Dimensions{FixRat32}}(Dimensions{FixRat64}(length=1), AffineTransform())) <: Dimensions{FixRat32}
+    @test FlexUnits.dimtype(Units(Dimensions{FixRat64}(length=1), AffineTransform())) <: Dimensions{FixRat64}
+    @test FlexUnits.dimtype(u"m/s") == typeof(dimension(ud"m/s"))
+    @test StaticUnits(dimension(ud"m/s"), AffineTransform()) == u"m/s"
+
+    @test ustrip(Quantity{Float32}(1.0, u"m/s")) === Float32(1)
+    @test FlexUnits.unittype(Quantity{Float64, typeof(u"m/s")}) == typeof(u"m/s")
+    @test FlexUnits.dimtype(Quantity{Float64, typeof(u"m/s")}) == Dimensions{FixRat32}
+    @test FlexUnits.dimtype(1.0u"kJ") == Dimensions{FixRat32}
+    @test udynamic(1.0u"kJ") === ubase(1.0ud"kJ")
+    
+    @test MirrorDims() == MirrorDims{Dimensions{FixRat32}}()
+    @test eltype([MirrorDims(), Dimensions{FixRat32}()]) == MirrorUnion{Dimensions{FixRat32}}
+    @test_throws "MirrorDims should not be a type parameter" Quantity{Float64, MirrorDims{Dimensions{FixRat32}}}(1, u"m/s")
+    @test assert_dimension(dimension(u"m/s")) == dimension(u"m/s")
+    
+    #Basic utility functions
     vsum = sum(ones(5,3).*[u"rpm" u"kg/hr" u"kPa"], dims=1)
 
     FlexUnits.pretty_print_units(false)
@@ -359,7 +411,6 @@ end
     @test_throws LoadError eval(:(us"x"))
     @test_throws NotScalarError ud"J/°C"
 
-
     #Basic mathematical operations
     xp = 1ud"percent"
     xv = 1ud"m/s"
@@ -466,8 +517,10 @@ end
     # Round-trip sanity checks
     @test -40°C ≈ -40°F
     @test -40.0*celsius ≈ -40.0*fahrenheit
-    
+
     # Test promotion explicitly for coverage:
+    @test eltype([1ud"km/hr", 1.0ud"km/hr"]) <: Quantity{Float64, Units{Dimensions{FixRat32}, AffineTransform}}
+    @test eltype([Units(dimval(u"m/s")), ud"m/s"]) <: Units{Dimensions{FixRat32}, AffineTransform}
     @test promote_type(Units{Dimensions{Int16}, AffineTransform}, Units{Dimensions{Int32}, AffineTransform}) === Units{Dimensions{Int32}, AffineTransform}
     @test promote_type(Dimensions{Int16}, Units{Dimensions{Int32}, AffineTransform}) === Units{Dimensions{Int32}, AffineTransform}
     

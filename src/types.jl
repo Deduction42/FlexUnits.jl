@@ -211,7 +211,7 @@ julia> (ustrip(5ud"°C") + ustrip(2ud"°C"))*u"°C" #Strips, adds raw quantity v
     symbol :: Symbol = DEFAULT_USYMBOL
 end
 Units{D}(units, todims::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} = Units{D,T}(units, todims, symbol)
-Units(units::D, todims::AbstractUnitTransform) where D<:AbstractDimensions = Units(dimension(assert_dimension(units)), todims, DEFAULT_USYMBOL)
+Units(dims::D, todims::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimensions = Units(dims, todims, symbol)
 Units(units::D, todims::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where D<:AbstractUnits = Units(dimension(assert_dimension(units)), todims, symbol)
 
 todims(u::Units) = u.todims
@@ -222,7 +222,8 @@ is_scalar(u::AbstractUnits) = is_scalar(todims(u))
 is_dimension(u::AbstractUnits) = is_identity(todims(u))
 #affine_units(;dims, scale=1, offset=0, symbol=DEFAULT_USYMBOL) = Units(dims=dims, todims=AffineTransform(scale=scale, offset=offset), symbol=symbol)
 udynamic(u::Units) = u
-
+dimtype(::Type{Units{D,C}}) where {D,C} = D
+dimtype(d::Units) = dimtype(typeof(d))
 
 
 """
@@ -313,7 +314,7 @@ julia> max(1u"m/s", -Inf*MirrorDims())
 1 m/s
 """
 struct MirrorDims{D<:AbstractDimensions} <: AbstractDimLike end
-MirrorDims() = MirrorDims{FixRat32, Dimensions{FixRat32}}()
+MirrorDims() = MirrorDims{Dimensions{FixRat32}}()
 MirrorDims(::Type{D}) where {D<:AbstractDimensions} = MirrorDims{D}()
 
 
