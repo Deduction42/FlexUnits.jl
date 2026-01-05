@@ -223,15 +223,7 @@ is_dimension(u::AbstractUnits) = is_identity(todims(u))
 #affine_units(;dims, scale=1, offset=0, symbol=DEFAULT_USYMBOL) = Units(dims=dims, todims=AffineTransform(scale=scale, offset=offset), symbol=symbol)
 udynamic(u::Units) = u
 
-function Base.show(io::IO, u::Units; pretty=PRETTY_DIM_OUTPUT[])
-    if usymbol(u) != DEFAULT_USYMBOL
-        return print(io, usymbol(u))
-    else
-        print(io, "Units(todims=$(todims(u)), dims=")
-        show(io, dimension(u); pretty)
-        return print(io, ")")
-    end
-end
+
 
 """
     StaticUnits{D, T<:AbstractUnitTransform}(todims::T, symbol::Symbol)
@@ -336,22 +328,84 @@ end
 Quantity(x::T, u::MirrorDims{D}) where {T, D} = Quantity{T, MirrorUnion{D}}(x, u)
 Quantity{T, MirrorDims{D}}(x, u) where {T, D} = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
 
-function Base.show(io::IO, d::MirrorDims{D}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    if pretty
-        return print(io, "?/?")
-    else
-        return print(io, "MirrorDims{$(D)}()")
-    end
+
+
+#=============================================================================================
+Errors and assertion functions
+=============================================================================================#
+
+"""
+    DimensionError{D} <: Exception
+
+Error thrown when an operation is dimensionally invalid given the arguments
+"""
+struct DimensionError{T} <: Exception
+    items :: T
+end
+DimensionError(arg1, arg2, args...) = DimensionError((arg1, arg2, args...))
+Base.showerror(io::IO, e::DimensionError{<:Tuple}) = print(io, "DimensionError: ", e.items, " have incompatible dimensions")
+Base.showerror(io::IO, e::DimensionError{<:AbstractQuantity}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
+Base.showerror(io::IO, e::DimensionError{<:AbstractUnitLike}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
+
+"""
+    ConversionError{U, U0} <: Exception 
+
+Error thrown when trying to convert u0 to u, offers hint on how to make u compatible
+"""
+struct ConversionError{U<:AbstractUnitLike, U0<:AbstractUnitLike} <: Exception
+    u::U
+    u0::U0
 end
 
-function Base.show(io::IO, ::Type{MirrorDims{D}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    return print(io, "MirrorDims{$(D)}")
+function Base.showerror(io::IO, e::ConversionError{<:AbstractUnitLike, <:AbstractUnitLike})
+    io_tmp = IOBuffer()
+    pretty_str(x) = (ushow(io_tmp, x, pretty=true); String(take!(io_tmp)))
+
+    uΔ = dimension(e.u0)/dimension(e.u)
+    return print(io, "ConversionError: Cannot convert unit '", pretty_str(e.u0), "' to target unit '", pretty_str(e.u), "'. Consider multiplying '", pretty_str(e.u), "' by '", pretty_str(uΔ), "' or similar.")
 end
 
-function Base.show(io::IO, ::Type{Union{D,MirrorDims{D}}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    return print(io, "MirrorUnion{$(D)}")
-end
+"""
+    NotScalarError{D} <: Exception
 
+Error thrown for non-scalar units when the operation is only valid for scalar units
+"""
+struct NotScalarError{D} <: Exception
+    dim::D
+    NotScalarError(dim) = new{typeof(dim)}(dim)
+end
+Base.showerror(io::IO, e::NotScalarError) = print(io, "NotScalarError: ", e.dim, " cannot be treated as scalar, operation only valid for scalar units")
+
+
+"""
+    NotDimensionError{D} <: Exception
+
+Error thrown for non-dimensional units (scaled or affine) when the operation is only valid for dimensional units
+"""
+struct NotDimensionError{D} <: Exception
+    dim::D
+    NotDimensionError(dim) = new{typeof(dim)}(dim)
+end
+Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim, " cannot be treated as dimension, operation only valid for dimension units")
+
+
+assert_scalar(u::AbstractDimLike) = u
+assert_scalar(u::AbstractUnits) = is_scalar(u) ? u : throw(NotScalarError(u))
+scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
+
+assert_dimension(u::AbstractDimLike) =  u
+assert_dimension(u::AbstractUnits) = is_dimension(u) ? u : throw(NotDimensionError(u))
+
+assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
+assert_dimensionless(q::AbstractQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
+dimensionless(u::AbstractUnitLike) = dimension(assert_dimensionless(u))
+dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
+dimensionless(n::Number) = n
+
+isdimensionless(u::AbstractUnitLike) = iszero(dimension(u))
+Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))
+
+# This is deprecated in favor of QuantMapping, make sure these cases work
 #=
 """
     UnitfulCallable{T<:Any, UI<:Any, UO<:Any}
@@ -402,79 +456,3 @@ function _apply_unit_pair(f, u::Pair, x1, xs...)
     return Quantity(f(raw_args...), uo)
 end
 =#
-
-
-#=============================================================================================
-Errors and assertion functions
-=============================================================================================#
-
-"""
-    DimensionError{D} <: Exception
-
-Error thrown when an operation is dimensionally invalid given the arguments
-"""
-struct DimensionError{T} <: Exception
-    items :: T
-end
-DimensionError(arg1, arg2, args...) = DimensionError((arg1, arg2, args...))
-Base.showerror(io::IO, e::DimensionError{<:Tuple}) = print(io, "DimensionError: ", e.items, " have incompatible dimensions")
-Base.showerror(io::IO, e::DimensionError{<:AbstractQuantity}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
-Base.showerror(io::IO, e::DimensionError{<:AbstractUnitLike}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
-
-"""
-    ConversionError{U, U0} <: Exception 
-
-Error thrown when trying to convert u0 to u, offers hint on how to make u compatible
-"""
-struct ConversionError{U<:AbstractUnitLike, U0<:AbstractUnitLike} <: Exception
-    u::U
-    u0::U0
-end
-
-function Base.showerror(io::IO, e::ConversionError{<:AbstractUnitLike, <:AbstractUnitLike})
-    io_tmp = IOBuffer()
-    pretty_str(x) = (_print_pretty_unit(io_tmp, x); String(take!(io_tmp)))
-
-    uΔ = dimension(e.u0)/dimension(e.u)
-    return print(io, "ConversionError: Cannot convert unit '", pretty_str(e.u0), "' to target unit '", pretty_str(e.u), "'. Consider multiplying '", pretty_str(e.u), "' by '", pretty_str(uΔ), "' or similar.")
-end
-
-"""
-    NotScalarError{D} <: Exception
-
-Error thrown for non-scalar units when the operation is only valid for scalar units
-"""
-struct NotScalarError{D} <: Exception
-    dim::D
-    NotScalarError(dim) = new{typeof(dim)}(dim)
-end
-Base.showerror(io::IO, e::NotScalarError) = print(io, "NotScalarError: ", e.dim, " cannot be treated as scalar, operation only valid for scalar units")
-
-
-"""
-    NotDimensionError{D} <: Exception
-
-Error thrown for non-dimensional units (scaled or affine) when the operation is only valid for dimensional units
-"""
-struct NotDimensionError{D} <: Exception
-    dim::D
-    NotDimensionError(dim) = new{typeof(dim)}(dim)
-end
-Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim, " cannot be treated as dimension, operation only valid for dimension units")
-
-
-assert_scalar(u::AbstractDimLike) = u
-assert_scalar(u::AbstractUnits) = is_scalar(u) ? u : throw(NotScalarError(u))
-scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
-
-assert_dimension(u::AbstractDimLike) =  u
-assert_dimension(u::AbstractUnits) = is_dimension(u) ? u : throw(NotDimensionError(u))
-
-assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
-assert_dimensionless(q::AbstractQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
-dimensionless(u::AbstractUnitLike) = dimension(assert_dimensionless(u))
-dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
-dimensionless(n::Number) = n
-
-isdimensionless(u::AbstractUnitLike) = iszero(dimension(u))
-Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))

@@ -52,11 +52,16 @@ const AT = AffineTransform
     @test FlexUnits.constructorof(typeof(Quantity("this", ud"m"))) == Quantity
     @test FlexUnits.constructorof(Array{Float64}) == Array
 
+    
+    FlexUnits.pretty_print_units(false)
+    @test string(1.0u"kg*m^2/s^2") == "(1.0)(m^2*kg)/s^2"
+    @test string(1.0u"1/s^2") == "(1.0)1/s^2"
+
+    FlexUnits.pretty_print_units(true)
+    @test string(1.0u"kg*m^2/s^2")  == "1.0 (m² kg)/s²"
+    @test string(1.0u"1/s^2")  == "1.0 1/s²"
+    
     #@test string(AffineUnits(scale=1, offset=0, dims=dimension(u"m"), symbol=:_)) == "AffineUnits(scale=1.0, offset=0.0, dims=m)"
-    @test string(1.0u"kg*m^2/s^2", pretty=true)  == "1.0 (m² kg)/s²"
-    @test string(1.0u"kg*m^2/s^2", pretty=false) == "(1.0)(m^2*kg)/s^2"
-    @test string(1.0u"1/s^2", pretty=true)  == "1.0 1/s²"
-    @test string(1.0u"1/s^2", pretty=false) == "(1.0)1/s^2"
     #@test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=true) == "1.0 m/s²"
     #@test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=false) == "(1.0)m/s^2"
 
@@ -115,9 +120,10 @@ end
         @test typeof(x).parameters[2] == D
         @test ustrip(y) ≈ T(0.04)
 
+        FlexUnits.pretty_print_units(true)
         if R <: Rational  
-            @test string(x, pretty=true) == "0.2 (m kg⁵ᐟ²)/s"
-            @test string(inv(x), pretty=true) == "5.0 s/(m kg⁵ᐟ²)"
+            @test string(x) == "0.2 (m kg⁵ᐟ²)/s"
+            @test string(inv(x)) == "5.0 s/(m kg⁵ᐟ²)"
         end
 
         y = x - x
@@ -290,7 +296,7 @@ end
     u = ustrip(x)
 
     #Test round-trip parsing
-    @test ubase(x) ≈ ustrip(x)*uparse(string(unit(x), pretty=false))
+    @test ubase(x) ≈ ustrip(x)*uparse(FlexUnits.ustring(unit(x), pretty=false))
 
     #Test toggling pretty-print
     pretty_print_units(false)
