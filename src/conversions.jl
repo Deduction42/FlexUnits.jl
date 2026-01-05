@@ -168,8 +168,10 @@ Base.promote_rule(::Type{T1}, ::Type{T2}) where {T1<:NoTransform, T2<:AbstractUn
 #Conflicting or uncertain static dimensions get promoted to dynamic version
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimtype(D2))
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimtype(D1), dimtype(D2))
+Base.promote_rule(::Type{U1}, ::Type{U2}) where {T1, d1, U1<:StaticUnits{d1,T1}, D2, T2, U2<:Units{D2,T2}} = Units{promote_type(typeof(d1),D2), promote_type(T1,T2)}
+Base.promote_rule(::Type{U1}, ::Type{U2}) where {T1, d1, U1<:StaticUnits{d1,T1}, d2, T2, U2<:StaticUnits{d2,T2}} = Units{promote_type(typeof(d1),typeof(d2)), promote_type(T1,T2)}
 
-#Promote static units to static dimenions, double definition needed for specificity
+#Promote static unit quantities to static dimenion quantities, double definition needed for specificity
 function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1<:StaticUnits, U2<:StaticDims}
     D = equaldims(dimval(U1), dimval(U2))
     T = promote_type(T1, T2)

@@ -16,7 +16,7 @@ export StaticDims, StaticUnits
 export RegistryTools, UnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units
 export assert_scalar, assert_dimension, assert_dimensionless
-export with_ubase, ustrip, dstrip, ustrip_base, unit
+export with_ubase, ustrip, dstrip, ustrip_base, unit, nomirror
 export ubase, uconvert, dconvert, ustrip_dimensionless
 
 

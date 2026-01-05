@@ -1,7 +1,3 @@
-using FlexUnits
-using TestItems: @testitem
-using TestItemRunner
-
 #============================================================================================================================
 Run these commands at startup to see coverage
 julia --startup-file=no --depwarn=yes --threads=auto -e 'using Coverage; clean_folder(\"src\"); clean_folder(\"test\"); clean_folder(\"ext\") '
@@ -16,10 +12,12 @@ julia --startup-file=no --depwarn=yes --threads=auto --project=. test/invalidati
 #https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters
 
 using Revise
+using FlexUnits, .UnitRegistry
+using TestItems: @testitem
+using TestItemRunner
 using Test
 using BenchmarkTools
-using FlexUnits, .UnitRegistry
-using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions
+using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval
 using Aqua
 using LinearAlgebra
 using Statistics
@@ -52,15 +50,30 @@ const AT = AffineTransform
     @test FlexUnits.constructorof(typeof(Quantity("this", ud"m"))) == Quantity
     @test FlexUnits.constructorof(Array{Float64}) == Array
 
-    
+    vsum = sum(ones(5,3).*[u"rpm" u"kg/hr" u"kPa"], dims=1)
+
     FlexUnits.pretty_print_units(false)
     @test string(1.0u"kg*m^2/s^2") == "(1.0)(m^2*kg)/s^2"
     @test string(1.0u"1/s^2") == "(1.0)1/s^2"
-
+    @test string(1.0*(ud"km/hr"*ud"m/s")) == "(0.2777777777777778)m^2/s^2"
+    @test string(u"m/s"*u"m/s") == "StaticUnits{m^2/s^2, AffineTransform}(AffineTransform(1.0, 0.0), :_)"
+    @test string(MirrorDims{Dimensions{FixRat32}}()) == "MirrorDims{Dimensions{FixRat32}}()"
+    @test string(zero(typeof(1ud"m/s"))) == "(0)MirrorDims{Dimensions{FixRat32}}()"
+    @test string(vsum) == "Quantity{Float64, MirrorUnion{Dimensions{FixRat32}}}[(0.5235987755982988)1/s (0.001388888888888889)kg/s (5000.0)kg/(m*s^2)]"
+    @test string(nomirror.(vsum)) == "Quantity{Float64, Dimensions{FixRat32}}[(0.5235987755982988)1/s (0.001388888888888889)kg/s (5000.0)kg/(m*s^2)]"
+    
     FlexUnits.pretty_print_units(true)
     @test string(1.0u"kg*m^2/s^2")  == "1.0 (m² kg)/s²"
     @test string(1.0u"1/s^2")  == "1.0 1/s²"
-    
+    @test string(1.0*(ud"km/hr"*ud"m/s")) == "0.2777777777777778 m²/s²"
+    @test string(u"m/s"*u"m/s") == "StaticUnits{m²/s², AffineTransform}(AffineTransform(1.0, 0.0), :_)"
+    @test string(MirrorDims{Dimensions{FixRat32}}()) == "?/?"
+    @test string(zero(typeof(1ud"m/s"))) == "0 ?/?"
+    @test string(vsum) == "Quantity{Float64, MirrorUnion{Dimensions{FixRat32}}}[0.5235987755982988 1/s 0.001388888888888889 kg/s 5000.0 kg/(m s²)]"
+    @test string(nomirror.(vsum)) == "Quantity{Float64, Dimensions{FixRat32}}[0.5235987755982988 1/s 0.001388888888888889 kg/s 5000.0 kg/(m s²)]"
+
+    @test string(FlexUnits.unit_symbols(Dimensions{FixRat32})) == "(:length => :m, :mass => :kg, :time => :s, :current => :A, :temperature => :K, :luminosity => :cd, :amount => :mol)"
+
     #@test string(AffineUnits(scale=1, offset=0, dims=dimension(u"m"), symbol=:_)) == "AffineUnits(scale=1.0, offset=0.0, dims=m)"
     #@test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=true) == "1.0 m/s²"
     #@test string(1.0*AffineUnits(dims=dimension(u"m/s^2")), pretty=false) == "(1.0)m/s^2"
@@ -539,7 +552,14 @@ end
     @test eltype([q1,q1]) <: Quantity{Float64, typeof(u"m/s")} #StaticUnits preserved
     @test eltype([q1,q2]) <: Quantity{Float64, typeof(dimension(u"m/s"))} #StaticUnits and StaticDims promote to StaticDims if dimension is the same
     @test eltype([q1,q2,q3]) <: Quantity{Float64, <:Dimensions} #Different dimensions promote to "Dimensions"
+    @test eltype([u"m/s", u"kg/hr"]) <: Units{Dimensions{FixRat32}, AffineTransform}
+    @test eltype([u"m/s", ud"m/s"]) <: Units{Dimensions{FixRat32}, AffineTransform}
+    @test eltype([dimension(u"m/s"), dimension(u"kg/hr")]) <: Dimensions{FixRat32}
+    @test eltype([dimension(u"m/s"), dimension(ud"m/s")]) <: Dimensions{FixRat32}
+    @test eltype([u"m/s", u"m/s"]) <: StaticUnits{dimval(u"m/s"), AffineTransform}
+    @test eltype([dimension(u"m/s"), dimension(u"m/s")]) <: StaticDims{dimval(u"m/s")}
     
+
     #Addition/Sybtraction preserves static unit information but Multiplication/Division don't 
     @test (1u"m/s" + 1ud"m/s") isa Quantity{Float64, <:StaticDims}
     @test (1u"m/s" - 1ud"m/s") isa Quantity{Float64, <:StaticDims}
