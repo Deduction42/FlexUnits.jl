@@ -33,7 +33,8 @@ function FlexUnits.Quantity{T,U}(q::Unitful.Quantity) where {T,U}
     return FlexUnits.Quantity{T,U}(FlexUnits.ustrip(flexq), FlexUnits.unit(flexq))
 end
 
-Base.convert(::Type{FlexUnits.Quantity{T,U}}, q::Unitful.Quantity) where {T,U} = FlexUnits.Quantity{T,U}(q)
+Base.convert(::Type{FlexUnits.Quantity{T,U}}, q::Unitful.Quantity) where {T,U<:FlexUnits.Units} = FlexUnits.Quantity{T,U}(q)
+Base.convert(::Type{FlexUnits.Quantity{T,U}}, q::Unitful.Quantity) where {T,U<:FlexUnits.AbstractDimensions} = FlexUnits.Quantity{T,U}(q)
 
 function FlexUnits.uconvert(u::FlexUnits.AbstractUnitLike, q::Unitful.Quantity)
     check_dimensions(Unitful.unit(q), FlexUnits.dimension(u))

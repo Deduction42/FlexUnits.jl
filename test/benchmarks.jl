@@ -22,7 +22,7 @@ const Ns = 1000
 
 # ========== S1. Scalar ops (units inferable) ==========
 println("S1) Scalar operations where units are inferable\n")
-f1(x, y) = x * y + y * x            # result dimension is (x*y)
+f1(x, y) = x^2 * y^2 + y^2 * x^2            # result dimension is (x*y)
 
 print("Unitful:\t")
 @btime f1($(1.23 * Unitful.u"m/s"), $(0.7 * Unitful.u"m/s"));
@@ -34,18 +34,32 @@ print("FlexU:     \t")
 @btime f1($(1.23 * UnitRegistry.u"m/s"), $(0.7 * UnitRegistry.u"m/s"));
 
 # ========== S2. Scalar ops (NON-inferable units / mixed dims) ==========
-println("\nS2) Scalar ops on heterogeneous units (non-inferable)\n")
+println("\nS2.1) Scalar ops on heterogeneous units (non-inferable)\n")
 
 v_uni  = [1.0 * Unitful.u"m/s", 1.0 * Unitful.u"J/kg", 1.0 * Unitful.u"A/V"]
 v_dyn  = [1.0 * DynamicQuantities.u"m/s", 1.0 * DynamicQuantities.u"J/kg", 1.0 * DynamicQuantities.u"A/V"]
-v_flex = ubase.([1.0 * UnitRegistry.u"m/s", 1.0 * UnitRegistry.u"J/kg", 1.0 * UnitRegistry.u"A/V"])   # normalize to SI dims
+v_flex = [1.0 * UnitRegistry.u"m/s", 1.0 * UnitRegistry.u"J/kg", 1.0 * UnitRegistry.u"A/V"]
 
 print("Unitful:\t")
 @btime sum(x -> x^0.0, $v_uni);
 print("DynamicQ:\t")
 @btime sum(x -> x^0.0, $v_dyn);
-print("FlexU ubase:\t")
+print("FlexU:\t")
 @btime sum(x -> x^0.0, $v_flex);
+
+
+# This is an example where static FlexUnits VASTLY outperforms Unitful due to the design choice of sticking with dimensions
+println("\nS2.1) Scalar ops on homogeneous units (theoretically inferrable)\n")
+v1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s"]
+v1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s"]
+v1flex = [1.0*UnitRegistry.u"m/s", 1.0*UnitRegistry.u"m/s", 1.0*UnitRegistry.u"m/s"]
+
+print("Unitful:\t")
+@btime sum(x->x^2, v1uni)
+print("DynamicQ:\t")
+@btime sum(x->x^2, $v1dyn)
+print("FlexU:\t")
+@btime sum(x->x^2, $v1flex)
 
 # ========== S3. Broadcasting on large arrays ==========
 println("\nS3) Broadcasting on large arrays\n")
@@ -63,9 +77,6 @@ ysd = DynamicQuantities.uconvert.(DynamicQuantities.us"km/s", yd)
 xf = randn(N) .* UnitRegistry.u"km/s"
 yf = (0.3 .+ randn(N)) .* UnitRegistry.u"km/s"
 
-xfb = ubase.(randn(N) .* UnitRegistry.u"km/s")
-yfb = ubase.((0.3 .+ randn(N)) .* UnitRegistry.u"km/s")
-
 g(x, y) = (x.^2) .+ 2.0.*x.*y .+ (y.^2)
 
 print("Unitful:\t")
@@ -80,11 +91,8 @@ print("DynamicQ Dim:\t")
 print("DynamicQ Array:\t")
 @btime g($xqd, $yqd);
 
-print("FlexU Affine:\t")
+print("FlexU:\t")
 @btime g($xf, $yf);
-
-print("FlexU Dim:\t")
-@btime g($xfb, $yfb);
 
 # ========== S4.1. upreferred ==========
 println("\nS4.1) upreferred\n")
@@ -120,7 +128,7 @@ print("FlexU:  \t")
 @btime FlexUnits.uconvert.(UnitRegistry.u"ft", $l_flex);
 
 # ========== S5. Affine units (°C/°F) ==========
-println("\nS5) Affine units (°C/°F) handling: PV = nRT at 25°C, 101.3kPa, n=1 mol\n")
+println("\nS5) Ideal gas law with affine units: PV = nRT at 25°C, 101.3kPa, n=1 mol\n")
 Tc = 25 .+ randn(Ns);
 Tu = (Tc .+ 273.15) .* Unitful.u"K";
 Td = [Tci * DynamicQuantities.ua"degC" for Tci in Tc];
@@ -138,6 +146,7 @@ print("DynamicQ:\t")
 
 print("FlexU  :\t")
 @btime ($nf .* F_R .* $Tf) ./ $pf;
+
 
 # ========== S6. Struct storage & field access ==========
 println("\nS6) Structs with quantities as fields")
@@ -158,10 +167,11 @@ struct DState
 end
 
 # FlexUnits single concrete type works
-const UF = typeof(ubase(1.0*UnitRegistry.u"K"))
-struct FState
-    T::UF
-    p::UF
+const FQK = typeof(1.0*UnitRegistry.u"K")
+const FQkPa = typeof(1.0*UnitRegistry.u"kPa")
+struct FState{TK,TP}
+    T::TK
+    p::TP
 end
 
 function build_states_unitful(n)
@@ -178,8 +188,11 @@ function build_states_dyn(n)
 end
 
 function build_states_flex(n)
-    [FState((290.0 + rand() * 20) * UnitRegistry.u"K",
-        (90.0 + rand() * 30) * UnitRegistry.u"kPa") for _ = 1:n]
+    v = Vector{FState{FQK,FQkPa}}(undef, n)
+    @inbounds for i = 1:n
+        v[i] = FState((290.0 + rand() * 20) * UnitRegistry.u"K", (90.0 + rand() * 30) * UnitRegistry.u"kPa")
+    end
+    return v
 end
 
 println("\nS6.1) Construct\n")

@@ -1,125 +1,57 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Major Changes:
-1.  (breaking) `zero(::Quantity{T,D})` now outputs a new quanitity type Quantity{T, MirrorUnion{D}}
+1.  (breaking) Static units are now supported, and the string macro @u_str now produces static units that eagery convert to SI units 
+    (use @ud_str for old behaviour)
+2.  (breaking) `zero(::Quantity{T,D})` for dynamic units now outputs a new quanitity type Quantity{T, MirrorUnion{D}}
     -   This allows an "additive identity" as MirrorUnion{D} mirrors the dimensions in the other argument
     -   Enables functionality like var(X, dims=1) where X is a matrix of mixed units
     -   Behaviour also applies to `typemin` and `typemax` as well
-2.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
-3.  (breaking) `quantity` removed, use Quantity instead
-4.  (breaking) `UnitfulCallable` removed in favor of QuantMapping(f::Function, u::UnitMap)
-5.  (breaking) `AbstractUnitTransform` is renamed to `AbstractUnitConverter` (AffineTrnasform is now AffineConverter)
-6.  Added more promotion rules to convert to quantities
-7.  FixRat32 is now exported
-8.  Added "dstrip" as shorthand for "ustrip_base"
-9.  Added "dconvert" to convert to the dimensions of the unit
+3.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
+4.  (breaking) `quantity` removed, use Quantity instead
+5.  (breaking) `UnitfulCallable` removed in favor of QuantMapping(f::Function, u::UnitMap)
+6.  `zero(::Quantity{T,D})` for static units behaves like Unitful
+7.  Added more promotion rules to convert numbers to quantities
+8.  FixRat32 is now exported
+9.  Added "dstrip" as shorthand for "ustrip_base"
+10. Added "dconvert" to convert to the dimensions of the unit
 
 
 Current Tasks:
-1.  Build out unit mapping functions for +,-,*,/,\,^,exp, (matrix trigs)
-        -   This consists of building shortcuts for UnitMap types
-        -   Output should be "UnitMap" the most specific type possible
-        -   Make sure operations convert to QuantLinMap and output that type
+
+Backlog:
+1.  Finish basic QuantLinMap functionality for +,-,*,/,\,^,exp, (and matrix trigs)
+    -   This consists of building shortcuts for UnitMap types
+    -   Output should be the most specific form of unit mapping possible
+    -   Make sure operations convert to QuantLinMap and output that type
 
     Notes on above:      
     -   Matrix multiplication is ONLY valid with QuantLinMap and will ALWAYS produce a QuantLinMap
         -   Multiplication should convert both AbstractMatrix{Quantity} to QuantLinMap
         -   This may result in more allocations, but is more reliable in pointing out errors
         -   It is recommendable to only store matrices as QuantLinMap if linear algebra is intended
-    -   Transpose of a unit transform is different form an inverse
-        -   y = A*x produces units of y
-        -   inv(A)*y produces units of x
-            -   Thise meanse that output units ut2 = UnitMap(u_out=ut1.u_in, u_in=ut1.u_out)
-        -   x'A' = y' should hold true
-            -   This means that output units ut2 = UnitMap(u_out=inv.(ut1.u_in), u_in=inv.(ut1.u_out))
-    -   Support basic matrix operations out-of-the-box (inv, \, /, exp, ^)
-        -   For later versions, add a LinearAlgebra extension for factorizations like cholesky and eigen
-    -   There are two kinds of special unit factorizations: Recursive and Symmetric
-        -   `A` is recursive if A*A*...*A*x is possible
-            -   This happens when u_out = s*u_in
-        -   `A` is symmetric if x'*A*x is possible
-            -   This happens when u_out = s*inv.(u_in)
-        -   cholesky requires A to be symmetric
-        -   matrix exponentials require A to be recursive
-        -   eigendecomposition works on both because inv(E) == E'
-            -   The problem is inv(E) != E' for units
-            -   If 'A' is symmetric, then you want to use "E'" to transform to "inverse space"
-            -   If 'A' is recursive, then you want to use "inv(E)" to transform back
 
-Backlog:
-1.  MAJOR FEATURE: Consider support for StaticDims{D} and StaticUnits{U,C}
-    -   StaticDims have dimensions as a type parameter
-        -   Mixed StaticDims get promoted to Dimensions
-        -   Best of both Unitful and DynamicQuantities
-    -   Dimensions are a parameter, not a field, everything else should just work
-        -   Dimensions work as a parameter. THIS IS HUGE!!!
-        -   Units don't work, but this doesn't matter because only using dimensions has many benefits
-            -   Less over-specialization
-            -   No scalar conversions, which means theroetically zero overhead
-            -   Use 'su"..."' to create a StaticUnit{D,T<:AbstractUnitTranform}
-    -   Eager conversion to SI should reduce over-specialization
-        -   String-macro "su" will produce StaticUnits (dimensions with the converter object)
-        -   Multiplying static units eagerly converts to Dimensions (for performance reasons)
-    -   Promotion of quantities will revert to regular dynamic quantities
-        -   This looks like it can be handled at the "with_ubase" interface level
-2.  Build out documentation and a docs badge
+2.  Add LinearAlgebra extensions for certain factorizations
+    -   cholesky (requries symmetric transform)
+    -   eigen (confusing becasue it can use both idempotent and symmetric) 
+        -   E' == inv(E) DOES NOT hold 
+        -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
+    -   consider other transformations as well
+
+
+3.  Build out documentation and a docs badge
     -   Include all-stops-out tutorial on defining a new dimension "RadDims"
     -   Add angle to the dimension list
     -   Create a new unit registry with that dimension 
     -   Re-tool sin, cos, tan rules on this particular dimension
-3.  Add LinearAlgebra extensions for QuantLinMap
-4.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
+4.  Add LinearAlgebra extensions for QuantLinMap
+5.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
     -   Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
     -   This can be done without documentation 
         -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
         -   Iterate over registry and list other units that match the query dimension
 
 
-#====================================================================================================
-Strategy #1 Regular `Quantity` with StaticUnit types
-====================================================================================================#
-struct StaticDim{D} 
-    function StaticDim{D}() where D
-        return (D isa AbstractDimension) ? new{D}() : error("Type parameter must be a dimension")
-    end
-end #(where D is a dimenison)
-StaticDim(D) = StaticDim{D}()
-StaticDim{D}(d::AbstractDimension) = (D == d) ? StaticDim{D} : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
-
-struct StaticUnit{D, C<:AbstractUnitConverter} #(where D is a dimenison)
-    todims :: C
-    symbol :: Symbol
-    function StaticUnit{D}(conv::C, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitConverter}
-        return (D isa AbstractDimension) ? new{D}(conv, symb) : error("Type parameter must be a dimension")
-    end
-end
-
-StaticUnit(u::AffineUnits) = StaticUnit{dimension(u)}(uconvert(dimension(u), u), u.symbol)
-uconvert(utarget::StaticDim{D}, ucurrent::StaticUnit{D}) = ucurrent.todims
-
-function ubase(q::AbstractQuantity{T, StaticUnit{D}}) where {T,D}
-    x = unit(q).converter(ustrip(q))
-    return Quantity{typeof(x), StaticDim{D}}(x, StaticDim{D}())
-end
-
-#====================================================================================================
-Strategy #2 (if #1 fails)
-====================================================================================================#
-#Static quantity that does compile-time unit conversion
-struct SQuantity{T, D<:AbstractDimensions}
-    value :: T
-end
-SQuantity(x::Any, u::AbstractDimensions) = SQuantity{typeof(x), u}(x)
-
-#Static unit that contains a dimension parameter and the transform to get the unit to said dimension
-struct StaticUnit{D, T<:AbstractUnitConverter}
-    converter :: T
-    symbol :: Symbol
-end
-StaticUnit(u::AffineUnits{D}) where D<:AbstractDimension = StaticUnit{dimension(u), AffineConverter}(uconvert(dimension(u), u))
-
-#Multiplication with static units becomes easy thanks to the elegance of unit transforms
-Base.*(x::T, u::StaticUnit{D}) where {T<:ARITHMETICS, D<:AbstractDimensions} = SQuantity{T,D}(u.transform(x))
 
 
 

@@ -2,16 +2,15 @@ const DEFAULT_RATIONAL = FixRat32
 const DEFAULT_USYMBOL = :_
 
 abstract type AbstractUnitLike end
+abstract type AbstractUnitTransform end
 abstract type AbstractDimLike <: AbstractUnitLike end
 abstract type AbstractDimensions{P} <: AbstractDimLike end
-abstract type AbstractUnits{D<:AbstractDimensions} <: AbstractUnitLike end
-abstract type AbstractAffineUnits{D<:AbstractDimensions} <: AbstractUnits{D} end 
+abstract type AbstractUnits{D, T<:AbstractUnitTransform} <: AbstractUnitLike end
 
 const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
 abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} <: AbstractMatrix{U} end
 
-const AbstractAffineLike{D} = Union{D, AbstractAffineUnits{D}} where D <: AbstractDimensions
 #Base.@assume_effects :consistent static_fieldnames(t::Type) = Base.fieldnames(t)
 static_fieldnames(t::Type) = Base.fieldnames(t)
 Base.eltype(::Type{<:AbstractDimensions{P}}) where P = P
@@ -30,19 +29,63 @@ function (::Type{D})(x::Union{Real,Missing}) where {P, D<:AbstractDimensions{P}}
     return D(map(f, static_fieldnames(D))...)
 end
 
-uscale(u::AbstractDimLike) = 1 # All AbstractDimensions have unity scale
-uoffset(u::AbstractDimLike) = 0 # All AbstractDimensions have no offset
 dimension(u::AbstractDimLike) = u
+dimval(u::AbstractDimensions) = u
 usymbol(u::AbstractDimLike) = DEFAULT_USYMBOL
+uscale(u::AbstractUnitLike) = uscale(todims(u))
+uoffset(u::AbstractUnitLike) = uoffset(todims(u))
 dimtype(::Type{<:AbstractUnits{D}}) where D = D
 dimtype(::Type{D}) where D<:AbstractDimLike = D
 dimpowtype(::Type{D}) where {P, D<:AbstractDimensions{P}} = P
 Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
 dimpowtype(::Type{U}) where {U<:AbstractUnitLike} = dimpowtype(dimtype(U))
+is_dimension(u::AbstractUnitLike) = is_identity(todims(u))
+is_scalar(u::AbstractUnitLike) = is_scalar(todims(u))
+udynamic(u::AbstractDimensions) = u
+
+"""
+AbstractUnitTransform
+
+An abstract object representing a unit conversion formula. 
+Any object that subtypes this is made callable.
+
+# Callable form 
+utrans = uconvert(u"°C", u"°F")
+utrans(0.0)
+31.999999999999986
+
+# Shorthand callable form (syntactic sugar)
+(u"°C" |> u"°F")(0.0)
+31.999999999999986
+"""
+
+Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
+(t2::AbstractUnitTransform)(t1::AbstractUnitTransform) = t2 ∘ t1
+
 
 #=======================================================================================
-Basic SI dimensions
+Basic SI dimensions and transforms
 =======================================================================================#
+"""
+NoTransform object, the default transform returned by todims(x::AbstractDimensionLike). Calling it results in 
+an identity.
+t = NoTransform()
+t(x) = x
+"""
+struct NoTransform <: AbstractUnitTransform end 
+(t::NoTransform)(x) = x
+(t::NoTransform)(t0::AbstractUnitTransform) = t0
+
+Base.:∘(t1::NoTransform, t2::AbstractUnitTransform) = t2 
+Base.:∘(t1::AbstractUnitTransform, t2::NoTransform) = t1 
+Base.:∘(t1::NoTransform, t2::NoTransform) = t1
+Base.inv(t::NoTransform) = t
+uscale(t::NoTransform)  = 1
+uoffset(t::NoTransform) = 0
+todims(u::AbstractDimLike) = NoTransform()
+is_identity(t::NoTransform) = true
+is_scalar(t::NoTransform) = true
+
 """
     Dimensions{P}
 
@@ -64,16 +107,13 @@ Basic SI dimensions:
     luminosity::P = FixedRational(0)
     amount::P = FixedRational(0)
 end
-const DEFAULT_DIMENSONS = Dimensions{DEFAULT_RATIONAL}
-Dimensions(args...) = Dimensions{DEFAULT_RATIONAL}(args...)
-#Dimensions(d::AbstractDimensions) = Dimensions{DEFAULT_RATIONAL}(d)
+Dimensions(args...) = Dimensions{FixRat32}(args...)
 
 function unit_symbols(::Type{<:Dimensions})
     return Dimensions{Symbol}(
         length=:m, mass=:kg, time=:s, current=:A, temperature=:K, luminosity=:cd, amount=:mol
     )
 end
-
 
 """
     dimension_names(::Type{<:AbstractDimensions})
@@ -86,52 +126,139 @@ Can use this to overload the default "fieldnames" behaviour
     return static_fieldnames(D)
 end
 
+
 """
-    AffineUnits{D<:AbstractDimensions}(scale::Float64, offset::Float64, dims::D, symbol::Symbol)
+    StaticDims{D}
 
-Affine-dimensional unit (treated as a scalar when offset=0). Quantities with this unit are eagerly
-converted to dimmensional quantities for any operation, WHICH MAY BE UNITUITIVE because operations
-do not happen directly on values if there is an offset. If you want operations on the quantity 
-values directly, simply use "ustrip" and convert back.
+Static dimensions where the "D" is the dimension value. This improves performance when dimensions are
+statically inferrable.
+"""
+struct StaticDims{D} <: AbstractDimLike
+    function StaticDims{D}() where D
+        return (D isa AbstractDimensions) ? new{D}() : error("Type parameter must be a dimension")
+    end
+end 
+StaticDims(D::AbstractDimensions) = StaticDims{D}()
+StaticDims{D}(d::AbstractDimensions) where D = (D == d) ? StaticDims{D} : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
+dimtype(::Type{<:StaticDims{D}}) where D = typeof(D)
+dimtype(d::StaticDims) = dimtype(typeof(d))
+dimval(::Type{<:StaticDims{D}}) where D = D
+dimval(d::StaticDims) = dimval(typeof(d))
+udynamic(u::StaticDims{D}) where D = D
 
-julia> 1*(5u"°C") #Operations convert to Kelvin
+
+#=======================================================================================
+Affine Units and Transforms
+=======================================================================================#
+"""
+    AffineTransform
+
+A type representing an affine transfomration formula that can be
+used to convert values from one affine unit to another. This object is callable.
+
+# Fields
+- scale :: Float64
+- offset :: Float64
+
+# Constructors
+- AffineTransform(scale::Real, offset::Real)
+- AffineTransform(; scale, offset)
+"""
+@kwdef struct AffineTransform <: AbstractUnitTransform
+    scale  :: Float64 = 1
+    offset :: Float64 = 0
+end
+(t::AffineTransform)(x) = muladd(x, t.scale, t.offset)
+(t::AffineTransform)(x::AbstractArray) = t.(x)
+(t::AffineTransform)(x::Tuple) = map(t, x)
+(t::AffineTransform)(t0::AbstractUnitTransform) = t ∘ t0
+
+function Base.:∘(t2::AffineTransform, t1::AffineTransform)
+    return AffineTransform(
+        scale  = t1.scale*t2.scale,
+        offset = t2.offset + t2.scale*t1.offset 
+    )
+end
+Base.inv(t::AffineTransform) = AffineTransform(scale=inv(t.scale), offset=-t.offset/t.scale)
+
+uscale(t::AffineTransform) = t.scale 
+uoffset(t::AffineTransform) = t.offset
+is_identity(t::AffineTransform) = isone(t.scale) & iszero(t.offset)
+is_scalar(t::AffineTransform) = iszero(t.offset)
+remove_offset(t::AffineTransform) = AffineTransform(scale=t.scale, offset=0)
+
+"""
+    Units{D<:AbstractDimensions, T<:AbstractUnitTransform}(dims::D, todims::T, symbol::Symbol)
+
+A dynamic unit object that contains dimensions (dims) and its conversion formula to said dimensions (todims). The conversion 
+formula determines what kind of unit is referred to. An AffineTransform implies affine units, a NoTransform implies dimensions.
+Dynamic units can generated through the `@ud_str` macro.
+
+julia> 1*(5ud"°C") #Operations on units eagerly convert to dimensions
 278.15 K
 
-julia> 1*(5u"°C") |> u"°C" #Converts operation results back to Celsius
+julia> 1*(5du"°C") |> ud"°C" #Converts operation results back to Celsius
 5.0 °C
 
-julia> (5u"°C" + 2u"°C") |> u"°C" #Operation adds values in Kelvin, results converted back to Celsius
+julia> (5ud"°C" + 2ud"°C") |> ud"°C" #Operation adds values in Kelvin, results converted back to Celsius
 280.15 °C
 
-julia> (ustrip(5u"°C") + ustrip(2u"°C"))*u"°C" #Strips, adds raw quantity values, converts raw number to Celsius
+julia> (ustrip(5ud"°C") + ustrip(2ud"°C"))*u"°C" #Strips, adds raw quantity values, converts raw number to Celsius
 7 °C
 """
-@kwdef struct AffineUnits{D<:AbstractDimensions} <: AbstractAffineUnits{D}
-    scale::Float64 = 1
-    offset::Float64 = 0
-    dims::D
-    symbol::Symbol=DEFAULT_USYMBOL 
+@kwdef struct Units{D<:AbstractDimensions, T<:AbstractUnitTransform} <: AbstractUnits{D, T}
+    dims   :: D
+    todims :: T
+    symbol :: Symbol = DEFAULT_USYMBOL
 end
+Units{D}(units, todims::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} = Units{D,T}(units, todims, symbol)
+Units(dims::D, todims::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimensions = Units(dims, todims, symbol)
+Units(units::D, todims::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where D<:AbstractUnits = Units(dimension(assert_dimension(units)), todims, symbol)
 
-AffineUnits(scale, offset, dims::D, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = AffineUnits{D}(scale, offset, dims, symbol)
-AffineUnits(scale, offset, dims::AbstractUnits{D}, symbol=DEFAULT_USYMBOL) where {D<:AbstractDimensions} = AffineUnits(scale, offset, convert(D, dims), symbol)
+todims(u::Units) = u.todims
+dimension(u::Units) = u.dims 
+usymbol(u::Units) = u.symbol
+remove_offset(u::U) where U<:AbstractUnits = constructorof(U)(dimension(u), remove_offset(u.todims))
+is_scalar(u::AbstractUnits) = is_scalar(todims(u))
+is_dimension(u::AbstractUnits) = is_identity(todims(u))
+#affine_units(;dims, scale=1, offset=0, symbol=DEFAULT_USYMBOL) = Units(dims=dims, todims=AffineTransform(scale=scale, offset=offset), symbol=symbol)
+udynamic(u::Units) = u
+dimtype(::Type{Units{D,C}}) where {D,C} = D
+dimtype(d::Units) = dimtype(typeof(d))
 
-uscale(u::AffineUnits) = u.scale
-uoffset(u::AffineUnits) = u.offset 
-dimension(u::AffineUnits) = u.dims 
-usymbol(u::AffineUnits) = u.symbol
-remove_offset(u::U) where U<:AbstractAffineUnits = constructorof(U)(scale=uscale(u), offset=0, dims=dimension(u))
 
-function Base.show(io::IO, u::AffineUnits; pretty=PRETTY_DIM_OUTPUT[])
-    if usymbol(u) != DEFAULT_USYMBOL
-        return print(io, usymbol(u))
-    else
-        print(io, "AffineUnits(scale=", uscale(u), ", offset=", uoffset(u), ", dims=")
-        show(io, dimension(u); pretty)
-        return print(io, ")")
+"""
+    StaticUnits{D, T<:AbstractUnitTransform}(todims::T, symbol::Symbol)
+
+A static version of units, where the value of dimensions "D" is a a parameter.
+Static units can generated through the `@u_str` macro. This improves performance when
+dimensions are statically inferrable.
+"""
+@kwdef struct StaticUnits{D, T<:AbstractUnitTransform} <: AbstractUnits{D,T}
+    todims :: T
+    symbol :: Symbol
+    function StaticUnits{D,C}(conv::AbstractUnitTransform, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitTransform}
+        return (D isa AbstractDimensions) ? new{D,C}(conv, symb) : error("Type parameter must be a dimension")
+    end
+    function StaticUnits{D}(conv::C, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitTransform}
+        return (D isa AbstractDimensions) ? new{D,C}(conv, symb) : error("Type parameter must be a dimension")
     end
 end
+StaticUnits(u::Units) = StaticUnits{dimension(u)}(todims(u), usymbol(u))
+StaticUnits(d::AbstractDimensions, todims::AbstractUnitTransform, symb=DEFAULT_USYMBOL) = StaticUnits{d}(todims, symb)
+StaticUnits(d::StaticDims{D}, todims::AbstractUnitTransform, symb=DEFAULT_USYMBOL) where D = StaticUnits{D}(todims, symb)
 
+constructorof(::Type{<:StaticUnits}) = StaticUnits
+Units(u::StaticUnits) = Units{dimtype(u)}(dimval(u), todims(u), usymbol(u))
+udynamic(u::StaticUnits) = Units(u)
+todims(u::StaticUnits) = u.todims
+dimtype(::Type{StaticUnits{D,C}}) where {D,C} = typeof(D)
+dimtype(d::StaticUnits) = dimtype(typeof(d))
+dimval(::Type{StaticUnits{D,C}}) where {D,C} = D
+dimval(d::StaticUnits) = dimval(typeof(d))
+dimension(::Type{StaticUnits{D,T}}) where {D,T} = StaticDims{D}()
+dimension(d::StaticUnits) = dimension(typeof(d))
+usymbol(u::StaticUnits) = u.symbol
 
 #=================================================================================================
 Quantity types
@@ -149,15 +276,20 @@ struct Quantity{T<:Any,U<:AbstractUnitLike} <: AbstractQuantity{T,U}
     unit  :: U
 end
 Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
+Quantity(x::T, u::StaticUnits{D}) where {T,D} = Quantity(u.todims(x), StaticDims{D}())
+Quantity{T}(x, u::StaticUnits{D}) where {T,D} = Quantity(convert(T, u.todims(x)), StaticDims{D}())
+Quantity{T}(q::AbstractQuantity) where T = Quantity{T}(ustrip(q), unit(q))
+Quantity{T,U}(q::AbstractQuantity) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
 
 ustrip(q::Quantity) = q.value
 unit(q::Quantity) = q.unit
 dimension(q::Quantity) = dimension(unit(q))
 unittype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = U
 dimtype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = dimtype(U)
+dimtype(q::Quantity) = dimtype(unit(q))
+udynamic(q::Quantity) = Quantity(ustrip(q), udynamic(unit(q)))
 
-AffineUnits(scale, offset::Quantity, dims::AbstractDimensions, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
-AffineUnits(scale, offset::Quantity, dims::AbstractUnits, symbol=DEFAULT_USYMBOL) = AffineUnits(scale, ustrip(dims, offset), dims, symbol)
+AffineTransform(scale::Real, offset::Quantity) = AffineTransform(scale=scale, offset=dstrip(offset))
 
 
 """
@@ -168,7 +300,7 @@ This function can be overloaded if custom behaviour is needed
 """
 constructorof(::Type{T}) where T = Base.typename(T).wrapper
 constructorof(::Type{<:Dimensions}) = Dimensions
-constructorof(::Type{<:AffineUnits}) = AffineUnits 
+constructorof(::Type{<:Units}) = Units
 constructorof(::Type{<:Quantity}) = Quantity
 
 
@@ -185,37 +317,100 @@ julia> max(1u"m/s", -Inf*MirrorDims())
 1 m/s
 """
 struct MirrorDims{D<:AbstractDimensions} <: AbstractDimLike end
-MirrorDims() = MirrorDims{FixRat32, Dimensions{FixRat32}}()
+MirrorDims() = MirrorDims{Dimensions{FixRat32}}()
 MirrorDims(::Type{D}) where {D<:AbstractDimensions} = MirrorDims{D}()
 
 
-const MirrorUnion{D} = Union{D, MirrorDims{D}}
-promote_rule(::Type{D}, ::Type{<:MirrorDims}) where {D<:AbstractDimensions} = MirrorUnion{D}
+const MirrorUnion{D} = Union{D, MirrorDims{D}} where D<:AbstractDimensions
+Base.promote_rule(::Type{D}, ::Type{<:MirrorDims}) where {D<:AbstractDimensions} = MirrorUnion{D}
 function nomirror(x::Quantity)
     u = unit(x)
     return (u isa MirrorDims) ? throw(ArgumentError("Mirror dimensions found, cannot convert to non-mirror version")) : Quantity(ustrip(x), u)
 end
 
 #Quantities with mirror dimensions should include a union
-Quantity(x::T, u::MirrorDims{D}) where {T,D<:AbstractDimensions} = Quantity{T, MirrorUnion{D}}(x, u)
-Quantity{<:Any, <:MirrorDims}(x, u) = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
+Quantity(x::T, u::MirrorDims{D}) where {T, D} = Quantity{T, MirrorUnion{D}}(x, u)
+Quantity{T, MirrorDims{D}}(x, u) where {T, D} = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
 
-function Base.show(io::IO, d::MirrorDims{D}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    if pretty
-        return print(io, "?/?")
-    else
-        return print(io, "MirrorDims{$(D)}()")
-    end
+
+
+#=============================================================================================
+Errors and assertion functions
+=============================================================================================#
+
+"""
+    DimensionError{D} <: Exception
+
+Error thrown when an operation is dimensionally invalid given the arguments
+"""
+struct DimensionError{T} <: Exception
+    items :: T
+end
+DimensionError(arg1, arg2, args...) = DimensionError((arg1, arg2, args...))
+Base.showerror(io::IO, e::DimensionError{<:Tuple}) = print(io, "DimensionError: ", e.items, " have incompatible dimensions")
+Base.showerror(io::IO, e::DimensionError{<:AbstractQuantity}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
+Base.showerror(io::IO, e::DimensionError{<:AbstractUnitLike}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
+
+"""
+    ConversionError{U, U0} <: Exception 
+
+Error thrown when trying to convert u0 to u, offers hint on how to make u compatible
+"""
+struct ConversionError{U<:AbstractUnitLike, U0<:AbstractUnitLike} <: Exception
+    u::U
+    u0::U0
 end
 
-function Base.show(io::IO, ::Type{MirrorDims{D}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    return print(io, "MirrorDims{$(D)}")
+function Base.showerror(io::IO, e::ConversionError{<:AbstractUnitLike, <:AbstractUnitLike})
+    io_tmp = IOBuffer()
+    pretty_str(x) = (ushow(io_tmp, x, pretty=true); String(take!(io_tmp)))
+
+    uΔ = dimension(e.u0)/dimension(e.u)
+    return print(io, "ConversionError: Cannot convert unit '", pretty_str(e.u0), "' to target unit '", pretty_str(e.u), "'. Consider multiplying '", pretty_str(e.u), "' by '", pretty_str(uΔ), "' or similar.")
 end
 
-function Base.show(io::IO, ::Type{MirrorUnion{D}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    return print(io, "MirrorUnion{$(D)}")
-end
+"""
+    NotScalarError{D} <: Exception
 
+Error thrown for non-scalar units when the operation is only valid for scalar units
+"""
+struct NotScalarError{D} <: Exception
+    dim::D
+    NotScalarError(dim) = new{typeof(dim)}(dim)
+end
+Base.showerror(io::IO, e::NotScalarError) = print(io, "NotScalarError: ", e.dim, " cannot be treated as scalar, operation only valid for scalar units")
+
+
+"""
+    NotDimensionError{D} <: Exception
+
+Error thrown for non-dimensional units (scaled or affine) when the operation is only valid for dimensional units
+"""
+struct NotDimensionError{D} <: Exception
+    dim::D
+    NotDimensionError(dim) = new{typeof(dim)}(dim)
+end
+Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim, " cannot be treated as dimension, operation only valid for dimension units")
+
+
+assert_scalar(u::AbstractDimLike) = u
+assert_scalar(u::AbstractUnits) = is_scalar(u) ? u : throw(NotScalarError(u))
+scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
+
+assert_dimension(u::AbstractDimLike) =  u
+assert_dimension(u::AbstractUnits) = is_dimension(u) ? u : throw(NotDimensionError(u))
+
+assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
+assert_dimensionless(q::AbstractQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
+dimensionless(u::AbstractUnitLike) = dimension(assert_dimensionless(u))
+dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
+dimensionless(n::Number) = n
+
+isdimensionless(u::AbstractUnitLike) = iszero(dimension(u))
+Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))
+Base.iszero(u::StaticDims{d}) where d = iszero(d)
+
+# This is deprecated in favor of QuantMapping, make sure these cases work
 #=
 """
     UnitfulCallable{T<:Any, UI<:Any, UO<:Any}
@@ -266,79 +461,3 @@ function _apply_unit_pair(f, u::Pair, x1, xs...)
     return Quantity(f(raw_args...), uo)
 end
 =#
-
-
-#=============================================================================================
-Errors and assertion functions
-=============================================================================================#
-
-"""
-    DimensionError{D} <: Exception
-
-Error thrown when an operation is dimensionally invalid given the arguments
-"""
-struct DimensionError{T} <: Exception
-    items :: T
-end
-DimensionError(arg1, arg2, args...) = DimensionError((arg1, arg2, args...))
-Base.showerror(io::IO, e::DimensionError{<:Tuple}) = print(io, "DimensionError: ", e.items, " have incompatible dimensions")
-Base.showerror(io::IO, e::DimensionError{<:AbstractQuantity}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
-Base.showerror(io::IO, e::DimensionError{<:AbstractUnitLike}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
-
-"""
-    ConversionError{U, U0} <: Exception 
-
-Error thrown when trying to convert u0 to u, offers hint on how to make u compatible
-"""
-struct ConversionError{U<:AbstractUnitLike, U0<:AbstractUnitLike} <: Exception
-    u::U
-    u0::U0
-end
-
-function Base.showerror(io::IO, e::ConversionError{<:AbstractUnitLike, <:AbstractUnitLike})
-    io_tmp = IOBuffer()
-    pretty_str(x) = (_print_pretty_unit(io_tmp, x); String(take!(io_tmp)))
-
-    uΔ = dimension(e.u0)/dimension(e.u)
-    return print(io, "ConversionError: Cannot convert unit '", pretty_str(e.u0), "' to target unit '", pretty_str(e.u), "'. Consider multiplying '", pretty_str(e.u), "' by '", pretty_str(uΔ), "' or similar.")
-end
-
-"""
-    NotScalarError{D} <: Exception
-
-Error thrown for non-scalar units when the operation is only valid for scalar units
-"""
-struct NotScalarError{D} <: Exception
-    dim::D
-    NotScalarError(dim) = new{typeof(dim)}(dim)
-end
-Base.showerror(io::IO, e::NotScalarError) = print(io, "NotScalarError: ", e.dim, " cannot be treated as scalar, operation only valid for scalar units")
-
-
-"""
-    NotDimensionError{D} <: Exception
-
-Error thrown for non-dimensional units (scaled or affine) when the operation is only valid for dimensional units
-"""
-struct NotDimensionError{D} <: Exception
-    dim::D
-    NotDimensionError(dim) = new{typeof(dim)}(dim)
-end
-Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim, " cannot be treated as dimension, operation only valid for dimension units")
-
-
-assert_scalar(u::AbstractDimensions)  = u
-assert_scalar(u::AbstractAffineUnits) = iszero(uoffset(u)) ? u : throw(NotScalarError(u))
-scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
-
-assert_dimension(u::AbstractDimensions) =  u
-assert_dimension(u::AbstractAffineUnits) = isone(uscale(u)) & iszero(uoffset(u)) ? u : throw(NotDimensionError(u))
-
-assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
-assert_dimensionless(q::AbstractQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
-dimensionless(u::AbstractUnitLike) = dimension(assert_dimensionless(u))
-dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
-dimensionless(n::Number) = n
-
-isdimensionless(u::AbstractUnitLike) = iszero(dimension(u))
-Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))
