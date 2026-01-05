@@ -2,7 +2,10 @@
 uconvert with transformation objects
 ============================================================================================#
 #Generic transformation generator
-uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) = inv(todims(u_target)) ∘ todims(u_current)
+function uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) 
+    dimension(u_target) == dimension(u_current) || throw(ConversionError(u_target, u_current))
+    return inv(todims(u_target)) ∘ todims(u_current)
+end
 uconvert(ft::AbstractUnitTransform, x) = ft(x)
 uconvert(utarget::StaticDims{D}, ucurrent::StaticUnits{D}) where D = ucurrent.todims
 
@@ -121,16 +124,23 @@ this can yield potentially unintuitive results like 2°C/1°C = 1.00364763815429
 =================================================================================================#
 
 
-# Converting quantity types ====================================================
-Base.convert(::Type{Q}, q::AbstractQuantity) where Q<:AbstractQuantity = (q isa Q) ? q : Q(ustrip(q), unit(q))
-function Base.convert(::Type{Q}, q::AbstractQuantity) where Q<:AbstractQuantity{<:Any, <:AbstractDimensions}
-    if (q isa Q) 
-        return q 
-    else 
-        qb = ubase(q)
-        return Q(ustrip(qb), unit(qb))
-    end
+#Converting dynamic quantity types ====================================================
+Base.convert(::Type{Quantity{T,D}}, q::AbstractQuantity) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
+Base.convert(::Type{Quantity{T,U}}, q::AbstractQuantity) where {T,U<:Units} = Quantity{T,U}(ustrip(q), unit(q))
+Base.convert(::Type{Quantity{T,M}}, q::AbstractQuantity) where {T, D<:AbstractDimensions, M<:MirrorUnion{D}} = Quantity{T,M}(T(dstrip(q)), dimension(q))
+Base.convert(::Type{Quantity{T,D}}, x::Union{Number,AbstractArray}) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D(0))
+Base.convert(::Type{Quantity{T,U}}, x::Union{Number,AbstractArray}) where {T,U<:Units} = Quantity{T,U}(x, dimtype(U)(0))
+
+
+
+#Converting static quantity types ====================================================
+Base.convert(::Type{Quantity{T,D}}, q::AbstractQuantity) where {T, D<:StaticDims} = Quantity{T,D}(ustrip(D(), q), D())
+Base.convert(::Type{Quantity{T,U}}, q::AbstractQuantity) where {T, D, C, U<:StaticUnits{D,C}} = Quantity{T,U}(ustrip(D, q), StaticUnits{D,C}(C()))
+function Base.convert(::Type{Quantity{T,D}}, u::AbstractUnitLike) where {T,D<:AbstractDimensions}
+    assert_scalar(u)
+    return Q(uscale(u), dimension(u))
 end
+
 
 # Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), todims=todims(u), symbol=usymbol(u))
@@ -138,26 +148,16 @@ Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:StaticUnits{D,T}} = (
 
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = D(dimension(assert_dimension(u)))
 Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)
+Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D, dimval(d))
 
 # Converting transform types ===============================================
 Base.convert(::Type{T}, t::NoTransform) where T <: AbstractUnitTransform = T()
 
 # Converting between units and quantities ====================================================
 Base.convert(::Type{U}, q::AbstractQuantity) where U<:Units = Units(q)
-function Base.convert(::Type{Q}, u::AbstractUnitLike) where {Q<:AbstractQuantity{<:Any, <:AbstractDimensions}}
-    assert_scalar(u)
-    return Q(uscale(u), dimension(u))
-end
 
 # Converting between generic numbers and quantity types 
 Base.convert(::Type{T}, q::AbstractQuantity) where {T<:Union{Number,AbstractArray}} = convert(T, dimensionless(q))
-Base.convert(::Type{Q}, x::Union{Number,AbstractArray}) where {Q<:AbstractQuantity} = Q(x, dimtype(Q)(0))
-
-#Static conversions
-Base.convert(::Type{Q}, q::AbstractQuantity{<:Any, <:StaticUnits{D}}) where {T,D,Q<:Quantity{T,StaticDims{D}}} = Q(dstrip(q), StaticDims{D}())
-Base.convert(::Type{Q}, q::AbstractQuantity{<:Any, <:StaticDims{D}}) where {T,D,Q<:Quantity{T,StaticDims{D}}}  = Q(dstrip(q), StaticDims{D}())
-Base.convert(::Type{Q}, q::AbstractQuantity{<:Any, <:StaticDims{D}}) where {T,D,C,Q<:Quantity{T,StaticUnits{D,C}}} = Q(ustrip(q), StaticUnits{D}(C()))
-Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D, dimval(d))
 
 # Promotion rules ======================================================
 function Base.promote_rule(::Type{<:Dimensions{P1}}, ::Type{<:Dimensions{P2}}) where {P1, P2}

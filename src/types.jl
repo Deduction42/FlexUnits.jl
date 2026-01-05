@@ -277,6 +277,8 @@ end
 Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
 Quantity(x::T, u::StaticUnits{D}) where {T,D} = Quantity(u.todims(x), StaticDims{D}())
 Quantity{T}(x, u::StaticUnits{D}) where {T,D} = Quantity(convert(T, u.todims(x)), StaticDims{D}())
+Quantity{T}(q::AbstractQuantity) where T = Quantity{T}(ustrip(q), unit(q))
+Quantity{T,U}(q::AbstractQuantity) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
 
 ustrip(q::Quantity) = q.value
 unit(q::Quantity) = q.unit
@@ -405,6 +407,7 @@ dimensionless(n::Number) = n
 
 isdimensionless(u::AbstractUnitLike) = iszero(dimension(u))
 Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))
+Base.iszero(u::StaticDims{d}) where d = iszero(d)
 
 # This is deprecated in favor of QuantMapping, make sure these cases work
 #=

@@ -85,6 +85,8 @@ const AT = AffineTransform
     @test uoffset(t_affine2) == 1
 
     @test Units{Dimensions{FixRat32}}(Dimensions{FixRat64}(length=1), AffineTransform()) == ud"m" 
+    @test Units(ud"m/s") == ud"m/s"
+    @test Units(u"m/s") == ud"m/s"
     @test FlexUnits.dimtype(Units{Dimensions{FixRat32}}(Dimensions{FixRat64}(length=1), AffineTransform())) <: Dimensions{FixRat32}
     @test FlexUnits.dimtype(Units(Dimensions{FixRat64}(length=1), AffineTransform())) <: Dimensions{FixRat64}
     @test FlexUnits.dimtype(u"m/s") == typeof(dimension(ud"m/s"))
@@ -690,10 +692,13 @@ end
     d32 = convert(Dimensions{Rational{Int32}}, d)
     @test typeof(d) == Dimensions{Rational{Int16}}
     @test typeof(d32) == Dimensions{Rational{Int32}}
+    @test convert(Quantity{Float64, typeof(ud"m/s")}, 1.0) isa Quantity{Float64, Units{Dimensions{FixRat32}, AffineTransform}}
+    @test convert(Quantity{Float64, FlexUnits.dimtype(ud"m/s")}, 1.0) isa Quantity{Float64, Dimensions{FixRat32}}
 
     # Should not change:
     @test convert(Dimensions{Rational{Int16}}, d) === d
 
+    #Quantity type conversions
     q = Quantity(0.5, d)
     q32_32 = convert(Quantity{Float32,Dimensions{Rational{Int32}}}, q)
     @test typeof(q) == Quantity{Float64,Dimensions{Rational{Int16}}}
@@ -703,9 +708,14 @@ end
     @test typeof(ustrip(q)) == Float64
     @test typeof(ustrip(q32_32)) == Float32
     @test dimension(q32_32) == convert(typeof(dimension(q32_32)), dimension(q))
-    @test typeof(convert(Quantity{Float16}, q)) == Quantity{Float16,Dimensions{Rational{Int16}}}
     @test convert(Quantity, q) === q
     @test convert(Quantity{Float64, Units{DEFAULT_DIM_TYPE, AT}}, ubase(1ud"kg")) isa Quantity{Float64, Units{DEFAULT_DIM_TYPE, AT}}
+    
+    #Static unit type conversions 
+    @test convert(Quantity{Int64, typeof(u"m/s")}, 1u"m/s") isa Quantity{Int64, typeof(u"m/s")}
+    @test convert(Quantity{Int64, typeof(dimension(u"m/s"))}, 1u"m/s") isa Quantity{Int64, typeof(dimension(u"m/s"))}
+    @test_throws ConversionError convert(Quantity{Float64, typeof(u"m/s")}, 1u"kg/hr")
+    @test_throws ConversionError convert(Quantity{Int64, typeof(dimension(u"m/s"))}, 1u"kg/hr")
 
     # Test that regular type promotion applies:
     q = Quantity(2, d)
@@ -750,6 +760,18 @@ end
     @test uconvert(ud"nm", 5e-9ud"m") ≈ (5e-9ud"m" |> ud"nm") ≈ 5ud"nm"
     @test_throws ConversionError uconvert(ud"nm*J", 5e-9ud"m")
 
+    #Generating transforms 
+    @test uconvert(u"kg/hr", u"kg/s") == AffineTransform(3600.0, 0.0)
+    @test uconvert(u"kg/s" |> u"kg/hr", 1.0) == 3600.0
+    @test uconvert(dimension(u"kg/s"), u"kg/hr") == FlexUnits.todims(u"kg/hr")
+
+    #dconvert and similar 
+    @test dconvert(u"kg/s", 5.0u"kg/hr") == ubase(5.0u"kg/hr")
+    @test ustrip(u"kg/s", 5.0ud"kg/hr") ≈ 5/3600
+    @test ustrip([u"kg/hr", u"m^3/hr"], [1.0u"kg/s",2.0u"L/s"]) ≈ [3600, 7.2]
+    @test FlexUnits.ustrip_dimensionless(1.0u"") == 1.0
+    @test_throws DimensionError FlexUnits.ustrip_dimensionless(1.0u"m/s")
+
     # Types:
     @test typeof(uconvert(ud"nm", 5e-9ud"m")) <: Quantity{Float64, U} 
     @test typeof(uconvert(ud"nm", Quantity(5e-9, ud"m"))) <: Quantity{Float64, U}
@@ -759,7 +781,8 @@ end
 
    
     # Different types require converting both arguments:
-    q = convert(Quantity{Float16}, 1.5ud"g")
+    q = Quantity{Float16}(1.5ud"g")
+    @test q isa Quantity{Float16}
 
     # Broadcasting conversions over Arrays
     x = [1.0, 2.0, 3.0] .* Quantity(1, ud"kg")
