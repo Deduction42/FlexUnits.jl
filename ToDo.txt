@@ -18,17 +18,6 @@ Major Changes:
 
 
 Current Tasks:
-Prioritize making StaticUnits more robust, as significant performance gains have been found (even over Unitful.jl)
-0.  Don't extend Base.show except for top-level functionality
-    -   Base.show should not take "pretty" as a keyword argument, use qshow/ushow instead
-    -   qshow and ushow explicitly take "pretty" as an argument
-1.  Achieve 95% coverage with new tests
-    -   Replicate appropriate tests with "ud" macro
-2.  Add FlexUnits support for static transform (to prevent recalculation) uconvert(u, q, t)
-    -   Add this to the "uconvert" option to the benchmarks
-    -   Break down "broadcast into large arrays" between "uniform units" and "nonuniform units"
-3.  Improve realism of PengRobinson benchmark by adding convergence criteria
-
 
 Backlog:
 1.  Finish basic QuantLinMap functionality for +,-,*,/,\,^,exp, (and matrix trigs)
@@ -63,51 +52,6 @@ Backlog:
         -   Iterate over registry and list other units that match the query dimension
 
 
-#====================================================================================================
-Strategy #1 Regular `Quantity` with StaticUnit types
-====================================================================================================#
-struct StaticDim{D} 
-    function StaticDim{D}() where D
-        return (D isa AbstractDimension) ? new{D}() : error("Type parameter must be a dimension")
-    end
-end #(where D is a dimenison)
-StaticDim(D) = StaticDim{D}()
-StaticDim{D}(d::AbstractDimension) = (D == d) ? StaticDim{D} : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
-
-struct StaticUnit{D, C<:AbstractUnitTransform} #(where D is a dimenison)
-    todims :: C
-    symbol :: Symbol
-    function StaticUnit{D}(conv::C, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitTransform}
-        return (D isa AbstractDimension) ? new{D}(conv, symb) : error("Type parameter must be a dimension")
-    end
-end
-
-StaticUnit(u::AffineUnits) = StaticUnit{dimension(u)}(uconvert(dimension(u), u), u.symbol)
-uconvert(utarget::StaticDim{D}, ucurrent::StaticUnit{D}) = ucurrent.todims
-
-function ubase(q::AbstractQuantity{T, StaticUnit{D}}) where {T,D}
-    x = unit(q).converter(ustrip(q))
-    return Quantity{typeof(x), StaticDim{D}}(x, StaticDim{D}())
-end
-
-#====================================================================================================
-Strategy #2 (if #1 fails)
-====================================================================================================#
-#Static quantity that does compile-time unit conversion
-struct SQuantity{T, D<:AbstractDimensions}
-    value :: T
-end
-SQuantity(x::Any, u::AbstractDimensions) = SQuantity{typeof(x), u}(x)
-
-#Static unit that contains a dimension parameter and the transform to get the unit to said dimension
-struct StaticUnit{D, T<:AbstractUnitTransform}
-    converter :: T
-    symbol :: Symbol
-end
-StaticUnit(u::AffineUnits{D}) where D<:AbstractDimension = StaticUnit{dimension(u), AffineTransform}(uconvert(dimension(u), u))
-
-#Multiplication with static units becomes easy thanks to the elegance of unit transforms
-Base.*(x::T, u::StaticUnit{D}) where {T<:ARITHMETICS, D<:AbstractDimensions} = SQuantity{T,D}(u.transform(x))
 
 
 

@@ -30,6 +30,7 @@ function (::Type{D})(x::Union{Real,Missing}) where {P, D<:AbstractDimensions{P}}
 end
 
 dimension(u::AbstractDimLike) = u
+dimval(u::AbstractDimensions) = u
 usymbol(u::AbstractDimLike) = DEFAULT_USYMBOL
 uscale(u::AbstractUnitLike) = uscale(todims(u))
 uoffset(u::AbstractUnitLike) = uoffset(todims(u))

@@ -49,6 +49,16 @@ function volume(state)
     return V 
 end
 
+function volume_function_barrier(x::PengRobinson{<:Quantity})
+    x_static = (
+        T=x.T|>u"K", P=x.P|>u"Pa", V=x.V|>u"m^3/mol", 
+        a=x.a|>u"J*m^3/mol^2", b=x.b|>u"m^3/mol", ω=x.ω|>u"m/m", 
+        Tc=x.Tc|>u"K", Pc=x.Pc|>u"Pa", Mw=x.Mw|>u"kg/mol",
+        R=x.R|>u"J/(K*mol)"
+    )
+    return volume(x_static)
+end
+
 function f_alpha(state)
     θ  = (0.37464, 1.54226, -0.26992)
     κ  = evalpoly(state.ω, θ)
@@ -86,19 +96,19 @@ fl_t = (
     R=x.R*u"J/(K*mol)"
 )
 
-@info "Statically-Inferrable Peng-Robinson"
+println("S1.1) Iterative Peng-Robinson with statically-inferrable units\n")
 
-println("No Units")
-@btime volume(x)
+print("No Units (Baseline)\t")
+@btime volume($x)
 
-println("Static Unitful.jl")
-@btime volume(uf_t)
+print("Static Unitful.jl\t")
+@btime volume($uf_t)
 
-println("Static DynamicQuantities.jl")
-@btime volume(dq_t)
+print("Static DynamicQ.jl\t")
+@btime volume($dq_t)
 
-println("Static FlexUnits.jl")
-@btime volume(fl_t)
+print("Static FlexUnits.jl\t")
+@btime volume($fl_t)
 
 #===================================================================================================
 # Dynamic dimensions
@@ -107,13 +117,16 @@ uf_v = PengRobinson(uf_t)
 dq_v = PengRobinson(dq_t)
 fl_v = PengRobinson(fl_t)
 
-@info "Dynamically-Inferred Peng-Robinson"
+println("S1.2) Iterative Peng-Robinson with dynamic units\n")
 
-println("Dynamic Unitful.jl")
-@btime volume(uf_v)
+print("Dynamic Unitful  \t")
+@btime volume($uf_v)
 
-println("Dynamic DynamicQuantities.jl")
-@btime volume(dq_v)
+print("Dynamic DynamicQ\t")
+@btime volume($dq_v)
 
-println("Dynamic FlexUnits.jl")
-@btime volume(fl_v)
+print("Dynamic FlexUnits\t")
+@btime volume($fl_v)
+
+print("Semi-Dyn FlexUnits\t")
+@btime volume_function_barrier($fl_v)

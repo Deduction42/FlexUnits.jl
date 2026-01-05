@@ -291,6 +291,7 @@ end
     end
 
     #Other mathematical operators/functions
+    +(5u"m") == 5u"m"
     @test sin(5u"rad") ≈ sin(5)
     @test cos(60u"deg") ≈ 0.5
     @test 5u"km/hr" < 6u"km/hr"
@@ -316,6 +317,44 @@ end
     @test sum(qm) ≈ 10u"m/s"
     @test qm[1] == 1u"m/s"
 
+    #Other math on mirror dimensions
+    @test +(zero(typeof(1ud""))) == zero(typeof(1ud""))
+    @test zero(typeof(1ud""))^2 == zero(typeof(1ud""))
+    @test zero(typeof(1ud"")) + (1ud"m/s") == 1.0ud"m/s"
+    @test (1ud"m/s") + zero(typeof(1ud"")) == 1.0ud"m/s"
+    @test zero(typeof(1ud""))*(1ud"m/s") == 0.0ud"m/s"
+    @test (1ud"m/s")*zero(typeof(1ud"")) == 0.0ud"m/s"
+    @test zero(typeof(1ud""))*zero(typeof(1ud"")) == zero(typeof(1ud""))
+    @test zero(typeof(1ud""))/(1ud"m/s") == 0.0ud"s/m"
+    @test (1ud"m/s")/zero(typeof(1ud"")) == Inf*ud"m/s"
+    @test unit(zero(typeof(1ud""))/zero(typeof(1ud""))) == unit(zero(typeof(1ud"")))
+    @test zero(Quantity{Float64,MirrorDims{Dimensions{FixRat32}}}) == zero(typeof(1ud""))
+
+    #Math on unit transforms 
+    @test AffineTransform(scale=2, offset=0)*2 == AffineTransform(scale=4, offset=0)
+    @test_throws ArgumentError AffineTransform(scale=2, offset=1)*2
+    @test AffineTransform(scale=2, offset=0)/2 == AffineTransform(scale=1, offset=0)
+    @test_throws ArgumentError AffineTransform(scale=2, offset=1)*2
+    @test NoTransform()^60 == NoTransform()
+    @test AffineTransform()^60 == AffineTransform()
+    @test_throws ArgumentError AffineTransform(scale=2, offset=1)^2
+    @test NoTransform()/2 == AffineTransform(scale=0.5, offset=0)
+
+    #Math on units 
+    @test ud"m/s"*ud"m/s" == ud"m^2/s^2"
+    @test u"m/s"*u"m/s" == u"m^2/s^2"
+    @test ud"m/s"/ud"kg/s" == ud"m/kg"
+    @test u"m/s"/u"kg/s" == u"m/kg"
+    @test (1.0ud"m/s")*u"m/s" == 1.0ud"m^2/s^2"
+    @test ud"m/s"*(1.0ud"m/s") == 1.0ud"m^2/s^2"
+    @test (1.0ud"m/s")/ud"kg/s" == 1.0ud"m/kg"
+    @test ud"m/s"/(1.0ud"kg/s") == 1.0ud"m/kg"
+
+    #Comparisons on missing
+    @test 1.0u"" ≈ 1.0
+    @test 1.0 ≈ 1.0u""
+    @test ismissing(missing ≈ 1.0u"kg")
+    @test ismissing(1.0u"kg" ≈ missing)
 end
 
 #=
@@ -620,6 +659,11 @@ end
     @test (1u"m/s" - 1ud"m/s") isa Quantity{Float64, <:StaticDims}
     @test (1u"m/s" * 1ud"m/s") isa Quantity{Float64, <:Dimensions}
     @test (1u"m/s" / 1ud"m/s") isa Quantity{Float64, <:Dimensions}
+    @test (1ud"m/s" + 1u"m/s") isa Quantity{Float64, <:StaticDims}
+    @test (1ud"m/s" - 1u"m/s") isa Quantity{Float64, <:StaticDims}
+    @test (1ud"m/s" * 1u"m/s") isa Quantity{Float64, <:Dimensions}
+    @test (1ud"m/s" / 1u"m/s") isa Quantity{Float64, <:Dimensions}
+
 
     #Ustrip tests
     x = 1.3u"km/s^2" |> u"km/s^2" 
@@ -666,6 +710,7 @@ end
     @test u"m/s" / unit(1u"m/s") == u""
     @test cbrt(u"m^3/s^3") == u"m/s"
     @test abs2(dimension(u"m/s")) == dimension(u"m^2/s^2")
+    @test (1.0u"m/s")' == 1.0u"m/s"
 
     @test xv/1 == 1u"m/s"
     @test xp/1 == 0.01*u""

@@ -55,12 +55,13 @@ Base.adjoint(d::AbstractDimensions) = d
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-1}) = inv(d) 
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-2}) = inv(d*d)
 
-#Mirror dimensions on two argument operations produces "equaldims"
-for op in (:*, :/)
-    @eval Base.$op(d1::AbstractDimensions, d2::MirrorDims) = d1
-    @eval Base.$op(d1::MirrorDims, d2::AbstractDimensions) = d2
-    @eval Base.$op(d1::MirrorDims, d2::MirrorDims) = d1
-end
+#Mirror dimensions on two argument operations produces "equaldims
+Base.:*(d1::AbstractDimensions, d2::MirrorDims) = d1
+Base.:*(d1::MirrorDims, d2::AbstractDimensions) = d2
+Base.:*(d1::MirrorDims, d2::MirrorDims) = d1
+Base.:/(d1::AbstractDimensions, d2::MirrorDims) = d1
+Base.:/(d1::MirrorDims, d2::AbstractDimensions) = inv(d2)
+Base.:/(d1::MirrorDims, d2::MirrorDims) = d1
 
 #Mirror dimensions on single argument functions
 for op in (:inv, :sqrt, :cbrt, :abs2, :adjoint)
@@ -76,7 +77,7 @@ Base.:(==)(d1::AbstractDimensions, d2::StaticDims) = (d1 == dimval(d2))
 Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
 
 equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) ? arg1 : throw(DimensionError((arg1,arg2)))
-equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (dimval(arg1) == arg2) ? arg2 : throw(DimensionError((arg1,arg2)))
+equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (arg1 == dimval(arg2)) ? arg2 : throw(DimensionError((arg1,arg2)))
 equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2))  ? arg1 : throw(DimensionError((arg1,arg2)))
 
 Base.:*(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1*D2}()
