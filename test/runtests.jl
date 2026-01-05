@@ -732,6 +732,9 @@ end
     @test convert(Quantity{Float64, DEFAULT_DIM_TYPE}, 2ud"m") === Quantity{Float64, DEFAULT_DIM_TYPE}(2.0, dimension(ud"m")) 
     @test_throws NotScalarError convert(Quantity{Float64, DEFAULT_DIM_TYPE}, ud"°C") 
     @test promote_type(Quantity{Float32, DEFAULT_DIM_TYPE}, Quantity{Float64, DEFAULT_UNIT_TYPE}) == Quantity{Float64, DEFAULT_DIM_TYPE}
+    @test promote_type(Quantity{Float64, typeof(ud"m/s")}, Float64) == Quantity{Float64, typeof(ud"m/s")}
+    @test promote_type(Quantity{Float32, typeof(ud"m/s")}, Float64) == Quantity{Float64, typeof(ud"m/s")}
+    @test promote_type(Quantity{Matrix{Float32}, typeof(ud"m/s")}, Matrix{Float64}) == Quantity{Matrix{Float64}, typeof(ud"m/s")}
 
     # Test that adding different dimension subtypes still works
     @test 1*Dimensions{Int64}(length=1) + 1ud"m" == 2ud"m"
