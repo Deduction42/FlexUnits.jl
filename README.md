@@ -7,7 +7,7 @@ FlexUnits.jl is a rewrite of Unitful.jl that maintains similar performance to Un
 
 1. Promotion rules that convert Unitful-like `StaticDims` into DynamicQuantities-like `Dimensions` when units are mismatched or uninferrable. Operations on `Dimensions` are slower than `StaticDims` because dimension operations need to be performed at runtime; however, dynamic dimension ops are type-stable, compilable, and still much faster than dynamic dispatch that Unitful falls back to.
 
-2. Quantities with units are converted to quantities with dimensions (i.e. SI units) before any calculation is performed. This greatly simplifies many calculation operations. When applied to `StaticDims`, this greatly reduces over-specialization, because there is only one unit for every dimension. For example, velocity is always in "m/s", temperature is always in "K", and pressure is always in "Pa"="kg/(m s²)". This decision tends to result in FlexUnits exhibiting better performance than Unitful in cases where variables are re-assigned during iteration (a common pattern in performance-sensitive code), but this comes at the cost of slower unit conversions (which is more common in less performance-sensitive code).
+2. Quantities with units are converted to quantities with dimensions (i.e. SI units) before any calculation is performed. This greatly simplifies many calculation operations. When applied to `StaticDims`, this greatly reduces over-specialization, because there is only one unit for every dimension. For example, velocity is always in "m/s", temperature is always in "K", and pressure is always in "Pa"="kg/(m s²)". This decision tends to result in FlexUnits exhibiting better performance than Unitful in cases where variables are re-assigned during iteration (a common pattern in performance-sensitive code), but this comes at the cost of slightly slower unit conversions (which is more common in less performance-sensitive code).
 
 In addition to these design changes, there are a number of other notable differences.
 
@@ -18,11 +18,11 @@ In addition to these design changes, there are a number of other notable differe
 4. Operations on affine units do not produce errors (due to automatic conversion to dimensionas). **This the correct action for the vast majority of cases, but care must be taken to make sure that affine differences such as ***temperature differences*** are in absolute units.** For example, try running follwing commands: 
     - ```(5u"°C" - 2u"°C") == 3u"°C"``` 
     - ```(5u"°C" - 2u"°C") == 3u"K"```
-5. FlexUnits registries are much simpler; a registry a module that contains a dict of uniformly typed dynamic units, and exports string macros. Custom registries inside user-defined modules are not neccessary, but are still supported (in case of naming convention conflicts).
+5. FlexUnits registries are somewhat simpler; much like Unitful, a registry is a module that contains units. However, because dynamic units are type-stable, they can all be stored efficiently inside a single dictionary. A FlexUnits registry exports string macros which, at parse time, looks up the units inside its own internal dictionary and substitutes them into the string expression. 
 6. `Quantity` in FlexUnits.jl does not subtype to `Number` in order to support more value types (such as a Distribution or Array)
 
 ## General Use
-Much like other unit packages, you can use string macros to build units and quantities. Unlike other packages, you must manually "use" the default registry `UnitRegistry`, this is done so as to not be overly opinionated as to what registry to use (users can create and use their own registries instead).
+Much like other unit packages, you can use string macros to build units and quantities. Unlike other packages, you must manually "use" the default registry `UnitRegistry`, this is done so as to not be overly opinionated as to what registry to use (allowing users to easily create and use their own registries instead).
 ```
 julia> using FlexUnits, .UnitRegistry
 

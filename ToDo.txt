@@ -19,6 +19,9 @@ Major Changes:
 
 Current Tasks:
 Prioritize making StaticUnits more robust, as significant performance gains have been found (even over Unitful.jl)
+0.  Don't extend Base.show except for top-level functionality
+    -   Base.show should not take "pretty" as a keyword argument, use qshow/ushow instead
+    -   qshow and ushow explicitly take "pretty" as an argument
 1.  Achieve 95% coverage with new tests
     -   Replicate appropriate tests with "ud" macro
 2.  Add FlexUnits support for static transform (to prevent recalculation) uconvert(u, q, t)
