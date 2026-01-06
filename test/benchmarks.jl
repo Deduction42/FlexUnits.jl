@@ -234,3 +234,26 @@ print("DynamicQ:\t")
 @btime sumT_d($vdh);
 print("FlexU:  \t")
 @btime sumT_f($vfh);
+
+println("\nS7.1) Missing values\n")
+vm  = [randn(1000); missing]
+vum = vm.*Unitful.u"kg"
+vdm = vm.*DynamicQuantities.u"kg"
+vfm = vm.*UnitRegistry.u"kg"
+
+print("Unitful:\t")
+@btime sum($vum);
+print("DynamicQ:\t")
+@btime sum($vdm);
+print("FlexU:  \t")
+@btime sum($vfm);
+
+println("\nS7.1) Missing quantities\n")
+vdm = DynamicQuantities.GenericQuantity.(vm, Ref(DynamicQuantities.dimension(DynamicQuantities.u"m")))
+vfm = Quantity{eltype(vm)}.(vm, UnitRegistry.u"m")
+
+print("Unitful:\t  fails\n")
+print("DynamicQ:\t")
+@btime sum($vdm)
+print("FlexU:  \t")
+@btime sum($vfm)

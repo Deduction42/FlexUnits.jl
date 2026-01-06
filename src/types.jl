@@ -44,7 +44,7 @@ is_scalar(u::AbstractUnitLike) = is_scalar(todims(u))
 udynamic(u::AbstractDimensions) = u
 
 """
-AbstractUnitTransform
+    AbstractUnitTransform
 
 An abstract object representing a unit conversion formula. 
 Any object that subtypes this is made callable.
@@ -163,8 +163,10 @@ used to convert values from one affine unit to another. This object is callable.
 - offset :: Float64
 
 # Constructors
-- AffineTransform(scale::Real, offset::Real)
-- AffineTransform(; scale, offset)
+```
+AffineTransform(scale::Real, offset::Real)
+AffineTransform(; scale, offset)
+```
 """
 @kwdef struct AffineTransform <: AbstractUnitTransform
     scale  :: Float64 = 1
@@ -234,7 +236,7 @@ dimtype(d::Units) = dimtype(typeof(d))
 """
     StaticUnits{D, T<:AbstractUnitTransform}(todims::T, symbol::Symbol)
 
-A static version of units, where the value of dimensions "D" is a a parameter.
+A static version of units, where the value of dimensions `D` is a a parameter.
 Static units can generated through the `@u_str` macro. This improves performance when
 dimensions are statically inferrable.
 """
@@ -281,7 +283,7 @@ struct Quantity{T<:Any,U<:AbstractUnitLike} <: AbstractQuantity{T,U}
 end
 Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
 Quantity(x::T, u::StaticUnits{D}) where {T,D} = Quantity(u.todims(x), StaticDims{D}())
-Quantity{T}(x, u::StaticUnits{D}) where {T,D} = Quantity(convert(T, u.todims(x)), StaticDims{D}())
+Quantity{T}(x, u::StaticUnits{D}) where {T,D} = Quantity{T}(convert(T, u.todims(x)), StaticDims{D}())
 Quantity{T}(q::AbstractQuantity) where T = Quantity{T}(ustrip(q), unit(q))
 Quantity{T,U}(q::AbstractQuantity) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
 
@@ -299,7 +301,7 @@ AffineTransform(scale::Real, offset::Quantity) = AffineTransform(scale=scale, of
 """
     constructorof(::Type{T}) where T = Base.typename(T).wrapper
 
-Return the constructor of a type T{PS...} by default it only returns T (i.e. removes type parameters)
+Return the constructor of a type `T{PS...}` by default it only returns `T` (i.e. removes type parameters)
 This function can be overloaded if custom behaviour is needed
 """
 constructorof(::Type{T}) where T = Base.typename(T).wrapper

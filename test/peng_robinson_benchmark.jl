@@ -43,7 +43,7 @@ function volume(state)
     for ii in 1:N_ITER[]
         Ph = pressure(state)
         Zr = Ph/P #Residual compressibility factor
-        V  = V*Zr #Use compressibility to predict volume at P
+        V  = (V*Zr) #Use compressibility to predict volume at P
     end
 
     return V 
@@ -51,10 +51,10 @@ end
 
 function volume_function_barrier(x::PengRobinson{<:Quantity})
     x_static = (
-        T=x.T|>u"K", P=x.P|>u"Pa", V=x.V|>u"m^3/mol", 
-        a=x.a|>u"J*m^3/mol^2", b=x.b|>u"m^3/mol", ω=x.ω|>u"m/m", 
-        Tc=x.Tc|>u"K", Pc=x.Pc|>u"Pa", Mw=x.Mw|>u"kg/mol",
-        R=x.R|>u"J/(K*mol)"
+        T=dconvert(u"K", x.T), P=dconvert(u"Pa", x.P), V=dconvert(u"m^3/mol",x.V), 
+        a=dconvert(u"J*m^3/mol^2", x.a), b=dconvert(u"m^3/mol", x.b), ω=dconvert(u"m/m", x.ω), 
+        Tc=dconvert(u"K", x.Tc), Pc=dconvert(u"Pa", x.Pc), Mw=dconvert(u"kg/mol",x.Mw),
+        R=dconvert(u"J/(K*mol)", x.R)
     )
     return volume(x_static)
 end
@@ -96,7 +96,7 @@ fl_t = (
     R=x.R*u"J/(K*mol)"
 )
 
-println("S1.1) Iterative Peng-Robinson with statically-inferrable units\n")
+println("\n\nS1.1) Iterative Peng-Robinson with statically-inferrable units\n")
 
 print("No Units (Baseline)\t")
 @btime volume($x)
@@ -117,7 +117,7 @@ uf_v = PengRobinson(uf_t)
 dq_v = PengRobinson(dq_t)
 fl_v = PengRobinson(fl_t)
 
-println("S1.2) Iterative Peng-Robinson with dynamic units\n")
+println("\n\nS1.2) Iterative Peng-Robinson with dynamic units\n")
 
 print("Dynamic Unitful  \t")
 @btime volume($uf_v)

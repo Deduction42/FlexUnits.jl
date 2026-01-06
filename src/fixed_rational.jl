@@ -18,10 +18,10 @@ end
 
 Rational number type, with fixed base (or denominator) of B. FixedRational is faster and simpler 
 than Julia's base Rational type, as operations on FixedRational usually result in simple integer, 
-operations; however, precision of FixedRational limited to 1/B.
+operations; however, precision of FixedRational limited to `1/B`.
 
-When constructing, FixedRational{B,T}(x::Real) uses integer division to assign a numerator that yields 
-the closest value to "x". To assign a numerator directly, use FixedRational{B,T}(Numerator(x)).
+When constructing, `FixedRational{B,T}(x::Real)` uses integer division to assign a numerator that yields 
+the closest value to `x`. To assign a numerator directly, use `FixedRational{B,T}(Numerator(x))`.
 """
 struct FixedRational{B,T<:Signed} <: Real
     num :: T
