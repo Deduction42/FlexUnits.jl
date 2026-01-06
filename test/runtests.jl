@@ -350,11 +350,19 @@ end
     @test (1.0ud"m/s")/ud"kg/s" == 1.0ud"m/kg"
     @test ud"m/s"/(1.0ud"kg/s") == 1.0ud"m/kg"
 
-    #Comparisons on missing
+    #Comparisons and math on missing
     @test 1.0u"" ≈ 1.0
     @test 1.0 ≈ 1.0u""
     @test ismissing(missing ≈ 1.0u"kg")
     @test ismissing(1.0u"kg" ≈ missing)
+    @test ismissing(1u"m/s" + missing)
+    @test ismissing(missing + 2u"kPa")
+    @test ismissing(1u"m/s" - missing)
+    @test ismissing(missing - 2u"kPa")
+    @test ismissing(1u"m/s" * missing)
+    @test ismissing(missing * 2u"kPa")
+    @test ismissing(1u"m/s" / missing)
+    @test ismissing(missing / 2u"kPa")
 end
 
 #=

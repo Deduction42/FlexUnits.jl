@@ -1,5 +1,5 @@
 #Arithmetic Types in Base that support +-*/ (use instead of Any to avoid ambiguity)
-const ARITHMETICS = Union{Number, AbstractArray, Missing}
+const ARITHMETICS = Union{Number, AbstractArray}
 
 #=============================================================================================
  Dimension fundamentals
@@ -127,6 +127,8 @@ Base.:^(t1::NoTransform, p::Real) = t1
 
 Base.:*(x::ARITHMETICS, u::AbstractUnitLike) = Quantity(x, u)
 Base.:/(x::ARITHMETICS, u::AbstractUnitLike) = Quantity(x, inv(u))
+Base.:*(x::Missing, u::AbstractUnitLike) = x
+Base.:/(x::Missing, u::AbstractUnitLike) = x
 
 Base.:*(q::AbstractQuantity, u::AbstractUnitLike) = Quantity(ustrip(q), unit(q)*u)
 Base.:*(u::AbstractUnitLike, q::AbstractQuantity) = q*u
@@ -182,20 +184,6 @@ function with_ubase(f, args::AbstractQuantity...)
     return Quantity(scaleval, f(basedims...))
 end
 
-#=
-function with_ubase(f, args::AbstractQuantity{<:Any, Union{U,MirrorDims{P}}}...) where {P, U<:AbstractUnitLike}
-    scaleval  = f(map(ustrip_base, args)...)
-    resultdim = f(map(dimension, args)...)
-    
-    return Quantity{typeof(scaleval), Union{dimtype(U),MirrorDims{P}}}(scaleval, resultdim)
-end
-
-function with_ubase(f, args::AbstractQuantity{<:Any, MirrorDims{P}}...) where P
-    scaleval  = f(map(ustrip_base, args)...)
-    return Quantity(scaleval, MirrorDims{P}())
-end
-=#
-
 function Base.:(==)(q1::AbstractQuantity, q2::AbstractQuantity)
     qb1 = ubase(q1)
     qb2 = ubase(q2)
@@ -232,6 +220,12 @@ Base.:/(x::ARITHMETICS, q0::AbstractQuantity) = (q = ubase(q0); Quantity(x/ustri
 Base.:/(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(/, q1, q2)
 Base.:inv(q::AbstractQuantity) = with_ubase(inv, q)
 Base.adjoint(q::AbstractQuantity) = with_ubase(adjoint, q)
+
+#Operators on explicitly missing values simply return missing
+for op in (:+,:-,:*,:/)
+    @eval Base.$op(q::AbstractQuantity, x::Missing) = x
+    @eval Base.$op(x::Missing, q::AbstractQuantity) = x
+end
 
 Base.:^(q::AbstractQuantity, p::Number) = with_ubase(Base.Fix2(^, p), q)
 Base.:^(q::Number, p::AbstractQuantity) = q^dimensionless(p)
