@@ -38,12 +38,12 @@ function volume(state)
     (P, T) = (state.P, state.T)
     R = state.R
     V = R*T/P
-
+    Tv = typeof(V)
     #Use the residual error of the ideal gas law to predict V and iterate
     for ii in 1:N_ITER[]
         Ph = pressure(state)
         Zr = Ph/P #Residual compressibility factor
-        V  = V*Zr #Use compressibility to predict volume at P
+        V  = Tv(V*Zr) #Use compressibility to predict volume at P
     end
 
     return V 
@@ -96,7 +96,7 @@ fl_t = (
     R=x.R*u"J/(K*mol)"
 )
 
-println("S1.1) Iterative Peng-Robinson with statically-inferrable units\n")
+println("\n\nS1.1) Iterative Peng-Robinson with statically-inferrable units\n")
 
 print("No Units (Baseline)\t")
 @btime volume($x)
@@ -117,7 +117,7 @@ uf_v = PengRobinson(uf_t)
 dq_v = PengRobinson(dq_t)
 fl_v = PengRobinson(fl_t)
 
-println("S1.2) Iterative Peng-Robinson with dynamic units\n")
+println("\n\nS1.2) Iterative Peng-Robinson with dynamic units\n")
 
 print("Dynamic Unitful  \t")
 @btime volume($uf_v)
