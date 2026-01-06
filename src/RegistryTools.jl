@@ -32,7 +32,7 @@ Base.length(d::PermanentDict)  = length(d.data)
 """
     PermanentDictError
 
-An error class that specializes in illegal operations on PermanentDict
+An error class that specializes in illegal operations on `PermanentDict`
 """
 struct PermanentDictError <: Exception
     msg::String
@@ -55,7 +55,7 @@ Base.delete!(d, k) = throw(PermanentDictError("Removing entries is prohibited"))
 """
     register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{String,<:AbstractUnitLike})
 
-Registers a unit into the dictionary. This version should be used instead of the "Symbol" versions as 
+Registers a unit into the dictionary. This version should be used instead of the `Symbol` versions as 
 it will validate whether or not the proposed name can be parsed.
 """
 function register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{String,<:UnitOrQuantity})

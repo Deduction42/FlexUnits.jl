@@ -104,7 +104,7 @@ end
 =#
 
 """
-   Units(q::AbstractQuantity{<:Number})
+    Units(q::AbstractQuantity{<:Number})
 
 Convert quantity `q` into a unit of the same magnitude
 """
