@@ -120,7 +120,7 @@ end
 """
     dimension_names(::Type{<:AbstractDimensions})
 
-Overloadable feieldnames for a dimension (returns a tuple of the dimensions field names)
+Overloadable fieldnames for a dimension (returns a tuple of the dimension's field names)
 This should be static so that it can be hardcoded during compilation. 
 Can use this to overload the default "fieldnames" behaviour
 """
