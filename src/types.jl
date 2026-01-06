@@ -49,6 +49,7 @@ AbstractUnitTransform
 An abstract object representing a unit conversion formula. 
 Any object that subtypes this is made callable.
 
+```julia
 # Callable form 
 utrans = uconvert(u"°C", u"°F")
 utrans(0.0)
@@ -57,6 +58,7 @@ utrans(0.0)
 # Shorthand callable form (syntactic sugar)
 (u"°C" |> u"°F")(0.0)
 31.999999999999986
+```
 """
 
 Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
@@ -194,6 +196,7 @@ A dynamic unit object that contains dimensions (dims) and its conversion formula
 formula determines what kind of unit is referred to. An AffineTransform implies affine units, a NoTransform implies dimensions.
 Dynamic units can generated through the `@ud_str` macro.
 
+```julia
 julia> 1*(5ud"°C") #Operations on units eagerly convert to dimensions
 278.15 K
 
@@ -205,6 +208,7 @@ julia> (5ud"°C" + 2ud"°C") |> ud"°C" #Operation adds values in Kelvin, result
 
 julia> (ustrip(5ud"°C") + ustrip(2ud"°C"))*u"°C" #Strips, adds raw quantity values, converts raw number to Celsius
 7 °C
+```
 """
 @kwdef struct Units{D<:AbstractDimensions, T<:AbstractUnitTransform} <: AbstractUnits{D, T}
     dims   :: D
@@ -310,11 +314,13 @@ constructorof(::Type{<:Quantity}) = Quantity
 A dimension that represents a placeholder value that mirrors any dimension that is combined
 with it (useful for initialization when units are unknown). For example 
 
+```julia
 julia> 1u"m/s" + 0*MirrorDims()
 1 m/s
 
 julia> max(1u"m/s", -Inf*MirrorDims())
 1 m/s
+```
 """
 struct MirrorDims{D<:AbstractDimensions} <: AbstractDimLike end
 MirrorDims() = MirrorDims{Dimensions{FixRat32}}()
