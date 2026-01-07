@@ -1,23 +1,24 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
-Major Changes:
-1.  (breaking) Static units are now supported, and the string macro @u_str now produces static units that eagery convert to SI units 
-    (use @ud_str for old behaviour)
-2.  (breaking) `zero(::Quantity{T,D})` for dynamic units now outputs a new quanitity type Quantity{T, MirrorUnion{D}}
-    -   This allows an "additive identity" as MirrorUnion{D} mirrors the dimensions in the other argument
-    -   Enables functionality like var(X, dims=1) where X is a matrix of mixed units
-    -   Behaviour also applies to `typemin` and `typemax` as well
-3.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
-4.  (breaking) `quantity` removed, use Quantity instead
-5.  (breaking) `UnitfulCallable` removed in favor of QuantMapping(f::Function, u::UnitMap)
-6.  `zero(::Quantity{T,D})` for static units behaves like Unitful
-7.  Added more promotion rules to convert numbers to quantities
-8.  FixRat32 is now exported
-9.  Added "dstrip" as shorthand for "ustrip_base"
-10. Added "dconvert" to convert to the dimensions of the unit
-
 
 Current Tasks:
+1.  Build out documentation and a docs badge
+    -   Include all-stops-out tutorial on defining a new dimension "RadDims"
+    -   Add angle to the dimension list
+    -   Create a new unit registry with that dimension 
+    -   Re-tool sin, cos, tan rules on this particular dimension
+
+    For documentation, add performance tips:
+    1.  Avoid containers with mixed-static types, use dynamic units (can always convert using `udynamic`) if such a container exists 
+        -   Dynanmic quantities are always type-stable and are less likely to result in performance-killing dynamic dispatch calls.
+        -   Promotion rules will usually take care of this, but they're not always called by Julia
+    2.  Use `q=dconvert(u"...", q0)` before performance-sensitive code if `q0` is a dynamic unit. 
+        -   This function directly calculates a Quantity{T, StaticDims{D}} which is the highest-performance object at low-levels
+        -   This has near zero overhead if "q0" is a dimensional quantity (only needs to verify dimension equality)
+        -   When outputting results with different units, it's safest to convert back to dynamic quantities
+    3.  Beware of calling "collect" and "map" on structures with mixed types, these functions don't properly promote arguments 
+        (but `vcat` and `hcat` do, which is why using `[q1, q2, q3]` will work) (see example after backlog)
+
 
 Backlog:
 1.  Finish basic QuantLinMap functionality for +,-,*,/,\,^,exp, (and matrix trigs)
@@ -38,21 +39,51 @@ Backlog:
         -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
     -   consider other transformations as well
 
-
-3.  Build out documentation and a docs badge
-    -   Include all-stops-out tutorial on defining a new dimension "RadDims"
-    -   Add angle to the dimension list
-    -   Create a new unit registry with that dimension 
-    -   Re-tool sin, cos, tan rules on this particular dimension
-4.  Add LinearAlgebra extensions for QuantLinMap
-5.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
-    -   Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
-    -   This can be done without documentation 
-        -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
-        -   Iterate over registry and list other units that match the query dimension
+3.  Add interactive unit functionality
+    -   unit_index() (produces dict that lists all units for every dimension)
+    -   simplify(q::Quantity{T,AbstractDimLike}) (lists all standard SI units, performs a greedy search to make units as terse as possible)
+        e.g. simplify(1.0u"(m^2*kg)/s^3") = 1 kW
 
 
+#Example of #3 is shown below
 
+julia> using FlexUnits, .UnitRegistry
+
+julia> (x, y, z) = 1u"m/s", 1u"kg", 1u"kW"
+(1.0 m/s, 1.0 kg, 1000.0 (m² kg)/s³)
+
+julia> T = Union{typeof(x),typeof(y), typeof(z)}
+Union{Quantity{Float64, StaticDims{m/s}}, Quantity{Float64, StaticDims{kg}}, Quantity{Float64, StaticDims{(m² kg)/s³}}}
+
+julia> v = T[x,y,z]
+3-element Vector{Union{Quantity{Float64, StaticDims{m/s}}, Quantity{Float64, StaticDims{kg}}, Quantity{Float64, StaticDims{(m² kg)/s³}}}}:
+ 1.0 m/s
+ 1.0 kg
+ 1000.0 (m² kg)/s³
+
+julia> map(x->x*2, v)
+3-element Vector{Quantity{Float64}}:
+ 2.0 m/s
+ 2.0 kg
+ 2000.0 (m² kg)/s³
+
+julia> map(x->x*2, [x,y,z])
+3-element Vector{Quantity{Float64, Dimensions{FixRat32}}}:
+ 2.0 m/s
+ 2.0 kg
+ 2000.0 (m² kg)/s³
+
+julia> collect(map(x->x*2, (x,y,z)))
+3-element Vector{Quantity{Float64}}:
+ 2.0 m/s
+ 2.0 kg
+ 2000.0 (m² kg)/s³
+
+julia> vcat((map(x->x*2, (x,y,z)))...)
+3-element Vector{Quantity{Float64, Dimensions{FixRat32}}}:
+ 2.0 m/s
+ 2.0 kg
+ 2000.0 (m² kg)/s³
 
 
 
@@ -81,6 +112,4 @@ t1dyn  = (1*DynamicQuantities.u"m/s", 1*DynamicQuantities.u"J/kg", 1*DynamicQuan
 @btime sum(x->x^0, t1flex)
 @btime sum(x->x^0, t1dyn)
 
-Considerations:
-N.  Consider commutative macro for promote_rule to prevent repetition
-        https://discourse.julialang.org/t/techniques-for-defining-commutative-functions/113406/5
+

@@ -1,2 +1,12 @@
+#julia --project make.jl
+
 using Documenter, FlexUnits
-makedocs(sitename="FlexUnits Documentation")
+
+DocMeta.setdocmeta!(FlexUnits, :DocTestSetup, :(using FlexUnits, .UnitRegistry))
+makedocs(
+    sitename="FlexUnits Documentation",
+    pages = [
+            "Home" => "index.md",
+            "Types" => "types.md"
+    ]
+)
