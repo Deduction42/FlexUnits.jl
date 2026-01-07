@@ -24,17 +24,12 @@ function uconvert(u::AbstractUnitLike, q::AbstractQuantity)
     return Quantity{typeof(newval), typeof(u)}(newval, u)
 end
 
-
-
 """
     dconvert(u::AbstractUnitLike, q::AbstractQuantity)
 
 Converts quantity `q` to the equivalent dimensional quantity having the same dimensions as `u`
 """
 dconvert(u::AbstractUnitLike, q::AbstractQuantity) = uconvert(dimension(u), q)
-
-
-
 
 """
     ubase(q::AbstractQuantity)
@@ -85,24 +80,6 @@ a dimensionless result, and then removes units
 """
 ustrip_dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
 
-
-#=
-"""
-    uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
-
-Produces an AffineTransform that can convert a quantity with `current`
-units to a quantity with `target` units
-"""
-function uconvert(utarget::AbstractAffineLike, ucurrent::AbstractAffineLike)
-    dimension(utarget) == dimension(ucurrent) || throw(ConversionError(utarget, ucurrent))
-
-    return AffineTransform(
-        scale  = uscale(ucurrent)/uscale(utarget),
-        offset = (uoffset(ucurrent) - uoffset(utarget))/uscale(utarget)
-    )
-end
-=#
-
 """
     Units(q::AbstractQuantity{<:Number})
 
@@ -123,15 +100,12 @@ will promote to dimensional units (such as SI). WARNING:: This also means that A
 this can yield potentially unintuitive results like 2°C/1°C = 1.0036476381542951
 =================================================================================================#
 
-
 #Converting dynamic quantity types ====================================================
 Base.convert(::Type{Quantity{T,D}}, q::AbstractQuantity) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
 Base.convert(::Type{Quantity{T,U}}, q::AbstractQuantity) where {T,U<:Units} = Quantity{T,U}(ustrip(q), unit(q))
 Base.convert(::Type{Quantity{T,M}}, q::AbstractQuantity) where {T, D<:AbstractDimensions, M<:MirrorUnion{D}} = Quantity{T,M}(T(dstrip(q)), dimension(q))
 Base.convert(::Type{Quantity{T,D}}, x::Union{Number,AbstractArray}) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D(0))
 Base.convert(::Type{Quantity{T,U}}, x::Union{Number,AbstractArray}) where {T,U<:Units} = Quantity{T,U}(x, dimtype(U)(0))
-
-
 
 #Converting static quantity types ====================================================
 Base.convert(::Type{Quantity{T,D}}, q::AbstractQuantity) where {T, D<:StaticDims} = Quantity{T,D}(ustrip(D(), q), D())
@@ -140,7 +114,6 @@ function Base.convert(::Type{Quantity{T,D}}, u::AbstractUnitLike) where {T,D<:Ab
     assert_scalar(u)
     return Q(uscale(u), dimension(u))
 end
-
 
 # Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), todims=todims(u), symbol=usymbol(u))
