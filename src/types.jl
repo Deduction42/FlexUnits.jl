@@ -1,11 +1,57 @@
 const DEFAULT_RATIONAL = FixRat32
 const DEFAULT_USYMBOL = :_
 
+"""
+    AbstractUnitLike
+
+A broad class representing anything that can be interpreted as a unit or dimension
+"""
 abstract type AbstractUnitLike end
+
+"""
+    AbstractUnitTransform
+
+An abstract object representing a unit conversion formula. 
+Any object that subtypes this is made callable.
+
+```julia
+# Callable form 
+utrans = uconvert(u"°C", u"°F")
+utrans(0.0)
+31.999999999999986
+
+# Shorthand callable form (syntactic sugar)
+(u"°C" |> u"°F")(0.0)
+31.999999999999986
+```
+"""
 abstract type AbstractUnitTransform end
+
+"""
+    AbstractUnitLike
+
+A broad class representing anything that can be interpreted as a unit
+"""
 abstract type AbstractDimLike <: AbstractUnitLike end
+
+"""
+    AbstractDimensions
+
+A class that represents a specific dimensional schema, by default, its
+only child is Dimensions (SI units), but users can build their own versions 
+(even based on imperial measurements, or where angles are a dimension)
+"""
 abstract type AbstractDimensions{P} <: AbstractDimLike end
+
+"""
+    AbstractUnits
+
+All units in FlexDims contain two entities: 
+(1) AbstractDimLike (anything that can be interpreted as a dimension)
+(2) AbstractTransform (contains the formula to convert unit value to dimensions)
+"""
 abstract type AbstractUnits{D, T<:AbstractUnitTransform} <: AbstractUnitLike end
+
 
 const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
@@ -43,28 +89,6 @@ is_dimension(u::AbstractUnitLike) = is_identity(todims(u))
 is_scalar(u::AbstractUnitLike) = is_scalar(todims(u))
 udynamic(u::AbstractDimensions) = u
 
-"""
-    AbstractUnitTransform
-
-An abstract object representing a unit conversion formula. 
-Any object that subtypes this is made callable.
-
-```julia
-# Callable form 
-utrans = uconvert(u"°C", u"°F")
-utrans(0.0)
-31.999999999999986
-
-# Shorthand callable form (syntactic sugar)
-(u"°C" |> u"°F")(0.0)
-31.999999999999986
-```
-"""
-
-Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
-(t2::AbstractUnitTransform)(t1::AbstractUnitTransform) = t2 ∘ t1
-
-
 #=======================================================================================
 Basic SI dimensions and transforms
 =======================================================================================#
@@ -75,6 +99,8 @@ t = NoTransform()
 t(x) = x
 """
 struct NoTransform <: AbstractUnitTransform end 
+Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
+(t2::AbstractUnitTransform)(t1::AbstractUnitTransform) = t2 ∘ t1
 (t::NoTransform)(x) = x
 (t::NoTransform)(t0::AbstractUnitTransform) = t0
 
@@ -132,7 +158,7 @@ end
 """
     StaticDims{D}
 
-Static dimensions where the "D" is the dimension value. This improves performance when dimensions are
+Static dimensions where the `D`` is the dimension value. This improves performance when dimensions are
 statically inferrable.
 """
 struct StaticDims{D} <: AbstractDimLike
