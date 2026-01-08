@@ -13,6 +13,7 @@ Dimensions are the core object used to define units, and `Quantity` values tend 
 AbstractDimensions
 Dimensions
 StaticDims
+MirrorDims
 ```
 
 ## Units

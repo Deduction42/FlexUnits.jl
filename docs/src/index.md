@@ -4,7 +4,7 @@ DocTestSetup = quote
 end
 ```
 # FlexUnits.jl
-FlexUnits.jl is a unit package designed to resemble Unitful.jl, with similar performance when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units are uninferrable. This package allows the user to employ the following pattern:
+FlexUnits.jl is a unit package designed to resemble Unitful.jl, with similar performance when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units are uninferrable. This package allows the user to employ the following useful pattern:
 1. Define high-level operations on quantities with dynamic units that are type-stable even with mixed unit types
 2. Convert quantities to statically-inferred high-performance units in lower-level performance-sensitive code
 3. Return values in dynamic units with confidence that function output is type-stable

@@ -7,6 +7,7 @@ makedocs(
     sitename="FlexUnits.jl",
     pages = [
         "Home" => "index.md",
+        "Performance" => "performance.md",
         "Types" => "types.md"
     ]
 )
