@@ -95,8 +95,11 @@ Basic SI dimensions and transforms
 """
 NoTransform object, the default transform returned by todims(x::AbstractDimensionLike). Calling it results in 
 an identity.
+```julia
 t = NoTransform()
-t(x) = x
+t("anything")
+"anything"
+```
 """
 struct NoTransform <: AbstractUnitTransform end 
 Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)

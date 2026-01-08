@@ -4,9 +4,9 @@ using Documenter, FlexUnits
 
 DocMeta.setdocmeta!(FlexUnits, :DocTestSetup, :(using FlexUnits, .UnitRegistry))
 makedocs(
-    sitename="FlexUnits Documentation",
+    sitename="FlexUnits.jl",
     pages = [
-            "Home" => "index.md",
-            "Types" => "types.md"
+        "Home" => "index.md",
+        "Types" => "types.md"
     ]
 )
