@@ -108,3 +108,35 @@ julia> [1ud"m/s", 2ud"m/s", 3ud"lb/s"].*1  #Mathematical operations tend to conv
  2.0 m/s
  1.360776 kg/s
 ```
+
+## Registering units
+You can register units to UnitRegistry (or your own registry) using the `register_unit` function. You can simply provide it a single pair argument of type `Pair{String, AbstractUnitLike}` or `Pair{String, Quantity}` as follows: 
+
+```
+julia> register_unit("bbl" => 0.158987*u"m^3")
+FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+  :Ω      => Ω
+  :μs     => μs
+  :μV     => μV
+```
+
+However, due to the nature of macros, these dictionaries are permanent. You can re-register units with the same values (so that you can re-run scripts) but changing them is not allowed.
+```
+julia> register_unit("bbl" => 0.158987*u"m^3")
+FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+  :Ω      => Ω
+  :μs     => μs
+  :μV     => μV
+
+julia> register_unit("bbl" => 22.5*u"m^3")
+ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
+```
+
+It is possible for users to create their own registries (for example, if they wanted different dimension types or different classes of units). The default UnitRegistry (see the UnitRegistry.jl file in the source code) was constructed with less than 50 lines of code, and users can use that as a template. Most custom registries only need to modify two of these lines of code:
+```
+const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform}}()
+
+#Fill the UNITS registry with default values
+registry_defaults!(UNITS)
+```
+The `UNITS` constant is the dictionary where all the units live. One can customize it so that the registry has a different dimension type or even a different transform type. The `registry_defaults!` function fills a dictionary with the default body of units (users can build their own if they like).
