@@ -8,38 +8,38 @@ Current Tasks:
     -   Create a new unit registry with that dimension 
     -   Re-tool sin, cos, tan rules on this particular dimension
 
-    For documentation, add performance tips:
-    1.  Avoid containers with mixed-static types, use dynamic units (can always convert using `udynamic`) if such a container exists 
-        -   Dynanmic quantities are always type-stable and are less likely to result in performance-killing dynamic dispatch calls.
-        -   Promotion rules will usually take care of this, but they're not always called by Julia
-    2.  Use `q=dconvert(u"...", q0)` before performance-sensitive code if `q0` is a dynamic unit. 
-        -   This function directly calculates a Quantity{T, StaticDims{D}} which is the highest-performance object at low-levels
-        -   This has near zero overhead if "q0" is a dimensional quantity (only needs to verify dimension equality)
-        -   When outputting results with different units, it's safest to convert back to dynamic quantities
-    3.  Beware of calling "collect" and "map" on structures with mixed types, these functions don't properly promote arguments 
-        (but `vcat` and `hcat` do, which is why using `[q1, q2, q3]` will work) (see example after backlog)
-
 
 Backlog:
-1.  Finish basic QuantLinMap functionality for +,-,*,/,\,^,exp, (and matrix trigs)
+1.  We may need to re-add "NumberQuant" to achieve better Unitful capabilities
+    -   Define orthogonal activities for Arithmetics and UnionQuant
+        -   const ARITHMETICS = Union{Real, Complex, AbstractArray}
+        -   const UnionQuant = Union{Quantity, NumberQuant} #Replaces AbstractQuantity
+        -   Re-add the "quantity" function that assigns narrowest quantity type to result
+            -   (such as multiplication and with_ubase)
+        -   Current codebase should just work under those assumptions
+            -   It is actually well designed (becuase it dealt with this before)
+            -   May have to fiddle around with exponents because they use "Number"
+    -   See if we can get DifferentialEquations to work with this 
+
+2.  Finish basic LinmapQuant functionality for +,-,*,/,\,^,exp, (and matrix trigs)
     -   This consists of building shortcuts for UnitMap types
     -   Output should be the most specific form of unit mapping possible
-    -   Make sure operations convert to QuantLinMap and output that type
+    -   Make sure operations convert to LinmapQuant and output that type
 
     Notes on above:      
-    -   Matrix multiplication is ONLY valid with QuantLinMap and will ALWAYS produce a QuantLinMap
-        -   Multiplication should convert both AbstractMatrix{Quantity} to QuantLinMap
+    -   Matrix multiplication is ONLY valid with LinmapQuant and will ALWAYS produce a LinmapQuant
+        -   Multiplication should convert AbstractMatrix{Union{Quantity,NumberQuant}} to LinmapQuant
         -   This may result in more allocations, but is more reliable in pointing out errors
-        -   It is recommendable to only store matrices as QuantLinMap if linear algebra is intended
+        -   It is recommendable to only store matrices as LinmapQuant if linear algebra is intended
 
-2.  Add LinearAlgebra extensions for certain factorizations
+3.  Add LinearAlgebra extensions for certain factorizations
     -   cholesky (requries symmetric transform)
     -   eigen (confusing becasue it can use both idempotent and symmetric) 
         -   E' == inv(E) DOES NOT hold 
         -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
     -   consider other transformations as well
 
-3.  Add interactive unit functionality
+4.  Add interactive unit functionality
     -   unit_index() (produces dict that lists all units for every dimension)
     -   simplify(q::Quantity{T,AbstractDimLike}) (lists all standard SI units, performs a greedy search to make units as terse as possible)
         e.g. simplify(1.0u"(m^2*kg)/s^3") = 1 kW
