@@ -1,6 +1,3 @@
-#Arithmetic Types in Base that support +-*/ (use instead of Any to avoid ambiguity)
-const ARITHMETICS = Union{Number, AbstractArray}
-
 #=============================================================================================
  Dimension fundamentals
 =============================================================================================#
@@ -125,15 +122,15 @@ function Base.:^(t::AffineTransform, p::Real)
 end
 Base.:^(t1::NoTransform, p::Real) = t1
 
-Base.:*(x::ARITHMETICS, u::AbstractUnitLike) = Quantity(x, u)
-Base.:/(x::ARITHMETICS, u::AbstractUnitLike) = Quantity(x, inv(u))
+Base.:*(x::MathUnion, u::AbstractUnitLike) = quantity(x, u)
+Base.:/(x::MathUnion, u::AbstractUnitLike) = quantity(x, inv(u))
 Base.:*(x::Missing, u::AbstractUnitLike) = x
 Base.:/(x::Missing, u::AbstractUnitLike) = x
 
-Base.:*(q::AbstractQuantity, u::AbstractUnitLike) = Quantity(ustrip(q), unit(q)*u)
-Base.:*(u::AbstractUnitLike, q::AbstractQuantity) = q*u
-Base.:/(q::AbstractQuantity, u::AbstractUnitLike) = Quantity(ustrip(q), unit(q)/u)
-Base.:/(u::AbstractUnitLike, q::AbstractQuantity) = Quantity(inv(ustrip(q)), u/unit(q))
+Base.:*(q::QuantUnion, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)*u)
+Base.:*(u::AbstractUnitLike, q::QuantUnion) = q*u
+Base.:/(q::QuantUnion, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)/u)
+Base.:/(u::AbstractUnitLike, q::QuantUnion) = quantity(inv(ustrip(q)), u/unit(q))
 
 function Base.:*(u1::U, u2::U) where U <: AbstractUnits
     return constructorof(U)(scalar_dimension(u1)*scalar_dimension(u2), todims(u1)*todims(u2))
@@ -166,7 +163,7 @@ Base.:(==)(u1::AbstractUnits, u2::AbstractUnits) = (todims(u1) == todims(u2)) & 
  Mathematical operations on quantities
 =============================================================================================#
 """
-    with_ubase(f, args::AbstractQuantity...)
+    with_ubase(f, args::QuantUnion...)
 
 Converts all arguments to base units, and applies `f` to values and dimensions
 returns the quanity. Useful for defining new functions for quantities 
@@ -174,89 +171,91 @@ returns the quanity. Useful for defining new functions for quantities
 Thus, in order to support `f` for quantities, simply define 
 ```
 f(dims::AbstractDimensions...)
-f(args::AbstractQuantity...) = with_ubase(f, args...)
+f(args::QuantUnion...) = with_ubase(f, args...)
 ```
 """
-function with_ubase(f, args::AbstractQuantity...)
+function with_ubase(f, args::QuantUnion...)
     baseargs = map(ubase, args)
     basevals = map(ustrip, baseargs)
     basedims = map(unit, baseargs)
     scaleval = f(basevals...)
-    return Quantity(scaleval, f(basedims...))
+    return quantity(scaleval, f(basedims...))
 end
 
-function Base.:(==)(q1::AbstractQuantity, q2::AbstractQuantity)
+function Base.:(==)(q1::QuantUnion, q2::QuantUnion)
     qb1 = ubase(q1)
     qb2 = ubase(q2)
     return (ustrip(qb1) == ustrip(qb2)) && (unit(qb1) == unit(qb2))
 end
 
-function Base.:(≈)(q1::AbstractQuantity, q2::AbstractQuantity)
+function Base.:(≈)(q1::QuantUnion, q2::QuantUnion)
     qb1 = ubase(q1)
     qb2 = ubase(q2)
     return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
 end
-Base.:(≈)(q1::AbstractQuantity, q2::T) where T<:ARITHMETICS = (convert(T, q1) ≈ q2)
-Base.:(≈)(q1::T, q2::AbstractQuantity) where T<:ARITHMETICS = (convert(T, q2) ≈ q1)
-Base.:(≈)(q1::Missing, q2::AbstractQuantity) = missing 
-Base.:(≈)(q2::AbstractQuantity, q1::Missing) = missing 
+Base.:(≈)(q1::QuantUnion, q2::T) where T<:MathUnion = (convert(T, q1) ≈ q2)
+Base.:(≈)(q1::T, q2::QuantUnion) where T<:MathUnion = (convert(T, q2) ≈ q1)
+Base.:(≈)(q1::Missing, q2::QuantUnion) = missing 
+Base.:(≈)(q2::QuantUnion, q1::Missing) = missing 
 
-Base.:+(q::AbstractQuantity, x::ARITHMETICS) = dimensionless(q) + x 
-Base.:+(x::ARITHMETICS, q::AbstractQuantity) = dimensionless(q) + x
-Base.:+(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(+, q1, q2)
-Base.:+(q1::AbstractQuantity, qN::AbstractQuantity...) = with_ubase(+, q1, qN...)
+Base.:+(q::QuantUnion, x::MathUnion) = dimensionless(q) + x 
+Base.:+(x::MathUnion, q::QuantUnion) = dimensionless(q) + x
+Base.:+(q1::QuantUnion, q2::QuantUnion) = with_ubase(+, q1, q2)
+Base.:+(q1::QuantUnion, qN::QuantUnion...) = with_ubase(+, q1, qN...)
 
-Base.:-(q::AbstractQuantity, x::ARITHMETICS) = dimensionless(q) - x 
-Base.:-(x::ARITHMETICS, q::AbstractQuantity) = x - dimensionless(q)
-Base.:-(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(-, q1, q2)
-Base.:-(q1::AbstractQuantity) = with_ubase(-, q1)
+Base.:-(q::QuantUnion, x::MathUnion) = dimensionless(q) - x 
+Base.:-(x::MathUnion, q::QuantUnion) = x - dimensionless(q)
+Base.:-(q1::QuantUnion, q2::QuantUnion) = with_ubase(-, q1, q2)
+Base.:-(q1::QuantUnion) = with_ubase(-, q1)
 
-Base.:*(q0::AbstractQuantity, x::ARITHMETICS) = (q = ubase(q0); Quantity(ustrip(q)*x, unit(q)))
-Base.:*(x::ARITHMETICS, q0::AbstractQuantity) = (q = ubase(q0); Quantity(ustrip(q)*x, unit(q)))
-Base.:*(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(*, q1, q2)
-Base.:*(q1::AbstractQuantity, qN::AbstractQuantity...) = with_ubase(*, q1, qN...)
+Base.:*(q0::QuantUnion, x::MathUnion) = (q = ubase(q0); quantity(ustrip(q)*x, unit(q)))
+Base.:*(x::MathUnion, q0::QuantUnion) = (q = ubase(q0); quantity(ustrip(q)*x, unit(q)))
+Base.:*(q1::QuantUnion, q2::QuantUnion) = with_ubase(*, q1, q2)
+Base.:*(q1::QuantUnion, qN::QuantUnion...) = with_ubase(*, q1, qN...)
 
-Base.:/(q0::AbstractQuantity, x::ARITHMETICS) = (q = ubase(q0); Quantity(ustrip(q)/x, unit(q)))
-Base.:/(x::ARITHMETICS, q0::AbstractQuantity) = (q = ubase(q0); Quantity(x/ustrip(q), inv(unit(q))))
-Base.:/(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(/, q1, q2)
-Base.:inv(q::AbstractQuantity) = with_ubase(inv, q)
-Base.adjoint(q::AbstractQuantity) = with_ubase(adjoint, q)
+Base.:/(q0::QuantUnion, x::MathUnion) = (q = ubase(q0); quantity(ustrip(q)/x, unit(q)))
+Base.:/(x::MathUnion, q0::QuantUnion) = (q = ubase(q0); quantity(x/ustrip(q), inv(unit(q))))
+Base.:/(q1::QuantUnion, q2::QuantUnion) = with_ubase(/, q1, q2)
+Base.:inv(q::QuantUnion) = with_ubase(inv, q)
+Base.adjoint(q::QuantUnion) = with_ubase(adjoint, q)
 
 #Operators on explicitly missing values simply return missing
 for op in (:+,:-,:*,:/)
-    @eval Base.$op(q::AbstractQuantity, x::Missing) = x
-    @eval Base.$op(x::Missing, q::AbstractQuantity) = x
+    @eval Base.$op(q::QuantUnion, x::Missing) = x
+    @eval Base.$op(x::Missing, q::QuantUnion) = x
 end
 
-Base.:^(q::AbstractQuantity, p::Number) = with_ubase(Base.Fix2(^, p), q)
-Base.:^(q::Number, p::AbstractQuantity) = q^dimensionless(p)
-Base.:^(q::AbstractQuantity, p::AbstractQuantity) = with_ubase(Base.Fix2(^, dimensionless(p)), q)
+Base.:^(q::QuantUnion, p::Real) = with_ubase(Base.Fix2(^, p), q)
+Base.:^(q::MathUnion, p::QuantUnion) = q^dimensionless(p)
+Base.:^(q::QuantUnion, p::QuantUnion) = with_ubase(Base.Fix2(^, dimensionless(p)), q)
 
-@inline Base.literal_pow(::typeof(^), q::AbstractQuantity, ::Val{p}) where {p} = with_ubase(x->Base.literal_pow(^, x, Val(dimensionless(p))), q)
+@inline Base.literal_pow(::typeof(^), q::QuantUnion, ::Val{p}) where {p} = with_ubase(x->Base.literal_pow(^, x, Val(dimensionless(p))), q)
 
-Base.sqrt(q::AbstractQuantity) = with_ubase(sqrt, q)
-Base.cbrt(q::AbstractQuantity) = with_ubase(cbrt, q)
-Base.abs2(q::AbstractQuantity) = with_ubase(abs2, q)
-Base.max(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(max, q1, q2)
-Base.min(q1::AbstractQuantity, q2::AbstractQuantity) = with_ubase(min, q1, q2)
+Base.sqrt(q::QuantUnion) = with_ubase(sqrt, q)
+Base.cbrt(q::QuantUnion) = with_ubase(cbrt, q)
+Base.abs2(q::QuantUnion) = with_ubase(abs2, q)
+Base.max(q1::QuantUnion, q2::QuantUnion) = with_ubase(max, q1, q2)
+Base.min(q1::QuantUnion, q2::QuantUnion) = with_ubase(min, q1, q2)
 Base.zero(::Type{D}) where D<:AbstractDimensions = D()
 Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), todims=T())
 
 #Common functions for initializers
-Base.one(::Type{<:AbstractQuantity{T}}) where T = one(T) #unitless
-Base.oneunit(::Type{<:AbstractQuantity{T,D}}) where {T,D} = Quantity(one(T), zero(D)) #unitless with type
+Base.one(::Type{<:QuantUnion{T}}) where T = one(T) #unitless
+Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:StaticDims} = quantity(one(T), D()) #One with units
+Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:AbstractDimensions} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
+Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:Units} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
 
 for f in (:zero, :typemin, :typemax)
-    @eval Base.$f(::Type{<:AbstractQuantity{T, D}}) where {T, D<:AbstractDimensions} = Quantity($f(T), MirrorDims(D))
-    @eval Base.$f(::Type{<:AbstractQuantity{T, D}}) where {T, D<:StaticDims} = Quantity($f(T), D())
-    @eval Base.$f(::Type{<:AbstractQuantity{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
-    @eval Base.$f(::Type{<:AbstractQuantity{T, <:MirrorUnion{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
-    @eval Base.$f(::Type{<:AbstractQuantity{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = $f(Quantity{T,D})
+    @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractDimensions} = quantity($f(T), MirrorDims(D))
+    @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:StaticDims} = quantity($f(T), D())
+    @eval Base.$f(::Type{<:QuantUnion{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
+    @eval Base.$f(::Type{<:QuantUnion{T, <:MirrorUnion{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
+    @eval Base.$f(::Type{<:QuantUnion{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
 end
 
 #Comparison functions (returns a bool)
 for f in (:<, :<=, :isless)
-    @eval function Base.$f(q1::AbstractQuantity, q2::AbstractQuantity)
+    @eval function Base.$f(q1::QuantUnion, q2::QuantUnion)
         (b1, b2) = (ubase(q1), ubase(q2))
         equaldims(unit(b1), unit(b2))
         return $f(ustrip(b1), ustrip(b2))
@@ -268,7 +267,7 @@ for f in (
         :float, :abs, :real, :imag, :conj, :significand, :zero, :oneunit, :typemax, :typemin, :transpose
     )
     @eval Base.$f(u::AbstractDimLike) = u
-    @eval Base.$f(q::AbstractQuantity) = with_ubase($f, q)
+    @eval Base.$f(q::QuantUnion) = with_ubase($f, q)
 end
 
 #Single-argument funtions that require dimensionless input and produce dimensionless output
@@ -280,16 +279,16 @@ for f in (
         :expm1, :frexp, :exponent,
     )
     @eval Base.$f(u::AbstractDimLike) = dimensionless(u)
-    @eval Base.$f(q::AbstractQuantity) = with_ubase($f, q)
+    @eval Base.$f(q::QuantUnion) = with_ubase($f, q)
 end
 
 #Single-argument functions that only operate on values
 for f in (:isfinite, :isinf, :isnan, :isreal, :isempty, :one)
-    @eval Base.$f(q::AbstractQuantity) = $f(ustrip(q))
+    @eval Base.$f(q::QuantUnion) = $f(ustrip(q))
 end
 
 #Single-argument functions with dimensionless output that only work with scalar units (no offset)
 for f in (:iszero, :angle, :signbit, :sign)
-    @eval Base.$f(q::AbstractQuantity) = (assert_scalar(unit(q)); $f(ustrip_base(q)))
+    @eval Base.$f(q::QuantUnion) = (assert_scalar(unit(q)); $f(ustrip_base(q)))
 end
 

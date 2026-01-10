@@ -54,7 +54,7 @@ end
 
 # Required additional methods =================================================================================
 FlexUnits.Quantity{T,U}(x) where {T,U<:StaticDims} = Quantity{T,U}(convert(T, x), U())
-FlexUnits.Quantity{T,U}(x::AbstractQuantity) where {T,U<:StaticDims} = Quantity{T,U}(convert(T, ustrip(U(),x)), U())
+FlexUnits.Quantity{T,U}(x::QuantUnion) where {T,U<:StaticDims} = Quantity{T,U}(convert(T, ustrip(U(),x)), U())
 Base.oneunit(::Type{Quantity{T,U}}) where {T,U<:StaticDims} = Quantity{T,U}(one(T), U())
 Base.eltype(::Type{Quantity{T}}) where T = T
 OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.UNITLESS_ABS2(q::Quantity) = abs2(dstrip(q))

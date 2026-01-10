@@ -11,7 +11,7 @@ include("UnitRegistry.jl")
 
 export AbstractUnitLike, AbstractDimensions, AbstractUnits, AbstractUnitTransform
 export ConversionError, DimensionError, NotScalarError, NotDimensionError, FixRat32
-export Dimensions, Units, Quantity, AbstractQuantity, AffineTransform, NoTransform 
+export Dimensions, Units, Quantity, QuantUnion, AffineTransform, NoTransform 
 export MirrorDims, MirrorUnion
 export StaticDims, StaticUnits
 export RegistryTools, UnitRegistry

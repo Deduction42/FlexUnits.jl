@@ -11,17 +11,9 @@ Current Tasks:
 
 Backlog:
 1.  For consistency with the ecosystem around Unitful, we will need to subtype Quantity to Number
-    -   Can add "FlexQuant" as an alternate Quantity that can take any value
-    -   Define orthogonal activities for Arithmetics and UnionQuant
-        -   const ARITHMETICS = Union{Real, Complex, AbstractArray}
-        -   const UnionQuant = Union{Quantity, FlexQuant} #Replaces AbstractQuantity
-        -   Re-add the "quantity" function that assigns narrowest quantity type to result
-            -   (such as multiplication and with_ubase)
-        -   Current codebase should just work under those assumptions
-            -   It is actually well designed (becuase it dealt with this before)
-            -   May have to fiddle around with exponents because they use "Number"
-    -   Promotions may be more difficult (and will likely need generalization)
-        -   May also need a type-dispatched quant_type(::Type{T}) function
+    -   Define "quantity" and "quant_type" functions
+    -   Add paramerization of AffineTransform (so people can opt into Rational)
+    -   Streamline promotions (and will likely need generalization)
     -   See if we can get DifferentialEquations to work with this 
 
 2.  Finish basic LinmapQuant functionality for +,-,*,/,\,^,exp, (and matrix trigs)

@@ -2,15 +2,15 @@
 module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits,  ..AbstractDimensions, ..AbstractUnitTransform
-import ..Units, ..Dimensions, ..AffineTransform, ..StaticUnits, ..AbstractQuantity, ..Quantity, ..FixRat32, ..FixRat64
+import ..Units, ..Dimensions, ..AffineTransform, ..StaticUnits, ..QuantUnion, ..Quantity, ..FixRat32, ..FixRat64
 import ..uscale, ..uoffset, ..todims, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype
 
 export 
     AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64,
-    Units, Dimensions, AffineTransform, AbstractQuantity, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
+    Units, Dimensions, AffineTransform, QuantUnion, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
     PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, suparse_expr, dimtype
 
-const UnitOrQuantity = Union{AbstractUnitLike, AbstractQuantity}
+const UnitOrQuantity = Union{AbstractUnitLike, QuantUnion}
 const PARSE_CASES = Union{Expr,Symbol,Real,Nothing}
 """
     PermanentDict{K,T}
@@ -89,7 +89,7 @@ function _register_unit!(reg::AbstractDict{Symbol,Units{D,T}}, p::Pair{Symbol,<:
     return setindex!(reg, vn, k)
 end
 
-function _register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{Symbol, <:AbstractQuantity})
+function _register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{Symbol, <:QuantUnion})
     return _register_unit!(reg, p[1]=>Units(p[2]))
 end
 
@@ -205,13 +205,13 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
 
     #If you want to add "angle" as a dimension, you can overload the appropriate function
 
-    #function apply_trig_func(f, q::AbstractQuantity{<:Any, <:RadDimensions{T}}) where T
+    #function apply_trig_func(f, q::QuantUnion{<:Any, <:RadDimensions{T}}) where T
     #   baseq = ubase(q)
     #   assert_radians(unit(baseq))
     #   return Quantity(f(ustrip(baseq)), RadDimensions{T}())
     #end
 
-    #sin(q::AbstractQuantity{<:RadDimensions}) = apply_trig_func(sin, q)
+    #sin(q::QuantUnion{<:RadDimensions}) = apply_trig_func(sin, q)
 
     return reg
 end

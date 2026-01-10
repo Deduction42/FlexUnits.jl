@@ -34,7 +34,7 @@ Base.transpose(m::UnitMap) = adjoint(m)
 uoutput(m::UnitMap) = m.u_out
 uinput(m::UnitMap) = m.u_in
 
-function UnitMap(mq::AbstractMatrix{<:Union{AbstractQuantity,AbstractUnitLike}})
+function UnitMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
     u_out = dimension.(mq[:,begin])
     u_in = u_out[begin]./dimension.(mq[begin,:])
 
@@ -86,7 +86,7 @@ function RepUnitMap(md::UnitMap)
     return RepUnitMap(u_scale=u_scale, u_in=md.u_in)
 end
 
-function RepUnitMap(mq::AbstractMatrix{<:Union{AbstractQuantity,AbstractUnitLike}})
+function RepUnitMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
     return RepUnitMap(UnitMap(mq))
 end
 
@@ -132,7 +132,7 @@ function SymUnitMap(md::UnitMap)
     return SymUnitMap(u_scale=u_scale, u_in=inv.(md.u_in))
 end
 
-function SymUnitMap(mq::AbstractMatrix{<:Union{AbstractQuantity,AbstractUnitLike}})
+function SymUnitMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
     return SymUnitMap(UnitMap(mq))
 end
 
