@@ -3,7 +3,7 @@ const DEFAULT_USYMBOL = :_
 
 #Arithmetic Types in Base that support +-*/ (use instead of Any to avoid ambiguity)
 const MathUnion = Union{Real, Complex, AbstractArray}
-const NumUnion = Union{Real,Complex}
+const NumUnion = Union{Real, Complex}
 
 """
     AbstractUnitLike

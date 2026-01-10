@@ -11,7 +11,7 @@ Current Tasks:
 
 Backlog:
 1.  For consistency with the ecosystem around Unitful, we will need to subtype Quantity to Number
-    -   Define "quantity" and "quant_type" functions
+    -   Add specific "Array" operations
     -   Add paramerization of AffineTransform (so people can opt into Rational)
     -   Streamline promotions (and will likely need generalization)
     -   See if we can get DifferentialEquations to work with this 

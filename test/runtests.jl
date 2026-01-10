@@ -143,7 +143,7 @@ const AT = AffineTransform
 
     #Size indicators for quantities
     tx = [1, 3.6, 501.3]
-    tq = tx*u"kg/hr"
+    tq = tx.*u"kg/hr"
     @test size(tq) == size(tx)
     @test length(tq) == length(tx)
     @test axes(tq) == axes(tx)
@@ -505,8 +505,8 @@ end
     @test (1.0ud"m")^(-2) == 1.0ud"m^(-2)"
     @test (1.0ud"m")^(-3) == 1.0ud"1/m^3"
 
-    @test_throws DimensionError 2.0^(1ud"m/s")
-    @test_throws DimensionError (1ud"m/s")^(1ud"m/s")
+    @test_throws "^ not defined" 2.0^(1ud"m/s")
+    @test_throws "^ not defined" (1ud"m/s")^(1ud"m/s")
 
     @test_throws ArgumentError uparse("s[1]")
     @test_throws ArgumentError uparse("pounds_per_hour")

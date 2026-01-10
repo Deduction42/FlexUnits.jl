@@ -193,28 +193,28 @@ function Base.:(≈)(q1::QuantUnion, q2::QuantUnion)
     qb2 = ubase(q2)
     return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
 end
-Base.:(≈)(q1::QuantUnion, q2::T) where T<:MathUnion = (convert(T, q1) ≈ q2)
-Base.:(≈)(q1::T, q2::QuantUnion) where T<:MathUnion = (convert(T, q2) ≈ q1)
+Base.:(≈)(q1::QuantUnion, q2::T) where T<:NumUnion = (convert(T, q1) ≈ q2)
+Base.:(≈)(q1::T, q2::QuantUnion) where T<:NumUnion = (convert(T, q2) ≈ q1)
 Base.:(≈)(q1::Missing, q2::QuantUnion) = missing 
 Base.:(≈)(q2::QuantUnion, q1::Missing) = missing 
 
-Base.:+(q::QuantUnion, x::MathUnion) = dimensionless(q) + x 
-Base.:+(x::MathUnion, q::QuantUnion) = dimensionless(q) + x
+Base.:+(q::QuantUnion, x::NumUnion) = dimensionless(q) + x 
+Base.:+(x::NumUnion, q::QuantUnion) = dimensionless(q) + x
 Base.:+(q1::QuantUnion, q2::QuantUnion) = with_ubase(+, q1, q2)
 Base.:+(q1::QuantUnion, qN::QuantUnion...) = with_ubase(+, q1, qN...)
 
-Base.:-(q::QuantUnion, x::MathUnion) = dimensionless(q) - x 
-Base.:-(x::MathUnion, q::QuantUnion) = x - dimensionless(q)
+Base.:-(q::QuantUnion, x::NumUnion) = dimensionless(q) - x 
+Base.:-(x::NumUnion, q::QuantUnion) = x - dimensionless(q)
 Base.:-(q1::QuantUnion, q2::QuantUnion) = with_ubase(-, q1, q2)
 Base.:-(q1::QuantUnion) = with_ubase(-, q1)
 
-Base.:*(q0::QuantUnion, x::MathUnion) = (q = ubase(q0); quantity(ustrip(q)*x, unit(q)))
-Base.:*(x::MathUnion, q0::QuantUnion) = (q = ubase(q0); quantity(ustrip(q)*x, unit(q)))
+Base.:*(q0::QuantUnion, x::NumUnion) = (q = ubase(q0); quantity(ustrip(q)*x, unit(q)))
+Base.:*(x::NumUnion, q0::QuantUnion) = (q = ubase(q0); quantity(ustrip(q)*x, unit(q)))
 Base.:*(q1::QuantUnion, q2::QuantUnion) = with_ubase(*, q1, q2)
 Base.:*(q1::QuantUnion, qN::QuantUnion...) = with_ubase(*, q1, qN...)
 
-Base.:/(q0::QuantUnion, x::MathUnion) = (q = ubase(q0); quantity(ustrip(q)/x, unit(q)))
-Base.:/(x::MathUnion, q0::QuantUnion) = (q = ubase(q0); quantity(x/ustrip(q), inv(unit(q))))
+Base.:/(q0::QuantUnion, x::NumUnion) = (q = ubase(q0); quantity(ustrip(q)/x, unit(q)))
+Base.:/(x::NumUnion, q0::QuantUnion) = (q = ubase(q0); quantity(x/ustrip(q), inv(unit(q))))
 Base.:/(q1::QuantUnion, q2::QuantUnion) = with_ubase(/, q1, q2)
 Base.:inv(q::QuantUnion) = with_ubase(inv, q)
 Base.adjoint(q::QuantUnion) = with_ubase(adjoint, q)
@@ -226,8 +226,11 @@ for op in (:+,:-,:*,:/)
 end
 
 Base.:^(q::QuantUnion, p::Real) = with_ubase(Base.Fix2(^, p), q)
-Base.:^(q::MathUnion, p::QuantUnion) = q^dimensionless(p)
-Base.:^(q::QuantUnion, p::QuantUnion) = with_ubase(Base.Fix2(^, dimensionless(p)), q)
+Base.:^(q::QuantUnion, p::Integer) = with_ubase(Base.Fix2(^, p), q)
+Base.:^(q::QuantUnion, p::Rational) = with_ubase(Base.Fix2(^, p), q)
+#Base.:^(q::QuantUnion, p::Real) = with_ubase(Base.Fix2(^, p), q)
+#Base.:^(q::MathUnion, p::Quantity)  = q^dimensionless(p)
+#Base.:^(q::QuantUnion, p::Quantity) = with_ubase(Base.Fix2(^, dimensionless(p)), q)
 
 @inline Base.literal_pow(::typeof(^), q::QuantUnion, ::Val{p}) where {p} = with_ubase(x->Base.literal_pow(^, x, Val(dimensionless(p))), q)
 
