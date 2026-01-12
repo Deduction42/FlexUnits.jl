@@ -84,22 +84,22 @@ yfd = ubase.((0.3 .+ x0) .* UnitRegistry.ud"km/s")
 g(x, y) = (x.^2) .+ 2.0.*x.*y .+ (y.^2)
 
 print("Unitful:\t")
-@btime g($xu, $yu);
+@btime g($xu, $yu)
 
 #print("DynamicQ Sym:\t")
 #@btime g($xsd, $ysd);
 
 print("DynamicQ Dim:\t")
-@btime g($xd, $yd);
+@btime g($xd, $yd)
 
 print("DynamicQ Array:\t")
-@btime g($xqd, $yqd);
+@btime g($xqd, $yqd)
 
 print("FlexU Dynamic:\t")
 @btime g($xfd, $yfd)
 
 print("FlexU Static:\t")
-@btime g($xfs, $yfs);
+@btime g($xfs, $yfs)
 
 
 # ========== S4.1. upreferred ==========

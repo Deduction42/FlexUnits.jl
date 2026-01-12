@@ -16,6 +16,7 @@ Useful for defining mathematical operations for dimensions
 end
 
 const UNKNOWN_SENTINEL = -25200
+unknown(d::D) where D<:AbstractDimensions = D(UNKNOWN_SENTINEL)
 isunknown(d::D) where D<:AbstractDimensions = (d === D(UNKNOWN_SENTINEL))
 isknown(d::D) where D<:AbstractDimensions = (d !== D(UNKNOWN_SENTINEL))
 
@@ -25,16 +26,16 @@ isknown(d::D) where D<:AbstractDimensions = (d !== D(UNKNOWN_SENTINEL))
 @inline equaldims(arg1::MirrorDims, arg2::AbstractDimensions) = arg2
 @inline equaldims(arg1::MirrorDims, arg2::MirrorDims) = arg1
 
-function equaldims(arg1::AbstractDimensions, arg2::AbstractDimensions)
-    (d1, d2) = promote(arg1, arg2)
-    if (d1 == d2)
+equaldims(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(promoate(arg1, arg2)...)
+function equaldims(d1::D, d2::D) where D<:AbstractDimensions
+    if (d1 === d2)
+        return d1
+    elseif isunknown(d2)
         return d1
     elseif isunknown(d1)
         return d2
-    elseif isunknown(d2)
-        return d1
     else
-        throw(DimensionError((arg1,arg2)))
+        throw(DimensionError((d1,d2)))
     end
 end
 

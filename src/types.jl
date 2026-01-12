@@ -325,12 +325,14 @@ Quantity(x::T, u::StaticUnits{D}) where {T,D} = Quantity(u.todims(x), StaticDims
 Quantity{T}(x, u::StaticUnits{D}) where {T,D} = Quantity{T}(convert(T, u.todims(x)), StaticDims{D}())
 Quantity{T}(q::QuantUnion) where T = Quantity{T}(ustrip(q), unit(q))
 Quantity{T,U}(q::QuantUnion) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
+Quantity{T,StaticDims{d}}(x) where {T,d} = Quantity{T, StaticDims{d}}(convert(T,x), StaticDims{d}())
 
 FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
 FlexQuant(x::T, u::StaticUnits{D}) where {T,D} = FlexQuant(u.todims(x), StaticDims{D}())
 FlexQuant{T}(x, u::StaticUnits{D}) where {T,D} = FlexQuant{T}(convert(T, u.todims(x)), StaticDims{D}())
 FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))
 FlexQuant{T,U}(q::QuantUnion) where {T,U} = FlexQuant{T,U}(ustrip(q), unit(q))
+FlexQuant{T,StaticDims{d}}(x) where {T,d} = FlexQuant{T, StaticDims{d}}(convert(T,x), StaticDims{d}())
 
 ustrip(q::QuantUnion) = q.value
 unit(q::QuantUnion) = q.unit
