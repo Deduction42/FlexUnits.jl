@@ -15,6 +15,10 @@ Useful for defining mathematical operations for dimensions
     )
 end
 
+const UNKNOWN_SENTINEL = -25200
+isunknown(d::D) where D<:AbstractDimensions = (d === D(UNKNOWN_SENTINEL))
+isknown(d::D) where D<:AbstractDimensions = (d !== D(UNKNOWN_SENTINEL))
+
 #Checks equality of dimensions, returns first non-mirrored dimension
 @inline equaldims(arg1::AbstractDimensions) = arg1
 @inline equaldims(arg1::AbstractDimensions, arg2::MirrorDims) = arg1
@@ -23,8 +27,44 @@ end
 
 function equaldims(arg1::AbstractDimensions, arg2::AbstractDimensions)
     (d1, d2) = promote(arg1, arg2)
-    return (d1 == d2) ? d1 : throw(DimensionError((arg1,arg2)))
+    if (d1 == d2)
+        return d1
+    elseif isunknown(d1)
+        return d2
+    elseif isunknown(d2)
+        return d1
+    else
+        throw(DimensionError((arg1,arg2)))
+    end
 end
+
+
+
+function Base.:*(arg1::AbstractDimensions, arg2::AbstractDimensions) 
+    if isunknown(arg1)
+        return arg1 
+    elseif isunknown(arg2)
+        return arg2 
+    else
+        return map_dimensions(+, arg1, arg2)
+    end
+end
+
+function Base.:/(arg1::AbstractDimensions, arg2::AbstractDimensions)
+    if isunknown(arg1)
+        return arg1 
+    elseif isunknown(arg2)
+        return arg2 
+    else
+        return map_dimensions(-, arg1, arg2)
+    end
+end
+
+
+#=
+Base.:*(arg1::AbstractDimensions, arg2::AbstractDimensions) = map_dimensions(+, arg1, arg2)
+Base.:/(arg1::AbstractDimensions, arg2::AbstractDimensions) = map_dimensions(-, arg1, arg2)
+=#
 
 #=============================================================================================
  Mathematical operations on dimensions
@@ -35,8 +75,6 @@ end
 @inline Base.:-(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
 Base.min(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
 Base.max(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
-Base.:*(arg1::AbstractDimensions, arg2::AbstractDimensions) = map_dimensions(+, arg1, arg2)
-Base.:/(arg1::AbstractDimensions, arg2::AbstractDimensions) = map_dimensions(-, arg1, arg2)
 Base.inv(arg::AbstractDimensions) = map_dimensions(-, arg)
 Base.:^(d::AbstractDimensions, p::Integer) = map_dimensions(Base.Fix1(*, p), d)
 Base.:^(d::AbstractDimensions{R}, p::Real) where {R} = map_dimensions(Base.Fix1(*, R(dimensionless(p))), d)
@@ -244,11 +282,12 @@ Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), todims=T())
 
 #Common functions for initializers
 Base.one(::Type{<:QuantUnion{T}}) where T = one(T) #unitless
-Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:StaticDims} = quantity(one(T), D()) #One with units
-Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:AbstractDimensions} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
-Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:Units} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
 
-for f in (:zero, :typemin, :typemax)
+#Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:StaticDims} = quantity(one(T), D()) #One with units
+#Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:AbstractDimensions} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
+#Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:Units} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
+
+for f in (:zero, :typemin, :typemax, :oneunit)
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractDimensions} = quantity($f(T), MirrorDims(D))
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:StaticDims} = quantity($f(T), D())
     @eval Base.$f(::Type{<:QuantUnion{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})

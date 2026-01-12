@@ -1,0 +1,85 @@
+== Versions ==
+Base.VERSION = v"1.12.4"
+
+S(1) Scalar operations where units are inferable
+
+Unitful:          1.900 ns (0 allocations: 0 bytes)
+DynamicQ:         1.700 ns (0 allocations: 0 bytes)
+FlexU:            1.600 ns (0 allocations: 0 bytes)
+
+S2.(1) Scalar ops on heterogeneous units (non-inferable)
+
+Unitful:          8.000 μs (86 allocations: 3.92 KiB)
+DynamicQ:         41.776 ns (0 allocations: 0 bytes)
+FlexU:    26.707 ns (0 allocations: 0 bytes)
+
+S2.(1) Scalar ops on homogeneous units (theoretically inferrable)
+
+Unitful:          92.708 ns (1 allocation: 16 bytes)
+DynamicQ:         7.300 ns (0 allocations: 0 bytes)
+FlexU:    3.200 ns (0 allocations: 0 bytes)
+
+S(3) Broadcasting on large arrays
+
+Unitful:          11.500 μs (3 allocations: 156.32 KiB)
+DynamicQ Sym:     2.217 ms (240003 allocations: 8.70 MiB)
+DynamicQ Dim:     78.500 μs (3 allocations: 781.32 KiB)
+DynamicQ Array:   20.200 μs (3 allocations: 156.32 KiB)
+FlexU:    11.800 μs (3 allocations: 156.32 KiB)
+
+S(4.1) upreferred
+
+Unitful:          604.516 ns (3 allocations: 7.90 KiB)
+DynamicQ:         23.800 μs (3 allocations: 39.13 KiB)
+FlexU:            666.063 ns (3 allocations: 7.90 KiB)
+
+S(4.2) ustrip
+
+Unitful:          398.125 ns (3 allocations: 7.90 KiB)
+DynamicQ:         21.100 μs (3 allocations: 7.88 KiB)
+FlexU:            427.439 ns (4 allocations: 7.94 KiB)
+
+S(4.3) uconvert to arbitrary units
+
+Unitful:          653.797 ns (3 allocations: 7.90 KiB)
+DynamicQ:         43.300 μs (3 allocations: 23.51 KiB)
+FlexU:            2.837 μs (4 allocations: 31.36 KiB)
+
+S(5) Ideal gas law with affine units: PV = nRT at 25°C, 101.3kPa, n=1 mol
+
+Unitful:          625.466 ns (3 allocations: 7.90 KiB)
+DynamicQ:         3.475 μs (3 allocations: 39.15 KiB)
+FlexU  :          597.727 ns (3 allocations: 7.90 KiB)
+
+S(6) Structs with quantities as fields
+
+S(6.1) Construct
+
+Unitful:          2.356 μs (3 allocations: 15.71 KiB)
+DynamicQ:         9.900 μs (3 allocations: 78.19 KiB)
+FlexU:            2.389 μs (3 allocations: 15.71 KiB)
+
+S(6.2) Access
+
+Unitful:          391.584 ns (0 allocations: 0 bytes)
+DynamicQ:         833.333 ns (0 allocations: 0 bytes)
+FlexU:            391.787 ns (0 allocations: 0 bytes)
+
+S(6.3) Heterogeneous states (different units across elements)
+
+Unitful:          43.984 ns (3 allocations: 48 bytes)
+DynamicQ:         3.100 ns (0 allocations: 0 bytes)
+FlexU:            2.700 ns (0 allocations: 0 bytes)
+
+S(7.1) Missing values
+
+Unitful:          425.628 ns (0 allocations: 0 bytes)
+DynamicQ:         2.367 μs (0 allocations: 0 bytes)
+FlexU:            426.263 ns (0 allocations: 0 bytes)
+
+S(7.1) Missing quantities
+
+Unitful:          fails
+DynamicQ:         14.000 μs (1000 allocations: 46.88 KiB)
+FlexU:            429.648 ns (0 allocations: 0 bytes)
+missing m

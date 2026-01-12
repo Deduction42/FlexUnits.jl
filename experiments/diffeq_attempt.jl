@@ -55,16 +55,16 @@ end
 # Required additional methods =================================================================================
 FlexUnits.Quantity{T,U}(x) where {T,U<:StaticDims} = Quantity{T,U}(convert(T, x), U())
 FlexUnits.Quantity{T,U}(x::QuantUnion) where {T,U<:StaticDims} = Quantity{T,U}(convert(T, ustrip(U(),x)), U())
-Base.oneunit(::Type{Quantity{T,U}}) where {T,U<:StaticDims} = Quantity{T,U}(one(T), U())
+#Base.oneunit(::Type{Quantity{T,U}}) where {T,U<:StaticDims} = Quantity{T,U}(one(T), U())
 Base.eltype(::Type{Quantity{T}}) where T = T
 OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.UNITLESS_ABS2(q::Quantity) = abs2(dstrip(q))
 # =============================================================================================================
 
-
-u0 = FallingObjectState(v=0.0u"m/s", h=100u"m")
-p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
+ZT = typeof(zero(typeof(1ud"m/s")))
+u0 = FallingObjectState{ZT}(v=0.0ud"m/s", h=100ud"m")
+p  = ustatic(FallingObjectProps{Quantity{Float64}}(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2"))
 tspan = (0.0u"s", 100.0u"s")
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_dynamic, u0, tspan, p, abstol=[1e-6u"m/s", 1e-6u"m"], reltol=[1e-6, 1e-6])
+prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_dynamic, u0, tspan, p, abstol=(1e-6u"m/s", 1e-6u"m"), reltol=[1e-6, 1e-6])
 
 # Test that it worked
 sol = solve(prob, Tsit5())

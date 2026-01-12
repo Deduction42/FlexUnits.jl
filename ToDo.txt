@@ -11,10 +11,24 @@ Current Tasks:
 
 Backlog:
 1.  For consistency with the ecosystem around Unitful, we will need to subtype Quantity to Number
-    -   Add specific "Array" operations
+    -   Add specific "Array" multiplication/division ops with numeric quantities
     -   Add paramerization of AffineTransform (so people can opt into Rational)
     -   Streamline promotions (and will likely need generalization)
-    -   See if we can get DifferentialEquations to work with this 
+    -   See if we can get DifferentialEquations to work with this (Try it with Unitful first and identify missing features)
+
+2.  MirrorDims work isn't really cutting it; many calls to oneunit are merely to infer unit type
+    -   Use a sentinel value D(NaN) (FixedRational{B}(NaN) should set Numerator to typemin)
+        -   StaticDims shoud NOT be allowed to use an unknown dimension (for equaldims type-stability)
+    -   isknown(d::D) = (d!=D(NaN)) should cheap because it whould flag pretty quickly in most cases
+    -   Create a function unknown(D) (called from zero, oneunit etc) which emits a warning the first time it's called
+        -   WARNING: unkown dimension constructed (likely from oneunit(::Type) or zero(::Type)) results may be inaccurate or cause errors if used incorrectly
+        -   This function is only applicable to DIMENSIONS (actual units needs to know the transform)
+    -   Performance hit shouldn't be that severe
+        -   equaldims(d1,d2) already needs a branch, just efficiently add more 
+            -   May want to create a "select_unknown(d1,d2)" function that uses a branchless "ifelse" statement
+        -   rawmul(d1,d2) and rawdiv(d1,d2) assume "isknown"; *(d1,d2) and /(d1,d2) return the unknown dimension
+        -   actual multiplication should perform "rawmul" regardless, then use a branchless "ifelse" statement
+            -   The only overhead is checking isknown on both dimensions 
 
 2.  Finish basic LinmapQuant functionality for +,-,*,/,\,^,exp, (and matrix trigs)
     -   This consists of building shortcuts for UnitMap types
