@@ -3,7 +3,6 @@ This package should look like Unitful.jl but behave like DynamicQuantities.jl un
 
 Current Tasks:
 1.  For consistency with the ecosystem around Unitful, we will need to subtype Quantity to Number
-    -   Remove MirrorDims and replace with the sentinel value approach (unknown(D))
     -   Add specific "Array" multiplication/division ops with numeric quantities check Unitful.jl
     -   See if we can get DifferentialEquations to work with this (Try it with Unitful first and identify missing features)
     -   Add NaN support for FixRat32 and make D(NaN) the sentinel value

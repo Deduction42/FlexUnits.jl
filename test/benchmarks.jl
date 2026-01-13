@@ -265,3 +265,5 @@ print("DynamicQ:\t")
 @btime sum($vdm)
 print("FlexU:  \t")
 @btime sum($vfm)
+
+print("\n\nBenchmarks Complete")

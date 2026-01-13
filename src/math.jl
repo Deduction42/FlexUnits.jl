@@ -16,15 +16,18 @@ Useful for defining mathematical operations for dimensions
 end
 
 const UNKNOWN_SENTINEL = -25200
-unknown(d::D) where D<:AbstractDimensions = D(UNKNOWN_SENTINEL)
-isunknown(d::D) where D<:AbstractDimensions = (d === D(UNKNOWN_SENTINEL))
-isknown(d::D) where D<:AbstractDimensions = (d !== D(UNKNOWN_SENTINEL))
+unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D(convert(T,UNKNOWN_SENTINEL))
+isunknown(d::D) where D<:AbstractDimensions = (d === unknown(D))
+isknown(d::D) where D<:AbstractDimensions = (d !== unknown(D))
 
 #Checks equality of dimensions, returns first non-mirrored dimension
 @inline equaldims(arg1::AbstractDimensions) = arg1
+
+#=
 @inline equaldims(arg1::AbstractDimensions, arg2::MirrorDims) = arg1
 @inline equaldims(arg1::MirrorDims, arg2::AbstractDimensions) = arg2
 @inline equaldims(arg1::MirrorDims, arg2::MirrorDims) = arg1
+=#
 
 equaldims(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(promoate(arg1, arg2)...)
 function equaldims(d1::D, d2::D) where D<:AbstractDimensions
@@ -39,46 +42,59 @@ function equaldims(d1::D, d2::D) where D<:AbstractDimensions
     end
 end
 
+raw_mul(d1::AbstractDimensions, d2::AbstractDimensions) = map_dimensions(+, d1, d2)
+raw_div(d1::AbstractDimensions, d2::AbstractDimensions) = map_dimensions(-, d1, d2)
+raw_pow(d::AbstractDimensions, p::Integer) = map_dimensions(Base.Fix1(*, p), d)
+raw_pow(d::AbstractDimensions{R}, p::Real) where R = map_dimensions(Base.Fix1(*, convert(R, p)), d)
+raw_inv(d::AbstractDimensions) = map_dimensions(-, d)
 
-
-function Base.:*(arg1::AbstractDimensions, arg2::AbstractDimensions) 
-    if isunknown(arg1)
-        return arg1 
-    elseif isunknown(arg2)
-        return arg2 
-    else
-        return map_dimensions(+, arg1, arg2)
-    end
-end
-
-function Base.:/(arg1::AbstractDimensions, arg2::AbstractDimensions)
-    if isunknown(arg1)
-        return arg1 
-    elseif isunknown(arg2)
-        return arg2 
-    else
-        return map_dimensions(-, arg1, arg2)
-    end
-end
-
-
+#=============================================================================================
+ Mathematical operations on dimensions
+=============================================================================================#
 #=
 Base.:*(arg1::AbstractDimensions, arg2::AbstractDimensions) = map_dimensions(+, arg1, arg2)
 Base.:/(arg1::AbstractDimensions, arg2::AbstractDimensions) = map_dimensions(-, arg1, arg2)
 =#
 
-#=============================================================================================
- Mathematical operations on dimensions
-=============================================================================================#
+function Base.:*(d1::AbstractDimensions, d2::AbstractDimensions) 
+    if isunknown(d1)
+        return d1 
+    elseif isunknown(d2)
+        return d2 
+    else
+        return raw_mul(d1, d2)
+    end
+end
+
+function Base.:/(d1::AbstractDimensions, d2::AbstractDimensions)
+    if isunknown(d1)
+        return d1 
+    elseif isunknown(d2)
+        return d2 
+    else
+        return raw_div(d1, d2)
+    end
+end
+
+function Base.:^(d::AbstractDimensions, p::Real) 
+    if isknown(d) 
+        return raw_pow(d, p) 
+    elseif iszero(p)
+        return typeof(d)()
+    else
+        return d 
+    end
+end
+
+Base.inv(d::AbstractDimensions) = isknown(d) ? raw_inv(d) : d
+
+
 @inline Base.:+(arg1::AbstractDimLike) = arg1
 @inline Base.:+(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
 @inline Base.:-(arg1::AbstractDimLike) = arg1
 @inline Base.:-(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
 Base.min(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
 Base.max(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
-Base.inv(arg::AbstractDimensions) = map_dimensions(-, arg)
-Base.:^(d::AbstractDimensions, p::Integer) = map_dimensions(Base.Fix1(*, p), d)
-Base.:^(d::AbstractDimensions{R}, p::Real) where {R} = map_dimensions(Base.Fix1(*, R(dimensionless(p))), d)
 Base.sqrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 2))
 Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
 Base.abs2(d::AbstractDimensions) = d^2
@@ -86,11 +102,12 @@ Base.adjoint(d::AbstractDimensions) = d
 
 @inline Base.literal_pow(::typeof(^), d::D, ::Val{0}) where {D <: AbstractDimensions} = D()
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{1}) = d 
-@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{2}) = d*d 
-@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{3}) = d*d*d
+@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{2}) = isknown(d) ? raw_mul(d, d) : d
+@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{3}) = isknown(d) ? raw_mul(d, raw_mul(d, d)) : d
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-1}) = inv(d) 
-@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-2}) = inv(d*d)
+@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-2}) = isknown(d) ? raw_inv(raw_mul(d, d)) : d
 
+#=
 #Mirror dimensions on two argument operations produces "equaldims
 Base.:*(d1::AbstractDimensions, d2::MirrorDims) = d1
 Base.:*(d1::MirrorDims, d2::AbstractDimensions) = d2
@@ -104,7 +121,7 @@ for op in (:inv, :sqrt, :cbrt, :abs2, :adjoint)
     @eval Base.$op(d::MirrorDims) = d
 end
 Base.:^(d::MirrorDims, p::Real) = d
-
+=#
 
 #============================================================================================================================
 Static dimension ops
@@ -112,9 +129,9 @@ Static dimension ops
 Base.:(==)(d1::AbstractDimensions, d2::StaticDims) = (d1 == dimval(d2))
 Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
 
-equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) ? arg1 : throw(DimensionError((arg1,arg2)))
-equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (arg1 == dimval(arg2)) ? arg2 : throw(DimensionError((arg1,arg2)))
-equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2))  ? arg1 : throw(DimensionError((arg1,arg2)))
+equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) || isunknown(arg2) ? arg1 : throw(DimensionError((arg1,arg2)))
+equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (arg1 == dimval(arg2)) || isunknown(arg1) ? arg2 : throw(DimensionError((arg1,arg2)))
+equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2)) ? arg1 : throw(DimensionError((arg1,arg2)))
 
 Base.:*(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1*D2}()
 Base.:/(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1/D2}()
@@ -289,11 +306,12 @@ Base.one(::Type{<:QuantUnion{T}}) where T = one(T) #unitless
 #Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:Units} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
 
 for f in (:zero, :typemin, :typemax, :oneunit)
-    @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractDimensions} = quantity($f(T), MirrorDims(D))
+    @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractDimensions} = quantity($f(T), unknown(D))
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:StaticDims} = quantity($f(T), D())
-    @eval Base.$f(::Type{<:QuantUnion{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
-    @eval Base.$f(::Type{<:QuantUnion{T, <:MirrorUnion{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
-    @eval Base.$f(::Type{<:QuantUnion{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
+    @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractUnits} = throw(ArgumentError("This operation only supports dimensional quantities"))
+    #@eval Base.$f(::Type{<:QuantUnion{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
+    #@eval Base.$f(::Type{<:QuantUnion{T, <:MirrorUnion{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
+    #@eval Base.$f(::Type{<:QuantUnion{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
 end
 
 #Comparison functions (returns a bool)
