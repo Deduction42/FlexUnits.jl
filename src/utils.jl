@@ -138,6 +138,11 @@ function ushow(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<:AbstractDimens
     dimnames = collect(static_fieldnames(D))
     dimunits = unit_symbols(D)
 
+    if isunknown(d)
+        print(io, "?/?")
+        return nothing 
+    end
+
     usep = ifelse(pretty, " ", "*")
     abs_dim_pwr(dim::Symbol) = _unit_pwr_string(dimunits[dim], abs(d[dim]), pretty=pretty)
 

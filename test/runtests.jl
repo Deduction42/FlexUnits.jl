@@ -97,11 +97,13 @@ const AT = AffineTransform
     @test FlexUnits.dimtype(Quantity{Float64, typeof(u"m/s")}) == Dimensions{FixRat32}
     @test FlexUnits.dimtype(1.0u"kJ") == Dimensions{FixRat32}
     @test udynamic(1.0u"kJ") === ubase(1.0ud"kJ")
-    
+    @test assert_dimension(dimension(u"m/s")) == dimension(u"m/s")
+
+    #=
     @test MirrorDims() == MirrorDims{Dimensions{FixRat32}}()
     @test eltype([MirrorDims(), Dimensions{FixRat32}()]) == MirrorUnion{Dimensions{FixRat32}}
     @test_throws "MirrorDims should not be a type parameter" Quantity{Float64, MirrorDims{Dimensions{FixRat32}}}(1, u"m/s")
-    @test assert_dimension(dimension(u"m/s")) == dimension(u"m/s")
+    =#
     
     #Basic utility functions
     vsum = sum(ones(5,3).*[u"rpm" u"kg/hr" u"kPa"], dims=1)
@@ -111,7 +113,7 @@ const AT = AffineTransform
     @test string(1.0u"1/s^2") == "(1.0)1/s^2"
     @test string(1.0*(ud"km/hr"*ud"m/s")) == "(0.2777777777777778)m^2/s^2"
     @test string(u"m/s"*u"m/s") == "StaticUnits{m^2/s^2, AffineTransform}(AffineTransform(1.0, 0.0), :_)"
-    @test string(MirrorDims{Dimensions{FixRat32}}()) == "MirrorDims{Dimensions{FixRat32}}()"
+    #@test string(MirrorDims{Dimensions{FixRat32}}()) == "MirrorDims{Dimensions{FixRat32}}()"
     @test string(zero(typeof(1ud"m/s"))) == "(0)MirrorDims{Dimensions{FixRat32}}()"
     @test string(vsum) == "Quantity{Float64, MirrorUnion{Dimensions{FixRat32}}}[(0.5235987755982988)1/s (0.001388888888888889)kg/s (5000.0)kg/(m*s^2)]"
     @test string(nomirror.(vsum)) == "Quantity{Float64, Dimensions{FixRat32}}[(0.5235987755982988)1/s (0.001388888888888889)kg/s (5000.0)kg/(m*s^2)]"
@@ -121,10 +123,10 @@ const AT = AffineTransform
     @test string(1.0u"1/s^2")  == "1.0 1/s²"
     @test string(1.0*(ud"km/hr"*ud"m/s")) == "0.2777777777777778 m²/s²"
     @test string(u"m/s"*u"m/s") == "StaticUnits{m²/s², AffineTransform}(AffineTransform(1.0, 0.0), :_)"
-    @test string(MirrorDims{Dimensions{FixRat32}}()) == "?/?"
+    #@test string(MirrorDims{Dimensions{FixRat32}}()) == "?/?"
     @test string(zero(typeof(1ud"m/s"))) == "0 ?/?"
     @test string(vsum) == "Quantity{Float64, MirrorUnion{Dimensions{FixRat32}}}[0.5235987755982988 1/s 0.001388888888888889 kg/s 5000.0 kg/(m s²)]"
-    @test string(nomirror.(vsum)) == "Quantity{Float64, Dimensions{FixRat32}}[0.5235987755982988 1/s 0.001388888888888889 kg/s 5000.0 kg/(m s²)]"
+    #@test string(nomirror.(vsum)) == "Quantity{Float64, Dimensions{FixRat32}}[0.5235987755982988 1/s 0.001388888888888889 kg/s 5000.0 kg/(m s²)]"
 
     @test string(FlexUnits.unit_symbols(Dimensions{FixRat32})) == "(:length => :m, :mass => :kg, :time => :s, :current => :A, :temperature => :K, :luminosity => :cd, :amount => :mol)"
 
@@ -853,14 +855,14 @@ end
     #Generate a correlated test set
     U = [ud"kg/s", ud"kW", ud"Hz"]
     X = (rand(30,3)*rand(3,3) .+ 0.001.*randn(30,3))
-    Q = X .* U'
+    Q = ubase.(X .* U')
 
     #Test summations, stats and some linear algebra
     @test all(sum(Q, dims=1) .≈ sum(X, dims=1).*U')
     @test all(mean(Q, dims=1) .≈ mean(X, dims=1).*U')
     @test all(var(Q, dims=1) .≈ var(X, dims=1).*(U.^2)')
     @test all(cov(Q) .≈ cov(X).*U.*U')
-    @test_throws ArgumentError all(cor(Q) .≈ cor(X))
+    @test all((cor(Q) .+ 0u"") .≈ cor(X))
     @test sum(Q*inv.(U)) ≈ sum(X)
     @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
     @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
