@@ -19,6 +19,8 @@ const UNKNOWN_SENTINEL = -25200
 unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D(convert(T,UNKNOWN_SENTINEL))
 isunknown(d::D) where D<:AbstractDimensions = (d === unknown(D))
 isknown(d::D) where D<:AbstractDimensions = (d !== unknown(D))
+isunknown(d::StaticDims{D}) where D = isunknown(D)
+isknown(d::StaticDims{D}) where D = isknown(D)
 
 #Checks equality of dimensions, returns first non-mirrored dimension
 @inline equaldims(arg1::AbstractDimensions) = arg1
@@ -38,7 +40,7 @@ function equaldims(d1::D, d2::D) where D<:AbstractDimensions
     elseif isunknown(d1)
         return d2
     else
-        throw(DimensionError((d1,d2)))
+        throw(DimensionError(d1,d2))
     end
 end
 
@@ -129,9 +131,9 @@ Static dimension ops
 Base.:(==)(d1::AbstractDimensions, d2::StaticDims) = (d1 == dimval(d2))
 Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
 
-equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) || isunknown(arg2) ? arg1 : throw(DimensionError((arg1,arg2)))
-equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (arg1 == dimval(arg2)) || isunknown(arg1) ? arg2 : throw(DimensionError((arg1,arg2)))
-equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2)) ? arg1 : throw(DimensionError((arg1,arg2)))
+equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) || isunknown(arg2) ? arg1 : throw(DimensionError(arg1,arg2))
+equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (arg1 == dimval(arg2)) || isunknown(arg1) ? arg2 : throw(DimensionError(arg1,arg2))
+equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2)) ? arg1 : throw(DimensionError(arg1,arg2))
 
 Base.:*(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1*D2}()
 Base.:/(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1/D2}()
@@ -178,8 +180,8 @@ function Base.:^(t::AffineTransform, p::Real)
 end
 Base.:^(t1::NoTransform, p::Real) = t1
 
-Base.:*(x::MathUnion, u::AbstractUnitLike) = quantity(x, u)
-Base.:/(x::MathUnion, u::AbstractUnitLike) = quantity(x, inv(u))
+Base.:*(x::MathUnion, u::AbstractUnitLike) = ubase(quantity(x, u))
+Base.:/(x::MathUnion, u::AbstractUnitLike) = ubase(quantity(x, inv(u)))
 Base.:*(x::Missing, u::AbstractUnitLike) = x
 Base.:/(x::Missing, u::AbstractUnitLike) = x
 
@@ -305,7 +307,7 @@ Base.one(::Type{<:QuantUnion{T}}) where T = one(T) #unitless
 #Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:AbstractDimensions} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
 #Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:Units} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
 
-for f in (:zero, :typemin, :typemax, :oneunit)
+for f in (:zero, :typemin, :typemax, :oneunit, :eps)
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractDimensions} = quantity($f(T), unknown(D))
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:StaticDims} = quantity($f(T), D())
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractUnits} = throw(ArgumentError("This operation only supports dimensional quantities"))
@@ -325,7 +327,8 @@ end
 
 #Functions that return the same unit
 for f in (
-        :float, :abs, :real, :imag, :conj, :significand, :zero, :oneunit, :typemax, :typemin, :transpose
+        :float, :abs, :real, :imag, :conj, :significand, :zero, :eps, :oneunit, :nextfloat,
+        :typemax, :typemin, :transpose
     )
     @eval Base.$f(u::AbstractDimLike) = u
     @eval Base.$f(q::QuantUnion) = with_ubase($f, q)
