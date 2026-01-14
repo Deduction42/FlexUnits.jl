@@ -87,7 +87,7 @@ prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_sta
 
 sol = solve(prob, Tsit5())
 @btime solve(prob, Tsit5())
-plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="v_staticu")
+plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="v_static")
 
 # =============================================================================================================
 println("\nDynamic Unit Solution")
@@ -96,4 +96,4 @@ prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_dyn
 
 sol = solve(prob, Tsit5())
 @btime solve(prob, Tsit5())
-plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="v_dynamicu")
+plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="v_dynamic")
