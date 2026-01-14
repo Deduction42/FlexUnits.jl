@@ -8,8 +8,8 @@ Changelog:
 
 Current Tasks:
 1.  For consistency with the ecosystem around Unitful, we will need to subtype Quantity to Number
+    -   Address "promote_type(Float64, Quantity{T,<:StaticDims})" issue
     -   Add specific "Array" multiplication/division ops with numeric quantities check Unitful.jl
-    -   See if we can get DifferentialEquations to work with this (Try it with Unitful first and identify missing features)
     -   Add typemin/typemax/one/onunit support for FixRat32 and make the sentinel value
         -   unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D{T}(typemin(T)) the sentinel value
     -   Add paramerization of AffineTransform (so people can opt into Rational)
