@@ -1,5 +1,10 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
+Changelog:
+1.  Quantity now subtypes to Number, use FlexQuant for values that don't subtype to number (quantity auto-selects appropriate container)
+2.  Multiplying with dynamic units now eagerly converts to dimensional quantities
+3.  Re-added "quantity" constructor function, does not eagerly convert to dimensional quantity
+4.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
 
 Current Tasks:
 1.  For consistency with the ecosystem around Unitful, we will need to subtype Quantity to Number

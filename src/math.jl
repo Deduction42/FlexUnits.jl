@@ -277,6 +277,10 @@ Base.:/(q1::QuantUnion, q2::QuantUnion) = with_ubase(/, q1, q2)
 Base.:inv(q::QuantUnion) = with_ubase(inv, q)
 Base.adjoint(q::QuantUnion) = with_ubase(adjoint, q)
 
+Base.muladd(x::NumUnion, y::QuantUnion, z::QuantUnion) = muladd(x, dstrip(y), dstrip(z)) * equaldims(dimension(y), dimension(z))
+Base.muladd(x::QuantUnion, y::NumUnion, z::QuantUnion) = muladd(dstrip(x), y, dstrip(z)) * equaldims(dimension(x), dimension(z))
+Base.muladd(x::QuantUnion, y::QuantUnion, z::QuantUnion) = muladd(dstrip(x), dstrip(y), dstrip(z)) * equaldims(dimension(x)*dimension(y), dimension(z))
+
 #Operators on explicitly missing values simply return missing
 for op in (:+,:-,:*,:/)
     @eval Base.$op(q::QuantUnion, x::Missing) = x
@@ -323,6 +327,8 @@ for f in (:<, :<=, :isless)
         equaldims(unit(b1), unit(b2))
         return $f(ustrip(b1), ustrip(b2))
     end
+    @eval Base.$f(q::QuantUnion, x::Real) = $f(dimensionless(q), x)
+    @eval Base.$f(x::Real, q::QuantUnion) = $f(x, dimensionless(q))
 end
 
 #Functions that return the same unit
