@@ -31,7 +31,7 @@ isknown(d::StaticDims{D}) where D = isknown(D)
 @inline equaldims(arg1::MirrorDims, arg2::MirrorDims) = arg1
 =#
 
-equaldims(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(promoate(arg1, arg2)...)
+equaldims(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(promote(arg1, arg2)...)
 function equaldims(d1::D, d2::D) where D<:AbstractDimensions
     if (d1 === d2)
         return d1

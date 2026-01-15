@@ -325,7 +325,7 @@ Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
 #Quantity{T}(x, u::StaticUnits{D}) where {T,D} = Quantity{T}(convert(T, u.todims(x)), StaticDims{D}())
 Quantity{T}(q::QuantUnion) where T = Quantity{T}(ustrip(q), unit(q))
 Quantity{T,U}(q::QuantUnion) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
-Quantity{T,StaticDims{d}}(q::Quantity) where {T,d} = Quantity{T,StaticDims{d}}(ustrip(d, q), StaticDims{d}())
+Quantity{T,StaticDims{d}}(q::QuantUnion) where {T,d} = Quantity{T,StaticDims{d}}(ustrip(d, q), StaticDims{d}())
 Quantity{T,StaticDims{d}}(x::Number) where {T,d} = Quantity{T, StaticDims{d}}(convert(T,x), StaticDims{d}())
 
 

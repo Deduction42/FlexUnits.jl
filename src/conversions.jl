@@ -170,6 +170,9 @@ end
 function Base.promote_rule(::Type{StaticDims{D}}, ::Type{StaticUnits{D,T}}) where {D, T<:AbstractUnitTransform}
     return StaticUnits{D,T}
 end
+function Base.promote_rule(::Type{D}, ::Type{StaticUnits{d,T}}) where {d, D<:AbstractDimensions, T<:AbstractUnitTransform}
+    return Units{promote_type(D, typeof(d)), T}
+end
 
 #Promote static unit quantities to static dimenion quantities, double definition needed for specificity
 function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1<:StaticUnits, U2<:StaticDims, Q1<:QuantUnion{T1,U1}, Q2<:QuantUnion{T2,U2}}
