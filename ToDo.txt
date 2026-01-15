@@ -8,31 +8,41 @@ Changelog:
 
 Current Tasks:
 1.  For consistency with the ecosystem around Unitful, we will need to subtype Quantity to Number
-    -   Address "promote_type(Float64, Quantity{T,<:StaticDims})" issue
     -   Add specific "Array" multiplication/division ops with numeric quantities check Unitful.jl
     -   Add typemin/typemax/one/onunit support for FixRat32 and make the sentinel value
         -   unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D{T}(typemin(T)) the sentinel value
     -   Add paramerization of AffineTransform (so people can opt into Rational)
     -   Streamline promotions around FlexQuant and Quantity (and will likely need generalization)
-    -   Auto-convert to dimensions only applies to StaticDims, but it really should apply to "*"
-        -   Re-enforces consistency around the idea that "math operators" convert to dimensions
-        -   Quantity/FlexQuant/quantity constructors shouldn't auto-convert
 
-    Notes on MirrorDims replacement
-        -   Use a sentinel value D(NaN) (FixedRational{B}(NaN) should set Numerator to typemin)
-            -   StaticDims shoud NOT be allowed to use an unknown dimension (for equaldims type-stability)
-        -   isknown(d::D) = (d!=D(NaN)) should cheap because it whould flag pretty quickly in most cases
-        -   Create a function unknown(D) (called from zero, oneunit etc) which emits a warning the first time it's called
-            -   WARNING: unkown dimension constructed (likely from oneunit(::Type) or zero(::Type)) results may be inaccurate or cause errors if used incorrectly
-            -   This function is only applicable to DIMENSIONS (actual units needs to know the transform)
-        -   Performance hit shouldn't be that severe
-            -   equaldims(d1,d2) already needs a branch, just efficiently add more 
-                -   May want to create a "select_unknown(d1,d2)" function that uses a branchless "ifelse" statement
-            -   rawmul(d1,d2) and rawdiv(d1,d2) assume "isknown"; *(d1,d2) and /(d1,d2) return the unknown dimension
-            -   actual multiplication should perform "rawmul" regardless, then use a branchless "ifelse" statement
-                -   The only overhead is checking isknown on both dimensions 
+2.  Finish basic LinmapQuant functionality for +, -, *, /, \, ^, exp, lu, sin, cos, tan
+    -   "lu" is particularly important because pivoting fails
+        -   pivoting is best interpreted as a reordering operation, not a proper multiplication, so there will be unit conflicts
+        -   pivot matrices themselves can be fixed by making the pivot matrix have "unknown" units on zeros and a dimensionless diagonal
+            -   the transpose of a pivot matrix is the same as its inverse
+            -   see the following link on now "getproperty" works on lu factorizations
+                -   https://github.com/JuliaLang/LinearAlgebra.jl/blob/b1f48a442ba5f41479d4fb6f3e931b1ac2f21059/src/lu.jl#L440
+        -   inv on an LUQuant is basically LinmapQuant(inv(ustrip(luq)), inv(unit(luq)))
+    -   This consists of building shortcuts for UnitMap types
+    -   Output should be the most specific form of unit mapping possible
+    -   Make sure operations convert to LinmapQuant and output that type
 
-3.  Build out documentation and a docs badge
+    Notes on above:      
+    -   Matrix multiplication is ONLY valid with LinmapQuant and will ALWAYS produce a LinmapQuant
+        -   Multiplication should convert AbstractMatrix{Union{Quantity,NumberQuant}} to LinmapQuant
+        -   This may result in more allocations, but is more reliable in pointing out errors
+        -   It is recommendable to only store matrices as LinmapQuant if linear algebra is intended
+
+3.  Add LinearAlgebra extensions for certain factorizations
+    -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
+        -   eig = eigen(A::LinmapQuant)
+        -   eig.vectors = LinmapQuant(ustrip(eig).vectors, UnitMap(fill(ud"", N), unit(eig).u_in))
+    -   cholesky (requries symmetric transform)
+    -   eigen (confusing becasue it can use both idempotent and symmetric) 
+        -   E' == inv(E) DOES NOT hold 
+        -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
+    -   consider other factorizations as well
+
+4.  Build out documentation and a docs badge
     -   Remove MirrorDims 
     -   Add warnings around "Affine Delta" and "zero/oneunit"
     -   Add Examples
@@ -46,24 +56,6 @@ Current Tasks:
 
 Backlog:
 
-
-2.  Finish basic LinmapQuant functionality for +,-,*,/,\,^,exp, (and matrix trigs)
-    -   This consists of building shortcuts for UnitMap types
-    -   Output should be the most specific form of unit mapping possible
-    -   Make sure operations convert to LinmapQuant and output that type
-
-    Notes on above:      
-    -   Matrix multiplication is ONLY valid with LinmapQuant and will ALWAYS produce a LinmapQuant
-        -   Multiplication should convert AbstractMatrix{Union{Quantity,NumberQuant}} to LinmapQuant
-        -   This may result in more allocations, but is more reliable in pointing out errors
-        -   It is recommendable to only store matrices as LinmapQuant if linear algebra is intended
-
-3.  Add LinearAlgebra extensions for certain factorizations
-    -   cholesky (requries symmetric transform)
-    -   eigen (confusing becasue it can use both idempotent and symmetric) 
-        -   E' == inv(E) DOES NOT hold 
-        -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
-    -   consider other transformations as well
 
 4.  Add interactive unit functionality
     -   unit_index() (produces dict that lists all units for every dimension)

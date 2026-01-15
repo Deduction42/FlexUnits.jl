@@ -100,20 +100,36 @@ will promote to dimensional units (such as SI). WARNING:: This also means that A
 this can yield potentially unintuitive results like 2°C/1°C = 1.0036476381542951
 =================================================================================================#
 
-#Converting dynamic quantity types ====================================================
+#Converting dynamic Quantity types ====================================================
 Base.convert(::Type{Quantity{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
 Base.convert(::Type{Quantity{T,U}}, q::QuantUnion) where {T,U<:Units} = Quantity{T,U}(ustrip(q), unit(q))
 Base.convert(::Type{Quantity{T,M}}, q::QuantUnion) where {T, D<:AbstractDimensions, M<:MirrorUnion{D}} = Quantity{T,M}(T(dstrip(q)), dimension(q))
 Base.convert(::Type{Quantity{T,D}}, x::MathUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D(0))
 Base.convert(::Type{Quantity{T,U}}, x::MathUnion) where {T,U<:Units} = Quantity{T,U}(x, dimtype(U)(0))
 
-#Converting static quantity types ====================================================
+#Converting static Quantity types ====================================================
 Base.convert(::Type{Quantity{T,D}}, q::QuantUnion) where {T, D<:StaticDims} = Quantity{T,D}(ustrip(D(), q), D())
 Base.convert(::Type{Quantity{T,U}}, q::QuantUnion) where {T, D, C, U<:StaticUnits{D,C}} = Quantity{T,U}(ustrip(D, q), StaticUnits{D,C}(C()))
 function Base.convert(::Type{Quantity{T,D}}, u::AbstractUnitLike) where {T,D<:AbstractDimensions}
     assert_scalar(u)
     return Q(uscale(u), dimension(u))
 end
+
+#Converting dynamic FlexQuant types ====================================================
+Base.convert(::Type{FlexQuant{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(dstrip(q), dimension(q))
+Base.convert(::Type{FlexQuant{T,U}}, q::QuantUnion) where {T,U<:Units} = FlexQuant{T,U}(ustrip(q), unit(q))
+Base.convert(::Type{FlexQuant{T,M}}, q::QuantUnion) where {T, D<:AbstractDimensions, M<:MirrorUnion{D}} = FlexQuant{T,M}(T(dstrip(q)), dimension(q))
+Base.convert(::Type{FlexQuant{T,D}}, x::MathUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(x, D(0))
+Base.convert(::Type{FlexQuant{T,U}}, x::MathUnion) where {T,U<:Units} = FlexQuant{T,U}(x, dimtype(U)(0))
+
+#Converting static FlexQuant types ====================================================
+Base.convert(::Type{FlexQuant{T,D}}, q::QuantUnion) where {T, D<:StaticDims} = FlexQuant{T,D}(ustrip(D(), q), D())
+Base.convert(::Type{FlexQuant{T,U}}, q::QuantUnion) where {T, D, C, U<:StaticUnits{D,C}} = FlexQuant{T,U}(ustrip(D, q), StaticUnits{D,C}(C()))
+function Base.convert(::Type{FlexQuant{T,D}}, u::AbstractUnitLike) where {T,D<:AbstractDimensions}
+    assert_scalar(u)
+    return Q(uscale(u), dimension(u))
+end
+
 
 # Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), todims=todims(u), symbol=usymbol(u))
@@ -144,18 +160,6 @@ Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims}
 Base.promote_rule(::Type{U1}, ::Type{U2}) where {T1, d1, U1<:StaticUnits{d1,T1}, D2, T2, U2<:Units{D2,T2}} = Units{promote_type(typeof(d1),D2), promote_type(T1,T2)}
 Base.promote_rule(::Type{U1}, ::Type{U2}) where {T1, d1, U1<:StaticUnits{d1,T1}, d2, T2, U2<:StaticUnits{d2,T2}} = Units{promote_type(typeof(d1),typeof(d2)), promote_type(T1,T2)}
 
-#Promote static unit quantities to static dimenion quantities, double definition needed for specificity
-function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1<:StaticUnits, U2<:StaticDims}
-    D = equaldims(dimval(U1), dimval(U2))
-    T = promote_type(T1, T2)
-    return Quantity{T, StaticDims{D}}
-end
-function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1<:StaticDims, U2<:StaticUnits}
-    D = equaldims(dimval(U1), dimval(U2))
-    T = promote_type(T1, T2)
-    return Quantity{T, StaticDims{D}}
-end
-
 #Unit promotion
 function Base.promote_rule(::Type{D1}, ::Type{Units{D2,T2}}) where {D1<:AbstractDimensions, D2<:AbstractDimensions, T2<:AbstractUnitTransform}
     return Units{promote_type(D1, D2), T2}
@@ -167,19 +171,43 @@ function Base.promote_rule(::Type{StaticDims{D}}, ::Type{StaticUnits{D,T}}) wher
     return StaticUnits{D,T}
 end
 
+#Promote static unit quantities to static dimenion quantities, double definition needed for specificity
+function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1<:StaticUnits, U2<:StaticDims, Q1<:QuantUnion{T1,U1}, Q2<:QuantUnion{T2,U2}}
+    D = equaldims(dimval(U1), dimval(U2))
+    T = promote_type(T1, T2)
+    return quant_type(T){T, StaticDims{D}}
+end
+function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1<:StaticDims, U2<:StaticUnits, Q1<:QuantUnion{T1,U1}, Q2<:QuantUnion{T2,U2}}
+    D = equaldims(dimval(U1), dimval(U2))
+    T = promote_type(T1, T2)
+    return quant_type(T){T, StaticDims{D}}
+end
+
 #Quantity promotion (favors Dimensions, as converting quantities to SI does not result in information loss)
-function Base.promote_rule(::Type{Quantity{T1,U1}}, ::Type{Quantity{T2,U2}}) where {T1, T2, U1<:AbstractUnitLike, U2<:AbstractUnitLike}
+function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1<:AbstractUnitLike, U2<:AbstractUnitLike, Q1<:QuantUnion{T1,U1}, Q2<:QuantUnion{T2,U2}}
     D = promote_type(dimtype(U1), dimtype(U2))
     T = promote_type(T1, T2)
-    return Quantity{T, D}
+    return quant_type(T){T, D}
 end
 
 #Conversion to dimensions doesn't happen if quantities only differ by value type
-function Base.promote_rule(::Type{Quantity{T1,U}}, ::Type{Quantity{T2,U}}) where {T1, T2, U<:AbstractUnitLike}
-    return Quantity{promote_type(T1, T2), U}
+function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U<:AbstractUnitLike, Q1<:QuantUnion{T1,U}, Q2<:QuantUnion{T2,U}}
+    T = promote_type(T1, T2)
+    return quant_type(T){T, U}
 end
 
 #Cases where values are updated to quantities
-Base.promote_rule(::Type{Quantity{T,U}}, ::Type{T}) where {T,U<:AbstractUnitLike} = Quantity{T,U}
-Base.promote_rule(::Type{Quantity{T1,U}}, ::Type{T2}) where {T1<:NumUnion, T2<:NumUnion, U<:AbstractUnitLike} = Quantity{promote_type(T1,T2), U}
-Base.promote_rule(::Type{Quantity{T1,U}}, ::Type{T2}) where {T1<:AbstractArray, T2<:AbstractArray, U<:AbstractUnitLike} = Quantity{promote_type(T1,T2), U}
+function Base.promote_rule(::Type{Q}, ::Type{T2}) where {T2<:NumUnion, T1<:NumUnion, U<:AbstractUnitLike, Q<:QuantUnion{T1,U}}
+    T = promote_type(T1,T2)
+    return quant_type(T){T, nodim_promote(U)}
+end
+function Base.promote_rule(::Type{Q}, ::Type{T2}) where {T2<:AbstractArray, T1<:AbstractArray, U<:AbstractUnitLike, Q<:QuantUnion{T1,U}}
+    T = promote_type(T1,T2)
+    return quant_type(T){T, nodim_promote(U)}
+end
+
+nodim_promote(::Type{U}) where U<:AbstractUnits = dimtype(U)
+nodim_promote(::Type{U}) where U<:StaticUnits = promote_type(typeof(dimension(U)), StaticDims{dimtype(U)()})
+nodim_promote(::Type{D}) where D<:StaticDims  = promote_type(D, StaticDims{dimtype(D)()})
+nodim_promote(::Type{D}) where D<:AbstractDimensions = D
+

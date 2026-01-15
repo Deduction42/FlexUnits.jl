@@ -485,6 +485,8 @@ dimensionless(q::QuantUnion) = ustrip(assert_dimensionless(ubase(q)))
 dimensionless(n) = n
 
 isdimensionless(u::AbstractUnitLike) = isdimensionless(dimension(u))
+isdimensionless(::Type{StaticDims{d}}) where d = isdimensionless(d)
+isdimensionless(::Type{StaticUnits{d,T}}) where {d,T} = isdimensionless(d)
 isdimensionless(d::AbstractDimLike)  = iszero(d) || isunknown(d)
 Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))
 Base.iszero(u::StaticDims{d}) where d = iszero(d)
