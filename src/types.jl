@@ -1,6 +1,10 @@
 const DEFAULT_RATIONAL = FixRat32
 const DEFAULT_USYMBOL = :_
 
+#Arithmetic Types in Base that support +-*/ (use instead of Any to avoid ambiguity)
+const MathUnion = Union{Real, Complex, AbstractArray}
+const NumUnion = Union{Real, Complex}
+
 """
     AbstractUnitLike
 
@@ -299,32 +303,68 @@ usymbol(u::StaticUnits) = u.symbol
 Quantity types
 The basic type is Quantity, which belongs to <:Any (hence it has no real hierarchy)
 =================================================================================================#
-abstract type AbstractQuantity{T,U} end
-
 """
     Quantity{T<:Any,U<:AbstractUnitLike}
 
 Generic quantity type with fields `value` and `unit`
 """
-struct Quantity{T<:Any,U<:AbstractUnitLike} <: AbstractQuantity{T,U}
+struct Quantity{T<:Any, U<:AbstractUnitLike} <: Number
     value :: T
     unit  :: U
 end
+
+struct FlexQuant{T<:Any, U<:AbstractUnitLike}
+    value :: T
+    unit  :: U
+end
+
+const QuantUnion{T,U} = Union{Quantity{T,U}, FlexQuant{T,U}}
+
 Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
-Quantity(x::T, u::StaticUnits{D}) where {T,D} = Quantity(u.todims(x), StaticDims{D}())
-Quantity{T}(x, u::StaticUnits{D}) where {T,D} = Quantity{T}(convert(T, u.todims(x)), StaticDims{D}())
-Quantity{T}(q::AbstractQuantity) where T = Quantity{T}(ustrip(q), unit(q))
-Quantity{T,U}(q::AbstractQuantity) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
+#Quantity(x::T, u::StaticUnits{D}) where {T,D} = Quantity(u.todims(x), StaticDims{D}())
+#Quantity{T}(x, u::StaticUnits{D}) where {T,D} = Quantity{T}(convert(T, u.todims(x)), StaticDims{D}())
+Quantity{T}(q::QuantUnion) where T = Quantity{T}(ustrip(q), unit(q))
+Quantity{T,U}(q::QuantUnion) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
+Quantity{T,StaticDims{d}}(q::QuantUnion) where {T,d} = Quantity{T,StaticDims{d}}(ustrip(d, q), StaticDims{d}())
+Quantity{T,StaticDims{d}}(x::Number) where {T,d} = Quantity{T, StaticDims{d}}(convert(T,x), StaticDims{d}())
 
-ustrip(q::Quantity) = q.value
-unit(q::Quantity) = q.unit
-dimension(q::Quantity) = dimension(unit(q))
-unittype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = U
-dimtype(::Type{<:AbstractQuantity{T,U}}) where {T,U} = dimtype(U)
-dimtype(q::Quantity) = dimtype(unit(q))
-udynamic(q::Quantity) = Quantity(ustrip(q), udynamic(unit(q)))
 
+FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
+#FlexQuant(x::T, u::StaticUnits{D}) where {T,D} = FlexQuant(u.todims(x), StaticDims{D}())
+#FlexQuant{T}(x, u::StaticUnits{D}) where {T,D} = FlexQuant{T}(convert(T, u.todims(x)), StaticDims{D}())
+FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))
+FlexQuant{T,U}(q::QuantUnion) where {T,U} = FlexQuant{T,U}(ustrip(q), unit(q))
+
+ustrip(q::QuantUnion) = q.value
+unit(q::QuantUnion) = q.unit
+dimension(q::QuantUnion) = dimension(unit(q))
+unittype(::Type{<:QuantUnion{T,U}}) where {T,U} = U
+dimtype(::Type{<:QuantUnion{T,U}}) where {T,U} = dimtype(U)
+dimtype(q::QuantUnion) = dimtype(unit(q))
+udynamic(q::QuantUnion) = Quantity(ustrip(q), udynamic(unit(q)))
+
+#Translation between AffineTansform and numeric quantities
 AffineTransform(scale::Real, offset::Quantity) = AffineTransform(scale=scale, offset=dstrip(offset))
+
+#Generic promotion functions of quantities based on element type 
+"""
+    quantity(x, u::AbstractUnitLike)
+
+Constructs a quantity with arguments `x` and `u`, and selects the appropriate type to use based on the arguments
+(if x is a number, `Quantity<:Number` is used, otherwise `FlexQuant<:Any` is used)
+"""
+quantity(x, u::AbstractUnitLike) = quant_type(x)(x, u)
+
+"""
+    quant_type(::Type{T})
+
+Returns the appropriate no-parameter quantity TypeUnion associated with type `T`
+(if `T <: Number`, `Quantity` is returned, otherwise `FlexQuant` is returned)
+"""
+quant_type(::Type{<:Number}) = Quantity 
+quant_type(::Type{<:Any}) = FlexQuant
+quant_type(x) = quant_type(typeof(x))
+
 
 
 """
@@ -337,6 +377,7 @@ constructorof(::Type{T}) where T = Base.typename(T).wrapper
 constructorof(::Type{<:Dimensions}) = Dimensions
 constructorof(::Type{<:Units}) = Units
 constructorof(::Type{<:Quantity}) = Quantity
+constructorof(::Type{<:FlexQuant}) = FlexQuant
 
 
 """
@@ -385,7 +426,7 @@ struct DimensionError{T} <: Exception
 end
 DimensionError(arg1, arg2, args...) = DimensionError((arg1, arg2, args...))
 Base.showerror(io::IO, e::DimensionError{<:Tuple}) = print(io, "DimensionError: ", e.items, " have incompatible dimensions")
-Base.showerror(io::IO, e::DimensionError{<:AbstractQuantity}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
+Base.showerror(io::IO, e::DimensionError{<:QuantUnion}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
 Base.showerror(io::IO, e::DimensionError{<:AbstractUnitLike}) = print(io, "DimensionError: ", e.items, " is not dimensionless")
 
 """
@@ -438,12 +479,15 @@ assert_dimension(u::AbstractDimLike) =  u
 assert_dimension(u::AbstractUnits) = is_dimension(u) ? u : throw(NotDimensionError(u))
 
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
-assert_dimensionless(q::AbstractQuantity) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
+assert_dimensionless(q::QuantUnion) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
 dimensionless(u::AbstractUnitLike) = dimension(assert_dimensionless(u))
-dimensionless(q::AbstractQuantity) = ustrip(assert_dimensionless(ubase(q)))
-dimensionless(n::Number) = n
+dimensionless(q::QuantUnion) = ustrip(assert_dimensionless(ubase(q)))
+dimensionless(n) = n
 
-isdimensionless(u::AbstractUnitLike) = iszero(dimension(u))
+isdimensionless(u::AbstractUnitLike) = isdimensionless(dimension(u))
+isdimensionless(::Type{StaticDims{d}}) where d = isdimensionless(d)
+isdimensionless(::Type{StaticUnits{d,T}}) where {d,T} = isdimensionless(d)
+isdimensionless(d::AbstractDimLike)  = iszero(d) || isunknown(d)
 Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))
 Base.iszero(u::StaticDims{d}) where d = iszero(d)
 

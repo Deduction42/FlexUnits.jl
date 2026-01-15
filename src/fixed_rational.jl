@@ -112,6 +112,5 @@ function Base.show(io::IO, x::FixedRational{B,T}) where {B,T}
     return print(io, div(B, g))
 end
 
-function Base.show(io::IO, ::Type{R}) where {B,T,R<:FixedRational{B,T}}
-    return print(io, replace("FixRat$(T)", "Int"=>""))
-end
+Base.show(io::IO, ::Type{FixedRational{B, Int32}}) where B = print(io, "FixRat32")
+Base.show(io::IO, ::Type{FixedRational{B, Int64}}) where B = print(io, "FixRat64")

@@ -1,3 +1,4 @@
+using Revise
 using BenchmarkTools
 using Random
 Random.seed!(1)
@@ -63,36 +64,43 @@ print("FlexU:\t")
 
 # ========== S3. Broadcasting on large arrays ==========
 println("\nS3) Broadcasting on large arrays\n")
+x0 = randn(N)
 
-xu = randn(N) .* Unitful.u"km/s"
-yu = (0.3 .+ randn(N)) .* Unitful.u"km/s"
+xu = x0 .* Unitful.u"km/s"
+yu = (0.3 .+ x0) .* Unitful.u"km/s"
 
-xd = randn(N) .* DynamicQuantities.u"km/s"
-yd = (0.3 .+ randn(N)) .* DynamicQuantities.u"km/s"
+xd = x0 .* DynamicQuantities.u"km/s"
+yd = (0.3 .+ x0) .* DynamicQuantities.u"km/s"
 xqd = QuantityArray(xd);
 yqd = QuantityArray(yd);
 xsd = DynamicQuantities.uconvert.(DynamicQuantities.us"km/s", xd)
 ysd = DynamicQuantities.uconvert.(DynamicQuantities.us"km/s", yd)
 
-xf = randn(N) .* UnitRegistry.u"km/s"
-yf = (0.3 .+ randn(N)) .* UnitRegistry.u"km/s"
+xfs = x0 .* UnitRegistry.u"km/s"
+xfd = x0 .* UnitRegistry.ud"km/s"
+yfs = (0.3 .+ x0) .* UnitRegistry.u"km/s"
+yfd = ubase.((0.3 .+ x0) .* UnitRegistry.ud"km/s")
 
-g(x, y) = (x.^2) .+ 2.0.*x.*y .+ (y.^2)
+g(x, y) = (x^2) + 2.0*x*y + (y^2)
 
 print("Unitful:\t")
-@btime g($xu, $yu);
+@btime g.($xu, $yu)
 
-print("DynamicQ Sym:\t")
-@btime g($xsd, $ysd);
+#print("DynamicQ Sym:\t")
+#@btime g.($xsd, $ysd);
 
 print("DynamicQ Dim:\t")
-@btime g($xd, $yd);
+@btime g.($xd, $yd)
 
 print("DynamicQ Array:\t")
-@btime g($xqd, $yqd);
+@btime g.($xqd, $yqd)
 
-print("FlexU:\t")
-@btime g($xf, $yf);
+print("FlexU Dynamic:\t")
+@btime g.($xfd, $yfd)
+
+print("FlexU Static:\t")
+@btime g.($xfs, $yfs)
+
 
 # ========== S4.1. upreferred ==========
 println("\nS4.1) upreferred\n")
@@ -250,10 +258,12 @@ print("FlexU:  \t")
 
 println("\nS7.1) Missing quantities\n")
 vdm = DynamicQuantities.GenericQuantity.(vm, Ref(DynamicQuantities.dimension(DynamicQuantities.u"m")))
-vfm = Quantity{eltype(vm)}.(vm, UnitRegistry.u"m")
+vfm = Quantity{eltype(vm)}.(vm, dimension(UnitRegistry.u"m"))
 
 print("Unitful:\t  fails\n")
 print("DynamicQ:\t")
 @btime sum($vdm)
 print("FlexU:  \t")
 @btime sum($vfm)
+
+print("\n\nBenchmarks Complete")
