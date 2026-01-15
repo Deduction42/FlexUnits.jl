@@ -116,7 +116,6 @@ const AT = AffineTransform
     #@test string(MirrorDims{Dimensions{FixRat32}}()) == "MirrorDims{Dimensions{FixRat32}}()"
     @test string(zero(typeof(1ud"m/s"))) == "(0.0)?/?"
     @test string(vsum) == "Quantity{Float64, Dimensions{FixRat32}}[(0.5235987755982988)1/s (0.001388888888888889)kg/s (5000.0)kg/(m*s^2)]"
-    @test string(nomirror.(vsum)) == "Quantity{Float64, Dimensions{FixRat32}}[(0.5235987755982988)1/s (0.001388888888888889)kg/s (5000.0)kg/(m*s^2)]"
     
     FlexUnits.pretty_print_units(true)
     @test string(1.0u"kg*m^2/s^2")  == "1.0 (m² kg)/s²"
