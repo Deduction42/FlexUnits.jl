@@ -186,7 +186,7 @@ udynamic(u::StaticDims{D}) where D = D
 Affine Units and Transforms
 =======================================================================================#
 """
-    AffineTransform
+    AffineTransform{T<:Real}
 
 A type representing an affine transfomration formula that can be
 used to convert values from one affine unit to another. This object is callable.
@@ -201,10 +201,11 @@ AffineTransform(scale::Real, offset::Real)
 AffineTransform(; scale, offset)
 ```
 """
-@kwdef struct AffineTransform <: AbstractUnitTransform
-    scale  :: Float64 = 1
-    offset :: Float64 = 0
+@kwdef struct AffineTransform{T<:Real} <: AbstractUnitTransform
+    scale  :: T = 1.0
+    offset :: T = 0.0
 end
+AffineTransform(scale::T1, offset::T2) where {T1,T2} = AffineTransform{promote_type(T1,T2)}(scale, offset)
 (t::AffineTransform)(x) = muladd(x, t.scale, t.offset)
 (t::AffineTransform)(x::AbstractArray) = t.(x)
 (t::AffineTransform)(x::Tuple) = map(t, x)

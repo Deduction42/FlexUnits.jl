@@ -15,8 +15,7 @@ Useful for defining mathematical operations for dimensions
     )
 end
 
-const UNKNOWN_SENTINEL = -25200
-unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D(convert(T,UNKNOWN_SENTINEL))
+unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D(typemax(T))
 isunknown(d::D) where D<:AbstractDimensions = (d === unknown(D))
 isknown(d::D) where D<:AbstractDimensions = (d !== unknown(D))
 isunknown(d::StaticDims{D}) where D = isunknown(D)
@@ -164,19 +163,19 @@ function Base.:*(t1::AffineTransform, t2::AffineTransform)
     is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
     return AffineTransform(scale = t1.scale*t2.scale, offset = 0) 
 end
-Base.:*(t::AffineTransform, x::Real) = is_scalar(t) ? AffineTransform(scale=t.scale*x, offset=0) : throw(NON_SCALAR_ERROR)
+Base.:*(t::AffineTransform{T}, x::Real) where T = is_scalar(t) ? AffineTransform{T}(scale=t.scale*x, offset=0) : throw(NON_SCALAR_ERROR)
 Base.:*(t::NoTransform, x::Real) = AffineTransform(scale=x, offset=0)
 
 function Base.:/(t1::AffineTransform, t2::AffineTransform) 
     is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
     return AffineTransform(scale = t1.scale/t2.scale, offset = 0) 
 end
-Base.:/(t::AffineTransform, x::Real) = is_scalar(t) ? AffineTransform(scale=t.scale/x, offset=0) : throw(NON_SCALAR_ERROR)
+Base.:/(t::AffineTransform{T}, x::Real) where T = is_scalar(t) ? AffineTransform{T}(scale=t.scale/x, offset=0) : throw(NON_SCALAR_ERROR)
 Base.:/(t1::NoTransform, x::Real) = AffineTransform(scale=inv(x), offset=0)
 
-function Base.:^(t::AffineTransform, p::Real) 
+function Base.:^(t::AffineTransform{T}, p::Real) where T
     is_scalar(t) || throw(NON_SCALAR_ERROR)
-    return AffineTransform(scale = t.scale^p, offset = 0) 
+    return AffineTransform{T}(scale = t.scale^p, offset = 0) 
 end
 Base.:^(t1::NoTransform, p::Real) = t1
 
@@ -189,6 +188,8 @@ Base.:*(q::QuantUnion, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)*u)
 Base.:*(u::AbstractUnitLike, q::QuantUnion) = q*u
 Base.:/(q::QuantUnion, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)/u)
 Base.:/(u::AbstractUnitLike, q::QuantUnion) = quantity(inv(ustrip(q)), u/unit(q))
+Base.:*(m::AbstractArray{<:QuantUnion}, u::AbstractUnitLike) = broadcast(*, m, u)
+Base.:*(u::AbstractUnitLike, m::AbstractArray{<:QuantUnion}) = broadcast(*, m, u)
 
 function Base.:*(u1::U, u2::U) where U <: AbstractUnits
     return constructorof(U)(scalar_dimension(u1)*scalar_dimension(u2), todims(u1)*todims(u2))

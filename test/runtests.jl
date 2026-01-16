@@ -25,7 +25,7 @@ import Unitful
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
 const DEFAULT_DIM_TYPE  = FlexUnits.dimtype(DEFAULT_UNIT_TYPE)
-const AT = AffineTransform
+const AT = AffineTransform{Float64}
 
 @testset "Basic utilities" begin
     #Basic Type operations
@@ -76,7 +76,7 @@ const AT = AffineTransform
     @test_throws ArgumentError StaticDims{dimension(ud"m/s")}(dimension(ud"kg/s"))
     
     t_affine = AffineTransform()
-    t_affine2 = AffineTransform(scale=2, offset=1)
+    t_affine2 = AffineTransform(scale=2.0, offset=1.0)
     @test t_affine((1,2,3)) == (1.0, 2.0, 3.0)
     @test t_affine2((1,2,3)) == (3.0, 5.0, 7.0)
     @test t_affine(t_affine2) == t_affine2
@@ -112,7 +112,7 @@ const AT = AffineTransform
     @test string(1.0u"kg*m^2/s^2") == "(1.0)(m^2*kg)/s^2"
     @test string(1.0u"1/s^2") == "(1.0)1/s^2"
     @test string(1.0*(ud"km/hr"*ud"m/s")) == "(0.2777777777777778)m^2/s^2"
-    @test string(u"m/s"*u"m/s") == "StaticUnits{m^2/s^2, AffineTransform}(AffineTransform(1.0, 0.0), :_)"
+    @test string(u"m/s"*u"m/s") == "StaticUnits{m^2/s^2, AffineTransform{Float64}}(AffineTransform{Float64}(1.0, 0.0), :_)"
     #@test string(MirrorDims{Dimensions{FixRat32}}()) == "MirrorDims{Dimensions{FixRat32}}()"
     @test string(zero(typeof(1ud"m/s"))) == "(0.0)?/?"
     @test string(vsum) == "Quantity{Float64, Dimensions{FixRat32}}[(0.5235987755982988)1/s (0.001388888888888889)kg/s (5000.0)kg/(m*s^2)]"
@@ -121,7 +121,7 @@ const AT = AffineTransform
     @test string(1.0u"kg*m^2/s^2")  == "1.0 (m² kg)/s²"
     @test string(1.0u"1/s^2")  == "1.0 1/s²"
     @test string(1.0*(ud"km/hr"*ud"m/s")) == "0.2777777777777778 m²/s²"
-    @test string(u"m/s"*u"m/s") == "StaticUnits{m²/s², AffineTransform}(AffineTransform(1.0, 0.0), :_)"
+    @test string(u"m/s"*u"m/s") == "StaticUnits{m²/s², AffineTransform{Float64}}(AffineTransform{Float64}(1.0, 0.0), :_)"
     @test string(zero(typeof(1ud"m/s"))) == "0.0 ?/?"
     @test string(vsum) == "Quantity{Float64, Dimensions{FixRat32}}[0.5235987755982988 1/s 0.001388888888888889 kg/s 5000.0 kg/(m s²)]"
 
@@ -566,9 +566,9 @@ end
 
     # Test promotion explicitly for coverage:
     @test eltype([1ud"km/hr", 1.0ud"km/hr"]) <: Quantity{Float64, Dimensions{FixRat32}}
-    @test eltype([Units(dimval(u"m/s")), ud"m/s"]) <: Units{Dimensions{FixRat32}, AffineTransform}
-    @test promote_type(Units{Dimensions{Int16}, AffineTransform}, Units{Dimensions{Int32}, AffineTransform}) === Units{Dimensions{Int32}, AffineTransform}
-    @test promote_type(Dimensions{Int16}, Units{Dimensions{Int32}, AffineTransform}) === Units{Dimensions{Int32}, AffineTransform}
+    @test eltype([Units(dimval(u"m/s")), ud"m/s"]) <: Units{Dimensions{FixRat32}, AT}
+    @test promote_type(Units{Dimensions{Int16}, AT}, Units{Dimensions{Int32}, AT}) === Units{Dimensions{Int32}, AT}
+    @test promote_type(Dimensions{Int16}, Units{Dimensions{Int32}, AT}) === Units{Dimensions{Int32}, AT}
     
     # Test conversions
     @test 1°C |> K isa Quantity{<:Real, <:Units}
@@ -651,11 +651,11 @@ end
     @test eltype([q1,q1]) <: Quantity{Float64, typeof(u"m/s")} #StaticUnits preserved
     @test eltype([q1,q2]) <: Quantity{Float64, typeof(dimension(u"m/s"))} #StaticUnits and StaticDims promote to StaticDims if dimension is the same
     @test eltype([q1,q2,q3]) <: Quantity{Float64, <:Dimensions} #Different dimensions promote to "Dimensions"
-    @test eltype([u"m/s", u"kg/hr"]) <: Units{Dimensions{FixRat32}, AffineTransform}
-    @test eltype([u"m/s", ud"m/s"]) <: Units{Dimensions{FixRat32}, AffineTransform}
+    @test eltype([u"m/s", u"kg/hr"]) <: Units{Dimensions{FixRat32}, AffineTransform{Float64}}
+    @test eltype([u"m/s", ud"m/s"]) <: Units{Dimensions{FixRat32}, AffineTransform{Float64}}
     @test eltype([dimension(u"m/s"), dimension(u"kg/hr")]) <: Dimensions{FixRat32}
     @test eltype([dimension(u"m/s"), dimension(ud"m/s")]) <: Dimensions{FixRat32}
-    @test eltype([u"m/s", u"m/s"]) <: StaticUnits{dimval(u"m/s"), AffineTransform}
+    @test eltype([u"m/s", u"m/s"]) <: StaticUnits{dimval(u"m/s"), AffineTransform{Float64}}
     @test eltype([dimension(u"m/s"), dimension(u"m/s")]) <: StaticDims{dimval(u"m/s")}
     
 
@@ -742,7 +742,7 @@ end
     d32 = convert(Dimensions{Rational{Int32}}, d)
     @test typeof(d) == Dimensions{Rational{Int16}}
     @test typeof(d32) == Dimensions{Rational{Int32}}
-    @test convert(Quantity{Float64, typeof(ud"m/s")}, 1.0) isa Quantity{Float64, Units{Dimensions{FixRat32}, AffineTransform}}
+    @test convert(Quantity{Float64, typeof(ud"m/s")}, 1.0) isa Quantity{Float64, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}
     @test convert(Quantity{Float64, FlexUnits.dimtype(ud"m/s")}, 1.0) isa Quantity{Float64, Dimensions{FixRat32}}
 
     # Should not change:
@@ -943,7 +943,7 @@ register_unit("psig" => Units(todims=AffineTransform(scale=uscale(ud"psi"), offs
     
     #Test registration for a different registry base type
     IntDimType = Dimensions{Int32}
-    reg = RegistryTools.PermanentDict{Symbol, Units{IntDimType, AffineTransform}}()
+    reg = RegistryTools.PermanentDict{Symbol, Units{IntDimType, AffineTransform{Float64}}}()
     reg = RegistryTools.registry_defaults!(reg)  
     @test reg[:m]  === Units(todims=AffineTransform(), dims=IntDimType(length=1), symbol=:m)
     @test reg[:kg] === Units(todims=AffineTransform(), dims=IntDimType(mass=1), symbol=:kg)    

@@ -99,6 +99,9 @@ Moreover, only defining calculations for dimenional units also greatly simplifie
 will promote to dimensional units (such as SI). WARNING:: This also means that Affine Units will auto-convert
 this can yield potentially unintuitive results like 2°C/1°C = 1.0036476381542951
 =================================================================================================#
+Base.convert(::Type{AffineTransform{T}}, t::AffineTransform) where T = AffineTransform{T}(t.scale, t.offset)
+Base.convert(::Type{AffineTransform{T}}, t::NoTransform) where T = AffineTransform{T}(1,0)
+Base.convert(::Type{NoTransform}, t::AffineTransform) = is_identity(t) ? NoTransform() : throw(ArgumentError("Cannot convert non-identity AffineTransform to NoTrnasform"))
 
 #Converting dynamic Quantity types ====================================================
 Base.convert(::Type{Quantity{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
@@ -149,6 +152,9 @@ Base.convert(::Type{U}, q::QuantUnion) where U<:Units = Units(q)
 Base.convert(::Type{T}, q::QuantUnion) where {T<:MathUnion} = convert(T, dimensionless(q))
 
 # Promotion rules ======================================================
+Base.promote_rule(::Type{AffineTransform{T1}}, ::Type{AffineTransform{T2}}) where{T1,T2} = AffineTransform{promote_type{T1,T2}}
+Base.promote_rule(::Type{AffineTransform{T}}, ::Type{NoTransform}) where{T} = AffineTransform{T}
+
 function Base.promote_rule(::Type{<:Dimensions{P1}}, ::Type{<:Dimensions{P2}}) where {P1, P2}
     return Dimensions{promote_type(P1,P2)}
 end
