@@ -7,7 +7,11 @@ Changelog:
 4.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
 
 Current Tasks:
-1.  Finish basic LinmapQuant functionality for +, -, *, /, \, ^, exp, lu, sin, cos, tan
+1.  Finish basic LinmapQuant functionality for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
+    -   Factorizations are subtyped under FactorQuant{F,U}
+        -   Different "getfield" methods can be dispatched based on the Factorization type F 
+        -   FactorQuant is different because LinmapQuant subtypes to "Matrix", while FactorQuant doesn't subtype to anything
+        -   Use "methodswith(Factorization)" to see what methods FactorQuant will need to support at a high level
     -   "lu" is particularly important because pivoting fails
         -   pivoting is best interpreted as a reordering operation, not a proper multiplication, so there will be unit conflicts
         -   pivot matrices themselves can be fixed by making the pivot matrix have "unknown" units on zeros and a dimensionless diagonal
