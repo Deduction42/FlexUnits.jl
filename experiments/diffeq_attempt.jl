@@ -8,6 +8,7 @@ using BenchmarkTools
 # Required additional methods from DiffEqBase's Unitful Extension =============================================
 #OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.UNITLESS_ABS2(q::Quantity) = abs2(dstrip(q))
 #OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.value(q::Quantity) = dstrip(q)
+
 # =============================================================================================================
 include("diffeq_extension.jl")
 
@@ -25,6 +26,7 @@ end
 end 
 
 const STATE_UNITS = FallingObjectState(v=ud"m/s", h=ud"m")
+const PARAM_UNITS = FallingObjectProps(Cd=ud"", A=ud"m^2", ρ=ud"kg/m^3", m=ud"kg", g=ud"m/s^2")
 
 function ustatic(state::FallingObjectState{<:Quantity})
     return (
@@ -50,8 +52,8 @@ function acceleration_raw(u, p, t)
     return FallingObjectState(v=dv, h=dh)
 end
 
-function acceleration_float(u::AbstractVector{<:Real}, p::FallingObjectProps{<:Real}, t) 
-    return acceleration_raw(FallingObjectState(ustrip.(u)), FallingObjectProps(ustrip.(p)), t)
+function acceleration_float(u::AbstractVector{<:Real}, p::AbstractVector{<:Real}, t) 
+    return acceleration_raw(FallingObjectState(u), FallingObjectProps(p), t)
 end
 
 function acceleration_static(u::AbstractVector{<:Quantity}, p::AbstractVector{<:Quantity}, t)
@@ -64,12 +66,24 @@ function acceleration_dynamic(u::AbstractVector{<:Quantity}, p::AbstractVector{<
     return FallingObjectState(du)
 end
 
+function acceleration_hidden(u::AbstractVector{<:Real}, p::AbstractVector{<:Real}, t)
+    du = acceleration_raw(FallingObjectState(u.*STATE_UNITS), FallingObjectProps(p.*PARAM_UNITS), t)
+    return FallingObjectState(ustrip.(du))
+end
 
 
+#Jacobian attempt
+using ForwardDiff
+p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
+f(x::AbstractVector{<:Real}) = acceleration_hidden(x, ustrip.(p), 0)
+f(x::AbstractVector{<:Quantity}) = acceleration_dynamic(x, p, 0)
+ForwardDiff.jacobian(f, [0.0, 100.0])
+ForwardDiff.jacobian(f, [0.0u"m/s", 100.0u"m"])
 
 # =============================================================================================================
 println("\nRaw Numerical Solution")
 # =============================================================================================================
+#=
 u0 = FallingObjectState(v=0.0, h=100)
 p  = FallingObjectProps(Cd=1.0, A=0.1, ρ=1.0, m=50, g=9.81)
 
@@ -78,6 +92,7 @@ prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_r
 sol = solve(prob, Tsit5())
 @btime solve(prob, Tsit5())
 plt = plot(sol.t, [u.v for u in sol.u], label="v_unitless")
+=#
 
 # =============================================================================================================
 println("\nStatic Unit Solution")
@@ -88,7 +103,7 @@ p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.
 tspan = (0.0u"s", 10.0u"s")
 prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_static, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 
-sol = solve(prob, Tsit5())
+sol = solve(prob, Rodas4P())
 @btime solve(prob, Tsit5())
 plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="v_staticu")
 

@@ -1,16 +1,38 @@
-#Preamble (delete when finished)
-include("fixed_rational.jl")
-include("types.jl")
-include("utils.jl")
-include("conversions.jl")
-include("math.jl")
-include("RegistryTools.jl")
-include("UnitRegistry.jl")
+using LinearAlgebra
+using StaticArrays
+
+import StaticArrays.StaticLUMatrix
 
 const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
 
 abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} <: AbstractMatrix{U} end
+
+"""
+    QuantMatrixUnits{U<:UnitOrDims, A<:AbstractMatrix{<:QuantUnion{<:Any,U}}}
+
+Wraps a quantity matrix A so that getting its index returns the units of the element
+"""
+struct QuantMatrixUnits{U<:UnitOrDims, A<:AbstractMatrix{<:QuantUnion{<:Any,U}}} <: AbstractMatrix{U}
+    quantmat :: A
+    QuantMatrixUnits(a::A) where {U,A<:AbstractMatrix{QuantUnion{<:Any,U}}} = new{U,A}(a)
+end
+Base.IndexStyle(::Type{QuantMatrixUnits{D,A}}) where{D,A} = IndexStyle(A)
+Base.getindex(m::QuantMatrixUnits, args...) = broadcast(unit, getindex(m.quantmat, args...))
+
+"""
+    QuantMatrixDims{D<:AbstractDimensions, A<:AbstractMatrix{<:QuantUnion{<:Any,<:UnitOrDims{D}}}}
+
+Wraps a quantity matrix A so that getting its index returns the dimensiosn of the element
+"""
+struct QuantMatrixDims{D<:AbstractDimensions, A<:AbstractMatrix{<:QuantUnion{<:Any,<:UnitOrDims{D}}}} <: AbstractMatrix{D}
+    quantmat :: A
+    QuantMatrixDims(a::A) where {D, A<:AbstractMatrix{<:QuantUnion{<:Any,<:UnitOrDims{D}}}} = new{D,A}(a)
+end
+Base.IndexStyle(::Type{QuantMatrixDims{D,A}}) where{D,A} = IndexStyle(A)
+Base.getindex(m::QuantMatrixDims, args...) = broadcast(dimension, getindex(m.quantmat, args...))
+
+Base.size(m::Union{<:QuantMatrixUnits,<:QuantMatrixDims}) = size(m.quantmat)
 
 """
 struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -34,17 +56,20 @@ Base.transpose(m::UnitMap) = adjoint(m)
 uoutput(m::UnitMap) = m.u_out
 uinput(m::UnitMap) = m.u_in
 
-function UnitMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
-    u_out = dimension.(mq[:,begin])
-    u_in = u_out[begin]./dimension.(mq[begin,:])
+function UnitMap(md::AbstractMatrix{<:AbstractDimensions})
+    u_out = md[:,begin]
+    u_in = u_out[begin]./md[begin,:]
 
     #Check for dimensional consistency
-    for jj in axes(mq,2), ii in axes(mq,1)
-        (u_out[ii]/dimension(mq[ii,jj]) == u_in[jj]) || error("Unit inconsistency around index $([ii,jj]) of original matrix, expected dimension '$(u_out[ii]*inv(u_in[jj]))', found unit '$(unit(mq[ii,jj]))'")
+    for jj in axes(md,2), ii in axes(md,1)
+        (u_out[ii]/md[ii,jj] == u_in[jj]) || error("Unit inconsistency around index $([ii,jj]) of original matrix, expected dimension '$(u_out[ii]*inv(u_in[jj]))', found unit '$(unit(md[ii,jj]))'")
     end
-
     return UnitMap(u_out=u_out, u_in=u_in)
 end
+
+UnitMap(mq::AbstractMatrix{<:QuantUnion}) = UnitMap(QuantMatrixDims(mq))
+
+
 
 """
 struct RepUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -91,7 +116,6 @@ function RepUnitMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
 end
 
 UnitMap(md::RepUnitMap) = UnitMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
-
 
 
 """
@@ -141,7 +165,7 @@ UnitMap(md::SymUnitMap) = UnitMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
 
 """
-struct QuantLinMap{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
+struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
     units :: U
 end
@@ -150,41 +174,94 @@ A linear mapping of quantities. A special kind of matrix that is intended to be 
 such matrices must be dimensionally consistent and can be represented by a UnitMap. These constraints lead to much faster 
 unit inference and a smaller memory footprint (M+N instead of M*N for units).
 """
-struct QuantLinMap{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractUnitMap{D}} <: AbstractMatrix{Quantity{T,D}}
+struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractUnitMap{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
     units :: U
 end
 
-function QuantLinMap(::Type{U}, m::AbstractMatrix{<:Quantity}) where U <: AbstractUnitMap
+function LinmapQuant(::Type{U}, m::AbstractMatrix{<:Quantity}) where U <: AbstractUnitMap
     values = ustrip_base.(m)
-    units  = U(dimension.(m))
-    return QuantLinMap(values, units)
+    units  = U(m)
+    return LinmapQuant(values, units)
 end
 
-QuantLinMap(m::AbstractMatrix{<:Quantity}) = QuantLinMap(UnitMap, m)
+LinmapQuant(m::AbstractMatrix{<:Quantity}) = LinmapQuant(UnitMap, m)
+ustrip(lq::LinmapQuant) = lq.values
+unit(lq::LinmapQuant) = lq.units
 
-Base.getindex(q::QuantLinMap, ii::Integer, jj::Integer) = q.values[ii,jj] * q.units[ii,jj]
-Base.size(q::QuantLinMap) = size(q.values)
-Base.inv(q::QuantLinMap) = QuantLinMap(inv(q.values), inv(q.units))
+Base.getindex(q::LinmapQuant, ii::Integer, jj::Integer) = q.values[ii,jj] * q.units[ii,jj]
+Base.size(q::LinmapQuant) = size(q.values)
+Base.inv(q::LinmapQuant) = LinmapQuant(inv(q.values), inv(q.units))
 
+#======================================================================================================================
+Linear Mapping Factorizations
+======================================================================================================================#
+"""
+struct FactorQuant{T, D<:AbstractDimensions, F<:Factorization{T}, U<:AbstractUnitMap{D}}
+    factor :: F
+    units  :: U 
+end
+
+A factored linear mapping. A subclass of Factorizations with a unit mapping attached. Calling getproperty
+is re-routed to the original factor, with the appropriate units calcualted from the mapping.
+"""
+struct FactorQuant{F, D<:AbstractDimensions, U<:AbstractUnitMap{D}}
+    factor :: F
+    units  :: U 
+end
+ustrip(fq::FactorQuant) = getfield(fq, :factor)
+unit(fq::FactorQuant) = getfield(fq, :units)
+Base.inv(fq::FactorQuant) = LinmapQuant(inv(ustrip(fq)), inv(unit(fq)))
+LinearAlgebra.inv!(fq::FactorQuant) = LinmapQuant(inv!(ustrip(fq)), inv(unit(fq)))
+
+# LU Factorization ===================================================================================
+LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = FactorQuant(lu(ustrip(mq); kwargs...), unit(mq))
+
+#May need to iterate over more subtypes of AbstractMatrix
+LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, args...; kwargs...) = lu(LinmapQuant(UnitMap, mq), args...; kwargs...)
+StaticArrays.lu(mq::StaticLUMatrix{N,M,<:Quantity}; kwargs...) where {N,M} = lu(LinmapQuant(UnitMap, mq); kwargs...)
+
+function Base.getproperty(fq::FactorQuant{<:LU, D}, fn::Symbol) where D
+    F = ustrip(fq)
+
+    if fn === :L
+        u = unit(fq)
+        return LinmapQuant(F.L, UnitMap(u_in=uinput(u).^0, u_out=uoutput(u)[invperm(F.p)]))
+    elseif fn === :U 
+        u = unit(fq)
+        return LinmapQuant(F.L, UnitMap(u_in=uinput(u), u_out=uoutput(u).^0))
+    elseif fn === :p 
+        return F.p
+    elseif fn === :P
+        P0 = F.P 
+        T  = eltype(P0)
+        Pu = zeros(Quantity{T,D}, size(P0))
+        for (ii, x) in enumerate(P0)
+            isone(x) && setindex!(Pu, x, ii)
+        end
+        return Pu
+    else
+        getfield(fq, fn)
+    end
+end
 
 #======================================================================================================================
 Nonlinear mapping
 ======================================================================================================================#
 """
-struct QuantMapping{F, U<:AbstractUnitMap}
+struct FunctionQuant{F, U<:AbstractUnitMap}
     func  :: F
     units :: U
 end
 
-A generic mapping with units. Useful for applying units to unitless functions that assume units for inputs.
+A generic mapping with units. Useful for applying units to unitless functions that assume units for inputs/outputs.
 """
-struct QuantMapping{F, U<:AbstractUnitMap}
+struct FunctionQuant{F, U<:AbstractUnitMap}
     func  :: F
     units :: U
 end
 
-function (qmap::QuantMapping)(x)
+function (qmap::FunctionQuant)(x)
     fmap = qmap.func
     umap = qmap.units
     xraw = _strictmap(ustrip, uinput(umap), x)
@@ -196,87 +273,6 @@ function _strictmap(f, args...)
     return map(f, args...)
 end
 
-#======================================================================================================================
-Linear algebra relationships with "Matrix" 
-The outer type specializes first, so something like
-    Base.inv(q::AbstractMatrix{<:Quantity}) = inv(QuantTransform(DimTransform, q))
-Will be skipped in the case of Matrix{<:Quantity} (it will use inv(m::Matrix) in Base instead)
-Because of this, such code will have to specify all desired concrete matrix types
-======================================================================================================================#
-Base.inv(q::Matrix{<:Quantity}) = inv(QuantLinMap(UnitMap, q))
 
 
-#======================================================================================================================
-Shortcut multiplication strategies
-*(U::DimTransform, M::AbstractMatrix) = U.u_out * (U.u_in'*M)
-*(M::AbstractMatrix, U::DimTransform) = (M*U.u_out) * U.u_in'
-*(U1::DimTransform, U2::DimTransform) = U1.u_out.*dot(U1.u_in, U2.u_out).*U2.u_in'
-      = DimTransform(u_out=U1.u_out.*dot(U1.u_in, U2.u_out), u_in=U2.u_in) 
-*(U1::ScaleDimTransform, U2::ScaleDimTransform) = DimTransform(u_scale=U1.u_scale*U2.u_scale, u_out=U1.u_out) iff U1.u_out == U2.u_out
-======================================================================================================================#
-using Test
-import .UnitRegistry.@u_str
-using StaticArrays
-import Random
-using Statistics
 
-#Nonlinear map
-@kwdef struct PumpInput{T} <: FieldVector{2,T}
-    current :: T 
-    voltage :: T
-end
-
-@kwdef struct PumpOutput{T} <: FieldVector{3,T}
-    power :: T 
-    pressure :: T
-    flow :: T 
-end
-
-function pumpfunc(x::PumpInput)
-    p = x.current*x.voltage*0.9   
-    return PumpOutput(power = p, pressure = sqrt(p), flow = sqrt(p))
-end
-pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
-
-
-@testset "Linear Mapping Basics" begin
-    Random.seed!(1234)
-
-    #Quck tests 
-    u1 = [u"lbf*ft", u"kW", u"rpm"]
-    u2 = [u"kg/s", u"m^3/hr", u"kW"]
-
-    xm = randn(3,3)
-    qM = QuantLinMap(UnitMap, xm.*u2./u1')
-
-    #Matrix inversion
-    x = randn(3).*u1
-    y = qM*x
-    @test all(x .≈ inv(qM)*y)
-
-    #Matrix transpose
-    @test all(Matrix(y') .≈ Matrix(x'*qM'))
-
-    #Square matrices
-    Σ = cov(randn(20,3)*rand(3,3))
-    x = randn(3).*u2
-
-    #Symmetric matrix
-    rS = Σ.*inv.(u2).*inv.(u2)'
-    qS = QuantLinMap(SymUnitMap, rS)
-    @test all(qS .≈ ubase.(rS))
-    @test x'*(rS)*x ≈ x'*qS*x
-
-    #Repeatable matrix
-    rR = Σ.*u2.*inv.(u2)'
-    qR = QuantLinMap(RepUnitMap, rR)
-    @test all(qR .≈ ubase.(rR))
-    @test all(rR^2*x .≈ qR^2*x)
-
-    #Nonlinear mapping
-    pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))
-    upumpfunc = QuantMapping(pumpfunc, pumpunits)
-    qinput = PumpInput(current=500*u"mA", voltage=6u"V")
-    @test all(upumpfunc(qinput) .≈ pumpfunc(ustrip.(uinput(pumpunits), qinput)).*uoutput(pumpunits))
-
-end
