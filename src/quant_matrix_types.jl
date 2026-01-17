@@ -274,5 +274,8 @@ function _strictmap(f, args...)
 end
 
 
-
-
+#======================================================================================================================
+Special cases
+======================================================================================================================#
+#UniformScaling with dynamic dimensions should produce unknown dimension on off-diagonals
+Base.getindex(J::UniformScaling{T}, i::Integer, j::Integer) where T<:Quantity = ifelse(i==j, J.λ, zero(T))

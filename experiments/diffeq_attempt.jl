@@ -75,10 +75,25 @@ end
 #Jacobian attempt
 using ForwardDiff
 p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
+
+function wrapped_jacobian(f, x, p, t)
+    u_in  = dimension.(x)
+    u_out = dimension.(f(x,p,t))
+
+    function f_unitless(xn)
+        return dstrip.(f(xn.*u_in, p, t))
+    end
+    return LinmapQuant(ForwardDiff.jacobian(f_unitless, dstrip.(x)), UnitMap(u_in=u_in, u_out=u_out))
+end
+
+wrapped_jacobian(acceleration_static, FallingObjectState(0.0u"m/s", 100.0u"m"), p, 0*u"s")
+
+#=
 f(x::AbstractVector{<:Real}) = acceleration_hidden(x, ustrip.(p), 0)
 f(x::AbstractVector{<:Quantity}) = acceleration_dynamic(x, p, 0)
 ForwardDiff.jacobian(f, [0.0, 100.0])
 ForwardDiff.jacobian(f, [0.0u"m/s", 100.0u"m"])
+=#
 
 # =============================================================================================================
 println("\nRaw Numerical Solution")
@@ -99,11 +114,13 @@ println("\nStatic Unit Solution")
 # =============================================================================================================
 u0 = FallingObjectState(v=0.0u"m/s", h=100u"m")
 p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
+static_jac(u,p,t) = wrapped_jacobian(acceleration_static, u, p, t)
 
 tspan = (0.0u"s", 10.0u"s")
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_static, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
+f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_static, jac=static_jac)
+prob = ODEProblem(f_static, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 
-sol = solve(prob, Rodas4P())
+sol = solve(prob, Tsit5())
 @btime solve(prob, Tsit5())
 plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="v_staticu")
 

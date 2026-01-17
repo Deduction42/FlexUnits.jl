@@ -328,7 +328,8 @@ Quantity{T}(q::QuantUnion) where T = Quantity{T}(ustrip(q), unit(q))
 Quantity{T,U}(q::QuantUnion) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
 Quantity{T,StaticDims{d}}(q::QuantUnion) where {T,d} = Quantity{T,StaticDims{d}}(ustrip(d, q), StaticDims{d}())
 Quantity{T,StaticDims{d}}(x::Number) where {T,d} = Quantity{T, StaticDims{d}}(convert(T,x), StaticDims{d}())
-
+Quantity{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
+Quantity{T,D}(x::Number) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D())
 
 FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
 #FlexQuant(x::T, u::StaticUnits{D}) where {T,D} = FlexQuant(u.todims(x), StaticDims{D}())

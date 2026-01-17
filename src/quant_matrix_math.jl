@@ -11,6 +11,7 @@ include("quant_matrix_types.jl")
 
 
 
+
 #======================================================================================================================
 Linear algebra relationships with "Matrix" 
 The outer type specializes first, so something like
@@ -33,6 +34,8 @@ Shortcut multiplication strategies
 ======================================================================================================================#
 using Test
 import .UnitRegistry.@u_str
+import .UnitRegistry.@ud_str
+
 using StaticArrays
 import Random
 using Statistics

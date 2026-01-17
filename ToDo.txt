@@ -8,6 +8,17 @@ Changelog:
 
 Current Tasks:
 1.  Finish basic LinmapQuant functionality for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
+    -   Operations with factorized matrices will produce factorized matrices
+        -   Multiplication with QuantMatrixDims(m) produces output units and is O(N^2) already
+        -   This is faster than raw multiplication
+    -   Experiment with Rodas5P
+        -   Try using an external Jacobian funciton to handle unitful input 
+        -   Inside the Jacobian function specify a closure that takes "Real" inputs and injects the outer input's units 
+        -   See if that works to produce unitful output
+            -   If this fails, run the raw function once to get the output units 
+        -   Return the Jacobian as a LinmapQuant matrix!!! (will inevitably speed up other operations)
+            -   Upon finding a pattern that works, it may be beneficial to build a wrapper for it 
+                -   FlexUnits.jac_uwrap(jac::Function, f::Function, x::Quantity, u_out::AbstractDimensions, args...)
     -   Factorizations are subtyped under FactorQuant{F,U}
         -   Different "getfield" methods can be dispatched based on the Factorization type F 
         -   FactorQuant is different because LinmapQuant subtypes to "Matrix", while FactorQuant doesn't subtype to anything
