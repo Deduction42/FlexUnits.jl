@@ -79,9 +79,14 @@ println("\nStatic-Unit Solution")
 u0 = FallingObjectState(v=0.0u"m/s", h=100u"m")
 p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
 static_jac(u,p,t) = wrapped_jacobian(acceleration_static, u, p, t)
+static_tgrad(u,p,t) = [0.0u"m/s^3", 0.0u"m/s^2"]
 
 tspan = (0.0u"s", 10.0u"s")
-f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_static, jac=static_jac, mass_matrix=I*1ud"")
+f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_static, 
+    jac = static_jac, 
+    tgrad = static_tgrad,
+    mass_matrix = I*1ud""
+)
 prob = ODEProblem(f_static, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 
 sol = solve(prob, Rodas5P())
