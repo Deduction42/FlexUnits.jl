@@ -277,8 +277,20 @@ end
 #======================================================================================================================
 Special cases
 ======================================================================================================================#
-#UniformScaling with dynamic dimensions should produce unknown dimension on off-diagonals
+#UniformScaling with dynamic dimensions should produce unknown dimension on off-diagonals (consistent with other behaviour)
 Base.getindex(J::UniformScaling{T}, i::Integer, j::Integer) where T<:Quantity = ifelse(i==j, J.λ, zero(T))
+
+#=
+for op in (:+, :-)
+    @eval function Base.$op(m::AbstractMatrix{<:QuantUnion{<:Any, <:AbstractDimensions}}, s::UniformScaling{Quantity{<:Any, <:StaticDims}})
+        return $op(m, UniformScaling(udynamic(s[1,1])))
+    end
+
+    @eval function Base.$op(s::UniformScaling{Quantity{<:Any, <:StaticDims}}, m::AbstractMatrix{<:QuantUnion{<:Any, <:AbstractDimensions}})
+        return $op(m, UniformScaling(udynamic(s[1,1])))
+    end
+end
+=#
 
 #=
 Recently found errors where adding the following produces an error:

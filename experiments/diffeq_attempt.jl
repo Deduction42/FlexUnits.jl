@@ -4,6 +4,7 @@ using OrdinaryDiffEq
 using StaticArrays
 using Plots
 using BenchmarkTools
+using LinearAlgebra
 
 # Required additional methods from DiffEqBase's Unitful Extension =============================================
 #OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.UNITLESS_ABS2(q::Quantity) = abs2(dstrip(q))
@@ -83,6 +84,7 @@ function wrapped_jacobian(f, x, p, t)
     function f_unitless(xn)
         return dstrip.(f(xn.*u_in, p, t))
     end
+    
     return LinmapQuant(ForwardDiff.jacobian(f_unitless, dstrip.(x)), UnitMap(u_in=u_in, u_out=u_out))
 end
 
@@ -94,7 +96,7 @@ f(x::AbstractVector{<:Quantity}) = acceleration_dynamic(x, p, 0)
 ForwardDiff.jacobian(f, [0.0, 100.0])
 ForwardDiff.jacobian(f, [0.0u"m/s", 100.0u"m"])
 =#
-
+plt = plot()
 # =============================================================================================================
 println("\nRaw Numerical Solution")
 # =============================================================================================================
@@ -106,7 +108,7 @@ tspan = (0.0, 10.0)
 prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_raw, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 sol = solve(prob, Tsit5())
 @btime solve(prob, Tsit5())
-plt = plot(sol.t, [u.v for u in sol.u], label="v_unitless")
+plt = plot!(plt, sol.t, [u.v for u in sol.u], label="v_unitless")
 =#
 
 # =============================================================================================================
@@ -117,10 +119,10 @@ p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.
 static_jac(u,p,t) = wrapped_jacobian(acceleration_static, u, p, t)
 
 tspan = (0.0u"s", 10.0u"s")
-f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_static, jac=static_jac)
+f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_static, jac=static_jac, mass_matrix=I*1ud"")
 prob = ODEProblem(f_static, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 
-sol = solve(prob, Tsit5())
+sol = solve(prob, Rodas5P())
 @btime solve(prob, Tsit5())
 plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="v_staticu")
 
