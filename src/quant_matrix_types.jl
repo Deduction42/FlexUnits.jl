@@ -279,3 +279,12 @@ Special cases
 ======================================================================================================================#
 #UniformScaling with dynamic dimensions should produce unknown dimension on off-diagonals
 Base.getindex(J::UniformScaling{T}, i::Integer, j::Integer) where T<:Quantity = ifelse(i==j, J.λ, zero(T))
+
+#=
+Recently found errors where adding the following produces an error:
+
+Matrix{Quantity{<:Any, <:AbstractDimensions}} + UniformScaling{Quantity{<:Any, <:StaticDims}}
+
+If the matrix isn't uniform units, the addiiton fails, because all off-diagonals have known units if the quantity is static 
+We may want to promote the uniform scaling in this case to be dynamic, so that off-diagonals have unknown units
+=#
