@@ -3,7 +3,7 @@ module FlexUnits
 # Write your package code here.
 include("fixed_rational.jl")
 include("types.jl")
-include("quant_matrix_types.jl")
+include("linalg_types.jl")
 include("utils.jl")
 include("conversions.jl")
 include("math.jl")

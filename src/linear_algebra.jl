@@ -6,7 +6,7 @@ include("conversions.jl")
 include("math.jl")
 include("RegistryTools.jl")
 include("UnitRegistry.jl")
-include("quant_matrix_types.jl")
+include("linalg_types.jl")
 
 
 
