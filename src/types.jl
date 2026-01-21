@@ -182,6 +182,15 @@ dimval(d::StaticDims) = dimval(typeof(d))
 udynamic(u::StaticDims{D}) where D = D
 
 
+"""
+    NoDims
+
+Placehoder for a unitless dimension in cases where the base dimension type is uninferrable
+"""
+struct NoDims <: AbstractDimLike end
+Base.getproperty(::NoDims, ::Symbol) = false
+dimension(x::NumUnion) = NoDims()
+
 #=======================================================================================
 Affine Units and Transforms
 =======================================================================================#
@@ -261,11 +270,10 @@ usymbol(u::Units) = u.symbol
 remove_offset(u::U) where U<:AbstractUnits = constructorof(U)(dimension(u), remove_offset(u.todims))
 is_scalar(u::AbstractUnits) = is_scalar(todims(u))
 is_dimension(u::AbstractUnits) = is_identity(todims(u))
-#affine_units(;dims, scale=1, offset=0, symbol=DEFAULT_USYMBOL) = Units(dims=dims, todims=AffineTransform(scale=scale, offset=offset), symbol=symbol)
 udynamic(u::Units) = u
 dimtype(::Type{Units{D,C}}) where {D,C} = D
 dimtype(d::Units) = dimtype(typeof(d))
-
+unit(x::NumUnion) = Units(NoTrnasform(), NoDims())
 
 """
     StaticUnits{D, T<:AbstractUnitTransform}(todims::T, symbol::Symbol)
@@ -382,38 +390,6 @@ constructorof(::Type{<:Quantity}) = Quantity
 constructorof(::Type{<:FlexQuant}) = FlexQuant
 
 
-"""
-    MirrorDims
-
-A dimension that represents a placeholder value that mirrors any dimension that is combined
-with it (useful for initialization when units are unknown). For example 
-
-```julia
-julia> 1u"m/s" + 0*MirrorDims()
-1 m/s
-
-julia> max(1u"m/s", -Inf*MirrorDims())
-1 m/s
-```
-"""
-struct MirrorDims{D<:AbstractDimensions} <: AbstractDimLike end
-MirrorDims() = MirrorDims{Dimensions{FixRat32}}()
-MirrorDims(::Type{D}) where {D<:AbstractDimensions} = MirrorDims{D}()
-
-
-const MirrorUnion{D} = Union{D, MirrorDims{D}} where D<:AbstractDimensions
-Base.promote_rule(::Type{D}, ::Type{<:MirrorDims}) where {D<:AbstractDimensions} = MirrorUnion{D}
-function nomirror(x::Quantity)
-    u = unit(x)
-    return (u isa MirrorDims) ? throw(ArgumentError("Mirror dimensions found, cannot convert to non-mirror version")) : Quantity(ustrip(x), u)
-end
-
-#Quantities with mirror dimensions should include a union
-Quantity(x::T, u::MirrorDims{D}) where {T, D} = Quantity{T, MirrorUnion{D}}(x, u)
-Quantity{T, MirrorDims{D}}(x, u) where {T, D} = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
-
-
-
 #=============================================================================================
 Errors and assertion functions
 =============================================================================================#
@@ -490,6 +466,7 @@ isdimensionless(u::AbstractUnitLike) = isdimensionless(dimension(u))
 isdimensionless(::Type{StaticDims{d}}) where d = isdimensionless(d)
 isdimensionless(::Type{StaticUnits{d,T}}) where {d,T} = isdimensionless(d)
 isdimensionless(d::AbstractDimLike)  = iszero(d) || isunknown(d)
+isdimensionless(d::NoDims) = true
 Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))
 Base.iszero(u::StaticDims{d}) where d = iszero(d)
 
@@ -544,3 +521,37 @@ function _apply_unit_pair(f, u::Pair, x1, xs...)
     return Quantity(f(raw_args...), uo)
 end
 =#
+
+
+#=
+"""
+    MirrorDims
+
+A dimension that represents a placeholder value that mirrors any dimension that is combined
+with it (useful for initialization when units are unknown). For example 
+
+```julia
+julia> 1u"m/s" + 0*MirrorDims()
+1 m/s
+
+julia> max(1u"m/s", -Inf*MirrorDims())
+1 m/s
+```
+"""
+struct MirrorDims{D<:AbstractDimensions} <: AbstractDimLike end
+MirrorDims() = MirrorDims{Dimensions{FixRat32}}()
+MirrorDims(::Type{D}) where {D<:AbstractDimensions} = MirrorDims{D}()
+
+
+const MirrorUnion{D} = Union{D, MirrorDims{D}} where D<:AbstractDimensions
+Base.promote_rule(::Type{D}, ::Type{<:MirrorDims}) where {D<:AbstractDimensions} = MirrorUnion{D}
+function nomirror(x::Quantity)
+    u = unit(x)
+    return (u isa MirrorDims) ? throw(ArgumentError("Mirror dimensions found, cannot convert to non-mirror version")) : Quantity(ustrip(x), u)
+end
+
+#Quantities with mirror dimensions should include a union
+Quantity(x::T, u::MirrorDims{D}) where {T, D} = Quantity{T, MirrorUnion{D}}(x, u)
+Quantity{T, MirrorDims{D}}(x, u) where {T, D} = error("MirrorDims should not be a type parameter in a Quantity constructor. Use Quantity{T, MirrorUnion{D}}")
+=#
+

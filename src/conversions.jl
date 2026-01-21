@@ -141,6 +141,8 @@ Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:StaticUnits{D,T}} = (
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = D(dimension(assert_dimension(u)))
 Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)
 Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D, dimval(d))
+Base.convert(::Type{D}, d::AbstractDims) where {D<:StaticDims} = equaldims(D(), d)
+Base.convert(::Type{D}, d::NoDims) where D{<:StaticDims} = assert_dimensionless(D())
 
 # Converting transform types ===============================================
 Base.convert(::Type{T}, t::NoTransform) where T <: AbstractUnitTransform = T()
@@ -165,6 +167,9 @@ Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:Sta
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimtype(D1), dimtype(D2))
 Base.promote_rule(::Type{U1}, ::Type{U2}) where {T1, d1, U1<:StaticUnits{d1,T1}, D2, T2, U2<:Units{D2,T2}} = Units{promote_type(typeof(d1),D2), promote_type(T1,T2)}
 Base.promote_rule(::Type{U1}, ::Type{U2}) where {T1, d1, U1<:StaticUnits{d1,T1}, d2, T2, U2<:StaticUnits{d2,T2}} = Units{promote_type(typeof(d1),typeof(d2)), promote_type(T1,T2)}
+Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:AbstractDimensions = D
+Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:StaticDims = D
+
 
 #Unit promotion
 function Base.promote_rule(::Type{D1}, ::Type{Units{D2,T2}}) where {D1<:AbstractDimensions, D2<:AbstractDimensions, T2<:AbstractUnitTransform}
