@@ -31,9 +31,24 @@ Current Tasks:
 
     Notes on above:      
     -   Matrix multiplication is ONLY valid with LinmapQuant and will ALWAYS produce a LinmapQuant
-        -   Multiplication should convert AbstractMatrix{Union{Quantity,NumberQuant}} to LinmapQuant
-        -   This may result in more allocations, but is more reliable in pointing out errors
-        -   It is recommendable to only store matrices as LinmapQuant if linear algebra is intended
+        -   Multiplication should "separate" dimensions and values 
+            - Use dimension(a::AbstractMatrix) = QuantMatrixDims(a)
+            - This prevents allocations and should even work on non-quantity arrays
+            - dimension(q) on non-quantity numbers should be NoDims()
+            - An inner if-statement on the multiplication can case out AbstractMatrix{<:QuantUnion} and apply dstrip
+            - Dimension multiplication is only defined for QuantMatrixDims and 
+    -   Multiplying a dense array of dimensions with a factored matrix is 2N (same as factoring, so you don't need it)
+        -   Factoring may not be possible if some dimensions are unknown, so outright multiplication is more reliable
+        -   dn = d_dense*dn = canonical!(UnitMap(u_out = d_dense*d0.u_out, u_in = d0.u_in))
+        -   dn = dn*d_dense = canonical!(UnitMap(u_out = d0.u_out, u_in = inv.( (inv.(d0.u_in)'*d_dense)' )))
+                            = canonical!(UnitMap(u_out = d0.u_out, u_in = inv.(d_dense'*inv.(d0.u_in))))
+    -   UnitMap is not unique for a LinmapQuant
+        -   Matrix multiplication between UnitMap should have a canonical form to prevent confusion on "=="
+        -   The canconical form has u_in[1] == u"" (as per the matrix constructor)
+        -   Define the function "canonical!" to convert UnitMap to this form
+            -   Will need to case out mutable and immutable versions
+            -   https://docs.sciml.ai/ArrayInterface/stable/indexing/#ArrayInterface.can_setindex
+
 
 2.  Add LinearAlgebra extensions for certain factorizations
     -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
