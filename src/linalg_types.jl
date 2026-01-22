@@ -146,7 +146,7 @@ function canonical!(u::RepUnitMap)
     else
         u.in./ui1
     end
-    return RepUnitMap(u_in = u_in, u_scale = u.u_scale/ui1)
+    return RepUnitMap(u_in = u_in, u_scale = u.u_scale)
 end
 
 
@@ -165,10 +165,10 @@ This unit structure enables certain kinds of operations reserved for symmetric m
     u_in :: TI
 end
 
-Base.getindex(m::SymUnitMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]*m.u_in[jj]
+Base.getindex(m::SymUnitMap, ii::Integer, jj::Integer) = m.u_scale/(m.u_in[ii]*m.u_in[jj])
 Base.size(m::SymUnitMap) = (length(m.u_in), length(m.u_in))
-Base.inv(m::SymUnitMap)  = SymUnitMap(u_scale=inv(m.u_scale), u_in=m.u_in)
-Base.adjoint(m::SymUnitMap) = SymUnitMap(u_scale=m.u_scale, u_in=inv.(m.u_in))
+Base.inv(m::SymUnitMap)  = SymUnitMap(u_scale=inv(m.u_scale), u_in=inv.(m.u_in))
+Base.adjoint(m::SymUnitMap) = SymUnitMap(u_scale=m.u_scale, u_in=m.u_in)
 uoutput(m::SymUnitMap) = map(Base.Fix1(*, m.u_uscale), m.u_in)
 uinput(m::SymUnitMap) = m.u_in
 
@@ -177,7 +177,7 @@ function SymUnitMap(md::UnitMap)
     sz = size(md)
     sz[1] == sz[2] || throw(DimensionMismatch("Symmetric Unit Mapping must be square: dimensions are $(sz)"))
 
-    #Calculate the uniform scale
+    #Calculate the uniform scale, mapping is symmetric if u_out is proportional to the inverse of u_in
     u_scale = md.u_out[begin]*md.u_in[begin]
 
     #Verify that the uniform scale is consistent
@@ -185,7 +185,7 @@ function SymUnitMap(md::UnitMap)
         u_out*u_in == u_scale || error("Cannot convert to Symmetric Unit Mapping: $(md.u_in) and $(md.u_out) must be similar inverses")
     end
 
-    return SymUnitMap(u_scale=u_scale, u_in=inv.(md.u_in))
+    return SymUnitMap(u_scale=u_scale, u_in=md.u_in./md.u_in[begin])
 end
 
 function SymUnitMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
@@ -204,7 +204,7 @@ function canonical!(u::SymUnitMap)
     else
         u.in./ui1
     end
-    return SymUnitMap(u_in = u_in, u_scale = u.u_scale*ui1)
+    return SymUnitMap(u_in = u_in, u_scale = u.u_scale/ui1^2)
 end
 
 """
