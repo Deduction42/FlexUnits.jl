@@ -7,6 +7,8 @@ const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
 
 abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} <: AbstractMatrix{U} end
+const AbstractDimMap = AbstractUnitMap{D} where D<:AbstractDimensions
+
 
 """
     QuantMatrixUnits{U<:UnitOrDims, A<:AbstractMatrix{<:QuantUnion{<:Any,U}}}

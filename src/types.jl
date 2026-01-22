@@ -187,7 +187,7 @@ udynamic(u::StaticDims{D}) where D = D
 
 Placehoder for a unitless dimension in cases where the base dimension type is uninferrable
 """
-struct NoDims <: AbstractDimLike end
+struct NoDims <: AbstractDimensions{Bool} end
 Base.getproperty(::NoDims, ::Symbol) = false
 dimension(x::NumUnion) = NoDims()
 

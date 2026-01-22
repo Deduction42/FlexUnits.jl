@@ -8,8 +8,64 @@ include("RegistryTools.jl")
 include("UnitRegistry.jl")
 include("linalg_types.jl")
 
+import ArrayInterface
 
+#Dot products of dimensions
+Base.dot(d1::AbstractDimensions, d2::AbstractDimensions) = d1*d2
+dotinv(d1::AbstractDimensions, d2::AbstractDimensions) = d1/d2
+function dotinv(d1::AbstractVector, d2::AbstractVector)
+    length(d1) == length(d2) || throw(DimensionMismatch("Inputs had different lengths $((length(d1), length(d2)))"))
+    return sum(dotinv, zip(d1, d2))
+end
 
+#Canonical form has uinput[1] = dimensionless
+function canonical!(u::UnitMap)
+    ui1 = u.u_in[1]
+
+    if ArrayInterface.can_setindex(u.u_in) && ArrayInterface.can_setindex(u.u_out)
+        u.u_in  .= u.u_in ./ ui1
+        u.u_out .= u.uout ./ ui1
+        return u
+    end
+
+    return UnitMap(
+        u_in = u.in./ui1, 
+        u_out = u_out./ui1
+    )
+end
+
+#UnitMap only needs to check the first row and column for equality
+function Base.:(==)(d1::AbstractDimMap, d2::AbstractDimMap)
+    equal_element(ii) = d1[begin-1+ii] == d2[begin-1+ii]
+    size(d1) == size(d2) || return false
+    return all(equal_element, 1:size(d1,1)) && all(equal_element, 2:size(d1, 2))
+end
+
+#For matrices, all elements must be checked for equality
+Base.:(==)(d1::QuantMatrixDims, d2::AbstractDimMap) = size(d1) == size(d2) && all(==, zip(d1,d2))
+Base.:(==)(d1::AbstractDimMap, d2::QuantMatrixDims) = size(d1) == size(d2) && all(==, zip(d1,d2))
+
+function equaldims(u1::AbstractDimMap, u2::AbstractDimMap)
+    if u1 == u2
+        return u1
+    else
+        throw(DimensionError(u1, u2))
+    end
+end
+
+Base.:+(d1::AbstractDimMap) = d1
+Base.:+(d1::AbstractDimMap, d2::AbstractDimMap) = equaldims(d1, d2)
+Base.:-(d1::AbstractDimMap) = d1
+Base.:-(d1::AbstractDimMap, d2::AbstractDimMap) = equaldims(d1, d2)
+
+Base.:*(d1::AbstractDimMap, d2::AbstractDimMap)  = canonical!(UnitMap(u_in = uinput(d2), u_out = uoutput(d1).*dotinv(d2.uoutput, d1.uinput)))
+Base.:*(d1::QuantMatrixDims, d2::AbstractDimMap) = canonical!(UnitMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
+Base.:*(d1::AbstractDimMap, d2::QuantMatrixDims) = canonical!(UnitMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
+
+Base.inv(d::QuantMatrixDims) = inv(UnitMap(d))
+
+Base.:/(d1::Union{AbstractDimMap,QuantMatrixDims}, d2::Union{AbstractDimMap,QuantMatrixDims}) = d1*inv(d2)
+Base.:\(d1::Union{AbstractDimMap,QuantMatrixDims}, d2::Union{AbstractDimMap,QuantMatrixDims}) = inv(d1)*d2
 
 
 #======================================================================================================================
