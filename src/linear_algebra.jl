@@ -18,21 +18,6 @@ function dotinv(d1::AbstractVector, d2::AbstractVector)
     return sum(dotinv, zip(d1, d2))
 end
 
-#Canonical form has uinput[1] = dimensionless
-function canonical!(u::UnitMap)
-    ui1 = u.u_in[1]
-
-    if ArrayInterface.can_setindex(u.u_in) && ArrayInterface.can_setindex(u.u_out)
-        u.u_in  .= u.u_in ./ ui1
-        u.u_out .= u.uout ./ ui1
-        return u
-    end
-
-    return UnitMap(
-        u_in = u.in./ui1, 
-        u_out = u_out./ui1
-    )
-end
 
 #UnitMap only needs to check the first row and column for equality
 function Base.:(==)(d1::AbstractDimMap, d2::AbstractDimMap)
@@ -58,9 +43,19 @@ Base.:+(d1::AbstractDimMap, d2::AbstractDimMap) = equaldims(d1, d2)
 Base.:-(d1::AbstractDimMap) = d1
 Base.:-(d1::AbstractDimMap, d2::AbstractDimMap) = equaldims(d1, d2)
 
+#Multiplying generic factorizations with dense matrices of dimensions
 Base.:*(d1::AbstractDimMap, d2::AbstractDimMap)  = canonical!(UnitMap(u_in = uinput(d2), u_out = uoutput(d1).*dotinv(d2.uoutput, d1.uinput)))
 Base.:*(d1::QuantMatrixDims, d2::AbstractDimMap) = canonical!(UnitMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
 Base.:*(d1::AbstractDimMap, d2::QuantMatrixDims) = canonical!(UnitMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
+
+#Multiplying specific factorizations with single dimensions
+Base.:*(dm::UnitMap{<:AbstractDimensions}, d::AbstractDimensions)    = canonical!(UnitMap(u_in = dm.u_in, u_out = dm.u_out.*d))
+Base.:*(d::AbstractDimensions, dm::UnitMap{<:AbstractDimensions})    = canonical!(UnitMap(u_in = dm.u_in, u_out = dm.u_out.*d))
+Base.:*(dm::RepUnitMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical!(RepUnitMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
+Base.:*(d::AbstractDimensions, dm::RepUnitMap{<:AbstractDimensions}) = canonical!(RepUnitMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
+Base.:*(dm::SymUnitMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical!(SymUnitMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
+Base.:*(d::AbstractDimensions, dm::SymUnitMap{<:AbstractDimensions}) = canonical!(SymUnitMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
+
 
 Base.inv(d::QuantMatrixDims) = inv(UnitMap(d))
 

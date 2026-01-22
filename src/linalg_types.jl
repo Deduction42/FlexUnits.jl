@@ -71,6 +71,23 @@ end
 
 UnitMap(mq::AbstractMatrix{<:QuantUnion}) = UnitMap(QuantMatrixDims(mq))
 
+function canonical!(u::UnitMap)
+    ui1 = u.u_in[1]
+    unew = if isdimensionless(ui1)
+        u
+    elseif ArrayInterface.can_setindex(u.u_in) && ArrayInterface.can_setindex(u.u_out)
+        u.u_in  .= u.u_in ./ ui1
+        u.u_out .= u.uout ./ ui1
+        u
+    else
+        UnitMap(
+            u_in = u.in./ui1, 
+            u_out = u_out./ui1
+        )
+    end
+    return unew
+end
+
 
 
 """
@@ -119,6 +136,19 @@ end
 
 UnitMap(md::RepUnitMap) = UnitMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
+function canonical!(u::RepUnitMap)
+    ui1 = u.u_in[1]
+    u_in = if isdimensionless(ui1)
+        u.u_in
+    elseif ArrayInterface.can_setindex(u.u_in)
+        u.u_in .= u.u_in ./ ui1
+        u.u_in
+    else
+        u.in./ui1
+    end
+    return RepUnitMap(u_in = u_in, u_scale = u.u_scale/ui1)
+end
+
 
 """
 struct SymUnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -164,7 +194,18 @@ end
 
 UnitMap(md::SymUnitMap) = UnitMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
-
+function canonical!(u::SymUnitMap)
+    ui1  = u.u_in[1]
+    u_in = if isdimensionless(ui1)
+        u.u_in
+    elseif ArrayInterface.can_setindex(u.u_in)
+        u.u_in .= u.u_in ./ ui1
+        u.u_in
+    else
+        u.in./ui1
+    end
+    return SymUnitMap(u_in = u_in, u_scale = u.u_scale*ui1)
+end
 
 """
 struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
