@@ -163,7 +163,7 @@ function canonical!(u::RepDimsMap)
     else
         u.in./ui1
     end
-    return RepUnitMap(u_in = u_in, u_scale = u.u_scale)
+    return RepDimsMap(u_in = u_in, u_scale = u.u_scale)
 end
 
 
