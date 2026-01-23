@@ -1,4 +1,5 @@
 #Preamble (delete when finished)
+#=
 include("fixed_rational.jl")
 include("types.jl")
 include("utils.jl")
@@ -7,6 +8,7 @@ include("math.jl")
 include("RegistryTools.jl")
 include("UnitRegistry.jl")
 include("linalg_types.jl")
+=#
 
 import ArrayInterface
 
@@ -19,18 +21,18 @@ function dotinv(d1::AbstractVector, d2::AbstractVector)
 end
 
 
-#UnitMap only needs to check the first row and column for equality
-function Base.:(==)(d1::AbstractDimMap, d2::AbstractDimMap)
+#DimsMap only needs to check the first row and column for equality
+function Base.:(==)(d1::AbstractDimsMap, d2::AbstractDimsMap)
     equal_element(ii) = d1[begin-1+ii] == d2[begin-1+ii]
     size(d1) == size(d2) || return false
     return all(equal_element, 1:size(d1,1)) && all(equal_element, 2:size(d1, 2))
 end
 
 #For matrices, all elements must be checked for equality
-Base.:(==)(d1::QuantMatrixDims, d2::AbstractDimMap) = size(d1) == size(d2) && all(==, zip(d1,d2))
-Base.:(==)(d1::AbstractDimMap, d2::QuantMatrixDims) = size(d1) == size(d2) && all(==, zip(d1,d2))
+Base.:(==)(d1::QuantMatrixDims, d2::AbstractDimsMap) = size(d1) == size(d2) && all(==, zip(d1,d2))
+Base.:(==)(d1::AbstractDimsMap, d2::QuantMatrixDims) = size(d1) == size(d2) && all(==, zip(d1,d2))
 
-function equaldims(u1::AbstractDimMap, u2::AbstractDimMap)
+function equaldims(u1::AbstractDimsMap, u2::AbstractDimsMap)
     if u1 == u2
         return u1
     else
@@ -38,15 +40,15 @@ function equaldims(u1::AbstractDimMap, u2::AbstractDimMap)
     end
 end
 
-Base.:+(d1::AbstractDimMap) = d1
-Base.:+(d1::AbstractDimMap, d2::AbstractDimMap) = equaldims(d1, d2)
-Base.:-(d1::AbstractDimMap) = d1
-Base.:-(d1::AbstractDimMap, d2::AbstractDimMap) = equaldims(d1, d2)
+Base.:+(d1::AbstractDimsMap) = d1
+Base.:+(d1::AbstractDimsMap, d2::AbstractDimsMap) = equaldims(d1, d2)
+Base.:-(d1::AbstractDimsMap) = d1
+Base.:-(d1::AbstractDimsMap, d2::AbstractDimsMap) = equaldims(d1, d2)
 
 #Multiplying generic factorizations with dense matrices of dimensions
-Base.:*(d1::AbstractDimMap, d2::AbstractDimMap)  = canonical!(UnitMap(u_in = uinput(d2), u_out = uoutput(d1).*dotinv(d2.uoutput, d1.uinput)))
-Base.:*(d1::QuantMatrixDims, d2::AbstractDimMap) = canonical!(UnitMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
-Base.:*(d1::AbstractDimMap, d2::QuantMatrixDims) = canonical!(UnitMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
+Base.:*(d1::AbstractDimsMap, d2::AbstractDimsMap)  = canonical!(UnitMap(u_in = uinput(d2), u_out = uoutput(d1).*dotinv(d2.uoutput, d1.uinput)))
+Base.:*(d1::QuantMatrixDims, d2::AbstractDimsMap) = canonical!(UnitMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
+Base.:*(d1::AbstractDimsMap, d2::QuantMatrixDims) = canonical!(UnitMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
 
 #Multiplying specific factorizations with single dimensions
 Base.:*(dm::UnitMap{<:AbstractDimensions}, d::AbstractDimensions)    = canonical!(UnitMap(u_in = dm.u_in, u_out = dm.u_out.*d))
@@ -59,8 +61,8 @@ Base.:*(d::AbstractDimensions, dm::SymUnitMap{<:AbstractDimensions}) = canonical
 
 Base.inv(d::QuantMatrixDims) = inv(UnitMap(d))
 
-Base.:/(d1::Union{AbstractDimMap,QuantMatrixDims}, d2::Union{AbstractDimMap,QuantMatrixDims}) = d1*inv(d2)
-Base.:\(d1::Union{AbstractDimMap,QuantMatrixDims}, d2::Union{AbstractDimMap,QuantMatrixDims}) = inv(d1)*d2
+Base.:/(d1::Union{AbstractDimsMap,QuantMatrixDims}, d2::Union{AbstractDimsMap,QuantMatrixDims}) = d1*inv(d2)
+Base.:\(d1::Union{AbstractDimsMap,QuantMatrixDims}, d2::Union{AbstractDimsMap,QuantMatrixDims}) = inv(d1)*d2
 
 
 #======================================================================================================================
@@ -90,7 +92,7 @@ import .UnitRegistry.@ud_str
 using StaticArrays
 import Random
 using Statistics
-
+#=
 #Nonlinear map
 @kwdef struct PumpInput{T} <: FieldVector{2,T}
     current :: T 
@@ -151,3 +153,4 @@ pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
     @test all(upumpfunc(qinput) .≈ pumpfunc(ustrip.(uinput(pumpunits), qinput)).*uoutput(pumpunits))
 
 end
+=#
