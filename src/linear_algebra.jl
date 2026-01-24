@@ -1,5 +1,5 @@
 #Preamble (delete when finished)
-#=
+
 include("fixed_rational.jl")
 include("types.jl")
 include("utils.jl")
@@ -8,7 +8,7 @@ include("math.jl")
 include("RegistryTools.jl")
 include("UnitRegistry.jl")
 include("linalg_types.jl")
-=#
+
 
 import ArrayInterface
 
@@ -29,8 +29,8 @@ function Base.:(==)(d1::AbstractDimsMap, d2::AbstractDimsMap)
 end
 
 #For matrices, all elements must be checked for equality
-Base.:(==)(d1::QuantMatrixDims, d2::AbstractDimsMap) = size(d1) == size(d2) && all(==, zip(d1,d2))
-Base.:(==)(d1::AbstractDimsMap, d2::QuantMatrixDims) = size(d1) == size(d2) && all(==, zip(d1,d2))
+Base.:(==)(d1::ArrayDims, d2::AbstractDimsMap) = size(d1) == size(d2) && all(==, zip(d1,d2))
+Base.:(==)(d1::AbstractDimsMap, d2::ArrayDims) = size(d1) == size(d2) && all(==, zip(d1,d2))
 
 function equaldims(u1::AbstractDimsMap, u2::AbstractDimsMap)
     if u1 == u2
@@ -47,8 +47,8 @@ Base.:-(d1::AbstractDimsMap, d2::AbstractDimsMap) = equaldims(d1, d2)
 
 #Multiplying generic factorizations with dense matrices of dimensions
 Base.:*(d1::AbstractDimsMap, d2::AbstractDimsMap)  = canonical!(UnitMap(u_in = uinput(d2), u_out = uoutput(d1).*dotinv(d2.uoutput, d1.uinput)))
-Base.:*(d1::QuantMatrixDims, d2::AbstractDimsMap) = canonical!(UnitMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
-Base.:*(d1::AbstractDimsMap, d2::QuantMatrixDims) = canonical!(UnitMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
+Base.:*(d1::ArrayDims, d2::AbstractDimsMap) = canonical!(UnitMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
+Base.:*(d1::AbstractDimsMap, d2::ArrayDims) = canonical!(UnitMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
 
 #Multiplying specific factorizations with single dimensions
 Base.:*(dm::UnitMap{<:AbstractDimensions}, d::AbstractDimensions)    = canonical!(UnitMap(u_in = dm.u_in, u_out = dm.u_out.*d))
@@ -59,10 +59,10 @@ Base.:*(dm::SymUnitMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical
 Base.:*(d::AbstractDimensions, dm::SymUnitMap{<:AbstractDimensions}) = canonical!(SymUnitMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
 
 
-Base.inv(d::QuantMatrixDims) = inv(UnitMap(d))
+Base.inv(d::ArrayDims) = inv(UnitMap(d))
 
-Base.:/(d1::Union{AbstractDimsMap,QuantMatrixDims}, d2::Union{AbstractDimsMap,QuantMatrixDims}) = d1*inv(d2)
-Base.:\(d1::Union{AbstractDimsMap,QuantMatrixDims}, d2::Union{AbstractDimsMap,QuantMatrixDims}) = inv(d1)*d2
+Base.:/(d1::Union{AbstractDimsMap,ArrayDims}, d2::Union{AbstractDimsMap,ArrayDims}) = d1*inv(d2)
+Base.:\(d1::Union{AbstractDimsMap,ArrayDims}, d2::Union{AbstractDimsMap,ArrayDims}) = inv(d1)*d2
 
 
 #======================================================================================================================

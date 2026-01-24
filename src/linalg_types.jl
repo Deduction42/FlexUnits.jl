@@ -11,32 +11,30 @@ abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractMatrix{D} end
 
 
 """
-    QuantMatrixUnits{U<:UnitOrDims, A<:AbstractMatrix{<:QuantUnion{<:Any,U}}}
+    ArrayUnits{A<:AbstractArray} <: AbstractArray
 
 Wraps a quantity matrix A so that getting its index returns the units of the element
 """
-struct QuantMatrixUnits{U<:UnitOrDims, A<:AbstractMatrix{<:QuantUnion{<:Any,U}}} <: AbstractMatrix{U}
-    quantmat :: A
-    QuantMatrixUnits(a::A) where {U,A<:AbstractMatrix{QuantUnion{<:Any,U}}} = new{U,A}(a)
+struct ArrayUnits{A<:AbstractArray} <: AbstractArray
+    array :: A
 end
-Base.IndexStyle(::Type{QuantMatrixUnits{D,A}}) where{D,A} = IndexStyle(A)
-Base.getindex(m::QuantMatrixUnits, args...) = broadcast(unit, getindex(m.quantmat, args...))
-unit(m::AbstractMatirx) = QuantMatrixUnits(m)
+Base.IndexStyle(::Type{ArrayUnits{A}}) where {A} = IndexStyle(A)
+Base.getindex(m::ArrayUnits, args...) = broadcast(unit, getindex(m.array, args...))
+unit(m::AbstractArray) = ArrayUnits(m)
 
 """
-    QuantMatrixDims{D<:AbstractDimensions, A<:AbstractMatrix{<:QuantUnion{<:Any,<:UnitOrDims{D}}}}
+    ArrayDims{AbstractArray} <: AbstractArray
 
 Wraps a quantity matrix A so that getting its index returns the dimensiosn of the element
 """
-struct QuantMatrixDims{D<:AbstractDimensions, A<:AbstractMatrix{<:QuantUnion{<:Any,<:UnitOrDims{D}}}} <: AbstractMatrix{D}
-    quantmat :: A
-    QuantMatrixDims(a::A) where {D, A<:AbstractMatrix{<:QuantUnion{<:Any,<:UnitOrDims{D}}}} = new{D,A}(a)
+struct ArrayDims{AbstractArray} <: AbstractArray
+    array :: A
 end
-Base.IndexStyle(::Type{QuantMatrixDims{D,A}}) where{D,A} = IndexStyle(A)
-Base.getindex(m::QuantMatrixDims, args...) = broadcast(dimension, getindex(m.quantmat, args...))
-dimension(m::AbstractMatrix) = QuantMatrixDims(m)
+Base.IndexStyle(::Type{ArrayDims{D,A}}) where{D,A} = IndexStyle(A)
+Base.getindex(m::ArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
+dimension(m::AbstractMatrix) = ArrayDims(m)
 
-Base.size(m::Union{<:QuantMatrixUnits,<:QuantMatrixDims}) = size(m.quantmat)
+Base.size(m::Union{<:ArrayUnits,<:ArrayDims}) = size(m.array)
 
 """
 struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -86,7 +84,7 @@ function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
     return DimsMap(u_out=u_out, u_in=u_in)
 end
 
-DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantMatrixDims(mq))
+DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(ArrayDims(mq))
 
 function canonical!(u::DimsMap)
     ui1 = u.u_in[1]

@@ -106,7 +106,6 @@ Base.convert(::Type{NoTransform}, t::AffineTransform) = is_identity(t) ? NoTrans
 #Converting dynamic Quantity types ====================================================
 Base.convert(::Type{Quantity{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
 Base.convert(::Type{Quantity{T,U}}, q::QuantUnion) where {T,U<:Units} = Quantity{T,U}(ustrip(q), unit(q))
-Base.convert(::Type{Quantity{T,M}}, q::QuantUnion) where {T, D<:AbstractDimensions, M<:MirrorUnion{D}} = Quantity{T,M}(T(dstrip(q)), dimension(q))
 Base.convert(::Type{Quantity{T,D}}, x::MathUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D(0))
 Base.convert(::Type{Quantity{T,U}}, x::MathUnion) where {T,U<:Units} = Quantity{T,U}(x, dimtype(U)(0))
 
@@ -121,7 +120,6 @@ end
 #Converting dynamic FlexQuant types ====================================================
 Base.convert(::Type{FlexQuant{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(dstrip(q), dimension(q))
 Base.convert(::Type{FlexQuant{T,U}}, q::QuantUnion) where {T,U<:Units} = FlexQuant{T,U}(ustrip(q), unit(q))
-Base.convert(::Type{FlexQuant{T,M}}, q::QuantUnion) where {T, D<:AbstractDimensions, M<:MirrorUnion{D}} = FlexQuant{T,M}(T(dstrip(q)), dimension(q))
 Base.convert(::Type{FlexQuant{T,D}}, x::MathUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(x, D(0))
 Base.convert(::Type{FlexQuant{T,U}}, x::MathUnion) where {T,U<:Units} = FlexQuant{T,U}(x, dimtype(U)(0))
 
@@ -141,8 +139,8 @@ Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:StaticUnits{D,T}} = (
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = D(dimension(assert_dimension(u)))
 Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)
 Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D, dimval(d))
-Base.convert(::Type{D}, d::AbstractDims) where {D<:StaticDims} = equaldims(D(), d)
-Base.convert(::Type{D}, d::NoDims) where D{<:StaticDims} = assert_dimensionless(D())
+Base.convert(::Type{D}, d::AbstractDimensions) where {D<:StaticDims} = equaldims(D(), d)
+Base.convert(::Type{D}, d::NoDims) where {D<:StaticDims} = assert_dimensionless(D())
 
 # Converting transform types ===============================================
 Base.convert(::Type{T}, t::NoTransform) where T <: AbstractUnitTransform = T()
