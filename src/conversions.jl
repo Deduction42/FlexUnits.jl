@@ -161,8 +161,8 @@ end
 Base.promote_rule(::Type{T1}, ::Type{T2}) where {T1<:NoTransform, T2<:AbstractUnitTransform} = T2
 
 #Conflicting or uncertain static dimensions get promoted to dynamic version
-Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimtype(D2))
-Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimtype(D1), dimtype(D2))
+Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimvaltype(D2))
+Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimvaltype(D1), dimvaltype(D2))
 Base.promote_rule(::Type{U1}, ::Type{U2}) where {T1, d1, U1<:StaticUnits{d1,T1}, D2, T2, U2<:Units{D2,T2}} = Units{promote_type(typeof(d1),D2), promote_type(T1,T2)}
 Base.promote_rule(::Type{U1}, ::Type{U2}) where {T1, d1, U1<:StaticUnits{d1,T1}, d2, T2, U2<:StaticUnits{d2,T2}} = Units{promote_type(typeof(d1),typeof(d2)), promote_type(T1,T2)}
 Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:AbstractDimensions = D
@@ -218,8 +218,7 @@ function Base.promote_rule(::Type{Q}, ::Type{T2}) where {T2<:AbstractArray, T1<:
     return quant_type(T){T, nodim_promote(U)}
 end
 
-nodim_promote(::Type{U}) where U<:AbstractUnits = dimtype(U)
-nodim_promote(::Type{U}) where U<:StaticUnits = promote_type(typeof(dimension(U)), StaticDims{dimtype(U)()})
-nodim_promote(::Type{D}) where D<:StaticDims  = promote_type(D, StaticDims{dimtype(D)()})
+nodim_promote(::Type{U}) where U<:AbstractUnits = nodim_promote(dimtype(U))
+nodim_promote(::Type{D}) where D<:StaticDims = isdimensionless(D) ? D : error("Cannot promote NoDims to $(D) because it's not dimensionless")
 nodim_promote(::Type{D}) where D<:AbstractDimensions = D
 

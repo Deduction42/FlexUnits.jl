@@ -13,7 +13,7 @@ include("linalg_types.jl")
 import ArrayInterface
 
 #Dot products of dimensions
-Base.dot(d1::AbstractDimensions, d2::AbstractDimensions) = d1*d2
+LinearAlgebra.dot(d1::AbstractDimensions, d2::AbstractDimensions) = d1*d2
 dotinv(d1::AbstractDimensions, d2::AbstractDimensions) = d1/d2
 function dotinv(d1::AbstractVector, d2::AbstractVector)
     length(d1) == length(d2) || throw(DimensionMismatch("Inputs had different lengths $((length(d1), length(d2)))"))
@@ -46,20 +46,20 @@ Base.:-(d1::AbstractDimsMap) = d1
 Base.:-(d1::AbstractDimsMap, d2::AbstractDimsMap) = equaldims(d1, d2)
 
 #Multiplying generic factorizations with dense matrices of dimensions
-Base.:*(d1::AbstractDimsMap, d2::AbstractDimsMap)  = canonical!(UnitMap(u_in = uinput(d2), u_out = uoutput(d1).*dotinv(d2.uoutput, d1.uinput)))
-Base.:*(d1::ArrayDims, d2::AbstractDimsMap) = canonical!(UnitMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
-Base.:*(d1::AbstractDimsMap, d2::ArrayDims) = canonical!(UnitMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
+Base.:*(d1::AbstractDimsMap, d2::AbstractDimsMap)  = canonical!(DimsMap(u_in = uinput(d2), u_out = uoutput(d1).*dotinv(d2.uoutput, d1.uinput)))
+Base.:*(d1::ArrayDims, d2::AbstractDimsMap) = canonical!(DimsMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
+Base.:*(d1::AbstractDimsMap, d2::ArrayDims) = canonical!(DimsMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
 
 #Multiplying specific factorizations with single dimensions
-Base.:*(dm::UnitMap{<:AbstractDimensions}, d::AbstractDimensions)    = canonical!(UnitMap(u_in = dm.u_in, u_out = dm.u_out.*d))
-Base.:*(d::AbstractDimensions, dm::UnitMap{<:AbstractDimensions})    = canonical!(UnitMap(u_in = dm.u_in, u_out = dm.u_out.*d))
-Base.:*(dm::RepUnitMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical!(RepUnitMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
-Base.:*(d::AbstractDimensions, dm::RepUnitMap{<:AbstractDimensions}) = canonical!(RepUnitMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
-Base.:*(dm::SymUnitMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical!(SymUnitMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
-Base.:*(d::AbstractDimensions, dm::SymUnitMap{<:AbstractDimensions}) = canonical!(SymUnitMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
+Base.:*(dm::DimsMap{<:AbstractDimensions}, d::AbstractDimensions)    = canonical!(DimsMap(u_in = dm.u_in, u_out = dm.u_out.*d))
+Base.:*(d::AbstractDimensions, dm::DimsMap{<:AbstractDimensions})    = canonical!(DimsMap(u_in = dm.u_in, u_out = dm.u_out.*d))
+Base.:*(dm::RepDimsMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical!(RepDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
+Base.:*(d::AbstractDimensions, dm::RepDimsMap{<:AbstractDimensions}) = canonical!(RepDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
+Base.:*(dm::SymDimsMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical!(SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
+Base.:*(d::AbstractDimensions, dm::SymDimsMap{<:AbstractDimensions}) = canonical!(SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
 
 
-Base.inv(d::ArrayDims) = inv(UnitMap(d))
+Base.inv(d::ArrayDims) = inv(DimsMap(d))
 
 Base.:/(d1::Union{AbstractDimsMap,ArrayDims}, d2::Union{AbstractDimsMap,ArrayDims}) = d1*inv(d2)
 Base.:\(d1::Union{AbstractDimsMap,ArrayDims}, d2::Union{AbstractDimsMap,ArrayDims}) = inv(d1)*d2
@@ -72,7 +72,7 @@ The outer type specializes first, so something like
 Will be skipped in the case of Matrix{<:Quantity} (it will use inv(m::Matrix) in Base instead)
 Because of this, such code will have to specify all desired concrete matrix types
 ======================================================================================================================#
-Base.inv(q::Matrix{<:Quantity}) = inv(LinmapQuant(UnitMap, q))
+Base.inv(q::Matrix{<:Quantity}) = inv(LinmapQuant(DimsMap, q))
 
 
 
@@ -120,7 +120,7 @@ pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
     u2 = [u"kg/s", u"m^3/hr", u"kW"]
 
     xm = randn(3,3)
-    qM = LinmapQuant(UnitMap, xm.*u2./u1')
+    qM = LinmapQuant(DimsMap, xm.*u2./u1')
 
     #Matrix inversion
     x = randn(3).*u1
@@ -136,18 +136,18 @@ pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
 
     #Symmetric matrix
     rS = Σ.*inv.(u2).*inv.(u2)'
-    qS = LinmapQuant(SymUnitMap, rS)
+    qS = LinmapQuant(SymDimsMap, rS)
     @test all(qS .≈ ubase.(rS))
     @test x'*(rS)*x ≈ x'*qS*x
 
     #Repeatable matrix
     rR = Σ.*u2.*inv.(u2)'
-    qR = LinmapQuant(RepUnitMap, rR)
+    qR = LinmapQuant(RepDimsMap, rR)
     @test all(qR .≈ ubase.(rR))
     @test all(rR^2*x .≈ qR^2*x)
 
     #Nonlinear mapping
-    pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))
+    pumpunits = DimsMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))
     upumpfunc = FunctionQuant(pumpfunc, pumpunits)
     qinput = PumpInput(current=500*u"mA", voltage=6u"V")
     @test all(upumpfunc(qinput) .≈ pumpfunc(ustrip.(uinput(pumpunits), qinput)).*uoutput(pumpunits))

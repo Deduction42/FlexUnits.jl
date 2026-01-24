@@ -84,8 +84,11 @@ dimval(u::AbstractDimensions) = u
 usymbol(u::AbstractDimLike) = DEFAULT_USYMBOL
 uscale(u::AbstractUnitLike) = uscale(todims(u))
 uoffset(u::AbstractUnitLike) = uoffset(todims(u))
-dimtype(::Type{<:AbstractUnits{D}}) where D = D
+dimtype(x::Any) = dimtype(typeof(x))
+dimtype(::Type{T}) where T = error("dimtype not yet implemented for type $(T)")
 dimtype(::Type{D}) where D<:AbstractDimLike = D
+dimtype(::Type{U}) where {D, U<:AbstractUnits{D}} = dimtype(D)
+dimvaltype(::Type{T}) where T = dimtype(T)
 dimpowtype(::Type{D}) where {P, D<:AbstractDimensions{P}} = P
 Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
 dimpowtype(::Type{U}) where {U<:AbstractUnitLike} = dimpowtype(dimtype(U))
@@ -175,11 +178,10 @@ struct StaticDims{D} <: AbstractDimLike
 end 
 StaticDims(D::AbstractDimensions) = StaticDims{D}()
 StaticDims{D}(d::AbstractDimensions) where D = (D == d) ? StaticDims{D} : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
-dimtype(::Type{<:StaticDims{D}}) where D = typeof(D)
-dimtype(d::StaticDims) = dimtype(typeof(d))
 dimval(::Type{<:StaticDims{D}}) where D = D
 dimval(d::StaticDims) = dimval(typeof(d))
 udynamic(u::StaticDims{D}) where D = D
+dimvaltype(::Type{D}) where {d, D<:StaticDims{d}} = dimtype(d)
 
 
 """
@@ -190,6 +192,7 @@ Placehoder for a unitless dimension in cases where the base dimension type is un
 struct NoDims <: AbstractDimensions{Bool} end
 Base.getproperty(::NoDims, ::Symbol) = false
 dimension(x::NumUnion) = NoDims()
+dimtype(::Type{<:NumUnion}) = NoDims
 
 #=======================================================================================
 Affine Units and Transforms
@@ -271,8 +274,7 @@ remove_offset(u::U) where U<:AbstractUnits = constructorof(U)(dimension(u), remo
 is_scalar(u::AbstractUnits) = is_scalar(todims(u))
 is_dimension(u::AbstractUnits) = is_identity(todims(u))
 udynamic(u::Units) = u
-dimtype(::Type{Units{D,C}}) where {D,C} = D
-dimtype(d::Units) = dimtype(typeof(d))
+dimtype(::Type{U}) where {D,U<:Units{D}} = dimtype(D)
 unit(x::NumUnion) = Units(NoTrnasform(), NoDims())
 
 """
@@ -300,10 +302,10 @@ constructorof(::Type{<:StaticUnits}) = StaticUnits
 Units(u::StaticUnits) = Units{dimtype(u)}(dimval(u), todims(u), usymbol(u))
 udynamic(u::StaticUnits) = Units(u)
 todims(u::StaticUnits) = u.todims
-dimtype(::Type{StaticUnits{D,C}}) where {D,C} = typeof(D)
-dimtype(d::StaticUnits) = dimtype(typeof(d))
-dimval(::Type{StaticUnits{D,C}}) where {D,C} = D
+dimtype(::Type{U}) where {D, U<:StaticUnits{D}} = dimtype(D)
+dimval(::Type{<:StaticUnits{D}}) where D = D
 dimval(d::StaticUnits) = dimval(typeof(d))
+dimvaltype(::Type{U}) where {D, U<:StaticUnits{D}} = dimvaltype(D)
 dimension(::Type{StaticUnits{D,T}}) where {D,T} = StaticDims{D}()
 dimension(d::StaticUnits) = dimension(typeof(d))
 usymbol(u::StaticUnits) = u.symbol

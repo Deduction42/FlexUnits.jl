@@ -11,30 +11,21 @@ abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractMatrix{D} end
 
 
 """
-    ArrayUnits{A<:AbstractArray} <: AbstractArray
-
-Wraps a quantity matrix A so that getting its index returns the units of the element
-"""
-struct ArrayUnits{A<:AbstractArray} <: AbstractArray
-    array :: A
-end
-Base.IndexStyle(::Type{ArrayUnits{A}}) where {A} = IndexStyle(A)
-Base.getindex(m::ArrayUnits, args...) = broadcast(unit, getindex(m.array, args...))
-unit(m::AbstractArray) = ArrayUnits(m)
-
-"""
-    ArrayDims{AbstractArray} <: AbstractArray
+    ArrayDims{D<:AbstractDimensions, A<:AbstractArray} <: AbstractArray{D}
 
 Wraps a quantity matrix A so that getting its index returns the dimensiosn of the element
 """
-struct ArrayDims{AbstractArray} <: AbstractArray
+struct ArrayDims{D<:AbstractDimensions, N, A<:AbstractArray} <: AbstractArray{D,N}
     array :: A
+    function ArrayDims(a::AbstractArray{<:Any,N}) where N
+        D = dimvaltype(eltype(a))
+        return new{D,N,typeof(a)}(a)
+    end
 end
 Base.IndexStyle(::Type{ArrayDims{D,A}}) where{D,A} = IndexStyle(A)
 Base.getindex(m::ArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
 dimension(m::AbstractMatrix) = ArrayDims(m)
-
-Base.size(m::Union{<:ArrayUnits,<:ArrayDims}) = size(m.array)
+Base.size(m::ArrayDims) = size(m.array)
 
 """
 struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -87,7 +78,7 @@ end
 DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(ArrayDims(mq))
 
 function canonical!(u::DimsMap)
-    ui1 = u.u_in[1]
+    ui1 = u.u_in[begin]
     unew = if isdimensionless(ui1)
         u
     elseif ArrayInterface.can_setindex(u.u_in) && ArrayInterface.can_setindex(u.u_out)
@@ -152,7 +143,7 @@ end
 DimsMap(md::RepDimsMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
 function canonical!(u::RepDimsMap)
-    ui1 = u.u_in[1]
+    ui1 = u.u_in[begin]
     u_in = if isdimensionless(ui1)
         u.u_in
     elseif ArrayInterface.can_setindex(u.u_in)
@@ -175,19 +166,19 @@ Used to represent a special kind of dimensional transformation (a symmetric tran
 If "U" is symmetric, then "x'U*x" is a valid operation and the dimensions of "U*x" are similar to the inverse of the
 dimensions of "x". This structure enables certain kinds of operations reserved for symmetric matrices.
 """
-@kwdef struct SymUnitMap{D<:AbstractDimensions, TI<:AbstractVector{D}} <: AbstractDimsMap{D}
+@kwdef struct SymDimsMap{D<:AbstractDimensions, TI<:AbstractVector{D}} <: AbstractDimsMap{D}
     u_scale :: D
     u_in :: TI
 end
 
-Base.getindex(m::SymUnitMap, ii::Integer, jj::Integer) = m.u_scale/(m.u_in[ii]*m.u_in[jj])
-Base.size(m::SymUnitMap) = (length(m.u_in), length(m.u_in))
-Base.inv(m::SymUnitMap)  = SymUnitMap(u_scale=inv(m.u_scale), u_in=inv.(m.u_in))
-Base.adjoint(m::SymUnitMap) = SymUnitMap(u_scale=m.u_scale, u_in=m.u_in)
-uoutput(m::SymUnitMap) = map(Base.Fix1(*, m.u_uscale), m.u_in)
-uinput(m::SymUnitMap) = m.u_in
+Base.getindex(m::SymDimsMap, ii::Integer, jj::Integer) = m.u_scale/(m.u_in[ii]*m.u_in[jj])
+Base.size(m::SymDimsMap) = (length(m.u_in), length(m.u_in))
+Base.inv(m::SymDimsMap)  = SymDimsMap(u_scale=inv(m.u_scale), u_in=inv.(m.u_in))
+Base.adjoint(m::SymDimsMap) = SymDimsMap(u_scale=m.u_scale, u_in=m.u_in)
+uoutput(m::SymDimsMap) = map(Base.Fix1(*, m.u_uscale), m.u_in)
+uinput(m::SymDimsMap) = m.u_in
 
-function SymUnitMap(md::DimsMap)
+function SymDimsMap(md::DimsMap)
     #Matrix must be square
     sz = size(md)
     sz[1] == sz[2] || throw(DimensionMismatch("Symmetric Unit Mapping must be square: dimensions are $(sz)"))
@@ -200,17 +191,17 @@ function SymUnitMap(md::DimsMap)
         u_out*u_in == u_scale || error("Cannot convert to Symmetric Unit Mapping: $(md.u_in) and $(md.u_out) must be similar inverses")
     end
 
-    return SymUnitMap(u_scale=u_scale, u_in=md.u_in./md.u_in[begin])
+    return SymDimsMap(u_scale=u_scale, u_in=md.u_in./md.u_in[begin])
 end
 
-function SymUnitMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
-    return SymUnitMap(DimsMap(mq))
+function SymDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
+    return SymDimsMap(DimsMap(mq))
 end
 
-DimsMap(md::SymUnitMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
+DimsMap(md::SymDimsMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
-function canonical!(u::SymUnitMap)
-    ui1  = u.u_in[1]
+function canonical!(u::SymDimsMap)
+    ui1  = u.u_in[begin]
     u_in = if isdimensionless(ui1)
         u.u_in
     elseif ArrayInterface.can_setindex(u.u_in)
@@ -219,7 +210,7 @@ function canonical!(u::SymUnitMap)
     else
         u.in./ui1
     end
-    return SymUnitMap(u_in = u_in, u_scale = u.u_scale/ui1^2)
+    return SymDimsMap(u_in = u_in, u_scale = u.u_scale/ui1^2)
 end
 
 """
