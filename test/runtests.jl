@@ -95,7 +95,8 @@ const AT = AffineTransform{Float64}
     @test ustrip(Quantity{Float32}(1.0, u"m/s")) === Float32(1)
     @test FlexUnits.unittype(Quantity{Float64, typeof(u"m/s")}) == typeof(u"m/s")
     @test FlexUnits.dimtype(Quantity{Float64, typeof(u"m/s")}) == Dimensions{FixRat32}
-    @test FlexUnits.dimtype(1.0u"kJ") == Dimensions{FixRat32}
+    @test FlexUnits.dimvaltype(1.0u"kJ") == Dimensions{FixRat32}
+    @test FlexUnits.dimtype(1.0u"m") == StaticDims{Dimensions(length=1)}
     @test udynamic(1.0u"kJ") === ubase(1.0ud"kJ")
     @test assert_dimension(dimension(u"m/s")) == dimension(u"m/s")
 

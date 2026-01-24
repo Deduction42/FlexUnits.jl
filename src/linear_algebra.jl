@@ -10,8 +10,6 @@ include("UnitRegistry.jl")
 include("linalg_types.jl")
 
 
-import ArrayInterface
-
 #Dot products of dimensions
 LinearAlgebra.dot(d1::AbstractDimensions, d2::AbstractDimensions) = d1*d2
 dotinv(d1::AbstractDimensions, d2::AbstractDimensions) = d1/d2
@@ -92,7 +90,7 @@ import .UnitRegistry.@ud_str
 using StaticArrays
 import Random
 using Statistics
-#=
+
 #Nonlinear map
 @kwdef struct PumpInput{T} <: FieldVector{2,T}
     current :: T 
@@ -147,10 +145,9 @@ pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
     @test all(rR^2*x .≈ qR^2*x)
 
     #Nonlinear mapping
-    pumpunits = DimsMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))
+    pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))
     upumpfunc = FunctionQuant(pumpfunc, pumpunits)
     qinput = PumpInput(current=500*u"mA", voltage=6u"V")
     @test all(upumpfunc(qinput) .≈ pumpfunc(ustrip.(uinput(pumpunits), qinput)).*uoutput(pumpunits))
 
 end
-=#

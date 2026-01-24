@@ -1,6 +1,7 @@
 using LinearAlgebra
 using StaticArrays
 
+import ArrayInterface
 import StaticArrays.StaticLUMatrix
 
 const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
@@ -26,6 +27,7 @@ Base.IndexStyle(::Type{ArrayDims{D,A}}) where{D,A} = IndexStyle(A)
 Base.getindex(m::ArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
 dimension(m::AbstractMatrix) = ArrayDims(m)
 Base.size(m::ArrayDims) = size(m.array)
+ArrayInterface.can_setindex(::Type{ArrayDims}) = false
 
 """
 struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -40,7 +42,8 @@ to nonlinear functions.
     u_in  :: TI
     u_out :: TO
 end
-
+uoutput(m::UnitMap) = m.u_out
+uinput(m::UnitMap) = m.u_in
 
 """
 struct DimsMap{D<:AbstractDimLike, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
@@ -275,10 +278,16 @@ LinearAlgebra.inv!(fq::FactorQuant) = LinmapQuant(inv!(ustrip(fq)), inv(unit(fq)
 
 # LU Factorization ===================================================================================
 LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = FactorQuant(lu(ustrip(mq); kwargs...), unit(mq))
+LinearAlgebra.lu(mq::LinmapQuant, ::Val{true}; kwargs...) = FactorQuant(lu(ustrip(mq), Val(true); kwargs...), unit(mq))
+LinearAlgebra.lu(mq::LinmapQuant, ::Val{false}; kwargs...) = FactorQuant(lu(ustrip(mq), Val(false); kwargs...), unit(mq))
+
 
 #May need to iterate over more subtypes of AbstractMatrix
-LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, args...; kwargs...) = lu(LinmapQuant(DimsMap, mq), args...; kwargs...)
 StaticArrays.lu(mq::StaticLUMatrix{N,M,<:Quantity}; kwargs...) where {N,M} = lu(LinmapQuant(DimsMap, mq); kwargs...)
+LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}; kwargs...) = lu(LinmapQuant(DimsMap, mq); kwargs...)
+LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{true}; kwargs...) = lu(LinmapQuant(DimsMap, mq), Val(true); kwargs...)
+LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{false}; kwargs...) = lu(LinmapQuant(DimsMap, mq), Val(false); kwargs...)
+
 
 function Base.getproperty(fq::FactorQuant{<:LU, D}, fn::Symbol) where D
     F = ustrip(fq)
@@ -326,7 +335,7 @@ end
 
 A generic mapping with units. Useful for applying units to unitless functions that assume units for inputs/outputs.
 """
-struct FunctionQuant{F, U<:AbstractDimsMap}
+struct FunctionQuant{F, U<:AbstractUnitMap}
     func  :: F
     units :: U
 end

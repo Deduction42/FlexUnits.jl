@@ -74,7 +74,7 @@ function (::Type{D})(x::AbstractDimensions) where {P, D<:AbstractDimensions{P}}
 end
 
 #Assign a single value to all dimensions
-function (::Type{D})(x::Union{Real,Missing}) where {P, D<:AbstractDimensions{P}}
+function (::Type{D})(x::Real) where {P, D<:AbstractDimensions{P}}
     f(anything) = x
     return D(map(f, static_fieldnames(D))...)
 end
@@ -88,6 +88,7 @@ dimtype(x::Any) = dimtype(typeof(x))
 dimtype(::Type{T}) where T = error("dimtype not yet implemented for type $(T)")
 dimtype(::Type{D}) where D<:AbstractDimLike = D
 dimtype(::Type{U}) where {D, U<:AbstractUnits{D}} = dimtype(D)
+dimvaltype(x::Any) = dimvaltype(typeof(x)) 
 dimvaltype(::Type{T}) where T = dimtype(T)
 dimpowtype(::Type{D}) where {P, D<:AbstractDimensions{P}} = P
 Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
@@ -189,10 +190,14 @@ dimvaltype(::Type{D}) where {d, D<:StaticDims{d}} = dimtype(d)
 
 Placehoder for a unitless dimension in cases where the base dimension type is uninferrable
 """
-struct NoDims <: AbstractDimensions{Bool} end
-Base.getproperty(::NoDims, ::Symbol) = false
+@kwdef struct NoDims <: AbstractDimensions{Bool}
+    any :: Bool = false #Has a single value set to false so that it doesn't trigger "isunknown(NoDims())=true")
+    NoDims(x::Bool) = new(x)
+end
+Base.getproperty(d::NoDims, ::Symbol) = getfield(d,:any)
 dimension(x::NumUnion) = NoDims()
 dimtype(::Type{<:NumUnion}) = NoDims
+unit_symbols(::Type{<:NoDims}) = NoDims()
 
 #=======================================================================================
 Affine Units and Transforms
@@ -352,7 +357,7 @@ unit(q::QuantUnion) = q.unit
 dimension(q::QuantUnion) = dimension(unit(q))
 unittype(::Type{<:QuantUnion{T,U}}) where {T,U} = U
 dimtype(::Type{<:QuantUnion{T,U}}) where {T,U} = dimtype(U)
-dimtype(q::QuantUnion) = dimtype(unit(q))
+dimvaltype(::Type{<:QuantUnion{T,U}}) where {T,U} = dimvaltype(U)
 udynamic(q::QuantUnion) = Quantity(ustrip(q), udynamic(unit(q)))
 
 #Translation between AffineTansform and numeric quantities
