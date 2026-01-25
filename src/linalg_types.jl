@@ -4,30 +4,27 @@ using StaticArrays
 import ArrayInterface
 import StaticArrays.StaticLUMatrix
 
-const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
-const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
 
-abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} end
-abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractMatrix{D} end
-
+abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractUnitMap{D} end
 
 """
     ArrayDims{D<:AbstractDimensions, A<:AbstractArray} <: AbstractArray{D}
 
 Wraps a quantity matrix A so that getting its index returns the dimensiosn of the element
 """
-struct ArrayDims{D<:AbstractDimensions, N, A<:AbstractArray} <: AbstractArray{D,N}
+struct QuantArrayDims{D<:AbstractDimensions, N, A<:AbstractArray} <: AbstractArray{D,N}
     array :: A
-    function ArrayDims(a::AbstractArray{<:Any,N}) where N
+    function QuantArrayDims(a::AbstractArray{<:Any,N}) where N
         D = dimvaltype(eltype(a))
         return new{D,N,typeof(a)}(a)
     end
 end
-Base.IndexStyle(::Type{ArrayDims{D,A}}) where{D,A} = IndexStyle(A)
-Base.getindex(m::ArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
-dimension(m::AbstractMatrix) = ArrayDims(m)
-Base.size(m::ArrayDims) = size(m.array)
-ArrayInterface.can_setindex(::Type{ArrayDims}) = false
+Base.IndexStyle(::Type{QuantArrayDims{D,A}}) where{D,A} = IndexStyle(A)
+Base.getindex(m::QuantArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
+Base.size(m::QuantArrayDims) = size(m.array)
+ArrayInterface.can_setindex(::Type{QuantArrayDims}) = false
+dimension(m::AbstractMatrix) = QuantArrayDims(m)
+dimension(m::SMatrix) = dimension.(m)
 
 """
 struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -78,7 +75,7 @@ function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
     return DimsMap(u_out=u_out, u_in=u_in)
 end
 
-DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(ArrayDims(mq))
+DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
 
 function canonical!(u::DimsMap)
     ui1 = u.u_in[begin]
@@ -90,8 +87,8 @@ function canonical!(u::DimsMap)
         u
     else
         DimsMap(
-            u_in = u.in./ui1, 
-            u_out = u_out./ui1
+            u_in = u.u_in./ui1, 
+            u_out = u.u_out./ui1
         )
     end
     return unew

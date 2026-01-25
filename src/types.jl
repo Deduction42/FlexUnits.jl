@@ -59,7 +59,7 @@ abstract type AbstractUnits{D, T<:AbstractUnitTransform} <: AbstractUnitLike end
 
 const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
-abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} <: AbstractMatrix{U} end
+abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} <: AbstractUnitLike end
 
 #Base.@assume_effects :consistent static_fieldnames(t::Type) = Base.fieldnames(t)
 static_fieldnames(t::Type) = Base.fieldnames(t)
@@ -354,6 +354,7 @@ FlexQuant{T,U}(q::QuantUnion) where {T,U} = FlexQuant{T,U}(ustrip(q), unit(q))
 
 ustrip(q::QuantUnion) = q.value
 unit(q::QuantUnion) = q.unit
+todims(q::QuantUnion) = todims(q.unit)
 dimension(q::QuantUnion) = dimension(unit(q))
 unittype(::Type{<:QuantUnion{T,U}}) where {T,U} = U
 dimtype(::Type{<:QuantUnion{T,U}}) where {T,U} = dimtype(U)

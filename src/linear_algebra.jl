@@ -10,6 +10,8 @@ include("UnitRegistry.jl")
 include("linalg_types.jl")
 
 
+const ArrayOfDims{D} = Union{QuantArrayDims{D}, SMatrix{N,M,D} where {N,M}} where D<:AbstractDimensions
+
 #Dot products of dimensions
 LinearAlgebra.dot(d1::AbstractDimensions, d2::AbstractDimensions) = d1*d2
 dotinv(d1::AbstractDimensions, d2::AbstractDimensions) = d1/d2
@@ -27,8 +29,8 @@ function Base.:(==)(d1::AbstractDimsMap, d2::AbstractDimsMap)
 end
 
 #For matrices, all elements must be checked for equality
-Base.:(==)(d1::ArrayDims, d2::AbstractDimsMap) = size(d1) == size(d2) && all(==, zip(d1,d2))
-Base.:(==)(d1::AbstractDimsMap, d2::ArrayDims) = size(d1) == size(d2) && all(==, zip(d1,d2))
+Base.:(==)(d1::ArrayOfDims, d2::AbstractDimsMap) = size(d1) == size(d2) && all(==, zip(d1,d2))
+Base.:(==)(d1::AbstractDimsMap, d2::ArrayOfDims) = size(d1) == size(d2) && all(==, zip(d1,d2))
 
 function equaldims(u1::AbstractDimsMap, u2::AbstractDimsMap)
     if u1 == u2
@@ -44,9 +46,9 @@ Base.:-(d1::AbstractDimsMap) = d1
 Base.:-(d1::AbstractDimsMap, d2::AbstractDimsMap) = equaldims(d1, d2)
 
 #Multiplying generic factorizations with dense matrices of dimensions
-Base.:*(d1::AbstractDimsMap, d2::AbstractDimsMap)  = canonical!(DimsMap(u_in = uinput(d2), u_out = uoutput(d1).*dotinv(d2.uoutput, d1.uinput)))
-Base.:*(d1::ArrayDims, d2::AbstractDimsMap) = canonical!(DimsMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
-Base.:*(d1::AbstractDimsMap, d2::ArrayDims) = canonical!(DimsMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
+Base.:*(d1::AbstractDimsMap, d2::AbstractDimsMap) = canonical!(DimsMap(u_in = uinput(d2), u_out = uoutput(d1).*dotinv(d2.uoutput, d1.uinput)))
+Base.:*(d1::ArrayOfDims, d2::AbstractDimsMap) = canonical!(DimsMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
+Base.:*(d1::AbstractDimsMap, d2::ArrayOfDims) = canonical!(DimsMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
 
 #Multiplying specific factorizations with single dimensions
 Base.:*(dm::DimsMap{<:AbstractDimensions}, d::AbstractDimensions)    = canonical!(DimsMap(u_in = dm.u_in, u_out = dm.u_out.*d))
@@ -57,10 +59,10 @@ Base.:*(dm::SymDimsMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical
 Base.:*(d::AbstractDimensions, dm::SymDimsMap{<:AbstractDimensions}) = canonical!(SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
 
 
-Base.inv(d::ArrayDims) = inv(DimsMap(d))
+Base.inv(d::ArrayOfDims) = inv(DimsMap(d))
 
-Base.:/(d1::Union{AbstractDimsMap,ArrayDims}, d2::Union{AbstractDimsMap,ArrayDims}) = d1*inv(d2)
-Base.:\(d1::Union{AbstractDimsMap,ArrayDims}, d2::Union{AbstractDimsMap,ArrayDims}) = inv(d1)*d2
+Base.:/(d1::Union{AbstractDimsMap,ArrayOfDims}, d2::Union{AbstractDimsMap,ArrayOfDims}) = d1*inv(d2)
+Base.:\(d1::Union{AbstractDimsMap,ArrayOfDims}, d2::Union{AbstractDimsMap,ArrayOfDims}) = inv(d1)*d2
 
 
 #======================================================================================================================
@@ -114,14 +116,15 @@ pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
     Random.seed!(1234)
 
     #Quck tests 
-    u1 = [u"lbf*ft", u"kW", u"rpm"]
-    u2 = [u"kg/s", u"m^3/hr", u"kW"]
+    u1 = SA[u"lbf*ft", u"kW", u"rpm"]
+    u2 = SA[u"kg/s", u"m^3/hr", u"kW"]
 
-    xm = randn(3,3)
-    qM = LinmapQuant(DimsMap, xm.*u2./u1')
+    xm = SMatrix{3,3}(randn(3,3))
+    qMraw = xm.*u2./u1'
+    qM = LinmapQuant(DimsMap, qMraw)
 
     #Matrix inversion
-    x = randn(3).*u1
+    x = SVector{3}(randn(3)).*u1
     y = qM*x
     @test all(x .≈ inv(qM)*y)
 
@@ -142,7 +145,7 @@ pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
     rR = Σ.*u2.*inv.(u2)'
     qR = LinmapQuant(RepDimsMap, rR)
     @test all(qR .≈ ubase.(rR))
-    @test all(rR^2*x .≈ qR^2*x)
+    @test all((rR*rR)*x .≈ (qR*qR)*x)
 
     #Nonlinear mapping
     pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))

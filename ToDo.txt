@@ -9,9 +9,17 @@ Changelog:
 
 Current Tasks:
 1.  Finish basic LinmapQuant functionality for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
-    -   Define operations for UnitMap{<:AbstractDimensions} types (including promotion of RepUnitMap and SymUnitMap to UnitMap)
-        -   "with_ubase" can then be applied to LinmapUnion (LinmapQuant, FactorQuant)
-    -   Operations with factorized matrices will produce factorized matrices
+    -   Attempt to NOT subtype any Unit/Dimension mapping as AbstractArray
+        -   Reduces potential for ambiguity, especially for multiplying with AbstractArray{<:AbstractDimensions} (you'll get the right dispatch)
+        -   They might just want to be under "AbstractUnitMapping"
+        -   LinmapQuant VectorQuant and QuantArayDims are the only things that need to be an AbstractMatrix
+    -   Case out "dimension(x::SArray)" to not use QuantArrayDims
+        -   Simply call dimension.(x) because it doesn't allocate and the result is an SMatrix that has built-in shortcuts 
+        -   Use a union const MatrixOfDims{D} = Union{QuantArrayDims{D,2}, SMatrix{N,M,D}} for multiplication
+    -   Create a VectorQuant with separated dimensions and values 
+        -   Matrix multiplication is O(N) for units not O(M*N)
+        -   Fewer allocations if we just keep dimensions and values separate
+    -   Operations with unit-factorized matrices will produce unit-factorized matrices
         -   Multiplication with QuantMatrixDims(m) produces output units and is O(N^2) already
         -   This is faster than raw multiplication
     -   Continue Rodas5P experiment after linear algebra is completed
