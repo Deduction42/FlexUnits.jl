@@ -9,9 +9,11 @@ Changelog:
 
 Current Tasks:
 1.  Finish basic LinmapQuant/VectorQuant for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
-    -   For double-argument functions, use an underscore like _add, _sub, _mul, _ldiv, _rdiv, _pow
-        -   This allows you to use something like _add(x::AbstractMatrix, y::LinmapQuant) without triggering external ambiguity 
-        -   Overload the Base.(...) methods on specific matrix types, this makes it easier for users to patch their own matrices
+    -   For double-argument functions, use an internal method like qm_add, qm_sub, qm_mul, qm_ldiv, qm_rdiv, qm_pow
+        -   This allows you to use something generic like the line below without messing up opertors
+                qm_mul(m1::AbstactMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1)*dstrip(m2), dimension(m1)*dimension(m2))
+        -   Overload the Base.(...) operator methods on specific matrix types, this makes it easier for users to patch their own matrices later
+        -   Overload *(m::AbstractMatrix, u::UnitMap) -> LinmapQuant(m, u)
     -   Create a VectorQuant with separated dimensions and values 
         -   Matrix multiplication is O(N) for units not O(M*N)
         -   Fewer allocations if we just keep dimensions and values separate
