@@ -26,9 +26,6 @@ end
     g  :: T
 end 
 
-const STATE_UNITS = FallingObjectState(v=ud"m/s", h=ud"m")
-const PARAM_UNITS = FallingObjectProps(Cd=ud"", A=ud"m^2", ρ=ud"kg/m^3", m=ud"kg", g=ud"m/s^2")
-
 function ustatic(state::FallingObjectState{<:Quantity})
     return (
         v = dconvert(u"m/s", state.v),
@@ -53,27 +50,12 @@ function acceleration_raw(u, p, t)
     return FallingObjectState(v=dv, h=dh)
 end
 
-function acceleration_float(u::AbstractVector{<:Real}, p::AbstractVector{<:Real}, t) 
-    return acceleration_raw(FallingObjectState(u), FallingObjectProps(p), t)
-end
-
 function acceleration_static(u::AbstractVector{<:Quantity}, p::AbstractVector{<:Quantity}, t)
     du = acceleration_raw(ustatic(FallingObjectState(u)), ustatic(FallingObjectProps(p)), t)
     return FallingObjectState(du)
 end
 
-function acceleration_dynamic(u::AbstractVector{<:Quantity}, p::AbstractVector{<:Quantity}, t)
-    du = acceleration_raw(FallingObjectState(u), FallingObjectProps(p), t)
-    return FallingObjectState(du)
-end
-
-function acceleration_hidden(u::AbstractVector{<:Real}, p::AbstractVector{<:Real}, t)
-    du = acceleration_raw(FallingObjectState(u.*STATE_UNITS), FallingObjectProps(p.*PARAM_UNITS), t)
-    return FallingObjectState(ustrip.(du))
-end
-
-
-#Jacobian attempt
+#Jacobian needs to be wrapped around a "Real" version to support autodiff
 using ForwardDiff
 p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
 
@@ -90,47 +72,33 @@ end
 
 wrapped_jacobian(acceleration_static, FallingObjectState(0.0u"m/s", 100.0u"m"), p, 0*u"s")
 
-#=
-f(x::AbstractVector{<:Real}) = acceleration_hidden(x, ustrip.(p), 0)
-f(x::AbstractVector{<:Quantity}) = acceleration_dynamic(x, p, 0)
-ForwardDiff.jacobian(f, [0.0, 100.0])
-ForwardDiff.jacobian(f, [0.0u"m/s", 100.0u"m"])
-=#
 plt = plot()
 # =============================================================================================================
-println("\nRaw Numerical Solution")
-# =============================================================================================================
-#=
-u0 = FallingObjectState(v=0.0, h=100)
-p  = FallingObjectProps(Cd=1.0, A=0.1, ρ=1.0, m=50, g=9.81)
-
-tspan = (0.0, 10.0)
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_raw, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
-sol = solve(prob, Tsit5())
-@btime solve(prob, Tsit5())
-plt = plot!(plt, sol.t, [u.v for u in sol.u], label="v_unitless")
-=#
-
-# =============================================================================================================
-println("\nStatic Unit Solution")
+println("\nStatic-Unit Solution")
 # =============================================================================================================
 u0 = FallingObjectState(v=0.0u"m/s", h=100u"m")
 p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
 static_jac(u,p,t) = wrapped_jacobian(acceleration_static, u, p, t)
+static_tgrad(u,p,t) = [0.0u"m/s^3", 0.0u"m/s^2"]
 
 tspan = (0.0u"s", 10.0u"s")
-f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_static, jac=static_jac, mass_matrix=I*1ud"")
+f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_static, 
+    jac = static_jac, 
+    tgrad = static_tgrad,
+    mass_matrix = I*1ud""
+)
 prob = ODEProblem(f_static, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 
 sol = solve(prob, Rodas5P())
-@btime solve(prob, Tsit5())
 plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="v_staticu")
 
-# =============================================================================================================
-println("\nDynamic Unit Solution")
-# =============================================================================================================
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_dynamic, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 
-sol = solve(prob, Tsit5())
-@btime solve(prob, Tsit5())
-plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="v_dynamicu")
+#= This triggers an error at 
+rosenprock_perform_step.jl line 1240
+dT = calc_tderivative(integrator, cache) = Quantity{Float64, Dimensions{FixRat32}}[0.0 m/s², 0.0 m/s]
+du = f(uprev, p, t) = Quantity{Float64, Dimensions{FixRat32}}[-9.81 m/s², 0.0 m/s]
+dtd = Quantity{Float64, StaticDims{s}}[0.016130215329083333 s, -0.03226043065816667 s, -0.025759833949205672 s, 0.13734855038363272 s, 0.1770147199103226 s, 0.0 s, 0.0 s, 0.0 s]
+dtd[1]*dT = Quantity{Float64, Dimensions{FixRat32}}[0.0 m/s, 0.0 m]
+
+du + dtd[1]*dT = [-9.81 m/s², 0.0 m/s] + [0.0 m/s, 0.0 m] => Inconsistent units
+=#

@@ -124,15 +124,6 @@ function ushow(io::IO, u::StaticDims; pretty=PRETTY_DIM_OUTPUT[])
     return ushow(io, udynamic(u), pretty=pretty)
 end
 
-#Mirror dims are shown as ?/? when pretty-printing
-function ushow(io::IO, d::MirrorDims; pretty=PRETTY_DIM_OUTPUT[])
-    if pretty
-        return print(io, "?/?")
-    else
-        return Base.show_default(io, d)
-    end
-end
-
 #Showing dimensions with numeric values
 function ushow(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<:AbstractDimensions{<:Real}
     dimnames = collect(static_fieldnames(D))

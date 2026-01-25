@@ -1,20 +1,24 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Changelog:
-1.  Quantity now subtypes to Number, use FlexQuant for values that don't subtype to number (quantity auto-selects appropriate container)
-2.  Multiplying with dynamic units now eagerly converts to dimensional quantities
-3.  Re-added "quantity" constructor function, does not eagerly convert to dimensional quantity
-4.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
+1.  Added support for linear algebra; LinmapQuant factorizes out units for efficient O(N+M) pure-unit ops while allowing efficient numeric methods to handle raw matrix ops
+2.  Quantity now subtypes to Number, use FlexQuant for values that don't subtype to number (quantity auto-selects appropriate container)
+3.  Multiplying with dynamic units now eagerly converts to dimensional quantities
+4.  Re-added "quantity" constructor function, does not eagerly convert to dimensional quantity
+5.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
 
 Current Tasks:
-1.  For consistency with the ecosystem around Unitful, we will need to subtype Quantity to Number
-    -   Add specific "Array" multiplication/division ops with numeric quantities check Unitful.jl
-    -   Add typemin/typemax/one/onunit support for FixRat32 and make the sentinel value
-        -   unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D{T}(typemin(T)) the sentinel value
-    -   Add paramerization of AffineTransform (so people can opt into Rational)
-    -   Streamline promotions around FlexQuant and Quantity (and will likely need generalization)
-
-2.  Finish basic LinmapQuant functionality for +, -, *, /, \, ^, exp, lu, sin, cos, tan
+1.  Finish basic LinmapQuant functionality for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
+    -   Define operations for UnitMap{<:AbstractDimensions} types (including promotion of RepUnitMap and SymUnitMap to UnitMap)
+        -   "with_ubase" can then be applied to LinmapUnion (LinmapQuant, FactorQuant)
+    -   Operations with factorized matrices will produce factorized matrices
+        -   Multiplication with QuantMatrixDims(m) produces output units and is O(N^2) already
+        -   This is faster than raw multiplication
+    -   Continue Rodas5P experiment after linear algebra is completed
+    -   Factorizations are subtyped under FactorQuant{F,U}
+        -   Different "getfield" methods can be dispatched based on the Factorization type F 
+        -   FactorQuant is different because LinmapQuant subtypes to "Matrix", while FactorQuant doesn't subtype to anything
+        -   Use "methodswith(Factorization)" to see what methods FactorQuant will need to support at a high level
     -   "lu" is particularly important because pivoting fails
         -   pivoting is best interpreted as a reordering operation, not a proper multiplication, so there will be unit conflicts
         -   pivot matrices themselves can be fixed by making the pivot matrix have "unknown" units on zeros and a dimensionless diagonal
@@ -28,11 +32,25 @@ Current Tasks:
 
     Notes on above:      
     -   Matrix multiplication is ONLY valid with LinmapQuant and will ALWAYS produce a LinmapQuant
-        -   Multiplication should convert AbstractMatrix{Union{Quantity,NumberQuant}} to LinmapQuant
-        -   This may result in more allocations, but is more reliable in pointing out errors
-        -   It is recommendable to only store matrices as LinmapQuant if linear algebra is intended
+        -   Multiplication should "separate" dimensions and values 
+            - Use dimension(a::AbstractMatrix) = QuantMatrixDims(a)
+            - This prevents allocations and should even work on non-quantity arrays
+            - An inner if-statement on the multiplication can case out AbstractMatrix{<:QuantUnion} and apply dstrip
+            - Dimension multiplication is only defined for QuantMatrixDims and 
+    -   Multiplying a dense array of dimensions with a factored matrix is 2N (same as factoring, so you don't need it)
+        -   Factoring may not be possible if some dimensions are unknown, so outright multiplication is more reliable
+        -   dn = d_dense*dn = canonical!(UnitMap(u_out = d_dense*d0.u_out, u_in = d0.u_in))
+        -   dn = dn*d_dense = canonical!(UnitMap(u_out = d0.u_out, u_in = inv.( (inv.(d0.u_in)'*d_dense)' )))
+                            = canonical!(UnitMap(u_out = d0.u_out, u_in = inv.(d_dense'*inv.(d0.u_in))))
+    -   UnitMap is not unique for a LinmapQuant
+        -   Matrix multiplication between UnitMap should have a canonical form to prevent confusion on "=="
+        -   The canconical form has u_in[1] == u"" (as per the matrix constructor)
+        -   Define the function "canonical!" to convert UnitMap to this form
+            -   Will need to case out mutable and immutable versions
+            -   https://docs.sciml.ai/ArrayInterface/stable/indexing/#ArrayInterface.can_setindex
 
-3.  Add LinearAlgebra extensions for certain factorizations
+
+2.  Add LinearAlgebra extensions for certain factorizations
     -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
         -   eig = eigen(A::LinmapQuant)
         -   eig.vectors = LinmapQuant(ustrip(eig).vectors, UnitMap(fill(ud"", N), unit(eig).u_in))
@@ -42,7 +60,7 @@ Current Tasks:
         -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
     -   consider other factorizations as well
 
-4.  Build out documentation and a docs badge
+3.  Build out documentation and a docs badge
     -   Remove MirrorDims 
     -   Add warnings around "Affine Delta" and "zero/oneunit"
     -   Add Examples

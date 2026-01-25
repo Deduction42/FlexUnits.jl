@@ -15,8 +15,7 @@ Useful for defining mathematical operations for dimensions
     )
 end
 
-const UNKNOWN_SENTINEL = -25200
-unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D(convert(T,UNKNOWN_SENTINEL))
+unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D(typemax(T))
 isunknown(d::D) where D<:AbstractDimensions = (d === unknown(D))
 isknown(d::D) where D<:AbstractDimensions = (d !== unknown(D))
 isunknown(d::StaticDims{D}) where D = isunknown(D)
@@ -24,13 +23,6 @@ isknown(d::StaticDims{D}) where D = isknown(D)
 
 #Checks equality of dimensions, returns first non-mirrored dimension
 @inline equaldims(arg1::AbstractDimensions) = arg1
-
-#=
-@inline equaldims(arg1::AbstractDimensions, arg2::MirrorDims) = arg1
-@inline equaldims(arg1::MirrorDims, arg2::AbstractDimensions) = arg2
-@inline equaldims(arg1::MirrorDims, arg2::MirrorDims) = arg1
-=#
-
 equaldims(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(promote(arg1, arg2)...)
 function equaldims(d1::D, d2::D) where D<:AbstractDimensions
     if (d1 === d2)
@@ -109,21 +101,25 @@ Base.adjoint(d::AbstractDimensions) = d
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-1}) = inv(d) 
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-2}) = isknown(d) ? raw_inv(raw_mul(d, d)) : d
 
-#=
-#Mirror dimensions on two argument operations produces "equaldims
-Base.:*(d1::AbstractDimensions, d2::MirrorDims) = d1
-Base.:*(d1::MirrorDims, d2::AbstractDimensions) = d2
-Base.:*(d1::MirrorDims, d2::MirrorDims) = d1
-Base.:/(d1::AbstractDimensions, d2::MirrorDims) = d1
-Base.:/(d1::MirrorDims, d2::AbstractDimensions) = inv(d2)
-Base.:/(d1::MirrorDims, d2::MirrorDims) = d1
 
-#Mirror dimensions on single argument functions
+#NoDims shortcuts
+@inline equaldims(d1::AbstractDimensions, d2::NoDims) = assert_dimensionless(d1)
+@inline equaldims(d1::NoDims, a2::AbstractDimensions) = assert_dimensionless(d2)
+@inline equaldims(d1::NoDims, d2::NoDims) = d1
+
+Base.:*(d1::AbstractDimensions, d2::NoDims) = d1
+Base.:*(d1::NoDims, d2::AbstractDimensions) = d2
+Base.:*(d1::NoDims, d2::NoDims) = d1
+
+Base.:/(d1::AbstractDimensions, d2::NoDims) = d1
+Base.:/(d1::NoDims, d2::AbstractDimensions) = inv(d2)
+Base.:/(d1::NoDims, d2::NoDims) = d1
+
 for op in (:inv, :sqrt, :cbrt, :abs2, :adjoint)
-    @eval Base.$op(d::MirrorDims) = d
+    @eval Base.$op(d::NoDims) = d
 end
-Base.:^(d::MirrorDims, p::Real) = d
-=#
+Base.:^(d::NoDims, p::Real) = d
+
 
 #============================================================================================================================
 Static dimension ops
@@ -144,7 +140,7 @@ Base.cbrt(d::StaticDims{D}) where D = StaticDims{cbrt(D)}()
 Base.abs2(d::StaticDims{D}) where D = StaticDims{abs2(D)}()
 Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 
-@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = StaticDims{dimtype(d)()}()
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = StaticDims{dimvaltype(d)()}()
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{1}) = d 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{2}) = d*d 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{3}) = d*d*d
@@ -156,27 +152,23 @@ Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 =============================================================================================#
 const NON_SCALAR_ERROR = ArgumentError("Operation only allowed on scalar transforms")
 
-#Base.:+(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset + x, scale = t.scale)
-#Base.:+(x::Real, t::AffineTransform) = t + x 
-#Base.:-(t::AffineTransform, x::Real) = AffineTransform(offset = t.offset - x, scale = t.scale)
-
 function Base.:*(t1::AffineTransform, t2::AffineTransform) 
     is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
     return AffineTransform(scale = t1.scale*t2.scale, offset = 0) 
 end
-Base.:*(t::AffineTransform, x::Real) = is_scalar(t) ? AffineTransform(scale=t.scale*x, offset=0) : throw(NON_SCALAR_ERROR)
+Base.:*(t::AffineTransform{T}, x::Real) where T = is_scalar(t) ? AffineTransform{T}(scale=t.scale*x, offset=0) : throw(NON_SCALAR_ERROR)
 Base.:*(t::NoTransform, x::Real) = AffineTransform(scale=x, offset=0)
 
 function Base.:/(t1::AffineTransform, t2::AffineTransform) 
     is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
     return AffineTransform(scale = t1.scale/t2.scale, offset = 0) 
 end
-Base.:/(t::AffineTransform, x::Real) = is_scalar(t) ? AffineTransform(scale=t.scale/x, offset=0) : throw(NON_SCALAR_ERROR)
+Base.:/(t::AffineTransform{T}, x::Real) where T = is_scalar(t) ? AffineTransform{T}(scale=t.scale/x, offset=0) : throw(NON_SCALAR_ERROR)
 Base.:/(t1::NoTransform, x::Real) = AffineTransform(scale=inv(x), offset=0)
 
-function Base.:^(t::AffineTransform, p::Real) 
+function Base.:^(t::AffineTransform{T}, p::Real) where T
     is_scalar(t) || throw(NON_SCALAR_ERROR)
-    return AffineTransform(scale = t.scale^p, offset = 0) 
+    return AffineTransform{T}(scale = t.scale^p, offset = 0) 
 end
 Base.:^(t1::NoTransform, p::Real) = t1
 
@@ -189,6 +181,8 @@ Base.:*(q::QuantUnion, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)*u)
 Base.:*(u::AbstractUnitLike, q::QuantUnion) = q*u
 Base.:/(q::QuantUnion, u::AbstractUnitLike) = quantity(ustrip(q), unit(q)/u)
 Base.:/(u::AbstractUnitLike, q::QuantUnion) = quantity(inv(ustrip(q)), u/unit(q))
+Base.:*(m::AbstractArray{<:QuantUnion}, u::AbstractUnitLike) = broadcast(*, m, u)
+Base.:*(u::AbstractUnitLike, m::AbstractArray{<:QuantUnion}) = broadcast(*, m, u)
 
 function Base.:*(u1::U, u2::U) where U <: AbstractUnits
     return constructorof(U)(scalar_dimension(u1)*scalar_dimension(u2), todims(u1)*todims(u2))

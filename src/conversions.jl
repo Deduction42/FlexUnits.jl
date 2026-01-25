@@ -99,11 +99,13 @@ Moreover, only defining calculations for dimenional units also greatly simplifie
 will promote to dimensional units (such as SI). WARNING:: This also means that Affine Units will auto-convert
 this can yield potentially unintuitive results like 2°C/1°C = 1.0036476381542951
 =================================================================================================#
+Base.convert(::Type{AffineTransform{T}}, t::AffineTransform) where T = AffineTransform{T}(t.scale, t.offset)
+Base.convert(::Type{AffineTransform{T}}, t::NoTransform) where T = AffineTransform{T}(1,0)
+Base.convert(::Type{NoTransform}, t::AffineTransform) = is_identity(t) ? NoTransform() : throw(ArgumentError("Cannot convert non-identity AffineTransform to NoTrnasform"))
 
 #Converting dynamic Quantity types ====================================================
 Base.convert(::Type{Quantity{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
 Base.convert(::Type{Quantity{T,U}}, q::QuantUnion) where {T,U<:Units} = Quantity{T,U}(ustrip(q), unit(q))
-Base.convert(::Type{Quantity{T,M}}, q::QuantUnion) where {T, D<:AbstractDimensions, M<:MirrorUnion{D}} = Quantity{T,M}(T(dstrip(q)), dimension(q))
 Base.convert(::Type{Quantity{T,D}}, x::MathUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D(0))
 Base.convert(::Type{Quantity{T,U}}, x::MathUnion) where {T,U<:Units} = Quantity{T,U}(x, dimtype(U)(0))
 
@@ -118,7 +120,6 @@ end
 #Converting dynamic FlexQuant types ====================================================
 Base.convert(::Type{FlexQuant{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(dstrip(q), dimension(q))
 Base.convert(::Type{FlexQuant{T,U}}, q::QuantUnion) where {T,U<:Units} = FlexQuant{T,U}(ustrip(q), unit(q))
-Base.convert(::Type{FlexQuant{T,M}}, q::QuantUnion) where {T, D<:AbstractDimensions, M<:MirrorUnion{D}} = FlexQuant{T,M}(T(dstrip(q)), dimension(q))
 Base.convert(::Type{FlexQuant{T,D}}, x::MathUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(x, D(0))
 Base.convert(::Type{FlexQuant{T,U}}, x::MathUnion) where {T,U<:Units} = FlexQuant{T,U}(x, dimtype(U)(0))
 
@@ -138,6 +139,8 @@ Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:StaticUnits{D,T}} = (
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = D(dimension(assert_dimension(u)))
 Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)
 Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D, dimval(d))
+Base.convert(::Type{D}, d::AbstractDimensions) where {D<:StaticDims} = equaldims(D(), d)
+Base.convert(::Type{D}, d::NoDims) where {D<:StaticDims} = assert_dimensionless(D())
 
 # Converting transform types ===============================================
 Base.convert(::Type{T}, t::NoTransform) where T <: AbstractUnitTransform = T()
@@ -149,16 +152,22 @@ Base.convert(::Type{U}, q::QuantUnion) where U<:Units = Units(q)
 Base.convert(::Type{T}, q::QuantUnion) where {T<:MathUnion} = convert(T, dimensionless(q))
 
 # Promotion rules ======================================================
+Base.promote_rule(::Type{AffineTransform{T1}}, ::Type{AffineTransform{T2}}) where{T1,T2} = AffineTransform{promote_type{T1,T2}}
+Base.promote_rule(::Type{AffineTransform{T}}, ::Type{NoTransform}) where{T} = AffineTransform{T}
+
 function Base.promote_rule(::Type{<:Dimensions{P1}}, ::Type{<:Dimensions{P2}}) where {P1, P2}
     return Dimensions{promote_type(P1,P2)}
 end
 Base.promote_rule(::Type{T1}, ::Type{T2}) where {T1<:NoTransform, T2<:AbstractUnitTransform} = T2
 
 #Conflicting or uncertain static dimensions get promoted to dynamic version
-Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimtype(D2))
-Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimtype(D1), dimtype(D2))
+Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimvaltype(D2))
+Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimvaltype(D1), dimvaltype(D2))
 Base.promote_rule(::Type{U1}, ::Type{U2}) where {T1, d1, U1<:StaticUnits{d1,T1}, D2, T2, U2<:Units{D2,T2}} = Units{promote_type(typeof(d1),D2), promote_type(T1,T2)}
 Base.promote_rule(::Type{U1}, ::Type{U2}) where {T1, d1, U1<:StaticUnits{d1,T1}, d2, T2, U2<:StaticUnits{d2,T2}} = Units{promote_type(typeof(d1),typeof(d2)), promote_type(T1,T2)}
+Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:AbstractDimensions = D
+Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:StaticDims = D
+
 
 #Unit promotion
 function Base.promote_rule(::Type{D1}, ::Type{Units{D2,T2}}) where {D1<:AbstractDimensions, D2<:AbstractDimensions, T2<:AbstractUnitTransform}
@@ -209,8 +218,7 @@ function Base.promote_rule(::Type{Q}, ::Type{T2}) where {T2<:AbstractArray, T1<:
     return quant_type(T){T, nodim_promote(U)}
 end
 
-nodim_promote(::Type{U}) where U<:AbstractUnits = dimtype(U)
-nodim_promote(::Type{U}) where U<:StaticUnits = promote_type(typeof(dimension(U)), StaticDims{dimtype(U)()})
-nodim_promote(::Type{D}) where D<:StaticDims  = promote_type(D, StaticDims{dimtype(D)()})
+nodim_promote(::Type{U}) where U<:AbstractUnits = nodim_promote(dimtype(U))
+nodim_promote(::Type{D}) where D<:StaticDims = isdimensionless(D) ? D : error("Cannot promote NoDims to $(D) because it's not dimensionless")
 nodim_promote(::Type{D}) where D<:AbstractDimensions = D
 
