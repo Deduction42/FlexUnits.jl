@@ -8,17 +8,14 @@ Changelog:
 5.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
 
 Current Tasks:
-1.  Finish basic LinmapQuant functionality for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
-    -   Attempt to NOT subtype any Unit/Dimension mapping as AbstractArray
-        -   Reduces potential for ambiguity, especially for multiplying with AbstractArray{<:AbstractDimensions} (you'll get the right dispatch)
-        -   They might just want to be under "AbstractUnitMapping"
-        -   LinmapQuant VectorQuant and QuantArayDims are the only things that need to be an AbstractMatrix
-    -   Case out "dimension(x::SArray)" to not use QuantArrayDims
-        -   Simply call dimension.(x) because it doesn't allocate and the result is an SMatrix that has built-in shortcuts 
-        -   Use a union const MatrixOfDims{D} = Union{QuantArrayDims{D,2}, SMatrix{N,M,D}} for multiplication
+1.  Finish basic LinmapQuant/VectorQuant for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
+    -   For double-argument functions, use an underscore like _add, _sub, _mul, _ldiv, _rdiv, _pow
+        -   This allows you to use something like _add(x::AbstractMatrix, y::LinmapQuant) without triggering external ambiguity 
+        -   Overload the Base.(...) methods on specific matrix types, this makes it easier for users to patch their own matrices
     -   Create a VectorQuant with separated dimensions and values 
         -   Matrix multiplication is O(N) for units not O(M*N)
         -   Fewer allocations if we just keep dimensions and values separate
+        -   adjoint(v::VectorQuant) produces a LinmapQuant with u_out = SVector{1}(D()) u_in = inv.(dimension(v))
     -   Operations with unit-factorized matrices will produce unit-factorized matrices
         -   Multiplication with QuantMatrixDims(m) produces output units and is O(N^2) already
         -   This is faster than raw multiplication
@@ -39,7 +36,7 @@ Current Tasks:
     -   Make sure operations convert to LinmapQuant and output that type
 
     Notes on above:      
-    -   Matrix multiplication is ONLY valid with LinmapQuant and will ALWAYS produce a LinmapQuant
+    -   Matrix multiplication is ONLY valid with LinmapQuant and will ALWAYS produce a LinmapQuant/VectorQuant
         -   Multiplication should "separate" dimensions and values 
             - Use dimension(a::AbstractMatrix) = QuantMatrixDims(a)
             - This prevents allocations and should even work on non-quantity arrays
