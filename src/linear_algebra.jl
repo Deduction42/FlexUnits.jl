@@ -12,20 +12,17 @@ include("linalg_types.jl")
 
 const ArrayOfDims{D} = Union{QuantArrayDims{D}, SMatrix{N,M,D} where {N,M}} where D<:AbstractDimensions
 
-#Dot products of dimensions
-LinearAlgebra.dot(d1::AbstractDimensions, d2::AbstractDimensions) = d1*d2
-dotinv(d1::AbstractDimensions, d2::AbstractDimensions) = d1/d2
-function dotinv(d1::AbstractVector, d2::AbstractVector)
-    length(d1) == length(d2) || throw(DimensionMismatch("Inputs had different lengths $((length(d1), length(d2)))"))
-    return sum(dotinv, zip(d1, d2))
-end
+#======================================================================================================================
+Operators on dimensions objects
+======================================================================================================================#
 
-
-#DimsMap only needs to check the first row and column for equality
+#AbstractDimsMap only needs to check the first row and column for equality
 function Base.:(==)(d1::AbstractDimsMap, d2::AbstractDimsMap)
-    equal_element(ii) = d1[begin-1+ii] == d2[begin-1+ii]
+    equal_element(ind) = d1[begin-1+ind[1], begin-1+ind[2]] == d2[begin-1+ind[1], begin-1+ind[2]]
+
     size(d1) == size(d2) || return false
-    return all(equal_element, 1:size(d1,1)) && all(equal_element, 2:size(d1, 2))
+    all(equal_element, 1:size(d1,1) .=> 1) || return false
+    return all(equal_element, 1 .=> 1:size(d1,2))
 end
 
 #For matrices, all elements must be checked for equality
@@ -58,23 +55,96 @@ Base.:*(d::AbstractDimensions, dm::RepDimsMap{<:AbstractDimensions}) = canonical
 Base.:*(dm::SymDimsMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical!(SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
 Base.:*(d::AbstractDimensions, dm::SymDimsMap{<:AbstractDimensions}) = canonical!(SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
 
-
+#Division
 Base.inv(d::ArrayOfDims) = inv(DimsMap(d))
-
 Base.:/(d1::Union{AbstractDimsMap,ArrayOfDims}, d2::Union{AbstractDimsMap,ArrayOfDims}) = d1*inv(d2)
 Base.:\(d1::Union{AbstractDimsMap,ArrayOfDims}, d2::Union{AbstractDimsMap,ArrayOfDims}) = inv(d1)*d2
 
+#Matrix powers 
+Base.:^(d::Union{AbstractDimsMap,ArrayOfDims}, p::Real) = RepDimsMap(d)^p 
+Base.:^(d::RepDimsMap, p::Real) = RepDimsMap(u_scale = d.u_scale^p, u_in=d.u_in)
+
+#Matrix exponentials and other functions that merely assert idempotence
+assert_idempotent(d::RepDimsMap) = isone(d.u_scale) ? d : throw(ArgumentError("Cannot exponentiate dimension mapping unless it is idempotent"))
+assert_idempotent(d::Union{AbstractDimsMap,ArrayOfDims}) = assert_idempotent(RepDimsMap(d))
+
+for op in (:exp, :log)
+    @eval Base.$op(d::Union{AbstractDimsMap,ArrayOfDims}) = assert_idempotent(d)
+end
 
 #======================================================================================================================
-Linear algebra relationships with "Matrix" 
-The outer type specializes first, so something like
-    Base.inv(q::AbstractMatrix{<:Quantity}) = inv(QuantTransform(DimTransform, q))
-Will be skipped in the case of Matrix{<:Quantity} (it will use inv(m::Matrix) in Base instead)
-Because of this, such code will have to specify all desired concrete matrix types
+Define "q" linear algebra methods that are distinct from LinearAlgebra and don't cause dispatch issues
 ======================================================================================================================#
-Base.inv(q::Matrix{<:Quantity}) = inv(LinmapQuant(DimsMap, q))
+qinv(q::AbstractMatrix) = inv(LinmapQuant(DimsMap, q))
+qadd(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) + dstrip(m2), dimension(m1) + dimension(m2))
+qsub(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) - dstrip(m2), dimension(m1) - dimension(m2))
+qmul(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) * dstrip(m2), dimension(m1) * dimension(m2))
+qdiv(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) / dstrip(m2), dimension(m1) / dimension(m2))
+qldiv(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) \ dstrip(m2), dimension(m1) \ dimension(m2))
+qpow(m::AbstractMatrix, p::Real) = LinmapQuant(dstrip(m)^p, RepDimsMap(dimension(m))^p)
+qexp(m::AbstractMatrix) = LinmapQuant(exp(dstrip(m)), exp(dimension(m)))
+qlog(m::AbstractMatrix) = LinmapQuant(log(dstrip(m)), log(dimension(m)))
+qadjoint(m::AbstractMatrix) = LinmapQuant(adjoint(dstrip(m)), adjoint(dimesnion(m)))
+qtranspose(m::AbstractMatrix) = LinmapQuant(transpose(dstrip(m)), adjoint(dimension(m)))
+
+#Overload the base methods for pure LinmapQuant methods
+Base.:+(m1::LinmapQuant, m2::LinmapQuant) = qadd(m1, m2)
+Base.:-(m1::LinmapQuant, m2::LinmapQuant) = qsub(m1, m2)
+Base.:*(m1::LinmapQuant, m2::LinmapQuant) = qmul(m1, m2)
+Base.:/(m1::LinmapQuant, m2::LinmapQuant) = qdiv(m1, m2)
+Base.:\(m1::LinmapQuant, m2::LinmapQuant) = qldiv(m1, m2)
+Base.:^(m::LinmapQuant, p::Real) = qpow(m, p)
+Base.:exp(m::LinmapQuant) = qexp(m)
+Base.:log(m::LinmapQuant) = qlog(m)
+
+#List of matrices we want to overload when using bivariate operations
+const COMB_MATRIX_TYPES = [:Matrix, :Diagonal, :Hermitian, :Symmetric, :SymTridiagonal, :Tridiagonal, 
+                            :UpperHessenberg, :SMatrix, :MMatrix, :SizedMatrix, :FieldMatrix]
+
+#List out quantity matrix types we want to explicitly overload for univariate operations
+const QUANT_MATRIX_TYPES = map(Symbol, String["Matrix{<:Quantity}", "Diagonal{<:Quantity}", "Hermitian{<:Quantity}", "Symmetric{<:Quantity}",
+                            "SymTridiagonal{<:Quantity}", "Tridiagonal{<:Quantity}", "UpperHessenberg{<:Quantity}", "SMatrix{<:Any,<:Any,<:Quantity}", 
+                            "MMatrix{<:Any,<:Any,<:Quantity}", "SizedMatrix{<:Any,<:Any,<:Quantity}", "FieldMatrix{<:Any,<:Any,<:Quantity}"])
+
+#Apply the mixed methods with various kinds of matrices
+for M in COMB_MATRIX_TYPES
+    @eval Base.:+(m1::$M, m2::LinmapQuant) = quadd(m1, m2)
+    @eval Base.:+(m1::LinmapQuant, m2::$M) = quadd(m1, m2)
+
+    @eval Base.:-(m1::$M, m2::LinmapQuant) = qsub(m1, m2)
+    @eval Base.:-(m1::LinmapQuant, m2::$M) = qsub(m1, m2)
+
+    @eval Base.:*(m1::$M, m2::LinmapQuant) = qmul(m1, m2)
+    @eval Base.:*(m1::LinmapQuant, m2::$M) = qmul(m1, m2)
+
+    @eval Base.:/(m1::$M, m2::LinmapQuant) = qdiv(m1, m2)
+    @eval Base.:/(m1::LinmapQuant, m2::$M) = qdiv(m1, m2)
+
+    @eval Base.:\(m1::$M, m2::LinmapQuant) = qldiv(m1, m2)
+    @eval Base.:\(m1::LinmapQuant, m2::$M) = qldiv(m1, m2)
+end 
+
+#Apply the quantity-specific methods on single-argument matrix functions
+for M in QUANT_MATRIX_TYPES
+    @eval Base.:^(m::$M, p::Real) = qpow(m, p)
+    @eval Base.:exp(m::$M) = qexp(m)
+    @eval Base.:log(m::$M) = qlog(m)
+    @eval Base.:transpose(m::$M) = qtranspose(m)
+    @eval Base.:adjoint(m::$M) = qadjoint(m)
+end
 
 
+
+#======================================================================================================================
+Utility functions
+======================================================================================================================#
+#Dot products of dimensions and dotinv (i.e. dot(x, inv.(y)))
+LinearAlgebra.dot(d1::AbstractDimensions, d2::AbstractDimensions) = d1*d2
+dotinv(d1::AbstractDimensions, d2::AbstractDimensions) = d1/d2
+function dotinv(d1::AbstractVector, d2::AbstractVector)
+    length(d1) == length(d2) || throw(DimensionMismatch("Inputs had different lengths $((length(d1), length(d2)))"))
+    return sum(dotinv, zip(d1, d2))
+end
 
 
 #======================================================================================================================

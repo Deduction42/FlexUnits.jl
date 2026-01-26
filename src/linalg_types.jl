@@ -64,13 +64,23 @@ Base.transpose(m::DimsMap) = adjoint(m)
 uoutput(m::DimsMap) = m.u_out
 uinput(m::DimsMap) = m.u_in
 
+function Base.firstindex(m::DimsMap, d) 
+    if d==1 
+        return firstindex(m.u_out) 
+    elseif d==2 
+        return firstindex(m.u_in)
+    end
+    return 1
+end
+
 function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
     u_out = md[:,begin]
     u_in = u_out[begin]./md[begin,:]
 
     #Check for dimensional consistency
     for jj in axes(md,2), ii in axes(md,1)
-        (u_out[ii]/md[ii,jj] == u_in[jj]) || error("Unit inconsistency around index $([ii,jj]) of original matrix, expected dimension '$(u_out[ii]*inv(u_in[jj]))', found unit '$(unit(md[ii,jj]))'")
+        md_ij = u_out[ii]/u_in[jj]
+        (md_ij == md[ii, jj]) || error("Unit inconsistency around index $([ii, jj]) of original matrix, expected dimension '$(md_ij))', found dimension '$(md[ii, jj])'")
     end
     return DimsMap(u_out=u_out, u_in=u_in)
 end
@@ -117,6 +127,7 @@ Base.getindex(m::RepDimsMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]/m.
 Base.size(m::RepDimsMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::RepDimsMap)  = RepDimsMap(u_scale=inv(m.u_scale), u_in=m.u_in)
 Base.adjoint(m::RepDimsMap) = RepDimsMap(u_scale=m.u_scale, u_in=inv.(m.u_in))
+Base.firstindex(m::RepDimsMap, d) = firstindex(m.u_in)
 uoutput(m::RepDimsMap) = map(Base.Fix1(*, m.u_in), m.u_scale)
 uinput(m::RepDimsMap) = m.u_in
 
@@ -175,6 +186,7 @@ Base.getindex(m::SymDimsMap, ii::Integer, jj::Integer) = m.u_scale/(m.u_in[ii]*m
 Base.size(m::SymDimsMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::SymDimsMap)  = SymDimsMap(u_scale=inv(m.u_scale), u_in=inv.(m.u_in))
 Base.adjoint(m::SymDimsMap) = SymDimsMap(u_scale=m.u_scale, u_in=m.u_in)
+Base.firstindex(m::SymDimsMap, d) = firstindex(m.u_in)
 uoutput(m::SymDimsMap) = map(Base.Fix1(*, m.u_uscale), m.u_in)
 uinput(m::SymDimsMap) = m.u_in
 
@@ -355,24 +367,3 @@ Special cases
 ======================================================================================================================#
 #UniformScaling with dynamic dimensions should produce unknown dimension on off-diagonals (consistent with other behaviour)
 Base.getindex(J::UniformScaling{T}, i::Integer, j::Integer) where T<:Quantity = ifelse(i==j, J.λ, zero(T))
-
-#=
-for op in (:+, :-)
-    @eval function Base.$op(m::AbstractMatrix{<:QuantUnion{<:Any, <:AbstractDimensions}}, s::UniformScaling{Quantity{<:Any, <:StaticDims}})
-        return $op(m, UniformScaling(udynamic(s[1,1])))
-    end
-
-    @eval function Base.$op(s::UniformScaling{Quantity{<:Any, <:StaticDims}}, m::AbstractMatrix{<:QuantUnion{<:Any, <:AbstractDimensions}})
-        return $op(m, UniformScaling(udynamic(s[1,1])))
-    end
-end
-=#
-
-#=
-Recently found errors where adding the following produces an error:
-
-Matrix{Quantity{<:Any, <:AbstractDimensions}} + UniformScaling{Quantity{<:Any, <:StaticDims}}
-
-If the matrix isn't uniform units, the addiiton fails, because all off-diagonals have known units if the quantity is static 
-We may want to promote the uniform scaling in this case to be dynamic, so that off-diagonals have unknown units
-=#
