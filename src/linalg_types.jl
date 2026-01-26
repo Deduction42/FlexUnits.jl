@@ -23,8 +23,9 @@ Base.IndexStyle(::Type{QuantArrayDims{D,A}}) where{D,A} = IndexStyle(A)
 Base.getindex(m::QuantArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
 Base.size(m::QuantArrayDims) = size(m.array)
 ArrayInterface.can_setindex(::Type{QuantArrayDims}) = false
-dimension(m::AbstractMatrix) = QuantArrayDims(m)
-dimension(m::SMatrix) = dimension.(m)
+dimension(m::AbstractArray) = QuantArrayDims(m)
+dimension(m::SArray) = dimension.(m)
+dstrip(m::AbstractArray) = dstrip.(m)
 
 """
 struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -56,6 +57,7 @@ This is like a unit map but focuses on dimensions, simplifying linear algebra (i
     u_out :: TO
 end
 
+Base.IndexStyle(::Type{<:DimsMap}) = IndexCartesian()
 Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]
 Base.size(m::DimsMap) = (length(m.u_out), length(m.u_in))
 Base.inv(m::DimsMap) = DimsMap(u_out=m.u_in, u_in=m.u_out)
@@ -123,6 +125,7 @@ Idempotence enables even more transformations like matrix exponentials.
     u_in :: TI
 end
 
+Base.IndexStyle(::Type{<:RepDimsMap}) = IndexCartesian()
 Base.getindex(m::RepDimsMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]/m.u_in[jj]
 Base.size(m::RepDimsMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::RepDimsMap)  = RepDimsMap(u_scale=inv(m.u_scale), u_in=m.u_in)
@@ -147,10 +150,8 @@ function RepDimsMap(md::DimsMap)
     return RepDimsMap(u_scale=u_scale, u_in=md.u_in)
 end
 
-function RepDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
-    return RepDimsMap(DimsMap(mq))
-end
-
+RepDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}}) = RepDimsMap(DimsMap(mq))
+RepDimsMap(md::RepDimsMap) = md
 DimsMap(md::RepDimsMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
 function canonical!(u::RepDimsMap)
@@ -182,6 +183,7 @@ dimensions of "x". This structure enables certain kinds of operations reserved f
     u_in :: TI
 end
 
+Base.IndexStyle(::Type{<:SymDimsMap}) = IndexCartesian()
 Base.getindex(m::SymDimsMap, ii::Integer, jj::Integer) = m.u_scale/(m.u_in[ii]*m.u_in[jj])
 Base.size(m::SymDimsMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::SymDimsMap)  = SymDimsMap(u_scale=inv(m.u_scale), u_in=inv.(m.u_in))
@@ -206,10 +208,8 @@ function SymDimsMap(md::DimsMap)
     return SymDimsMap(u_scale=u_scale, u_in=md.u_in./md.u_in[begin])
 end
 
-function SymDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
-    return SymDimsMap(DimsMap(mq))
-end
-
+SymDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}}) = SymDimsMap(DimsMap(mq))
+SymDimsMap(md::SymDimsMap) = md
 DimsMap(md::SymDimsMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
 function canonical!(u::SymDimsMap)
@@ -233,7 +233,7 @@ end
 
 A linear mapping of quantities. A special kind of matrix that is intended to be used for multiplying vectors of quantities;
 such matrices must be dimensionally consistent and can be represented by a UnitMap. These constraints lead to much faster 
-unit inference and a smaller memory footprint (M+N instead of M*N for units).
+unit inference and a smaller memory footprint (O(M+N) instead of O(M*N*N2) in the case of multiplication).
 """
 struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractDimsMap{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
@@ -247,21 +247,57 @@ function LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T
     return LinmapQuant(new_m, canonical!(new_u))
 end
 
-function LinmapQuant(::Type{U}, m::AbstractMatrix{<:Quantity}) where U <: AbstractDimsMap
+function LinmapQuant(::Type{U}, m::AbstractMatrix) where U <: AbstractDimsMap
     values = dstrip.(m)
     units  = U(dimension(m))
     return LinmapQuant(values, units)
 end
-LinmapQuant(m::AbstractMatrix{<:Quantity}) = LinmapQuant(DimsMap, m)
+LinmapQuant(m::AbstractMatrix) = LinmapQuant(DimsMap, m)
 
 ustrip(lq::LinmapQuant) = lq.values
+dstrip(lq::LinmapQuant) = lq.values
 unit(lq::LinmapQuant) = lq.dims
 dimension(lq::LinmapQuant) = lq.dims
 ubase(lq::LinmapQuant) = lq
 
+Base.IndexStyle(::Type{<:LinmapQuant}) = IndexCartesian()
 Base.getindex(q::LinmapQuant, ii::Integer, jj::Integer) = q.values[ii,jj] * q.dims[ii,jj]
 Base.size(q::LinmapQuant) = size(q.values)
 Base.inv(q::LinmapQuant) = LinmapQuant(inv(q.values), inv(q.dims))
+
+
+"""
+struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
+    values :: V
+    units :: U
+end
+
+A vector of quantities. A special kind of vector that separates dimensions from values for easier dimension manipulation when used
+with LinmapQuant
+"""
+struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
+    values :: V
+    units :: U
+end
+
+function VectorQuant(v::AbstractVector{T}, u::AbstractVector{<:AbstractUnits}) where T 
+    todims(ux::AbstractUnits, x) = ux.todims(x)
+    new_m = todims.(v, u)
+    new_u = dimension.(u)
+    return VectorQuant(new_m, new_u)
+end
+
+VectorQuant(v::AbstractVector) = VectorQuant(dstrip.(v), dimension.(v))
+
+ustrip(lq::VectorQuant) = lq.values
+dstrip(lq::VectorQuant) = lq.values
+unit(lq::VectorQuant) = lq.dims
+dimension(lq::VectorQuant) = lq.dims
+ubase(lq::VectorQuant) = lq
+
+Base.IndexStyle(::Type{<:VectorQuant{<:Any, <:Any, V}}) where {V} = IndexStyle(V)
+Base.getindex(q::VectorQuant, ii::Integer) = q.values[ii] * q.dims[ii]
+Base.size(q::VectorQuant) = size(q.values)
 
 #======================================================================================================================
 Linear Mapping Factorizations

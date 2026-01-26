@@ -75,6 +75,8 @@ end
 #======================================================================================================================
 Define "q" linear algebra methods that are distinct from LinearAlgebra and don't cause dispatch issues
 ======================================================================================================================#
+
+#Matrices
 qinv(q::AbstractMatrix) = inv(LinmapQuant(DimsMap, q))
 qadd(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) + dstrip(m2), dimension(m1) + dimension(m2))
 qsub(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) - dstrip(m2), dimension(m1) - dimension(m2))
@@ -84,8 +86,12 @@ qldiv(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) \ dstrip(
 qpow(m::AbstractMatrix, p::Real) = LinmapQuant(dstrip(m)^p, RepDimsMap(dimension(m))^p)
 qexp(m::AbstractMatrix) = LinmapQuant(exp(dstrip(m)), exp(dimension(m)))
 qlog(m::AbstractMatrix) = LinmapQuant(log(dstrip(m)), log(dimension(m)))
-qadjoint(m::AbstractMatrix) = LinmapQuant(adjoint(dstrip(m)), adjoint(dimesnion(m)))
-qtranspose(m::AbstractMatrix) = LinmapQuant(transpose(dstrip(m)), adjoint(dimension(m)))
+qadjoint(m::AbstractMatrix) = adjoint(LinmapQuant(m))
+qtranspose(m::AbstractMatrix) = transpose(LinmapQuant(m))
+
+#Factorizations
+qdiv(mq::AbstractMatrix, fq::FactorQuant) = LinmapQuant(dstrip(mq)/dstrip(fq), dimension(mq)/dimension(fq))
+qldiv(fq::FactorQuant, mq::AbstractMatrix) = LinmapQuant(dstrip(fq)\dstrip(mq), dimension(fq)\dimension(mq))
 
 #Overload the base methods for pure LinmapQuant methods
 Base.:+(m1::LinmapQuant, m2::LinmapQuant) = qadd(m1, m2)
@@ -94,22 +100,25 @@ Base.:*(m1::LinmapQuant, m2::LinmapQuant) = qmul(m1, m2)
 Base.:/(m1::LinmapQuant, m2::LinmapQuant) = qdiv(m1, m2)
 Base.:\(m1::LinmapQuant, m2::LinmapQuant) = qldiv(m1, m2)
 Base.:^(m::LinmapQuant, p::Real) = qpow(m, p)
+Base.:^(m::LinmapQuant, p::Integer) = qpow(m, p)
 Base.:exp(m::LinmapQuant) = qexp(m)
 Base.:log(m::LinmapQuant) = qlog(m)
+Base.:adjoint(m::LinmapQuant) = LinmapQuant(adjoint(m.values), adjoint(m.dims))
+Base.:transpose(m::LinmapQuant) = LinmapQuant(transpose(m.values), adjoint(m.dims))
 
 #List of matrices we want to overload when using bivariate operations
 const COMB_MATRIX_TYPES = [:Matrix, :Diagonal, :Hermitian, :Symmetric, :SymTridiagonal, :Tridiagonal, 
                             :UpperHessenberg, :SMatrix, :MMatrix, :SizedMatrix, :FieldMatrix]
 
 #List out quantity matrix types we want to explicitly overload for univariate operations
-const QUANT_MATRIX_TYPES = map(Symbol, String["Matrix{<:Quantity}", "Diagonal{<:Quantity}", "Hermitian{<:Quantity}", "Symmetric{<:Quantity}",
-                            "SymTridiagonal{<:Quantity}", "Tridiagonal{<:Quantity}", "UpperHessenberg{<:Quantity}", "SMatrix{<:Any,<:Any,<:Quantity}", 
-                            "MMatrix{<:Any,<:Any,<:Quantity}", "SizedMatrix{<:Any,<:Any,<:Quantity}", "FieldMatrix{<:Any,<:Any,<:Quantity}"])
+const QUANT_MATRIX_TYPES = [:(Matrix{<:Quantity}), :(Diagonal{<:Quantity}), :(Hermitian{<:Quantity}), :(Symmetric{<:Quantity}),
+                            :(SymTridiagonal{<:Quantity}), :(Tridiagonal{<:Quantity}), :(UpperHessenberg{<:Quantity}), :(SMatrix{<:Any,<:Any,<:Quantity}), 
+                            :(MMatrix{<:Any,<:Any,<:Quantity}), :(SizedMatrix{<:Any,<:Any,<:Quantity}), :(FieldMatrix{<:Any,<:Any,<:Quantity})]
 
 #Apply the mixed methods with various kinds of matrices
 for M in COMB_MATRIX_TYPES
-    @eval Base.:+(m1::$M, m2::LinmapQuant) = quadd(m1, m2)
-    @eval Base.:+(m1::LinmapQuant, m2::$M) = quadd(m1, m2)
+    @eval Base.:+(m1::$M, m2::LinmapQuant) = qadd(m1, m2)
+    @eval Base.:+(m1::LinmapQuant, m2::$M) = qadd(m1, m2)
 
     @eval Base.:-(m1::$M, m2::LinmapQuant) = qsub(m1, m2)
     @eval Base.:-(m1::LinmapQuant, m2::$M) = qsub(m1, m2)
@@ -127,12 +136,16 @@ end
 #Apply the quantity-specific methods on single-argument matrix functions
 for M in QUANT_MATRIX_TYPES
     @eval Base.:^(m::$M, p::Real) = qpow(m, p)
+    @eval Base.:^(m::$M, p::Integer) = qpow(m, p)
     @eval Base.:exp(m::$M) = qexp(m)
     @eval Base.:log(m::$M) = qlog(m)
-    @eval Base.:transpose(m::$M) = qtranspose(m)
     @eval Base.:adjoint(m::$M) = qadjoint(m)
+    @eval Base.:transpose(m::$M) = qtranspose(m)
 end
 
+#Add FactorQuant methods 
+Base.:/(mq::AbstractArray, fq::FactorQuant) = qdiv(mq, fq)
+Base.:\(fq::FactorQuant, mq::AbstractArray) = qldiv(fq, mq)
 
 
 #======================================================================================================================
@@ -215,7 +228,7 @@ pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
     rR = Σ.*u2.*inv.(u2)'
     qR = LinmapQuant(RepDimsMap, rR)
     @test all(qR .≈ ubase.(rR))
-    @test all((rR*rR)*x .≈ (qR*qR)*x)
+    @test all((rR^2*x) .≈ (qR*qR*x))
 
     #Nonlinear mapping
     pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))

@@ -9,18 +9,10 @@ Changelog:
 
 Current Tasks:
 1.  Finish basic LinmapQuant/VectorQuant for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
-    -   For double-argument functions, use an internal method like qm_add, qm_sub, qm_mul, qm_ldiv, qm_rdiv, qm_pow
-        -   This allows you to use something generic like the line below without messing up opertors
-                qm_mul(m1::AbstactMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1)*dstrip(m2), dimension(m1)*dimension(m2))
-        -   Overload the Base.(...) operator methods on specific matrix types, this makes it easier for users to patch their own matrices later
-        -   Overload *(m::AbstractMatrix, u::UnitMap) -> LinmapQuant(m, u)
-    -   Create a VectorQuant with separated dimensions and values 
+    -   Create a VectorQuant with separated dimensions and values and add linear algebra methods
         -   Matrix multiplication is O(N) for units not O(M*N)
         -   Fewer allocations if we just keep dimensions and values separate
         -   adjoint(v::VectorQuant) produces a LinmapQuant with u_out = SVector{1}(D()) u_in = inv.(dimension(v))
-    -   Operations with unit-factorized matrices will produce unit-factorized matrices
-        -   Multiplication with QuantMatrixDims(m) produces output units and is O(N^2) already
-        -   This is faster than raw multiplication
     -   Continue Rodas5P experiment after linear algebra is completed
     -   Factorizations are subtyped under FactorQuant{F,U}
         -   Different "getfield" methods can be dispatched based on the Factorization type F 
