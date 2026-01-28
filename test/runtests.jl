@@ -846,7 +846,28 @@ end
 end
 
 @testset "Stats and Linear Algebra" begin
+    using StaticArrays
     import Random
+    using Statistics
+
+    #Nonlinear map
+    @kwdef struct PumpInput{T} <: FieldVector{2,T}
+        current :: T 
+        voltage :: T
+    end
+
+    @kwdef struct PumpOutput{T} <: FieldVector{3,T}
+        power :: T 
+        pressure :: T
+        flow :: T 
+    end
+
+    function pumpfunc(x::PumpInput)
+        p = x.current*x.voltage*0.9   
+        return PumpOutput(power = p, pressure = sqrt(p), flow = sqrt(p))
+    end
+    pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
+
     Random.seed!(1234)
 
     #Generate a correlated test set
@@ -863,6 +884,45 @@ end
     @test sum(Q*inv.(U)) ≈ sum(X)
     @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
     @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
+
+
+    #Quick linear algebra tests 
+    u1 = SA[u"lbf*ft", u"kW", u"rpm"]
+    u2 = SA[u"kg/s", u"m^3/hr", u"kW"]
+
+    xm = SMatrix{3,3}(randn(3,3))
+    qMraw = xm.*u2./u1'
+    qM = LinmapQuant(DimsMap, qMraw)
+
+    #Matrix inversion
+    x = SVector{3}(randn(3)).*u1
+    y = qM*x
+    @test all(x .≈ inv(qM)*y)
+
+    #Matrix transpose
+    @test all(Matrix(y') .≈ Matrix(x'*qM'))
+
+    #Square matrices
+    Σ = cov(randn(20,3)*rand(3,3))
+    x = randn(3).*u2
+
+    #Symmetric matrix
+    rS = Σ.*inv.(u2).*inv.(u2)'
+    qS = LinmapQuant(SymDimsMap, rS)
+    @test all(qS .≈ ubase.(rS))
+    @test x'*(rS)*x ≈ x'*qS*x
+
+    #Repeatable matrix
+    rR = Σ.*u2.*inv.(u2)'
+    qR = LinmapQuant(RepDimsMap, rR)
+    @test all(qR .≈ ubase.(rR))
+    @test all((rR^2*x) .≈ (qR*qR*x))
+
+    #Nonlinear mapping
+    pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))
+    upumpfunc = FunctionQuant(pumpfunc, pumpunits)
+    qinput = PumpInput(current=500*u"mA", voltage=6u"V")
+    @test all(upumpfunc(qinput) .≈ pumpfunc(ustrip.(uinput(pumpunits), qinput)).*uoutput(pumpunits))
 end
 
 @testset "Additional tests of FixedRational" begin

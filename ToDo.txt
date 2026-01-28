@@ -9,25 +9,11 @@ Changelog:
 
 Current Tasks:
 1.  Finish basic LinmapQuant/VectorQuant for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
-    -   Create a VectorQuant with separated dimensions and values and add linear algebra methods
-        -   Matrix multiplication is O(N) for units not O(M*N)
-        -   Fewer allocations if we just keep dimensions and values separate
-        -   adjoint(v::VectorQuant) produces a LinmapQuant with u_out = SVector{1}(D()) u_in = inv.(dimension(v))
-    -   Continue Rodas5P experiment after linear algebra is completed
-    -   Factorizations are subtyped under FactorQuant{F,U}
-        -   Different "getfield" methods can be dispatched based on the Factorization type F 
-        -   FactorQuant is different because LinmapQuant subtypes to "Matrix", while FactorQuant doesn't subtype to anything
-        -   Use "methodswith(Factorization)" to see what methods FactorQuant will need to support at a high level
-    -   "lu" is particularly important because pivoting fails
-        -   pivoting is best interpreted as a reordering operation, not a proper multiplication, so there will be unit conflicts
-        -   pivot matrices themselves can be fixed by making the pivot matrix have "unknown" units on zeros and a dimensionless diagonal
-            -   the transpose of a pivot matrix is the same as its inverse
-            -   see the following link on now "getproperty" works on lu factorizations
-                -   https://github.com/JuliaLang/LinearAlgebra.jl/blob/b1f48a442ba5f41479d4fb6f3e931b1ac2f21059/src/lu.jl#L440
-        -   inv on an LUQuant is basically LinmapQuant(inv(ustrip(luq)), inv(unit(luq)))
-    -   This consists of building shortcuts for UnitMap types
-    -   Output should be the most specific form of unit mapping possible
-    -   Make sure operations convert to LinmapQuant and output that type
+    -   Include linear_algebra.jl into the package and run tests
+    -   Continue Rodas5P experiment
+    -   Add some factorizations with specialized getproperty methods
+    -   Build out test suite to achieve adequate coverage
+
 
     Notes on above:      
     -   Matrix multiplication is ONLY valid with LinmapQuant and will ALWAYS produce a LinmapQuant/VectorQuant

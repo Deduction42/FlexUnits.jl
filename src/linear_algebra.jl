@@ -1,5 +1,5 @@
 #Preamble (delete when finished)
-
+#=
 include("fixed_rational.jl")
 include("types.jl")
 include("utils.jl")
@@ -8,10 +8,8 @@ include("math.jl")
 include("RegistryTools.jl")
 include("UnitRegistry.jl")
 include("linalg_types.jl")
+=#
 
-
-#const MatrixOfDims{D} = Union{QuantArrayDims{D,2}, SMatrix{N,M,D} where {N,M}} where D<:AbstractDimensions
-#const VectorOfDims{D} = Union{QuantArrayDims{D,1}, SVector{N,D} where {N}} where D<:AbstractDimensions
 const MatrixOfDims{D} = AbstractMatrix{<:AbstractDimensions}
 const VectorOfDims{D} = AbstractVector{<:AbstractDimensions}
 
@@ -75,7 +73,9 @@ Base.:\(d1::AbstractDimsMap, d2::VectorOfDims) = inv(d1)*d2
 
 #Matrix powers 
 Base.:^(d::Union{AbstractDimsMap,MatrixOfDims}, p::Real) = RepDimsMap(d)^p 
+Base.:^(d::Union{AbstractDimsMap,MatrixOfDims}, p::Integer) = RepDimsMap(d)^p 
 Base.:^(d::RepDimsMap, p::Real) = RepDimsMap(u_scale = d.u_scale^p, u_in=d.u_in)
+Base.:^(d::RepDimsMap, p::Integer) = RepDimsMap(u_scale = d.u_scale^p, u_in=d.u_in)
 
 #Matrix exponentials and other functions that merely assert idempotence
 assert_idempotent(d::RepDimsMap) = isone(d.u_scale) ? d : throw(ArgumentError("Cannot exponentiate dimension mapping unless it is idempotent"))
@@ -134,14 +134,12 @@ Base.:^(m::LinmapQuant, p::Real) = qpow(m, p)
 Base.:^(m::LinmapQuant, p::Integer) = qpow(m, p)
 Base.:exp(m::LinmapQuant) = qexp(m)
 Base.:log(m::LinmapQuant) = qlog(m)
-Base.:adjoint(m::LinmapQuant) = LinmapQuant(adjoint(m.values), adjoint(m.dims))
-Base.:transpose(m::LinmapQuant) = LinmapQuant(transpose(m.values), adjoint(m.dims))
 
 #List of matrices we want to overload when using bivariate operations
-const COMB_MATRIX_TYPES = [:Matrix, :DenseMatrix, :AbstractSparseMatrix, :Diagonal, :Hermitian, :Symmetric, :SymTridiagonal, :Tridiagonal, 
-                            :UpperHessenberg, :SMatrix, :MMatrix, :SizedMatrix, :FieldMatrix, :Adjoint, :Transpose]
+const COMB_MATRIX_TYPES = [Matrix, DenseMatrix, AbstractSparseMatrixCSC, Diagonal, Hermitian, Symmetric, SymTridiagonal, Tridiagonal, 
+                            UpperHessenberg, SMatrix, MMatrix, SizedMatrix, FieldMatrix]
 
-const COMB_VECTOR_TYPES = [:Vector, :DenseVector, :AbstractSparseVector, :SVector, :SizedVector, :FieldVector]                       
+const COMB_VECTOR_TYPES = [Vector, DenseVector, AbstractCompressedVector, SVector, SizedVector, FieldVector]                       
 
 #List out quantity matrix types we want to explicitly overload for univariate operations
 const QUANT_MATRIX_TYPES = [:(Matrix{<:Quantity}), :(Diagonal{<:Quantity}), :(Hermitian{<:Quantity}), :(Symmetric{<:Quantity}),
@@ -149,24 +147,26 @@ const QUANT_MATRIX_TYPES = [:(Matrix{<:Quantity}), :(Diagonal{<:Quantity}), :(He
                             :(MMatrix{<:Any,<:Any,<:Quantity}), :(SizedMatrix{<:Any,<:Any,<:Quantity}), :(FieldMatrix{<:Any,<:Any,<:Quantity})]
 
 #Apply the mixed methods with various kinds of matrices
-for M in COMB_MATRIX_TYPES
-    @eval Base.:+(m1::$M, m2::LinmapQuant) = qadd(m1, m2)
-    @eval Base.:+(m1::LinmapQuant, m2::$M) = qadd(m1, m2)
-    @eval Base.:-(m1::$M, m2::LinmapQuant) = qsub(m1, m2)
-    @eval Base.:-(m1::LinmapQuant, m2::$M) = qsub(m1, m2)
+for M0 in COMB_MATRIX_TYPES
+    for M in [M0, Adjoint{<:Any, <:M0}, Transpose{<:Any, <:M0}] #Disambiguate Transpose and Adjoint
+        @eval Base.:+(m1::$M, m2::LinmapQuant) = qadd(m1, m2)
+        @eval Base.:+(m1::LinmapQuant, m2::$M) = qadd(m1, m2)
+        @eval Base.:-(m1::$M, m2::LinmapQuant) = qsub(m1, m2)
+        @eval Base.:-(m1::LinmapQuant, m2::$M) = qsub(m1, m2)
 
-    @eval Base.:*(m1::$M, m2::LinmapQuant) = qmul(m1, m2)
-    @eval Base.:*(m1::LinmapQuant, m2::$M) = qmul(m1, m2)
-    @eval Base.:*(m::$M, v::VectorQuant) = qmul(m, v)
-    @eval Base.:*(vt::Adjoint{<:Any, <:VectorQuant}, m::$M) = qmul(vt, m)
+        @eval Base.:*(m1::$M, m2::LinmapQuant) = qmul(m1, m2)
+        @eval Base.:*(m1::LinmapQuant, m2::$M) = qmul(m1, m2)
+        @eval Base.:*(m::$M, v::VectorQuant) = qmul(m, v)
+        @eval Base.:*(vt::Adjoint{<:Any, <:VectorQuant}, m::$M) = qmul(vt, m)
 
-    @eval Base.:/(m1::$M, m2::LinmapQuant) = qdiv(m1, m2)
-    @eval Base.:/(m1::LinmapQuant, m2::$M) = qdiv(m1, m2)
-    @eval Base.:/(vt::Adjoint{<:Any, <:VectorQuant}, m::$M) = qdiv(vt, m)
+        @eval Base.:/(m1::$M, m2::LinmapQuant) = qdiv(m1, m2)
+        @eval Base.:/(m1::LinmapQuant, m2::$M) = qdiv(m1, m2)
+        @eval Base.:/(vt::Adjoint{<:Any, <:VectorQuant}, m::$M) = qdiv(vt, m)
 
-    @eval Base.:\(m1::$M, m2::LinmapQuant) = qldiv(m1, m2)
-    @eval Base.:\(m1::LinmapQuant, m2::$M) = qldiv(m1, m2)
-    @eval Base.:\(m::$M, v::VectorQuant) = qldiv(m, v)
+        @eval Base.:\(m1::$M, m2::LinmapQuant) = qldiv(m1, m2)
+        @eval Base.:\(m1::LinmapQuant, m2::$M) = qldiv(m1, m2)
+        @eval Base.:\(m::$M, v::VectorQuant) = qldiv(m, v)
+    end
 end 
 
 #Apply mixed methods with various kinds of vectors
@@ -182,6 +182,7 @@ for V in COMB_VECTOR_TYPES
     @eval Base.:/(v::Adjoint{<:Any, <:$V}, m::LinmapQuant) = qdiv(v, m)
     @eval Base.:\(m::LinmapQuant, v::$V) = qldiv(m, v)
 end
+Base.:\(m::Diagonal{T, SVector{N,T}}, v::FlexUnits.VectorQuant) where {N,T} = qldiv(m, v) #Random ambiguity
 
 #Apply the quantity-specific methods on single-argument matrix functions
 for M in QUANT_MATRIX_TYPES
@@ -189,8 +190,6 @@ for M in QUANT_MATRIX_TYPES
     @eval Base.:^(m::$M, p::Integer) = qpow(m, p)
     @eval Base.:exp(m::$M) = qexp(m)
     @eval Base.:log(m::$M) = qlog(m)
-    @eval Base.:adjoint(m::$M) = qadjoint(m)
-    @eval Base.:transpose(m::$M) = qtranspose(m)
 end
 
 #Add FactorQuant methods 
@@ -216,80 +215,3 @@ function dotinv1(d1::AbstractVector, d2::AbstractVector)
     return sum(dotinv1(v1,v2) for (v1,v2) in zip(d1, d2))
 end
 
-#======================================================================================================================
-Shortcut multiplication strategies
-*(U::DimTransform, M::AbstractMatrix) = U.u_out * (U.u_in'*M)
-*(M::AbstractMatrix, U::DimTransform) = (M*U.u_out) * U.u_in'
-*(U1::DimTransform, U2::DimTransform) = U1.u_out.*dot(U1.u_in, U2.u_out).*U2.u_in'
-      = DimTransform(u_out=U1.u_out.*dot(U1.u_in, U2.u_out), u_in=U2.u_in) 
-*(U1::ScaleDimTransform, U2::ScaleDimTransform) = DimTransform(u_scale=U1.u_scale*U2.u_scale, u_out=U1.u_out) iff U1.u_out == U2.u_out
-======================================================================================================================#
-using Test
-import .UnitRegistry.@u_str
-import .UnitRegistry.@ud_str
-
-using StaticArrays
-import Random
-using Statistics
-
-#Nonlinear map
-@kwdef struct PumpInput{T} <: FieldVector{2,T}
-    current :: T 
-    voltage :: T
-end
-
-@kwdef struct PumpOutput{T} <: FieldVector{3,T}
-    power :: T 
-    pressure :: T
-    flow :: T 
-end
-
-function pumpfunc(x::PumpInput)
-    p = x.current*x.voltage*0.9   
-    return PumpOutput(power = p, pressure = sqrt(p), flow = sqrt(p))
-end
-pumpfunc(x::AbstractVector) = pumpfunc(PumpInput(x))
-
-
-@testset "Linear Mapping Basics" begin
-    Random.seed!(1234)
-
-    #Quck tests 
-    u1 = SA[u"lbf*ft", u"kW", u"rpm"]
-    u2 = SA[u"kg/s", u"m^3/hr", u"kW"]
-
-    xm = SMatrix{3,3}(randn(3,3))
-    qMraw = xm.*u2./u1'
-    qM = LinmapQuant(DimsMap, qMraw)
-
-    #Matrix inversion
-    x = SVector{3}(randn(3)).*u1
-    y = qM*x
-    @test all(x .≈ inv(qM)*y)
-
-    #Matrix transpose
-    @test all(Matrix(y') .≈ Matrix(x'*qM'))
-
-    #Square matrices
-    Σ = cov(randn(20,3)*rand(3,3))
-    x = randn(3).*u2
-
-    #Symmetric matrix
-    rS = Σ.*inv.(u2).*inv.(u2)'
-    qS = LinmapQuant(SymDimsMap, rS)
-    @test all(qS .≈ ubase.(rS))
-    @test x'*(rS)*x ≈ x'*qS*x
-
-    #Repeatable matrix
-    rR = Σ.*u2.*inv.(u2)'
-    qR = LinmapQuant(RepDimsMap, rR)
-    @test all(qR .≈ ubase.(rR))
-    @test all((rR^2*x) .≈ (qR*qR*x))
-
-    #Nonlinear mapping
-    pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))
-    upumpfunc = FunctionQuant(pumpfunc, pumpunits)
-    qinput = PumpInput(current=500*u"mA", voltage=6u"V")
-    @test all(upumpfunc(qinput) .≈ pumpfunc(ustrip.(uinput(pumpunits), qinput)).*uoutput(pumpunits))
-
-end

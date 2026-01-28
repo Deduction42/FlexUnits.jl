@@ -4,7 +4,8 @@ using SparseArrays
 
 import ArrayInterface
 import StaticArrays.StaticLUMatrix
-
+import SparseArrays.AbstractSparseMatrixCSC
+import SparseArrays.AbstractCompressedVector
 
 abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractUnitMap{D} end
 Base.IndexStyle(::Type{AbstractDimsMap}) = IndexCartesian()
@@ -103,7 +104,7 @@ function canonical!(u::DimsMap)
     
     unew = if ArrayInterface.can_setindex(u.u_in) && ArrayInterface.can_setindex(u.u_out)
         u.u_in  .= u.u_in ./ u0
-        u.u_out .= u.uout ./ u0
+        u.u_out .= u.u_out ./ u0
         u
     else
         DimsMap(
