@@ -1,11 +1,19 @@
 using LinearAlgebra
 using StaticArrays
+using SparseArrays
 
 import ArrayInterface
 import StaticArrays.StaticLUMatrix
 
 
 abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractUnitMap{D} end
+Base.IndexStyle(::Type{AbstractDimsMap}) = IndexCartesian()
+Base.getindex(m::AbstractDimsMap, ind::CartesianIndex{2}) = m[ind[1],ind[2]]
+Base.getindex(m::AbstractDimsMap, ind::Integer) = m[CartesianIndices(m)[ind]]
+Base.CartesianIndices(m::AbstractDimsMap) = CartesianIndices(axes(m))
+Base.length(m::AbstractDimsMap) = prod(size(m))
+Base.collect(m::AbstractDimsMap) = uoutput(m).*inv.(uinput(m)')
+#Base.iterate(m::AbstractDimsMap, i=1) = (@inline; (i - 1)%UInt < length(m)%UInt ? (m[i], i + 1) : nothing)
 
 """
     ArrayDims{D<:AbstractDimensions, A<:AbstractArray} <: AbstractArray{D}
@@ -22,6 +30,7 @@ end
 Base.IndexStyle(::Type{QuantArrayDims{D,A}}) where{D,A} = IndexStyle(A)
 Base.getindex(m::QuantArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
 Base.size(m::QuantArrayDims) = size(m.array)
+Base.axes(m::QuantArrayDims) = axes(m.array)
 ArrayInterface.can_setindex(::Type{QuantArrayDims}) = false
 dimension(m::AbstractArray) = QuantArrayDims(m)
 dimension(m::SArray) = dimension.(m)
@@ -56,12 +65,11 @@ This is like a unit map but focuses on dimensions, simplifying linear algebra (i
     u_in  :: TI
     u_out :: TO
 end
-
-Base.IndexStyle(::Type{<:DimsMap}) = IndexCartesian()
+Base.axes(m::DimsMap) = (axes(m.u_out)[1], axes(m.u_in)[1])
 Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]
 Base.size(m::DimsMap) = (length(m.u_out), length(m.u_in))
 Base.inv(m::DimsMap) = DimsMap(u_out=m.u_in, u_in=m.u_out)
-Base.adjoint(m::DimsMap) = DimsMap(u_out=inv.(m.u_in), u_in=inv.(m.u_out))
+Base.adjoint(m::DimsMap) = DimsMap(u_out=inv.(m.u_in).*m.u_out[begin], u_in=inv.(m.u_out).*m.u_out[begin])
 Base.transpose(m::DimsMap) = adjoint(m)
 uoutput(m::DimsMap) = m.u_out
 uinput(m::DimsMap) = m.u_in
@@ -90,17 +98,17 @@ end
 DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
 
 function canonical!(u::DimsMap)
-    ui1 = u.u_in[begin]
-    unew = if isdimensionless(ui1)
-        u
-    elseif ArrayInterface.can_setindex(u.u_in) && ArrayInterface.can_setindex(u.u_out)
-        u.u_in  .= u.u_in ./ ui1
-        u.u_out .= u.uout ./ ui1
+    u0 = u.u_in[begin]
+    isdimensionless(u0) && return u
+    
+    unew = if ArrayInterface.can_setindex(u.u_in) && ArrayInterface.can_setindex(u.u_out)
+        u.u_in  .= u.u_in ./ u0
+        u.u_out .= u.uout ./ u0
         u
     else
         DimsMap(
-            u_in = u.u_in./ui1, 
-            u_out = u.u_out./ui1
+            u_in = u.u_in./u0, 
+            u_out = u.u_out./u0
         )
     end
     return unew
@@ -125,13 +133,14 @@ Idempotence enables even more transformations like matrix exponentials.
     u_in :: TI
 end
 
-Base.IndexStyle(::Type{<:RepDimsMap}) = IndexCartesian()
+Base.axes(m::RepDimsMap) = (axes(m.u_in)[1], axes(m.u_in)[1])
 Base.getindex(m::RepDimsMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]/m.u_in[jj]
 Base.size(m::RepDimsMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::RepDimsMap)  = RepDimsMap(u_scale=inv(m.u_scale), u_in=m.u_in)
 Base.adjoint(m::RepDimsMap) = RepDimsMap(u_scale=m.u_scale, u_in=inv.(m.u_in))
+Base.transpose(m::RepDimsMap) = adjoint(m)
 Base.firstindex(m::RepDimsMap, d) = firstindex(m.u_in)
-uoutput(m::RepDimsMap) = map(Base.Fix1(*, m.u_in), m.u_scale)
+uoutput(m::RepDimsMap) = map(Base.Fix1(*, m.u_scale), m.u_in)
 uinput(m::RepDimsMap) = m.u_in
 
 function RepDimsMap(md::DimsMap)
@@ -155,14 +164,14 @@ RepDimsMap(md::RepDimsMap) = md
 DimsMap(md::RepDimsMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
 function canonical!(u::RepDimsMap)
-    ui1 = u.u_in[begin]
-    u_in = if isdimensionless(ui1)
-        u.u_in
-    elseif ArrayInterface.can_setindex(u.u_in)
-        u.u_in .= u.u_in ./ ui1
+    u0 = u.u_in[begin]
+    isdimensionless(u0) && return u
+
+    u_in = if ArrayInterface.can_setindex(u.u_in)
+        u.u_in .= u.u_in ./ u0
         u.u_in
     else
-        u.in./ui1
+        u.in./u0
     end
     return RepDimsMap(u_in = u_in, u_scale = u.u_scale)
 end
@@ -183,13 +192,14 @@ dimensions of "x". This structure enables certain kinds of operations reserved f
     u_in :: TI
 end
 
-Base.IndexStyle(::Type{<:SymDimsMap}) = IndexCartesian()
+Base.axes(m::SymDimsMap) = (axes(m.u_in)[1], axes(m.u_in)[1])
 Base.getindex(m::SymDimsMap, ii::Integer, jj::Integer) = m.u_scale/(m.u_in[ii]*m.u_in[jj])
 Base.size(m::SymDimsMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::SymDimsMap)  = SymDimsMap(u_scale=inv(m.u_scale), u_in=inv.(m.u_in))
 Base.adjoint(m::SymDimsMap) = SymDimsMap(u_scale=m.u_scale, u_in=m.u_in)
+Base.transpose(m::SymDimsMap) = adjoint(m)
 Base.firstindex(m::SymDimsMap, d) = firstindex(m.u_in)
-uoutput(m::SymDimsMap) = map(Base.Fix1(*, m.u_uscale), m.u_in)
+uoutput(m::SymDimsMap) = map(u->inv(u)*m.u_scale, m.u_in)
 uinput(m::SymDimsMap) = m.u_in
 
 function SymDimsMap(md::DimsMap)
@@ -213,16 +223,16 @@ SymDimsMap(md::SymDimsMap) = md
 DimsMap(md::SymDimsMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
 function canonical!(u::SymDimsMap)
-    ui1  = u.u_in[begin]
-    u_in = if isdimensionless(ui1)
-        u.u_in
-    elseif ArrayInterface.can_setindex(u.u_in)
-        u.u_in .= u.u_in ./ ui1
+    u0 = u.u_in[begin]
+    isdimensionless(u0) && return u
+
+    u_in = if ArrayInterface.can_setindex(u.u_in)
+        u.u_in .= u.u_in ./ u0
         u.u_in
     else
-        u.in./ui1
+        u.in./u0
     end
-    return SymDimsMap(u_in = u_in, u_scale = u.u_scale/ui1^2)
+    return SymDimsMap(u_in = u_in, u_scale = u.u_scale/u0^2)
 end
 
 """
@@ -252,7 +262,9 @@ function LinmapQuant(::Type{U}, m::AbstractMatrix) where U <: AbstractDimsMap
     units  = U(dimension(m))
     return LinmapQuant(values, units)
 end
+
 LinmapQuant(m::AbstractMatrix) = LinmapQuant(DimsMap, m)
+LinmapQuant(m::LinmapQuant) = m
 
 ustrip(lq::LinmapQuant) = lq.values
 dstrip(lq::LinmapQuant) = lq.values
@@ -264,6 +276,9 @@ Base.IndexStyle(::Type{<:LinmapQuant}) = IndexCartesian()
 Base.getindex(q::LinmapQuant, ii::Integer, jj::Integer) = q.values[ii,jj] * q.dims[ii,jj]
 Base.size(q::LinmapQuant) = size(q.values)
 Base.inv(q::LinmapQuant) = LinmapQuant(inv(q.values), inv(q.dims))
+Base.transpose(q::LinmapQuant) = LinmapQuant(transpose(q.values), transpose(q.dims))
+Base.adjoint(q::LinmapQuant) = LinmapQuant(adjoint(q.values), adjoint(q.dims))
+
 
 
 """
@@ -277,7 +292,7 @@ with LinmapQuant
 """
 struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
     values :: V
-    units :: U
+    dims :: U
 end
 
 function VectorQuant(v::AbstractVector{T}, u::AbstractVector{<:AbstractUnits}) where T 
@@ -288,6 +303,7 @@ function VectorQuant(v::AbstractVector{T}, u::AbstractVector{<:AbstractUnits}) w
 end
 
 VectorQuant(v::AbstractVector) = VectorQuant(dstrip.(v), dimension.(v))
+VectorQuant(v::VectorQuant) = v
 
 ustrip(lq::VectorQuant) = lq.values
 dstrip(lq::VectorQuant) = lq.values

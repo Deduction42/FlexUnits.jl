@@ -9,6 +9,7 @@ projects = ["docs"]
 [deps]
 ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [weakdeps]
@@ -20,9 +21,10 @@ FlexUnitfulExt = "Unitful"
 ForwardDiffExt = "ForwardDiff"
 
 [compat]
-ForwardDiff = "1.3"
 ArrayInterface = "7.22.0"
+ForwardDiff = "1.3"
 LinearAlgebra = "1.10.0"
+SparseArrays = "1.12.0"
 StaticArrays = "1.9.16"
 Test = "1.10"
 Unitful = "1.27.0"
