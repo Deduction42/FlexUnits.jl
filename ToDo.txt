@@ -10,17 +10,20 @@ Changelog:
 Current Tasks:
 1.  Finish basic LinmapQuant/VectorQuant for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
     -   Include linear_algebra.jl into the package and run tests
+    -   Optimize Transpose and Adjoint methods
+        -   Make sure any ambiguities get resolved (shouldn't be too many if using AdjointUmap)
     -   Continue Rodas5P experiment
     -   Add some factorizations with specialized getproperty methods
-    -   Optimize Transpose and Adjoint methods
     -   Build out test suite to achieve adequate coverage
 
-    Notes on above:
+    Notes on Optimize Transpose and Ajoint Methods
     -   dotinv1/dotinv2 should be abstracted out as "firstmul"
         -   These methods in turn call "strictzip" which checks the inputs and output lengths
         -   "firstmul" iterates over the first row/column result and divides by the first element of uoutput
         -   can be generic if "getindex" and "uoutput" are specialized
     -   transpose and adjoint on AbstractDimsMap should be optimized and lazy
+        -   See Julia's adjoint/transpose codebase 
+            -   https://github.com/JuliaLang/LinearAlgebra.jl/blob/master/src/adjtrans.jl
         -   Creat a custom AdjointUmap which gets created/reversed by both "transpose" and "adjoint"
             -   This prevents subtyping to AbstractMatrix which could cause problems in the future
             -   Remove the "eager" transpose/adjoint methods (except for SymDimsMap, because that's a no-op)
