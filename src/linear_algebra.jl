@@ -86,9 +86,8 @@ for op in (:exp, :log)
 end
 
 #======================================================================================================================
-Define "q" linear algebra methods that are distinct from LinearAlgebra and don't cause dispatch issues
+Define "q" linear algebra methods that are distinct from LinearAlgebra and don't cause dispatch/ambiguitiy issues
 ======================================================================================================================#
-
 #Matrices
 qinv(q::AbstractMatrix) = inv(LinmapQuant(DimsMap, q))
 qadd(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) + dstrip(m2), dimension(m1) + dimension(m2))
@@ -135,6 +134,11 @@ Base.:^(m::LinmapQuant, p::Integer) = qpow(m, p)
 Base.:exp(m::LinmapQuant) = qexp(m)
 Base.:log(m::LinmapQuant) = qlog(m)
 
+
+#======================================================================================================================
+Specify Base methods combingin AbstractMatrix/AbstractVector subtypes with LinmapQuant and VectorQuant
+======================================================================================================================#
+
 #List of matrices we want to overload when using bivariate operations
 const COMB_MATRIX_TYPES = [Matrix, DenseMatrix, AbstractSparseMatrixCSC, Diagonal, Hermitian, Symmetric, SymTridiagonal, Tridiagonal, 
                             UpperHessenberg, SMatrix, MMatrix, SizedMatrix, FieldMatrix]
@@ -147,8 +151,8 @@ const QUANT_MATRIX_TYPES = [:(Matrix{<:Quantity}), :(Diagonal{<:Quantity}), :(He
                             :(MMatrix{<:Any,<:Any,<:Quantity}), :(SizedMatrix{<:Any,<:Any,<:Quantity}), :(FieldMatrix{<:Any,<:Any,<:Quantity})]
 
 #Apply the mixed methods with various kinds of matrices
-for M0 in COMB_MATRIX_TYPES
-    for M in [M0, Adjoint{<:Any, <:M0}, Transpose{<:Any, <:M0}] #Disambiguate Transpose and Adjoint
+for MU in COMB_MATRIX_TYPES
+    for M in [MU, Adjoint{<:Any, <:MU}, Transpose{<:Any, <:MU}] #Disambiguate Transpose and Adjoint
         @eval Base.:+(m1::$M, m2::LinmapQuant) = qadd(m1, m2)
         @eval Base.:+(m1::LinmapQuant, m2::$M) = qadd(m1, m2)
         @eval Base.:-(m1::$M, m2::LinmapQuant) = qsub(m1, m2)
@@ -182,7 +186,6 @@ for V in COMB_VECTOR_TYPES
     @eval Base.:/(v::Adjoint{<:Any, <:$V}, m::LinmapQuant) = qdiv(v, m)
     @eval Base.:\(m::LinmapQuant, v::$V) = qldiv(m, v)
 end
-Base.:\(m::Diagonal{T, SVector{N,T}}, v::FlexUnits.VectorQuant) where {N,T} = qldiv(m, v) #Random ambiguity
 
 #Apply the quantity-specific methods on single-argument matrix functions
 for M in QUANT_MATRIX_TYPES
@@ -196,6 +199,8 @@ end
 Base.:/(mq::AbstractArray, fq::FactorQuant) = qdiv(mq, fq)
 Base.:\(fq::FactorQuant, mq::AbstractArray) = qldiv(fq, mq)
 
+#Special case ambiguities
+Base.:\(m::Diagonal{T, SVector{N,T}}, v::FlexUnits.VectorQuant) where {N,T} = qldiv(m, v)
 
 #======================================================================================================================
 Utility functions
