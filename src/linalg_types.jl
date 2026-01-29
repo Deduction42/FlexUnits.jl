@@ -7,13 +7,18 @@ import StaticArrays.StaticLUMatrix
 import SparseArrays.AbstractSparseMatrixCSC
 import SparseArrays.AbstractCompressedVector
 
+# AbstractDimsMap is similar to AbstractArray, but doesn't subtype to it; it subtypes to AbstractUnitMap which is not really an array
+# Moreover subtyping to AbstractArray produces ambiguity problems, it's easier to just redefine the API methods
 abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractUnitMap{D} end
+
+Base.eltype(::Type{<:AbstractDimsMap{D}}) where D = D
 Base.IndexStyle(::Type{AbstractDimsMap}) = IndexCartesian()
 Base.getindex(m::AbstractDimsMap, ind::CartesianIndex{2}) = m[ind[1],ind[2]]
 Base.getindex(m::AbstractDimsMap, ind::Integer) = m[CartesianIndices(m)[ind]]
 Base.CartesianIndices(m::AbstractDimsMap) = CartesianIndices(axes(m))
 Base.length(m::AbstractDimsMap) = prod(size(m))
 Base.collect(m::AbstractDimsMap) = uoutput(m).*inv.(uinput(m)')
+
 #Base.iterate(m::AbstractDimsMap, i=1) = (@inline; (i - 1)%UInt < length(m)%UInt ? (m[i], i + 1) : nothing)
 
 """

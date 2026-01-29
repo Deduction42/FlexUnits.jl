@@ -12,28 +12,21 @@ Current Tasks:
     -   Include linear_algebra.jl into the package and run tests
     -   Continue Rodas5P experiment
     -   Add some factorizations with specialized getproperty methods
+    -   Optimize Transpose and Adjoint methods
     -   Build out test suite to achieve adequate coverage
 
-
-    Notes on above:      
-    -   Matrix multiplication is ONLY valid with LinmapQuant and will ALWAYS produce a LinmapQuant/VectorQuant
-        -   Multiplication should "separate" dimensions and values 
-            - Use dimension(a::AbstractMatrix) = QuantMatrixDims(a)
-            - This prevents allocations and should even work on non-quantity arrays
-            - An inner if-statement on the multiplication can case out AbstractMatrix{<:QuantUnion} and apply dstrip
-            - Dimension multiplication is only defined for QuantMatrixDims and 
-    -   Multiplying a dense array of dimensions with a factored matrix is 2N (same as factoring, so you don't need it)
-        -   Factoring may not be possible if some dimensions are unknown, so outright multiplication is more reliable
-        -   dn = d_dense*dn = canonical!(UnitMap(u_out = d_dense*d0.u_out, u_in = d0.u_in))
-        -   dn = dn*d_dense = canonical!(UnitMap(u_out = d0.u_out, u_in = inv.( (inv.(d0.u_in)'*d_dense)' )))
-                            = canonical!(UnitMap(u_out = d0.u_out, u_in = inv.(d_dense'*inv.(d0.u_in))))
-    -   UnitMap is not unique for a LinmapQuant
-        -   Matrix multiplication between UnitMap should have a canonical form to prevent confusion on "=="
-        -   The canconical form has u_in[1] == u"" (as per the matrix constructor)
-        -   Define the function "canonical!" to convert UnitMap to this form
-            -   Will need to case out mutable and immutable versions
-            -   https://docs.sciml.ai/ArrayInterface/stable/indexing/#ArrayInterface.can_setindex
-
+    Notes on above:
+    -   dotinv1/dotinv2 should be abstracted out as "firstmul"
+        -   These methods in turn call "strictzip" which checks the inputs and output lengths
+        -   "firstmul" iterates over the first row/column result and divides by the first element of uoutput
+        -   can be generic if "getindex" and "uoutput" are specialized
+    -   transpose and adjoint on AbstractDimsMap should be optimized and lazy
+        -   Creat a custom AdjointUmap which gets created/reversed by both "transpose" and "adjoint"
+            -   This prevents subtyping to AbstractMatrix which could cause problems in the future
+            -   Remove the "eager" transpose/adjoint methods (except for SymDimsMap, because that's a no-op)
+        -   Define specific "dstrip" and "dimension" and "getindex" methods for Transpose(::LinmapQuant) and Adjoint(::LinmapQuant)
+            -   Basically dimension(m::Transpose{<:LinmapQuant}) = transpose(dimension(transpose(m)))
+        -   Define matrix-op shorcut methods for AdjointMap{DimsMap/RepDimsMap}, AdjointMap{DimsMap/RepDimsMap}
 
 2.  Add LinearAlgebra extensions for certain factorizations
     -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
