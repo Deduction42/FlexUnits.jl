@@ -45,21 +45,21 @@ Base.:-(d1::AbstractDimsMap) = d1
 Base.:-(d1::AbstractDimsMap, d2::AbstractDimsMap) = equaldims(d1, d2)
 
 #Multiplying factored dimensions with dense matrices of dimensions
-Base.:*(d1::AbstractDimsMap, d2::AbstractDimsMap) = canonical!(DimsMap(u_in = uinput(d2), u_out = uoutput(d1).*dotinv1(uinput(d1), uoutput(d2))))
-Base.:*(d1::MatrixOfDims, d2::AbstractDimsMap) = canonical!(DimsMap(u_in = uinput(d2), u_out = d1*uoutput(d2)))
-Base.:*(d1::AbstractDimsMap, d2::MatrixOfDims) = canonical!(DimsMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1)))
+Base.:*(d1::AbstractDimsMap, d2::AbstractDimsMap) = DimsMap(u_in = uinput(d2), u_out = uoutput(d1), u_scale = uscale(d1,d2))
+Base.:*(d1::MatrixOfDims, d2::AbstractDimsMap) = DimsMap(u_in = uinput(d2), u_out = d1*uoutput(d2), u_scale = uscale(d2))
+Base.:*(d1::AbstractDimsMap, d2::MatrixOfDims) = DimsMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1), u_scale = uscale(d1))
 
 #Multiplying factored dimensions with vectors of dimensions 
-Base.:*(d1::AbstractDimsMap, d2::VectorOfDims) = uoutput(d1) .* dotinv1(uinput(d1), d2)
-Base.:*(d1::Adjoint{<:AbstractDimensions, <:VectorOfDims}, d2::AbstractDimsMap) = (d2'*d1')'
+Base.:*(d1::AbstractDimsMap, d2::VectorOfDims) = uoutput(d1) .* (dotinv1(uinput(d1), d2)*uscale(d1))
+Base.:*(d1::Adjoint{<:AbstractDimensions, <:VectorOfDims}, d2::AbstractDimsMap) = ((d1*uoutput(d2))*uscale(d2)./uinput(d1))'
 
 #Multiplying specific factorizations with single dimensions
-Base.:*(dm::DimsMap{<:AbstractDimensions}, d::AbstractDimensions)    = canonical!(DimsMap(u_in = dm.u_in, u_out = dm.u_out.*d))
-Base.:*(d::AbstractDimensions, dm::DimsMap{<:AbstractDimensions})    = canonical!(DimsMap(u_in = dm.u_in, u_out = dm.u_out.*d))
-Base.:*(dm::RepDimsMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical!(RepDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
-Base.:*(d::AbstractDimensions, dm::RepDimsMap{<:AbstractDimensions}) = canonical!(RepDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
-Base.:*(dm::SymDimsMap{<:AbstractDimensions}, d::AbstractDimensions) = canonical!(SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
-Base.:*(d::AbstractDimensions, dm::SymDimsMap{<:AbstractDimensions}) = canonical!(SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d))
+Base.:*(dm::DimsMap{<:AbstractDimensions}, d::AbstractDimensions)    = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_scale = dm.u_scale*d)
+Base.:*(d::AbstractDimensions, dm::DimsMap{<:AbstractDimensions})    = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_scale = dm.u_scale*d)
+Base.:*(dm::RepDimsMap{<:AbstractDimensions}, d::AbstractDimensions) = RepDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d)
+Base.:*(d::AbstractDimensions, dm::RepDimsMap{<:AbstractDimensions}) = RepDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d)
+Base.:*(dm::SymDimsMap{<:AbstractDimensions}, d::AbstractDimensions) = SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d)
+Base.:*(d::AbstractDimensions, dm::SymDimsMap{<:AbstractDimensions}) = SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d)
 
 #Division of matrices
 Base.:/(d1::MatrixOfDims, d2::AbstractDimsMap) = d1*inv(d2)
@@ -205,6 +205,13 @@ Base.:\(m::Diagonal{T, SVector{N,T}}, v::FlexUnits.VectorQuant) where {N,T} = ql
 #======================================================================================================================
 Utility functions
 ======================================================================================================================#
+"""
+    uscale(d1::AbstractDimsMap, d2::AbstractDimsMap)
+
+Multiplies the first row of d1 with the first column of d2 in order to solve the multiplication scale
+"""
+uscale(d1::AbstractDimsMap, d2::AbstractDimsMap) = uscale(d1)*uscale(d2)*dotinv1(uinput(d1), uoutput(d2))
+
 #Dot products of dimensions and dotinv (i.e. dot(x, inv.(y)))
 LinearAlgebra.dot(d1::AbstractDimensions, d2::AbstractDimensions) = d1*d2
 dotinv2(d1::AbstractDimensions, d2::AbstractDimensions) = d1*inv(d2)
@@ -219,4 +226,3 @@ function dotinv1(d1::AbstractVector, d2::AbstractVector)
     length(d1) == length(d2) || throw(DimensionMismatch("Inputs had different lengths $((length(d1), length(d2)))"))
     return sum(dotinv1(v1,v2) for (v1,v2) in zip(d1, d2))
 end
-

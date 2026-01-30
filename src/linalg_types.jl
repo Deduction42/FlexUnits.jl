@@ -18,6 +18,30 @@ Base.getindex(m::AbstractDimsMap, ind::Integer) = m[CartesianIndices(m)[ind]]
 Base.CartesianIndices(m::AbstractDimsMap) = CartesianIndices(axes(m))
 Base.length(m::AbstractDimsMap) = prod(size(m))
 Base.collect(m::AbstractDimsMap) = uoutput(m).*inv.(uinput(m)')
+Base.axes(m::AbstractDimsMap, d::Integer) = d <= 2 ? axes(m)[d] : OneTo(1)
+
+
+
+
+"""
+    AdjointDmap{D, M<:AbstractUnitMap{D}} <: AbstractUnitMap{D}
+
+Wraps a unitmap as an adjoint/transpose (and avoids subtyping to AbstractArray)
+"""
+struct AdjointDmap{D, M<:AbstractDimsMap{D}} <: AbstractDimsMap{D}
+    parent :: M 
+end
+Base.IndexStyle(::Type{AdjointDmap{D,M}}) where {D,M} = IndexStype(M)
+Base.transpose(m::AbstractUnitMap) = AdjointDmap(m)
+Base.transpose(m::AdjointDmap) = m.parent
+Base.adjoint(m::AbstractUnitMap) = AdjointDmap(m)
+Base.adjoint(m::AdjointDmap) = m.parent 
+Base.getindex(m::AdjointDmap, ind1::Integer, ind2::Integer) = getindex(m.parent, ind2, ind1)
+Base.axes(m::AdjointDmap) = reverse(axes(m.parent))
+uoutput(m::AdjointDmap) = inv.(uinput(m.parent))*uscale(m.parent)
+uoutput(m::AdjointDmap) = inv.(uinput(m.parent))*uscale(m.parent)
+uinput(m::AdjointDmap) = inv.(uoutput(m.parent))*uscale(m.parent)
+uscale(m::AdjointDmap) = uscale(m.parent)
 
 #Base.iterate(m::AbstractDimsMap, i=1) = (@inline; (i - 1)%UInt < length(m)%UInt ? (m[i], i + 1) : nothing)
 
@@ -68,17 +92,28 @@ Used to represent a unit transformation from input dimensions 'u_in' to outpout 
 This is like a unit map but focuses on dimensions, simplifying linear algebra (it subtypes to Matrix)
 """
 @kwdef struct DimsMap{D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
+    u_scale :: D
     u_in  :: TI
     u_out :: TO
+    function DimsMap{D, TI, TO}(u_scale, u_in_raw, u_out_raw) where {D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}}
+        (u_scale, u_in)  = canonical_input(u_scale, u_in_raw)
+        (u_scale, u_out) = canonical_output(u_scale, u_out_raw)
+        return new{D, TI, TO}(u_scale, u_in, u_out)
+    end
+    function DimsMap(u_scale::D, u_in::TI, u_out::TO) where {D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}}
+        return new{D, TI, TO}(u_scale, u_in, u_out)
+    end
 end
+
 Base.axes(m::DimsMap) = (axes(m.u_out)[1], axes(m.u_in)[1])
-Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]
+Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]*m.u_scale
 Base.size(m::DimsMap) = (length(m.u_out), length(m.u_in))
-Base.inv(m::DimsMap) = DimsMap(u_out=m.u_in, u_in=m.u_out)
-Base.adjoint(m::DimsMap) = DimsMap(u_out=inv.(m.u_in).*m.u_out[begin], u_in=inv.(m.u_out).*m.u_out[begin])
-Base.transpose(m::DimsMap) = adjoint(m)
+Base.inv(m::DimsMap) = DimsMap(u_scale=m.u_scale, u_out=m.u_in, u_in=m.u_out)
+#Base.adjoint(m::DimsMap) = DimsMap(u_out=inv.(m.u_in).*m.u_out[begin], u_in=inv.(m.u_out).*m.u_out[begin])
+#Base.transpose(m::DimsMap) = adjoint(m)
 uoutput(m::DimsMap) = m.u_out
 uinput(m::DimsMap) = m.u_in
+uscale(m::DimsMap) = m.u_scale
 
 function Base.firstindex(m::DimsMap, d) 
     if d==1 
@@ -90,19 +125,21 @@ function Base.firstindex(m::DimsMap, d)
 end
 
 function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
-    u_out = md[:,begin]
-    u_in = u_out[begin]./md[begin,:]
+    u_scale = md[begin,begin]
+    u_out = md[:,begin]./u_scale
+    u_in  = u_scale./md[begin,:]
 
     #Check for dimensional consistency
     for jj in axes(md,2), ii in axes(md,1)
-        md_ij = u_out[ii]/u_in[jj]
+        md_ij = u_out[ii]/u_in[jj]*u_scale
         (md_ij == md[ii, jj]) || error("Unit inconsistency around index $([ii, jj]) of original matrix, expected dimension '$(md_ij))', found dimension '$(md[ii, jj])'")
     end
-    return DimsMap(u_out=u_out, u_in=u_in)
+    return DimsMap(u_scale=u_scale, u_out=u_out, u_in=u_in)
 end
 
 DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
 
+#=
 function canonical!(u::DimsMap)
     u0 = u.u_in[begin]
     isdimensionless(u0) && return u
@@ -119,8 +156,7 @@ function canonical!(u::DimsMap)
     end
     return unew
 end
-
-
+=#
 
 """
 struct RepDimsMap{D<:Abstractdimensions, TI<:AbstractVector{D}} <: AbstractDimsMap{D}
@@ -137,38 +173,42 @@ Idempotence enables even more transformations like matrix exponentials.
 @kwdef struct RepDimsMap{D<:AbstractDimensions, TI<:AbstractVector{D}} <: AbstractDimsMap{D}
     u_scale :: D
     u_in :: TI
+    function RepDimsMap{D, TI}(u_scale, u_in_raw) where {D<:AbstractDimensions, TI<:AbstractVector{D}}
+        (u_scale, u_in)  = canonical_rep(u_scale, u_in_raw)
+        return new{D, TI}(u_scale, u_in)
+    end
+    function DimsMap(u_scale::D, u_in::TI) where {D<:AbstractDimensions, TI<:AbstractVector{D}}
+        return new{D, TI}(u_scale, u_in)
+    end
 end
 
 Base.axes(m::RepDimsMap) = (axes(m.u_in)[1], axes(m.u_in)[1])
 Base.getindex(m::RepDimsMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]/m.u_in[jj]
 Base.size(m::RepDimsMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::RepDimsMap)  = RepDimsMap(u_scale=inv(m.u_scale), u_in=m.u_in)
-Base.adjoint(m::RepDimsMap) = RepDimsMap(u_scale=m.u_scale, u_in=inv.(m.u_in))
-Base.transpose(m::RepDimsMap) = adjoint(m)
+#Base.adjoint(m::RepDimsMap) = RepDimsMap(u_scale=m.u_scale, u_in=inv.(m.u_in))
+#Base.transpose(m::RepDimsMap) = adjoint(m)
 Base.firstindex(m::RepDimsMap, d) = firstindex(m.u_in)
-uoutput(m::RepDimsMap) = map(Base.Fix1(*, m.u_scale), m.u_in)
+uoutput(m::RepDimsMap) = m.u_in
 uinput(m::RepDimsMap) = m.u_in
+uscale(m::RepDimsMap) = m.u_scale
 
 function RepDimsMap(md::DimsMap)
     #Matrix must be square
     sz = size(md)
     sz[1] == sz[2] || throw(DimensionMismatch("Repeatable Unit Mapping must be square: dimensions are $(sz)"))
 
-    #Calculate the uniform scale
-    u_scale = md.u_out[begin]/md.u_in[begin]
+    #Ensure inputs and outputs are equal
+    md.u_in == md.u_out || error("Cannot convert to Repeatable Unit Mapping: $(md.u_out) and $(md.u_in) must be equal")
 
-    #Verify that uniform scale is consistent 
-    for (u_out, u_in) in zip(md.u_out, md.u_in)
-        u_out/u_in == u_scale || error("Cannot convert to Repeatable Unit Mapping: $(md.u_out) and $(md.u_in) must share a common factor")
-    end
-
-    return RepDimsMap(u_scale=u_scale, u_in=md.u_in)
+    return RepDimsMap(u_scale=md.u_scale, u_in=md.u_in)
 end
 
 RepDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}}) = RepDimsMap(DimsMap(mq))
 RepDimsMap(md::RepDimsMap) = md
 DimsMap(md::RepDimsMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
+#=
 function canonical!(u::RepDimsMap)
     u0 = u.u_in[begin]
     isdimensionless(u0) && return u
@@ -181,7 +221,7 @@ function canonical!(u::RepDimsMap)
     end
     return RepDimsMap(u_in = u_in, u_scale = u.u_scale)
 end
-
+=#
 
 """
 struct SymUnitMap{D<:AbstractDimensions, TI<:AbstractVector{D}} <: AbstractDimsMap{D}
@@ -196,38 +236,42 @@ dimensions of "x". This structure enables certain kinds of operations reserved f
 @kwdef struct SymDimsMap{D<:AbstractDimensions, TI<:AbstractVector{D}} <: AbstractDimsMap{D}
     u_scale :: D
     u_in :: TI
+    function SymDimsMap{D, TI}(u_scale, u_in_raw) where {D<:AbstractDimensions, TI<:AbstractVector{D}}
+        (u_scale, u_in)  = canonical_sym(u_scale, u_in_raw)
+        return new{D, TI}(u_scale, u_in)
+    end
+    function SymDimsMap(u_scale::D, u_in::TI) where {D<:AbstractDimensions, TI<:AbstractVector{D}}
+        return new{D, TI}(u_scale, u_in)
+    end
 end
 
 Base.axes(m::SymDimsMap) = (axes(m.u_in)[1], axes(m.u_in)[1])
 Base.getindex(m::SymDimsMap, ii::Integer, jj::Integer) = m.u_scale/(m.u_in[ii]*m.u_in[jj])
 Base.size(m::SymDimsMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::SymDimsMap)  = SymDimsMap(u_scale=inv(m.u_scale), u_in=inv.(m.u_in))
-Base.adjoint(m::SymDimsMap) = SymDimsMap(u_scale=m.u_scale, u_in=m.u_in)
-Base.transpose(m::SymDimsMap) = adjoint(m)
+Base.adjoint(m::SymDimsMap) = m
+Base.transpose(m::SymDimsMap) = m
 Base.firstindex(m::SymDimsMap, d) = firstindex(m.u_in)
-uoutput(m::SymDimsMap) = map(u->inv(u)*m.u_scale, m.u_in)
+uoutput(m::SymDimsMap) = map(u->inv(u), m.u_in)
 uinput(m::SymDimsMap) = m.u_in
+uscale(m::SymDimsMap) = m.u_scale
 
 function SymDimsMap(md::DimsMap)
     #Matrix must be square
     sz = size(md)
     sz[1] == sz[2] || throw(DimensionMismatch("Symmetric Unit Mapping must be square: dimensions are $(sz)"))
 
-    #Calculate the uniform scale, mapping is symmetric if u_out is proportional to the inverse of u_in
-    u_scale = md.u_out[begin]*md.u_in[begin]
+    #Check if the inverses are eaual
+    md.u_out[begin] == inv.(md.u_in[begin]) || error("Cannot convert to Symmetric Unit Mapping: $(md.u_in) and $(md.u_out) must be inverses of each other")
 
-    #Verify that the uniform scale is consistent
-    for (u_out, u_in) in zip(md.u_out, md.u_in)
-        u_out*u_in == u_scale || error("Cannot convert to Symmetric Unit Mapping: $(md.u_in) and $(md.u_out) must be similar inverses")
-    end
-
-    return SymDimsMap(u_scale=u_scale, u_in=md.u_in./md.u_in[begin])
+    return SymDimsMap(u_scale=md.u_scale, u_in=md.u_in)
 end
 
 SymDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}}) = SymDimsMap(DimsMap(mq))
 SymDimsMap(md::SymDimsMap) = md
 DimsMap(md::SymDimsMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
+#=
 function canonical!(u::SymDimsMap)
     u0 = u.u_in[begin]
     isdimensionless(u0) && return u
@@ -240,7 +284,7 @@ function canonical!(u::SymDimsMap)
     end
     return SymDimsMap(u_in = u_in, u_scale = u.u_scale/u0^2)
 end
-
+=#
 """
 struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
@@ -425,3 +469,27 @@ Special cases
 ======================================================================================================================#
 #UniformScaling with dynamic dimensions should produce unknown dimension on off-diagonals (consistent with other behaviour)
 Base.getindex(J::UniformScaling{T}, i::Integer, j::Integer) where T<:Quantity = ifelse(i==j, J.λ, zero(T))
+
+
+#======================================================================================================================
+Utility functions
+======================================================================================================================#
+function canonical_input(u_scale::D, u_in::V) where {D<:AbstractDimsnsions, V<:AbstractVector{D}}
+    u0 = u_in[begin]
+    return isdimensionless(u0) ? (u_scale, u_in) : (u_scale/u0, convert(V, u_in./u0))
+end
+
+function canonical_output(u_scale::D, u_out::V) where {D<:AbstractDimsnsions, V<:AbstractVector{D}}
+    u0 = u_out[begin]
+    return isdimensionless(u0) ? (u_scale, u_out) : (u_scale*u_0, convert(V, u_out./u0))
+end
+
+function canonical_rep(u_scale::D, u_in::V) where {D<:AbstractDimsnsions, V<:AbstractVector{D}}
+    u0 = u_in[begin]
+    return isdimensionless(u0) ? (u_scale, u_in) : (u_scale, convert(V, u_in./u0))
+end
+
+function canonical_sym(u_scale::D, u_in::V) where {D<:AbstractDimsnsions, V<:AbstractVector{D}}
+    u0 = u_in[begin]
+    return isdimensionless(u0) ? (u_scale, u_in) : (u_scale/u0^2, convert(V, u_in./u0))
+end
