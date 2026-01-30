@@ -21,8 +21,6 @@ assert_symmetric(d::MatrixOfDims)  = assert_symmetric(DimsMap(d))
 Operators on dimensions objects
 ======================================================================================================================#
 
-
-
 #For matrices, all elements must be checked for equality
 Base.:(==)(d1::AbstractDimsMap, d2::AbstractDimsMap) = ufactor(d1) == ufactor(d2) && uinput(d1) == uinput(d2) && uoutput(d1) == uoutput(d2)
 Base.:(==)(d1::MatrixOfDims, d2::AbstractDimsMap) = size(d1) == size(d2) && all(i-> d1[i[1]] == d2[i[2]], zip(CartesianIndices(d1), CartesianIndices(d2)))
@@ -139,6 +137,7 @@ Specify Base methods combingin AbstractMatrix/AbstractVector subtypes with Linma
 const COMB_MATRIX_TYPES = [Matrix, DenseMatrix, AbstractSparseMatrixCSC, Diagonal, Hermitian, Symmetric, SymTridiagonal, Tridiagonal, 
                             UpperHessenberg, SMatrix, MMatrix, SizedMatrix, FieldMatrix]
 
+#List of vectors we want to overload when using bivariate operations
 const COMB_VECTOR_TYPES = [Vector, DenseVector, AbstractCompressedVector, SVector, SizedVector, FieldVector]                       
 
 #List out quantity matrix types we want to explicitly overload for univariate operations

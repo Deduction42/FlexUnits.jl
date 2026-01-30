@@ -957,6 +957,15 @@ end
     @test (y'/m')' ≈ xraw
     @test transpose(transpose(y)) ≈ yraw
 
+    mrep = LinmapQuant(SA[1.0 0.1; 0.2 1.0], UnitMap(u_in = SA[u"kg/s", u"kW"], u_out=SA[u"kg/s", u"kW"]))
+    mraw = SMatrix{2,2}(mrep)
+
+    @test mrep^2 ≈ mraw*mraw
+    @test mrep^3 ≈ mrep*mrep*mrep
+    @test mrep^2.0 ≈ mraw*mraw
+    @test dimension(exp(mrep)) == dimension(mrep)
+    @test dstrip(exp(mrep)) ≈ exp(dstrip(mrep))
+
 end
 
 @testset "Additional tests of FixedRational" begin

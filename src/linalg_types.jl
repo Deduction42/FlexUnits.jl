@@ -114,7 +114,7 @@ requirements. Ensure these requirements are met, supply immutable arguments or c
         return new{D, TI, TO}(u_fac, u_in, u_out)
     end
     function DimsMap(u_fac::D, u_in::TI, u_out::TO) where {D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}}
-        return new{D, TI, TO}(u_fac, u_in, u_out)
+        return DimsMap{D, TI, TO}(u_fac, u_in, u_out)
     end
 end
 
@@ -149,6 +149,7 @@ function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
 end
 
 DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
+DimsMap(d::AbstractDimsMap) = d
 
 
 """
@@ -365,12 +366,12 @@ Base.getindex(J::UniformScaling{T}, i::Integer, j::Integer) where T<:Quantity = 
 #======================================================================================================================
 Utility functions
 ======================================================================================================================#
-function canonical_input(u_fac::D, u_in::V) where {D<:AbstractDimensions, V<:AbstractVector{D}}
+function canonical_input!(u_fac::D, u_in::V) where {D<:AbstractDimensions, V<:AbstractVector{D}}
     u0 = u_in[begin]
     return isdimensionless(u0) ? (u_fac, u_in) : (u_fac/u0, ufactor!(u_in, inv(u0)))
 end
 
-function canonical_output(u_fac::D, u_out::V) where {D<:AbstractDimensions, V<:AbstractVector{D}}
+function canonical_output!(u_fac::D, u_out::V) where {D<:AbstractDimensions, V<:AbstractVector{D}}
     u0 = u_out[begin]
     return isdimensionless(u0) ? (u_fac, u_out) : (u_fac*u0, ufactor!(u_out, inv(u0)))
 end
@@ -380,6 +381,6 @@ function ufactor!(u::V, u_fac::D) where {D<:AbstractDimensions, V<:AbstractVecto
         u .= u .* u_fac
         return u
     else
-        return convert(V, u.in./u0)
+        return convert(V, u .* u_fac)
     end
 end
