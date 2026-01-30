@@ -300,6 +300,7 @@ Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), todims=T())
 
 #Common functions for initializers
 Base.one(::Type{<:QuantUnion{T}}) where T = one(T) #unitless
+Base.rtoldefault(::Type{<:QuantUnion{T}}) where T = Base.rtoldefault(T)
 
 #Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:StaticDims} = quantity(one(T), D()) #One with units
 #Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:AbstractDimensions} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))

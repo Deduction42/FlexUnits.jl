@@ -21,6 +21,7 @@ using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat
 using Aqua
 using LinearAlgebra
 using Statistics
+using StaticArrays
 import Unitful
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
@@ -923,6 +924,39 @@ end
     upumpfunc = FunctionQuant(pumpfunc, pumpunits)
     qinput = PumpInput(current=500*u"mA", voltage=6u"V")
     @test all(upumpfunc(qinput) .≈ pumpfunc(ustrip.(uinput(pumpunits), qinput)).*uoutput(pumpunits))
+
+
+    #Matrix and vector operations 
+    m  = LinmapQuant(SA[1.0 0.1; 0.2 1.0], UnitMap(u_in = SA[u"kg/s", u"kW"], u_out=SA[u"m^3/s", u"kPa"]))
+    mi = inv(m)
+    x  = VectorQuant(SA[0.5u"kg/s", 0.5u"kW"])
+    y  = m*x
+
+    mraw  = SMatrix{2,2}(m)
+    miraw = SMatrix{2,2}(mi)
+    xraw  = SVector{2}(x)
+    yraw  = SVector{2}(y)
+     
+    @test x + x ≈ xraw + xraw
+    @test m + m ≈ mraw + mraw
+    @test x - x ≈ xraw - xraw
+    @test m - m ≈ mraw - mraw
+
+    @test m*mi ≈ mraw*miraw
+    @test m\m  ≈ miraw*mraw
+    @test m\mraw ≈ miraw*mraw
+    @test m'\m' ≈ miraw'*mraw'
+    @test m'/m' ≈ mraw'*miraw'
+    @test m/m  ≈ mraw*miraw
+    @test mraw/m ≈ mraw*miraw
+    @test m*x ≈ yraw
+    @test mi*y ≈ xraw
+    @test (x'*m')' ≈ yraw 
+    @test (y'*mi')' ≈ xraw
+    @test m\y ≈ xraw
+    @test (y'/m')' ≈ xraw
+    @test transpose(transpose(y)) ≈ yraw
+
 end
 
 @testset "Additional tests of FixedRational" begin

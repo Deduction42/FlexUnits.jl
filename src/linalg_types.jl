@@ -32,7 +32,7 @@ isidempotent(m::AbstractDimsMap) = isdimensionless(m.u_fac) && isrepeatable(m)
 
 
 """
-    ArrayDims{D<:AbstractDimensions, A<:AbstractArray} <: AbstractArray{D}
+    QuantArrayDims{D<:AbstractDimensions, A<:AbstractArray} <: AbstractArray{D}
 
 Wraps a quantity matrix A so that getting its index returns the dimensiosn of the element
 """
@@ -50,9 +50,27 @@ Base.axes(m::QuantArrayDims) = axes(m.array)
 ArrayInterface.can_setindex(::Type{QuantArrayDims}) = false
 dimension(m::AbstractArray) = QuantArrayDims(m)
 dimension(m::SArray) = dimension.(m)
-dstrip(m::AbstractArray) = dstrip.(m)
 
 
+"""
+    QuantArrayVals{D<:AbstractDimensions, A<:AbstractArray} <: AbstractArray{D}
+
+Wraps a quantity matrix A so that getting its index returns the value of hte element
+"""
+struct QuantArrayVals{T, N, A<:AbstractArray} <: AbstractArray{T,N}
+    array :: A
+    function QuantArrayVals(a::AbstractArray{<:Any,N}) where N
+        T = valtype(eltype(a))
+        return new{T,N,typeof(a)}(a)
+    end
+end
+Base.IndexStyle(::Type{QuantArrayVals{D,A}}) where{D,A} = IndexStyle(A)
+Base.getindex(m::QuantArrayVals, args...) = broadcast(dstrip, getindex(m.array, args...))
+Base.size(m::QuantArrayVals) = size(m.array)
+Base.axes(m::QuantArrayVals) = axes(m.array)
+ArrayInterface.can_setindex(::Type{QuantArrayVals}) = false
+dstrip(m::AbstractArray) = QuantArrayVals(m)
+dstrip(m::SArray) = dstrip.(m)
 
 """
 struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -175,11 +193,12 @@ end
 
 function LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T 
     todims(u::AbstractUnits, n) = u.todims(n)
-    new_m = todims.(m, u.u_out./u.u_in') 
+    new_m = todims.(u.u_out./u.u_in', m) 
     new_u = DimsMap(u_fac = zero(dimvaltype(u)), u_in = dimension.(u.u_in), u_out = dimension.(u.u_out))
     return LinmapQuant(new_m, new_u)
 end
 
+LinmapQuant(m::QuantArrayVals, d::QuantArrayDims) = LinmapQuant(dstrip.(m.array), DimsMap(d))
 LinmapQuant(m::AbstractMatrix) = LinmapQuant(dstrip.(m), DimsMap(dimension(m)))
 LinmapQuant(m::LinmapQuant) = m
 
@@ -219,6 +238,7 @@ function VectorQuant(v::AbstractVector{T}, u::AbstractVector{<:AbstractUnits}) w
     return VectorQuant(new_m, new_u)
 end
 
+VectorQuant(m::QuantArrayVals, d::QuantArrayDims) = VectorQuant(dstrip.(m.array), dimension.(d.array))
 VectorQuant(v::AbstractVector) = VectorQuant(dstrip.(v), dimension.(v))
 VectorQuant(v::VectorQuant) = v
 

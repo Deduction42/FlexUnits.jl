@@ -360,6 +360,10 @@ unittype(::Type{<:QuantUnion{T,U}}) where {T,U} = U
 dimtype(::Type{<:QuantUnion{T,U}}) where {T,U} = dimtype(U)
 dimvaltype(::Type{<:QuantUnion{T,U}}) where {T,U} = dimvaltype(U)
 udynamic(q::QuantUnion) = Quantity(ustrip(q), udynamic(unit(q)))
+valtype(q::Any) = valtype(typeof(q))
+valtype(::Type{T}) where T = T
+valtype(::Type{<:QuantUnion{T}}) where T = T 
+
 
 #Translation between AffineTansform and numeric quantities
 AffineTransform(scale::Real, offset::Quantity) = AffineTransform(scale=scale, offset=dstrip(offset))
