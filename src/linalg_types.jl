@@ -108,7 +108,7 @@ end
 Base.axes(m::DimsMap) = (axes(m.u_out)[1], axes(m.u_in)[1])
 Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]*m.u_scale
 Base.size(m::DimsMap) = (length(m.u_out), length(m.u_in))
-Base.inv(m::DimsMap) = DimsMap(u_scale=m.u_scale, u_out=m.u_in, u_in=m.u_out)
+Base.inv(m::DimsMap) = DimsMap(u_scale=inv(m.u_scale), u_out=m.u_in, u_in=m.u_out)
 #Base.adjoint(m::DimsMap) = DimsMap(u_out=inv.(m.u_in).*m.u_out[begin], u_in=inv.(m.u_out).*m.u_out[begin])
 #Base.transpose(m::DimsMap) = adjoint(m)
 uoutput(m::DimsMap) = m.u_out
