@@ -1,21 +1,6 @@
-#Preamble (delete when finished)
-#=
-include("fixed_rational.jl")
-include("types.jl")
-include("utils.jl")
-include("conversions.jl")
-include("math.jl")
-include("RegistryTools.jl")
-include("UnitRegistry.jl")
-include("linalg_types.jl")
-=#
 
 const MatrixOfDims{D} = AbstractMatrix{<:AbstractDimensions}
 const VectorOfDims{D} = AbstractVector{<:AbstractDimensions}
-
-assert_repeatable(d::MatrixOfDims) = assert_repeatable(DimsMap(d))
-assert_idempotent(d::MatrixOfDims) = assert_idempotent(DimsMap(d))
-assert_symmetric(d::MatrixOfDims)  = assert_symmetric(DimsMap(d))
 
 #======================================================================================================================
 Operators on dimensions objects
@@ -127,7 +112,7 @@ Base.:^(m::LinmapQuant, p::Integer) = qpow(m, p)
 Base.:exp(m::LinmapQuant) = qexp(m)
 Base.:log(m::LinmapQuant) = qlog(m)
 Base.:(≈)(m1::LinmapQuant, m2::LinmapQuant) = qisapprox(m1, m2)
-Base.:(≈)(v1::VectorQuant, v2::VectorQuant) = qisappreox(v1, v2)
+Base.:(≈)(v1::VectorQuant, v2::VectorQuant) = qisapprox(v1, v2)
 
 #======================================================================================================================
 Specify Base methods combingin AbstractMatrix/AbstractVector subtypes with LinmapQuant and VectorQuant

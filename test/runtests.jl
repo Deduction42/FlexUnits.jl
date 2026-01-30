@@ -938,17 +938,28 @@ end
     yraw  = SVector{2}(y)
      
     @test x + x ≈ xraw + xraw
+    @test x + xraw ≈ xraw + x
     @test m + m ≈ mraw + mraw
+    @test m + mraw ≈ mraw + m
+
     @test x - x ≈ xraw - xraw
+    @test x - xraw ≈ xraw - x
     @test m - m ≈ mraw - mraw
+    @test m - mraw ≈ mraw - m
 
     @test m*mi ≈ mraw*miraw
+    @test m*miraw ≈ mraw*mi
+
     @test m\m  ≈ miraw*mraw
-    @test m\mraw ≈ miraw*mraw
+    @test m\mraw ≈ miraw*m
     @test m'\m' ≈ miraw'*mraw'
+    @test m'\mraw' ≈ miraw'*m'
+    
+    @test m/m ≈ mraw*miraw
+    @test mraw/m ≈ m*miraw
     @test m'/m' ≈ mraw'*miraw'
-    @test m/m  ≈ mraw*miraw
-    @test mraw/m ≈ mraw*miraw
+    @test mraw'/m' ≈ m'*miraw'
+
     @test m*x ≈ yraw
     @test mi*y ≈ xraw
     @test (x'*m')' ≈ yraw 

@@ -126,6 +126,7 @@ uoutput(m::DimsMap) = m.u_out
 uinput(m::DimsMap) = m.u_in
 ufactor(m::DimsMap) = m.u_fac
 
+#=
 function Base.firstindex(m::DimsMap, d) 
     if d==1 
         return firstindex(m.u_out) 
@@ -134,6 +135,7 @@ function Base.firstindex(m::DimsMap, d)
     end
     return 1
 end
+=#
 
 function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
     u_fac = md[begin,begin]
