@@ -13,6 +13,9 @@ include("linalg_types.jl")
 const MatrixOfDims{D} = AbstractMatrix{<:AbstractDimensions}
 const VectorOfDims{D} = AbstractVector{<:AbstractDimensions}
 
+assert_repeatable(d::MatrixOfDims) = assert_repeatable(DimsMap(d))
+assert_idempotent(d::MatrixOfDims) = assert_idempotent(DimsMap(d))
+assert_symmetric(d::MatrixOfDims)  = assert_symmetric(DimsMap(d))
 
 #======================================================================================================================
 Operators on dimensions objects
@@ -45,21 +48,17 @@ Base.:-(d1::AbstractDimsMap) = d1
 Base.:-(d1::AbstractDimsMap, d2::AbstractDimsMap) = equaldims(d1, d2)
 
 #Multiplying factored dimensions with dense matrices of dimensions
-Base.:*(d1::AbstractDimsMap, d2::AbstractDimsMap) = DimsMap(u_in = uinput(d2), u_out = uoutput(d1), u_scale = uscale(d1,d2))
-Base.:*(d1::MatrixOfDims, d2::AbstractDimsMap) = DimsMap(u_in = uinput(d2), u_out = d1*uoutput(d2), u_scale = uscale(d2))
-Base.:*(d1::AbstractDimsMap, d2::MatrixOfDims) = DimsMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1), u_scale = uscale(d1))
+Base.:*(d1::AbstractDimsMap, d2::AbstractDimsMap) = DimsMap(u_in = uinput(d2), u_out = uoutput(d1), u_fac = ufactor(d1,d2))
+Base.:*(d1::MatrixOfDims, d2::AbstractDimsMap) = DimsMap(u_in = uinput(d2), u_out = d1*uoutput(d2), u_fac = ufactor(d2))
+Base.:*(d1::AbstractDimsMap, d2::MatrixOfDims) = DimsMap(u_in = inv.(d2'*inv.(uinput(d1))), u_out = uoutput(d1), u_fac = ufactor(d1))
 
 #Multiplying factored dimensions with vectors of dimensions 
-Base.:*(d1::AbstractDimsMap, d2::VectorOfDims) = uoutput(d1) .* (dotinv1(uinput(d1), d2)*uscale(d1))
-Base.:*(d1::Adjoint{<:AbstractDimensions, <:VectorOfDims}, d2::AbstractDimsMap) = ((d1*uoutput(d2))*uscale(d2)./uinput(d1))'
+Base.:*(d1::AbstractDimsMap, d2::VectorOfDims) = uoutput(d1) .* (dotinv1(uinput(d1), d2)*ufactor(d1))
+Base.:*(d1::Adjoint{<:AbstractDimensions, <:VectorOfDims}, d2::AbstractDimsMap) = ((d1*uoutput(d2))*ufactor(d2)./uinput(d1))'
 
 #Multiplying specific factorizations with single dimensions
-Base.:*(dm::DimsMap{<:AbstractDimensions}, d::AbstractDimensions)    = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_scale = dm.u_scale*d)
-Base.:*(d::AbstractDimensions, dm::DimsMap{<:AbstractDimensions})    = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_scale = dm.u_scale*d)
-Base.:*(dm::RepDimsMap{<:AbstractDimensions}, d::AbstractDimensions) = RepDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d)
-Base.:*(d::AbstractDimensions, dm::RepDimsMap{<:AbstractDimensions}) = RepDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d)
-Base.:*(dm::SymDimsMap{<:AbstractDimensions}, d::AbstractDimensions) = SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d)
-Base.:*(d::AbstractDimensions, dm::SymDimsMap{<:AbstractDimensions}) = SymDimsMap(u_in = dm.u_in, u_scale = dm.u_scale*d)
+Base.:*(dm::DimsMap{<:AbstractDimensions}, d::AbstractDimensions)    = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
+Base.:*(d::AbstractDimensions, dm::DimsMap{<:AbstractDimensions})    = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
 
 #Division of matrices
 Base.:/(d1::MatrixOfDims, d2::AbstractDimsMap) = d1*inv(d2)
@@ -72,17 +71,14 @@ Base.:/(d1::VectorOfDims, d2::AbstractDimsMap) = d1*inv(d2)
 Base.:\(d1::AbstractDimsMap, d2::VectorOfDims) = inv(d1)*d2
 
 #Matrix powers 
-Base.:^(d::Union{AbstractDimsMap,MatrixOfDims}, p::Real) = RepDimsMap(d)^p 
-Base.:^(d::Union{AbstractDimsMap,MatrixOfDims}, p::Integer) = RepDimsMap(d)^p 
-Base.:^(d::RepDimsMap, p::Real) = RepDimsMap(u_scale = d.u_scale^p, u_in=d.u_in)
-Base.:^(d::RepDimsMap, p::Integer) = RepDimsMap(u_scale = d.u_scale^p, u_in=d.u_in)
+Base.:^(d::AbstractDimsMap, p::Real) = unsafe_pow(assert_repeatable(d), p)
+Base.:^(d::AbstractDimsMap, p::Integer) = unsafe_pow(assert_repeatable(d), p)
+unsafe_pow(d::AbstractDimsMap, p::Real) = DimsMap(u_fac=ufactor(d)^p, u_in=uinput(d), u_out=uoutput(d))
+unsafe_pow(d::AdjointDmap, p::Real) = adjoint(unsafe_pow(d.parent, p))
 
 #Matrix exponentials and other functions that merely assert idempotence
-assert_idempotent(d::RepDimsMap) = isone(d.u_scale) ? d : throw(ArgumentError("Cannot exponentiate dimension mapping unless it is idempotent"))
-assert_idempotent(d::Union{AbstractDimsMap,MatrixOfDims}) = assert_idempotent(RepDimsMap(d))
-
 for op in (:exp, :log)
-    @eval Base.$op(d::Union{AbstractDimsMap,MatrixOfDims}) = assert_idempotent(d)
+    @eval Base.$op(d::AbstractDimsMap) = assert_idempotent(d)
 end
 
 #======================================================================================================================
@@ -95,9 +91,9 @@ qsub(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) - dstrip(m
 qmul(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) * dstrip(m2), dimension(m1) * dimension(m2))
 qdiv(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) / dstrip(m2), dimension(m1) / dimension(m2))
 qldiv(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) \ dstrip(m2), dimension(m1) \ dimension(m2))
-qpow(m::AbstractMatrix, p::Real) = LinmapQuant(dstrip(m)^p, RepDimsMap(dimension(m))^p)
-qexp(m::AbstractMatrix) = LinmapQuant(exp(dstrip(m)), exp(dimension(m)))
-qlog(m::AbstractMatrix) = LinmapQuant(log(dstrip(m)), log(dimension(m)))
+qpow(m::AbstractMatrix, p::Real) = LinmapQuant(dstrip(m)^p, DimsMap(dimension(m))^p)
+qexp(m::AbstractMatrix) = LinmapQuant(exp(dstrip(m)), exp(DimsMap(dimension(m))))
+qlog(m::AbstractMatrix) = LinmapQuant(log(dstrip(m)), log(DimsMap(dimension(m))))
 qadjoint(m::AbstractMatrix) = adjoint(LinmapQuant(m))
 qtranspose(m::AbstractMatrix) = transpose(LinmapQuant(m))
 
@@ -200,29 +196,36 @@ Base.:/(mq::AbstractArray, fq::FactorQuant) = qdiv(mq, fq)
 Base.:\(fq::FactorQuant, mq::AbstractArray) = qldiv(fq, mq)
 
 #Special case ambiguities
-Base.:\(m::Diagonal{T, SVector{N,T}}, v::FlexUnits.VectorQuant) where {N,T} = qldiv(m, v)
+Base.:\(m::Diagonal{T, SVector{N,T}}, v::VectorQuant) where {N,T} = qldiv(m, v)
 
 #======================================================================================================================
 Utility functions
 ======================================================================================================================#
 """
-    uscale(d1::AbstractDimsMap, d2::AbstractDimsMap)
+    ufactor(d1::AbstractDimsMap, d2::AbstractDimsMap)
 
 Multiplies the first row of d1 with the first column of d2 in order to solve the multiplication scale
 """
-uscale(d1::AbstractDimsMap, d2::AbstractDimsMap) = uscale(d1)*uscale(d2)*dotinv1(uinput(d1), uoutput(d2))
+ufactor(d1::AbstractDimsMap, d2::AbstractDimsMap) = ufactor(d1)*ufactor(d2)*dotinv1(uinput(d1), uoutput(d2))
+ufactor(d1::AdjointDmap, d2::AbstractDimsMap) = ufactor(d1)*ufactor(d2)*dot(uoutput(d1.parent), uoutput(d2))
+ufactor(d1::AbstractDimsMap, d2::AdjointDmap) = ufactor(d1)*ufactor(d2)*dotinv(uinput(d1), uinput(d1.parent))
+ufactor(d1::AdjointDmap, d2::AdjointDmap)     = ufactor(d1)*ufactor(d2)*dotinv2(uoutput(d1.parent), uinput(d1.parent))
 
-#Dot products of dimensions and dotinv (i.e. dot(x, inv.(y)))
+
 LinearAlgebra.dot(d1::AbstractDimensions, d2::AbstractDimensions) = d1*d2
-dotinv2(d1::AbstractDimensions, d2::AbstractDimensions) = d1*inv(d2)
-function dotinv2(d1::AbstractVector, d2::AbstractVector)
-    length(d1) == length(d2) || throw(DimensionMismatch("Inputs had different lengths $((length(d1), length(d2)))"))
-    return sum(dotinv2(v1,v2) for (v1,v2) in zip(d1, d2))
-end
 
-#Dot products of dimensions and invdot (i.e. dot(inv.(x), y))
+#dot products with the second inverse
+dotinv(d1::AbstractDimensions, d2::AbstractDimensions) = inv(d1)*inv(d2)
+dotinv(d1::AbstractVector, d2::AbstractVector) = _sumfunc(dotinv, d1, d2)
+
 dotinv1(d1::AbstractDimensions, d2::AbstractDimensions) = inv(d1)*d2
-function dotinv1(d1::AbstractVector, d2::AbstractVector)
-    length(d1) == length(d2) || throw(DimensionMismatch("Inputs had different lengths $((length(d1), length(d2)))"))
-    return sum(dotinv1(v1,v2) for (v1,v2) in zip(d1, d2))
-end
+dotinv1(d1::AbstractVector, d2::AbstractVector) = _sumfunc(dotinv1, d1, d2)
+
+dotinv2(d1::AbstractDimensions, d2::AbstractDimensions) = d1*inv(d2)
+dotinv2(d1::AbstractVector, d2::AbstractVector) = _sumfunc(dotinv2, d1, d2)
+
+#Dot products after applying a two-argument function
+_sumfunc(f, v1::AbstractVector, v2::AbstractVector) = sum(f(x1, x2) for (x1, x2) in strictzip(v1, v2))
+
+
+

@@ -892,7 +892,7 @@ end
 
     xm = SMatrix{3,3}(randn(3,3))
     qMraw = xm.*u2./u1'
-    qM = LinmapQuant(DimsMap, qMraw)
+    qM = LinmapQuant(qMraw)
 
     #Matrix inversion
     x = SVector{3}(randn(3)).*u1
@@ -908,13 +908,13 @@ end
 
     #Symmetric matrix
     rS = Σ.*inv.(u2).*inv.(u2)'
-    qS = LinmapQuant(SymDimsMap, rS)
+    qS = LinmapQuant(rS)
     @test all(qS .≈ ubase.(rS))
     @test x'*(rS)*x ≈ x'*qS*x
 
     #Repeatable matrix
     rR = Σ.*u2.*inv.(u2)'
-    qR = LinmapQuant(RepDimsMap, rR)
+    qR = LinmapQuant(rR)
     @test all(qR .≈ ubase.(rR))
     @test all((rR^2*x) .≈ (qR*qR*x))
 
