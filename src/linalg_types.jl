@@ -1,33 +1,46 @@
 using LinearAlgebra
 using StaticArrays
+using SparseArrays
 
 import ArrayInterface
 import StaticArrays.StaticLUMatrix
+import SparseArrays.AbstractSparseMatrixCSC
+import SparseArrays.AbstractCompressedVector
 
-const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
-const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
+# AbstractDimsMap is similar to AbstractArray, but doesn't subtype to it; it subtypes to AbstractUnitMap which is not really an array
+# Moreover subtyping to AbstractArray produces ambiguity problems, it's easier to just redefine the API methods
+abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractUnitMap{D} end
 
-abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} end
-abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractMatrix{D} end
+Base.eltype(::Type{<:AbstractDimsMap{D}}) where D = D
+Base.IndexStyle(::Type{AbstractDimsMap}) = IndexCartesian()
+Base.getindex(m::AbstractDimsMap, ind::CartesianIndex{2}) = m[ind[1],ind[2]]
+Base.getindex(m::AbstractDimsMap, ind::Integer) = m[CartesianIndices(m)[ind]]
+Base.CartesianIndices(m::AbstractDimsMap) = CartesianIndices(axes(m))
+Base.length(m::AbstractDimsMap) = prod(size(m))
+Base.collect(m::AbstractDimsMap) = uoutput(m).*inv.(uinput(m)')
 
+#Base.iterate(m::AbstractDimsMap, i=1) = (@inline; (i - 1)%UInt < length(m)%UInt ? (m[i], i + 1) : nothing)
 
 """
     ArrayDims{D<:AbstractDimensions, A<:AbstractArray} <: AbstractArray{D}
 
 Wraps a quantity matrix A so that getting its index returns the dimensiosn of the element
 """
-struct ArrayDims{D<:AbstractDimensions, N, A<:AbstractArray} <: AbstractArray{D,N}
+struct QuantArrayDims{D<:AbstractDimensions, N, A<:AbstractArray} <: AbstractArray{D,N}
     array :: A
-    function ArrayDims(a::AbstractArray{<:Any,N}) where N
+    function QuantArrayDims(a::AbstractArray{<:Any,N}) where N
         D = dimvaltype(eltype(a))
         return new{D,N,typeof(a)}(a)
     end
 end
-Base.IndexStyle(::Type{ArrayDims{D,A}}) where{D,A} = IndexStyle(A)
-Base.getindex(m::ArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
-dimension(m::AbstractMatrix) = ArrayDims(m)
-Base.size(m::ArrayDims) = size(m.array)
-ArrayInterface.can_setindex(::Type{ArrayDims}) = false
+Base.IndexStyle(::Type{QuantArrayDims{D,A}}) where{D,A} = IndexStyle(A)
+Base.getindex(m::QuantArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
+Base.size(m::QuantArrayDims) = size(m.array)
+Base.axes(m::QuantArrayDims) = axes(m.array)
+ArrayInterface.can_setindex(::Type{QuantArrayDims}) = false
+dimension(m::AbstractArray) = QuantArrayDims(m)
+dimension(m::SArray) = dimension.(m)
+dstrip(m::AbstractArray) = dstrip.(m)
 
 """
 struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
@@ -58,14 +71,23 @@ This is like a unit map but focuses on dimensions, simplifying linear algebra (i
     u_in  :: TI
     u_out :: TO
 end
-
+Base.axes(m::DimsMap) = (axes(m.u_out)[1], axes(m.u_in)[1])
 Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]
 Base.size(m::DimsMap) = (length(m.u_out), length(m.u_in))
 Base.inv(m::DimsMap) = DimsMap(u_out=m.u_in, u_in=m.u_out)
-Base.adjoint(m::DimsMap) = DimsMap(u_out=inv.(m.u_in), u_in=inv.(m.u_out))
+Base.adjoint(m::DimsMap) = DimsMap(u_out=inv.(m.u_in).*m.u_out[begin], u_in=inv.(m.u_out).*m.u_out[begin])
 Base.transpose(m::DimsMap) = adjoint(m)
 uoutput(m::DimsMap) = m.u_out
 uinput(m::DimsMap) = m.u_in
+
+function Base.firstindex(m::DimsMap, d) 
+    if d==1 
+        return firstindex(m.u_out) 
+    elseif d==2 
+        return firstindex(m.u_in)
+    end
+    return 1
+end
 
 function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
     u_out = md[:,begin]
@@ -73,25 +95,26 @@ function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
 
     #Check for dimensional consistency
     for jj in axes(md,2), ii in axes(md,1)
-        (u_out[ii]/md[ii,jj] == u_in[jj]) || error("Unit inconsistency around index $([ii,jj]) of original matrix, expected dimension '$(u_out[ii]*inv(u_in[jj]))', found unit '$(unit(md[ii,jj]))'")
+        md_ij = u_out[ii]/u_in[jj]
+        (md_ij == md[ii, jj]) || error("Unit inconsistency around index $([ii, jj]) of original matrix, expected dimension '$(md_ij))', found dimension '$(md[ii, jj])'")
     end
     return DimsMap(u_out=u_out, u_in=u_in)
 end
 
-DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(ArrayDims(mq))
+DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
 
 function canonical!(u::DimsMap)
-    ui1 = u.u_in[begin]
-    unew = if isdimensionless(ui1)
-        u
-    elseif ArrayInterface.can_setindex(u.u_in) && ArrayInterface.can_setindex(u.u_out)
-        u.u_in  .= u.u_in ./ ui1
-        u.u_out .= u.uout ./ ui1
+    u0 = u.u_in[begin]
+    isdimensionless(u0) && return u
+    
+    unew = if ArrayInterface.can_setindex(u.u_in) && ArrayInterface.can_setindex(u.u_out)
+        u.u_in  .= u.u_in ./ u0
+        u.u_out .= u.u_out ./ u0
         u
     else
         DimsMap(
-            u_in = u.in./ui1, 
-            u_out = u_out./ui1
+            u_in = u.u_in./u0, 
+            u_out = u.u_out./u0
         )
     end
     return unew
@@ -116,11 +139,14 @@ Idempotence enables even more transformations like matrix exponentials.
     u_in :: TI
 end
 
+Base.axes(m::RepDimsMap) = (axes(m.u_in)[1], axes(m.u_in)[1])
 Base.getindex(m::RepDimsMap, ii::Integer, jj::Integer) = m.u_scale*m.u_in[ii]/m.u_in[jj]
 Base.size(m::RepDimsMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::RepDimsMap)  = RepDimsMap(u_scale=inv(m.u_scale), u_in=m.u_in)
 Base.adjoint(m::RepDimsMap) = RepDimsMap(u_scale=m.u_scale, u_in=inv.(m.u_in))
-uoutput(m::RepDimsMap) = map(Base.Fix1(*, m.u_in), m.u_scale)
+Base.transpose(m::RepDimsMap) = adjoint(m)
+Base.firstindex(m::RepDimsMap, d) = firstindex(m.u_in)
+uoutput(m::RepDimsMap) = map(Base.Fix1(*, m.u_scale), m.u_in)
 uinput(m::RepDimsMap) = m.u_in
 
 function RepDimsMap(md::DimsMap)
@@ -139,21 +165,19 @@ function RepDimsMap(md::DimsMap)
     return RepDimsMap(u_scale=u_scale, u_in=md.u_in)
 end
 
-function RepDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
-    return RepDimsMap(DimsMap(mq))
-end
-
+RepDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}}) = RepDimsMap(DimsMap(mq))
+RepDimsMap(md::RepDimsMap) = md
 DimsMap(md::RepDimsMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
 function canonical!(u::RepDimsMap)
-    ui1 = u.u_in[begin]
-    u_in = if isdimensionless(ui1)
-        u.u_in
-    elseif ArrayInterface.can_setindex(u.u_in)
-        u.u_in .= u.u_in ./ ui1
+    u0 = u.u_in[begin]
+    isdimensionless(u0) && return u
+
+    u_in = if ArrayInterface.can_setindex(u.u_in)
+        u.u_in .= u.u_in ./ u0
         u.u_in
     else
-        u.in./ui1
+        u.in./u0
     end
     return RepDimsMap(u_in = u_in, u_scale = u.u_scale)
 end
@@ -174,11 +198,14 @@ dimensions of "x". This structure enables certain kinds of operations reserved f
     u_in :: TI
 end
 
+Base.axes(m::SymDimsMap) = (axes(m.u_in)[1], axes(m.u_in)[1])
 Base.getindex(m::SymDimsMap, ii::Integer, jj::Integer) = m.u_scale/(m.u_in[ii]*m.u_in[jj])
 Base.size(m::SymDimsMap) = (length(m.u_in), length(m.u_in))
 Base.inv(m::SymDimsMap)  = SymDimsMap(u_scale=inv(m.u_scale), u_in=inv.(m.u_in))
 Base.adjoint(m::SymDimsMap) = SymDimsMap(u_scale=m.u_scale, u_in=m.u_in)
-uoutput(m::SymDimsMap) = map(Base.Fix1(*, m.u_uscale), m.u_in)
+Base.transpose(m::SymDimsMap) = adjoint(m)
+Base.firstindex(m::SymDimsMap, d) = firstindex(m.u_in)
+uoutput(m::SymDimsMap) = map(u->inv(u)*m.u_scale, m.u_in)
 uinput(m::SymDimsMap) = m.u_in
 
 function SymDimsMap(md::DimsMap)
@@ -197,23 +224,21 @@ function SymDimsMap(md::DimsMap)
     return SymDimsMap(u_scale=u_scale, u_in=md.u_in./md.u_in[begin])
 end
 
-function SymDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}})
-    return SymDimsMap(DimsMap(mq))
-end
-
+SymDimsMap(mq::AbstractMatrix{<:Union{QuantUnion,AbstractUnitLike}}) = SymDimsMap(DimsMap(mq))
+SymDimsMap(md::SymDimsMap) = md
 DimsMap(md::SymDimsMap) = DimsMap(u_out=md.u_in.*md.u_scale, u_in=md.u_in)
 
 function canonical!(u::SymDimsMap)
-    ui1  = u.u_in[begin]
-    u_in = if isdimensionless(ui1)
-        u.u_in
-    elseif ArrayInterface.can_setindex(u.u_in)
-        u.u_in .= u.u_in ./ ui1
+    u0 = u.u_in[begin]
+    isdimensionless(u0) && return u
+
+    u_in = if ArrayInterface.can_setindex(u.u_in)
+        u.u_in .= u.u_in ./ u0
         u.u_in
     else
-        u.in./ui1
+        u.in./u0
     end
-    return SymDimsMap(u_in = u_in, u_scale = u.u_scale/ui1^2)
+    return SymDimsMap(u_in = u_in, u_scale = u.u_scale/u0^2)
 end
 
 """
@@ -224,7 +249,7 @@ end
 
 A linear mapping of quantities. A special kind of matrix that is intended to be used for multiplying vectors of quantities;
 such matrices must be dimensionally consistent and can be represented by a UnitMap. These constraints lead to much faster 
-unit inference and a smaller memory footprint (M+N instead of M*N for units).
+unit inference and a smaller memory footprint (O(M+N) instead of O(M*N*N2) in the case of multiplication).
 """
 struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractDimsMap{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
@@ -238,21 +263,63 @@ function LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T
     return LinmapQuant(new_m, canonical!(new_u))
 end
 
-function LinmapQuant(::Type{U}, m::AbstractMatrix{<:Quantity}) where U <: AbstractDimsMap
+function LinmapQuant(::Type{U}, m::AbstractMatrix) where U <: AbstractDimsMap
     values = dstrip.(m)
     units  = U(dimension(m))
     return LinmapQuant(values, units)
 end
-LinmapQuant(m::AbstractMatrix{<:Quantity}) = LinmapQuant(DimsMap, m)
+
+LinmapQuant(m::AbstractMatrix) = LinmapQuant(DimsMap, m)
+LinmapQuant(m::LinmapQuant) = m
 
 ustrip(lq::LinmapQuant) = lq.values
+dstrip(lq::LinmapQuant) = lq.values
 unit(lq::LinmapQuant) = lq.dims
 dimension(lq::LinmapQuant) = lq.dims
 ubase(lq::LinmapQuant) = lq
 
+Base.IndexStyle(::Type{<:LinmapQuant}) = IndexCartesian()
 Base.getindex(q::LinmapQuant, ii::Integer, jj::Integer) = q.values[ii,jj] * q.dims[ii,jj]
 Base.size(q::LinmapQuant) = size(q.values)
 Base.inv(q::LinmapQuant) = LinmapQuant(inv(q.values), inv(q.dims))
+Base.transpose(q::LinmapQuant) = LinmapQuant(transpose(q.values), transpose(q.dims))
+Base.adjoint(q::LinmapQuant) = LinmapQuant(adjoint(q.values), adjoint(q.dims))
+
+
+
+"""
+struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
+    values :: V
+    units :: U
+end
+
+A vector of quantities. A special kind of vector that separates dimensions from values for easier dimension manipulation when used
+with LinmapQuant
+"""
+struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
+    values :: V
+    dims :: U
+end
+
+function VectorQuant(v::AbstractVector{T}, u::AbstractVector{<:AbstractUnits}) where T 
+    todims(ux::AbstractUnits, x) = ux.todims(x)
+    new_m = todims.(v, u)
+    new_u = dimension.(u)
+    return VectorQuant(new_m, new_u)
+end
+
+VectorQuant(v::AbstractVector) = VectorQuant(dstrip.(v), dimension.(v))
+VectorQuant(v::VectorQuant) = v
+
+ustrip(lq::VectorQuant) = lq.values
+dstrip(lq::VectorQuant) = lq.values
+unit(lq::VectorQuant) = lq.dims
+dimension(lq::VectorQuant) = lq.dims
+ubase(lq::VectorQuant) = lq
+
+Base.IndexStyle(::Type{<:VectorQuant{<:Any, <:Any, V}}) where {V} = IndexStyle(V)
+Base.getindex(q::VectorQuant, ii::Integer) = q.values[ii] * q.dims[ii]
+Base.size(q::VectorQuant) = size(q.values)
 
 #======================================================================================================================
 Linear Mapping Factorizations
@@ -358,24 +425,3 @@ Special cases
 ======================================================================================================================#
 #UniformScaling with dynamic dimensions should produce unknown dimension on off-diagonals (consistent with other behaviour)
 Base.getindex(J::UniformScaling{T}, i::Integer, j::Integer) where T<:Quantity = ifelse(i==j, J.λ, zero(T))
-
-#=
-for op in (:+, :-)
-    @eval function Base.$op(m::AbstractMatrix{<:QuantUnion{<:Any, <:AbstractDimensions}}, s::UniformScaling{Quantity{<:Any, <:StaticDims}})
-        return $op(m, UniformScaling(udynamic(s[1,1])))
-    end
-
-    @eval function Base.$op(s::UniformScaling{Quantity{<:Any, <:StaticDims}}, m::AbstractMatrix{<:QuantUnion{<:Any, <:AbstractDimensions}})
-        return $op(m, UniformScaling(udynamic(s[1,1])))
-    end
-end
-=#
-
-#=
-Recently found errors where adding the following produces an error:
-
-Matrix{Quantity{<:Any, <:AbstractDimensions}} + UniformScaling{Quantity{<:Any, <:StaticDims}}
-
-If the matrix isn't uniform units, the addiiton fails, because all off-diagonals have known units if the quantity is static 
-We may want to promote the uniform scaling in this case to be dynamic, so that off-diagonals have unknown units
-=#

@@ -68,7 +68,7 @@ ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
 
 Converts quantity `q` to its raw dimensional equivalent and removes units
 """
-dstrip(q::QuantUnion) = ustrip(ubase(q))
+dstrip(q::QuantUnion) = todims(q)(ustrip(q))
 ustrip_base(q::QuantUnion) = dstrip(q)
 
 
