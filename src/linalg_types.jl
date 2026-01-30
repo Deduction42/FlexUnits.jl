@@ -474,22 +474,22 @@ Base.getindex(J::UniformScaling{T}, i::Integer, j::Integer) where T<:Quantity = 
 #======================================================================================================================
 Utility functions
 ======================================================================================================================#
-function canonical_input(u_scale::D, u_in::V) where {D<:AbstractDimsnsions, V<:AbstractVector{D}}
+function canonical_input(u_scale::D, u_in::V) where {D<:AbstractDimensions, V<:AbstractVector{D}}
     u0 = u_in[begin]
     return isdimensionless(u0) ? (u_scale, u_in) : (u_scale/u0, convert(V, u_in./u0))
 end
 
-function canonical_output(u_scale::D, u_out::V) where {D<:AbstractDimsnsions, V<:AbstractVector{D}}
+function canonical_output(u_scale::D, u_out::V) where {D<:AbstractDimensions, V<:AbstractVector{D}}
     u0 = u_out[begin]
     return isdimensionless(u0) ? (u_scale, u_out) : (u_scale*u_0, convert(V, u_out./u0))
 end
 
-function canonical_rep(u_scale::D, u_in::V) where {D<:AbstractDimsnsions, V<:AbstractVector{D}}
+function canonical_rep(u_scale::D, u_in::V) where {D<:AbstractDimensions, V<:AbstractVector{D}}
     u0 = u_in[begin]
     return isdimensionless(u0) ? (u_scale, u_in) : (u_scale, convert(V, u_in./u0))
 end
 
-function canonical_sym(u_scale::D, u_in::V) where {D<:AbstractDimsnsions, V<:AbstractVector{D}}
+function canonical_sym(u_scale::D, u_in::V) where {D<:AbstractDimensions, V<:AbstractVector{D}}
     u0 = u_in[begin]
     return isdimensionless(u0) ? (u_scale, u_in) : (u_scale/u0^2, convert(V, u_in./u0))
 end
