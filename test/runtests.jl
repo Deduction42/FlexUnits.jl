@@ -919,12 +919,25 @@ end
     @test all(qR .≈ ubase.(rR))
     @test all((rR^2*x) .≈ (qR*qR*x))
 
+    #Indexing
+    @test qR[:,1] ≈ rR[:,1]
+    @test qR[:,1] isa VectorQuant
+    @test qR[:,2] ≈ rR[:,2]
+    @test qR[:,2] isa VectorQuant
+    @test qR[1:2, 1:2] ≈ rR[1:2, 1:2]
+    @test qR[1:2, 1:2] isa LinmapQuant
+    @test all(qR'[1:2, 1:3] .≈ rR'[1:2, 1:3])
+    @test qR'[1,2] ≈ rR'[1,2]
+    vR = qR[:,1]
+    @test vR[1:2] ≈ rR[1:2, 1]
+    @test vR[1:2] isa VectorQuant
+    @test vR[1] ≈ rR[1,1]
+
     #Nonlinear mapping
     pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))
     upumpfunc = FunctionQuant(pumpfunc, pumpunits)
     qinput = PumpInput(current=500*u"mA", voltage=6u"V")
     @test all(upumpfunc(qinput) .≈ pumpfunc(ustrip.(uinput(pumpunits), qinput)).*uoutput(pumpunits))
-
 
     #Matrix and vector operations 
     m  = LinmapQuant(SA[1.0 0.1; 0.2 1.0], UnitMap(u_in = SA[u"kg/s", u"kW"], u_out=SA[u"m^3/s", u"kPa"]))

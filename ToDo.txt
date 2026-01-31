@@ -9,6 +9,10 @@ Changelog:
 
 Current Tasks:
 1.  Finish basic LinmapQuant/VectorQuant for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
+    -   Build subindexing schema around m::LinmapQuant
+        -   getindex(m::LinmapQuant, i::Integer, vj::Any) -> VectorQuant 
+        -   getindex(m::LinmapQuant, vi::Any, j::Integer) -> VectorQuant 
+        -   getindex(m::LinmapQuant, vi::Any, vj::Any) -> LinmapQuant
     -   Build out test suite to achieve adequate coverage
     -   Continue Rodas5P experiment
     -   Add some factorizations with specialized getproperty methods

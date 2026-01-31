@@ -119,23 +119,15 @@ requirements. Ensure these requirements are met, supply immutable arguments or c
 end
 
 Base.axes(m::DimsMap) = (axes(m.u_out)[1], axes(m.u_in)[1])
-Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]*m.u_fac
 Base.size(m::DimsMap) = (length(m.u_out), length(m.u_in))
 Base.inv(m::DimsMap) = DimsMap(u_fac=inv(m.u_fac), u_out=m.u_in, u_in=m.u_out)
 uoutput(m::DimsMap) = m.u_out
 uinput(m::DimsMap) = m.u_in
 ufactor(m::DimsMap) = m.u_fac
-
-#=
-function Base.firstindex(m::DimsMap, d) 
-    if d==1 
-        return firstindex(m.u_out) 
-    elseif d==2 
-        return firstindex(m.u_in)
-    end
-    return 1
-end
-=#
+Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]*m.u_fac
+Base.getindex(m::DimsMap, ii::Integer, vj::Any) = (m.u_fac*m.u_out[ii]) ./ m.u_in[vj]
+Base.getindex(m::DimsMap, vi::Any, jj::Integer) = (m.u_fac/m.u_in[jj]) .* m.u_out[vi]
+Base.getindex(m::DimsMap, vi::Any, vj::Any) = DimsMap(u_fac=m.u_fac, u_out=m.u_out[vi], u_in=m.u_in[vj])
 
 function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
     u_fac = md[begin,begin]
@@ -167,7 +159,6 @@ Base.transpose(m::AbstractDimsMap) = AdjointDmap(m)
 Base.transpose(m::AdjointDmap) = m.parent
 Base.adjoint(m::AbstractDimsMap) = AdjointDmap(m)
 Base.adjoint(m::AdjointDmap) = m.parent 
-Base.getindex(m::AdjointDmap, ind1::Integer, ind2::Integer) = getindex(m.parent, ind2, ind1)
 Base.axes(m::AdjointDmap) = reverse(axes(m.parent))
 Base.inv(m::AdjointDmap) = adjoint(inv(m.parent))
 uoutput(m::AdjointDmap) = inv.(uinput(m.parent))
@@ -176,7 +167,8 @@ ufactor(m::AdjointDmap) = ufactor(m.parent)
 LinearAlgebra.issymmetric(m::AdjointDmap) = issymmetric(m.parent)
 isrepeatable(m::AdjointDmap) = isrepeatable(m.parent)
 isidempotent(m::AdjointDmap) = isidempotent(m.parent)
-
+Base.getindex(m::AdjointDmap, ind1::Integer, ind2::Integer) = getindex(m.parent, ind2, ind1)
+Base.getindex(m::AdjointDmap, ind1::Any, ind2::Any) = AdjointDmap(getindex(m.parent, ind2, ind1))
 
 
 """
@@ -212,13 +204,14 @@ dimension(lq::LinmapQuant) = lq.dims
 ubase(lq::LinmapQuant) = lq
 
 Base.IndexStyle(::Type{<:LinmapQuant}) = IndexCartesian()
-Base.getindex(q::LinmapQuant, ii::Integer, jj::Integer) = q.values[ii,jj] * q.dims[ii,jj]
 Base.size(q::LinmapQuant) = size(q.values)
 Base.inv(q::LinmapQuant) = LinmapQuant(inv(q.values), inv(q.dims))
 Base.transpose(q::LinmapQuant) = LinmapQuant(transpose(q.values), transpose(q.dims))
 Base.adjoint(q::LinmapQuant) = LinmapQuant(adjoint(q.values), adjoint(q.dims))
-
-
+Base.getindex(q::LinmapQuant, ii::Integer, jj::Integer) = q.values[ii,jj] * q.dims[ii,jj]
+Base.getindex(q::LinmapQuant, ii::Integer, vj::Any) = VectorQuant(q.values[ii,vj], q.dims[ii,vj])
+Base.getindex(q::LinmapQuant, vi::Any, jj::Integer) = VectorQuant(q.values[vi,jj], q.dims[vi,jj])
+Base.getindex(q::LinmapQuant, vi::Any, vj::Any) = LinmapQuant(q.values[vi,vj], q.dims[vi,vj])
 
 """
 struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
@@ -253,6 +246,7 @@ ubase(lq::VectorQuant) = lq
 
 Base.IndexStyle(::Type{<:VectorQuant{<:Any, <:Any, V}}) where {V} = IndexStyle(V)
 Base.getindex(q::VectorQuant, ii::Integer) = q.values[ii] * q.dims[ii]
+Base.getindex(q::VectorQuant, vi::Any) = VectorQuant(q.values[vi], q.dims[vi])
 Base.size(q::VectorQuant) = size(q.values)
 
 #======================================================================================================================
