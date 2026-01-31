@@ -15,7 +15,7 @@ dimvaltype(::Type{<:AbstractUnitMap{U}}) where U = dimvaltype(U)
 abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractUnitMap{D} end
 
 Base.eltype(::Type{<:AbstractDimsMap{D}}) where D = D
-Base.IndexStyle(::Type{AbstractDimsMap}) = IndexCartesian()
+Base.IndexStyle(::Type{<:AbstractDimsMap}) = IndexCartesian()
 Base.getindex(m::AbstractDimsMap, ind::CartesianIndex{2}) = m[ind[1],ind[2]]
 Base.getindex(m::AbstractDimsMap, ind::Integer) = m[CartesianIndices(m)[ind]]
 #Base.iterate(m::AbstractDimsMap, i=1) = (@inline; (i - 1)%UInt < length(m)%UInt ? (m[i], i + 1) : nothing)
@@ -43,7 +43,7 @@ struct QuantArrayDims{D<:AbstractDimensions, N, A<:AbstractArray} <: AbstractArr
         return new{D,N,typeof(a)}(a)
     end
 end
-Base.IndexStyle(::Type{QuantArrayDims{D,A}}) where{D,A} = IndexStyle(A)
+Base.IndexStyle(::Type{<:QuantArrayDims{D,N,A}}) where{D,N,A} = IndexStyle(A)
 Base.getindex(m::QuantArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
 Base.size(m::QuantArrayDims) = size(m.array)
 Base.axes(m::QuantArrayDims) = axes(m.array)
@@ -64,7 +64,7 @@ struct QuantArrayVals{T, N, A<:AbstractArray} <: AbstractArray{T,N}
         return new{T,N,typeof(a)}(a)
     end
 end
-Base.IndexStyle(::Type{QuantArrayVals{D,A}}) where{D,A} = IndexStyle(A)
+Base.IndexStyle(::Type{<:QuantArrayVals{D,N,A}}) where{D,N,A} = IndexStyle(A)
 Base.getindex(m::QuantArrayVals, args...) = broadcast(dstrip, getindex(m.array, args...))
 Base.size(m::QuantArrayVals) = size(m.array)
 Base.axes(m::QuantArrayVals) = axes(m.array)
@@ -266,6 +266,7 @@ struct FactorQuant{F, D<:AbstractDimensions, U<:AbstractDimsMap{D}}
     dims  :: U 
 end
 ustrip(fq::FactorQuant) = getfield(fq, :factor)
+dstrip(fq::FactorQuant) = getfield(fq, :factor)
 unit(fq::FactorQuant) = getfield(fq, :dims)
 dimension(fq::FactorQuant) = getfield(fq, :dims)
 Base.inv(fq::FactorQuant) = LinmapQuant(inv(ustrip(fq)), inv(unit(fq)))
@@ -276,23 +277,21 @@ LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = FactorQuant(lu(ustrip(mq); kwargs
 LinearAlgebra.lu(mq::LinmapQuant, ::Val{true}; kwargs...) = FactorQuant(lu(ustrip(mq), Val(true); kwargs...), unit(mq))
 LinearAlgebra.lu(mq::LinmapQuant, ::Val{false}; kwargs...) = FactorQuant(lu(ustrip(mq), Val(false); kwargs...), unit(mq))
 
-
 #May need to iterate over more subtypes of AbstractMatrix
 StaticArrays.lu(mq::StaticLUMatrix{N,M,<:Quantity}; kwargs...) where {N,M} = lu(LinmapQuant(DimsMap, mq); kwargs...)
 LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}; kwargs...) = lu(LinmapQuant(DimsMap, mq); kwargs...)
 LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{true}; kwargs...) = lu(LinmapQuant(DimsMap, mq), Val(true); kwargs...)
 LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{false}; kwargs...) = lu(LinmapQuant(DimsMap, mq), Val(false); kwargs...)
 
-
-function Base.getproperty(fq::FactorQuant{<:LU, D}, fn::Symbol) where D
+function Base.getproperty(fq::FactorQuant{<:Union{LU, StaticArrays.LU}, D}, fn::Symbol) where D
     F = ustrip(fq)
 
     if fn === :L
         u = unit(fq)
-        return LinmapQuant(F.L, DimsMap(u_fac=ufactor(u), u_in=uinput(u).^0, u_out=uoutput(u)[invperm(F.p)]))
+        return LinmapQuant(F.L, DimsMap(u_fac=ufactor(u)^0, u_in=uinput(u).^0, u_out=uoutput(u)[F.p]))
     elseif fn === :U 
         u = unit(fq)
-        return LinmapQuant(F.L, DimsMap(u_fac=ufactor(u), u_in=uinput(u), u_out=uoutput(u).^0))
+        return LinmapQuant(F.U, DimsMap(u_fac=ufactor(u), u_in=uinput(u), u_out=uoutput(u).^0))
     elseif fn === :p 
         return F.p
     elseif fn === :P

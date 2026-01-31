@@ -886,14 +886,29 @@ end
     @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
     @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
 
-
     #Quick linear algebra tests 
     u1 = SA[u"lbf*ft", u"kW", u"rpm"]
     u2 = SA[u"kg/s", u"m^3/hr", u"kW"]
 
     xm = SMatrix{3,3}(randn(3,3))
-    qMraw = xm.*u2./u1'
+    qMraw = xm.*(u2./u1')
     qM = LinmapQuant(qMraw)
+
+    #Test alternate constructors
+    @test qM ≈ LinmapQuant(xm, UnitMap(u_in = u1, u_out = u2))
+    @test qM ≈ LinmapQuant(xm, UnitMap(u_in = Vector(u1), u_out = Vector(u2)))
+    @test qM ≈ LinmapQuant(dstrip(Matrix(qMraw)), dimension(Matrix(qMraw)))
+    @test qM == LinmapQuant(qM)
+
+    #LU factorization
+    luQ = lu(qM)
+    luR = lu(dstrip.(qM))
+    lup = luQ.p
+    @test luQ isa FactorQuant
+    @test inv(luQ.factor) ≈ inv(luR)
+    @test inv(luQ) ≈ inv(qM)
+    @test all( (luQ.L * luQ.U)[invperm(lup),:] .≈ qM )
+    @test all( luQ.P * qM .≈ luQ.L*luQ.U )
 
     #Matrix inversion
     x = SVector{3}(randn(3)).*u1
@@ -912,12 +927,18 @@ end
     qS = LinmapQuant(rS)
     @test all(qS .≈ ubase.(rS))
     @test x'*(rS)*x ≈ x'*qS*x
+    @test FlexUnits.assert_symmetric(dimension(qS)) == dimension(qS)
+    @test FlexUnits.assert_symmetric(dimension(qS')) == dimension(qS')
 
     #Repeatable matrix
     rR = Σ.*u2.*inv.(u2)'
     qR = LinmapQuant(rR)
     @test all(qR .≈ ubase.(rR))
     @test all((rR^2*x) .≈ (qR*qR*x))
+    @test FlexUnits.assert_repeatable(dimension(qR)) == dimension(qR)
+    @test FlexUnits.assert_repeatable(dimension(qR')) == dimension(qR')
+    @test FlexUnits.assert_idempotent(dimension(qR)) == dimension(qR)
+    @test FlexUnits.assert_idempotent(dimension(qR')) == dimension(qR')
 
     #Indexing
     @test qR[:,1] ≈ rR[:,1]
@@ -932,6 +953,26 @@ end
     @test vR[1:2] ≈ rR[1:2, 1]
     @test vR[1:2] isa VectorQuant
     @test vR[1] ≈ rR[1,1]
+    @test ustrip(vR) == dstrip(vR)
+    @test unit(vR) == dimension(vR)
+    @test ustrip(qR) == dstrip(qR)
+    @test unit(qR) == dimension(qR)
+
+    #Matrix attributes
+    @test adjoint(adjoint(qR)) == qR
+    @test transpose(transpose(qR)) == qR
+    @test adjoint(adjoint(vR)) == vR 
+    @test transpose(transpose(qR)) == qR
+    dR = dimension(qR)
+    @test FlexUnits.dimtype(dR) == typeof(dimension(ud""))
+    @test eltype(dR) == typeof(dimension(ud""))
+    @test IndexStyle(typeof(dR)) == IndexCartesian()
+    @test dR[4] == dR[CartesianIndices(dR)[4]]
+    @test length(dR) == 9
+    @test collect(dR) == dR[:,:]
+    @test IndexStyle(typeof(dimension(rR))) == IndexStyle(rR)
+    @test IndexStyle(typeof(dstrip(rR))) == IndexStyle(rR)
+    @test DimsMap(qR) == dimension(qR)
 
     #Nonlinear mapping
     pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))

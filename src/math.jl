@@ -71,10 +71,10 @@ function Base.:/(d1::AbstractDimensions, d2::AbstractDimensions)
 end
 
 function Base.:^(d::AbstractDimensions, p::Real) 
-    if isknown(d) 
-        return raw_pow(d, p) 
-    elseif iszero(p)
+    if iszero(p)
         return typeof(d)()
+    elseif isknown(d) 
+        return raw_pow(d, p) 
     else
         return d 
     end
