@@ -289,10 +289,10 @@ function Base.getproperty(fq::FactorQuant{<:LU, D}, fn::Symbol) where D
 
     if fn === :L
         u = unit(fq)
-        return LinmapQuant(F.L, DimsMap(u_in=uinput(u).^0, u_out=uoutput(u)[invperm(F.p)]))
+        return LinmapQuant(F.L, DimsMap(u_fac=ufactor(u), u_in=uinput(u).^0, u_out=uoutput(u)[invperm(F.p)]))
     elseif fn === :U 
         u = unit(fq)
-        return LinmapQuant(F.L, DimsMap(u_in=uinput(u), u_out=uoutput(u).^0))
+        return LinmapQuant(F.L, DimsMap(u_fac=ufactor(u), u_in=uinput(u), u_out=uoutput(u).^0))
     elseif fn === :p 
         return F.p
     elseif fn === :P

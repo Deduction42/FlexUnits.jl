@@ -922,8 +922,8 @@ end
     #Indexing
     @test qR[:,1] ≈ rR[:,1]
     @test qR[:,1] isa VectorQuant
-    @test qR[:,2] ≈ rR[:,2]
-    @test qR[:,2] isa VectorQuant
+    @test qR[2,:] ≈ rR[2,:]
+    @test qR[2,:] isa VectorQuant
     @test qR[1:2, 1:2] ≈ rR[1:2, 1:2]
     @test qR[1:2, 1:2] isa LinmapQuant
     @test all(qR'[1:2, 1:3] .≈ rR'[1:2, 1:3])
