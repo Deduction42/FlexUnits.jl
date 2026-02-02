@@ -101,7 +101,6 @@ print("FlexU Dynamic:\t")
 print("FlexU Static:\t")
 @btime g.($xfs, $yfs)
 
-
 # ========== S4.1. upreferred ==========
 println("\nS4.1) upreferred\n")
 
