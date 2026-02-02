@@ -21,6 +21,7 @@ using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat
 using Aqua
 using LinearAlgebra
 using Statistics
+using StaticArrays
 import Unitful
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
@@ -885,14 +886,29 @@ end
     @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
     @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
 
-
     #Quick linear algebra tests 
     u1 = SA[u"lbf*ft", u"kW", u"rpm"]
     u2 = SA[u"kg/s", u"m^3/hr", u"kW"]
 
     xm = SMatrix{3,3}(randn(3,3))
-    qMraw = xm.*u2./u1'
-    qM = LinmapQuant(DimsMap, qMraw)
+    qMraw = xm.*(u2./u1')
+    qM = LinmapQuant(qMraw)
+
+    #Test alternate constructors
+    @test qM ≈ LinmapQuant(xm, UnitMap(u_in = u1, u_out = u2))
+    @test qM ≈ LinmapQuant(xm, UnitMap(u_in = Vector(u1), u_out = Vector(u2)))
+    @test qM ≈ LinmapQuant(dstrip(Matrix(qMraw)), dimension(Matrix(qMraw)))
+    @test qM == LinmapQuant(qM)
+
+    #LU factorization
+    luQ = lu(qM)
+    luR = lu(dstrip.(qM))
+    lup = luQ.p
+    @test luQ isa FactorQuant
+    @test inv(luQ.factor) ≈ inv(luR)
+    @test inv(luQ) ≈ inv(qM)
+    @test all( (luQ.L * luQ.U)[invperm(lup),:] .≈ qM )
+    @test all( luQ.P * qM .≈ luQ.L*luQ.U )
 
     #Matrix inversion
     x = SVector{3}(randn(3)).*u1
@@ -908,21 +924,113 @@ end
 
     #Symmetric matrix
     rS = Σ.*inv.(u2).*inv.(u2)'
-    qS = LinmapQuant(SymDimsMap, rS)
+    qS = LinmapQuant(rS)
     @test all(qS .≈ ubase.(rS))
     @test x'*(rS)*x ≈ x'*qS*x
+    @test FlexUnits.assert_symmetric(dimension(qS)) == dimension(qS)
+    @test FlexUnits.assert_symmetric(dimension(qS')) == dimension(qS')
 
     #Repeatable matrix
     rR = Σ.*u2.*inv.(u2)'
-    qR = LinmapQuant(RepDimsMap, rR)
+    qR = LinmapQuant(rR)
     @test all(qR .≈ ubase.(rR))
     @test all((rR^2*x) .≈ (qR*qR*x))
+    @test FlexUnits.assert_repeatable(dimension(qR)) == dimension(qR)
+    @test FlexUnits.assert_repeatable(dimension(qR')) == dimension(qR')
+    @test FlexUnits.assert_idempotent(dimension(qR)) == dimension(qR)
+    @test FlexUnits.assert_idempotent(dimension(qR')) == dimension(qR')
+
+    #Indexing
+    @test qR[:,1] ≈ rR[:,1]
+    @test qR[:,1] isa VectorQuant
+    @test qR[2,:] ≈ rR[2,:]
+    @test qR[2,:] isa VectorQuant
+    @test qR[1:2, 1:2] ≈ rR[1:2, 1:2]
+    @test qR[1:2, 1:2] isa LinmapQuant
+    @test all(qR'[1:2, 1:3] .≈ rR'[1:2, 1:3])
+    @test qR'[1,2] ≈ rR'[1,2]
+    vR = qR[:,1]
+    @test vR[1:2] ≈ rR[1:2, 1]
+    @test vR[1:2] isa VectorQuant
+    @test vR[1] ≈ rR[1,1]
+    @test ustrip(vR) == dstrip(vR)
+    @test unit(vR) == dimension(vR)
+    @test ustrip(qR) == dstrip(qR)
+    @test unit(qR) == dimension(qR)
+
+    #Matrix attributes
+    @test adjoint(adjoint(qR)) == qR
+    @test transpose(transpose(qR)) == qR
+    @test adjoint(adjoint(vR)) == vR 
+    @test transpose(transpose(qR)) == qR
+    dR = dimension(qR)
+    @test FlexUnits.dimtype(dR) == typeof(dimension(ud""))
+    @test eltype(dR) == typeof(dimension(ud""))
+    @test IndexStyle(typeof(dR)) == IndexCartesian()
+    @test dR[4] == dR[CartesianIndices(dR)[4]]
+    @test length(dR) == 9
+    @test collect(dR) == dR[:,:]
+    @test IndexStyle(typeof(dimension(rR))) == IndexStyle(rR)
+    @test IndexStyle(typeof(dstrip(rR))) == IndexStyle(rR)
+    @test DimsMap(qR) == dimension(qR)
 
     #Nonlinear mapping
     pumpunits = UnitMap(PumpInput(current=u"A", voltage=u"V"), PumpOutput(power=u"W", pressure=u"Pa", flow=u"m^3/s"))
     upumpfunc = FunctionQuant(pumpfunc, pumpunits)
     qinput = PumpInput(current=500*u"mA", voltage=6u"V")
     @test all(upumpfunc(qinput) .≈ pumpfunc(ustrip.(uinput(pumpunits), qinput)).*uoutput(pumpunits))
+
+    #Matrix and vector operations 
+    m  = LinmapQuant(SA[1.0 0.1; 0.2 1.0], UnitMap(u_in = SA[u"kg/s", u"kW"], u_out=SA[u"m^3/s", u"kPa"]))
+    mi = inv(m)
+    x  = VectorQuant(SA[0.5u"kg/s", 0.5u"kW"])
+    y  = m*x
+
+    mraw  = SMatrix{2,2}(m)
+    miraw = SMatrix{2,2}(mi)
+    xraw  = SVector{2}(x)
+    yraw  = SVector{2}(y)
+     
+    @test x + x ≈ xraw + xraw
+    @test x + xraw ≈ xraw + x
+    @test m + m ≈ mraw + mraw
+    @test m + mraw ≈ mraw + m
+
+    @test x - x ≈ xraw - xraw
+    @test x - xraw ≈ xraw - x
+    @test m - m ≈ mraw - mraw
+    @test m - mraw ≈ mraw - m
+
+    @test m*mi ≈ mraw*miraw
+    @test m*miraw ≈ mraw*mi
+
+    @test m\m  ≈ miraw*mraw
+    @test m\mraw ≈ miraw*m
+    @test m'\m' ≈ miraw'*mraw'
+    @test m'\mraw' ≈ miraw'*m'
+    
+    @test m/m ≈ mraw*miraw
+    @test mraw/m ≈ m*miraw
+    @test m'/m' ≈ mraw'*miraw'
+    @test mraw'/m' ≈ m'*miraw'
+
+    @test m*x ≈ yraw
+    @test mi*y ≈ xraw
+    @test (x'*m')' ≈ yraw 
+    @test (y'*mi')' ≈ xraw
+    @test m\y ≈ xraw
+    @test (y'/m')' ≈ xraw
+    @test transpose(transpose(y)) ≈ yraw
+
+    mrep = LinmapQuant(SA[1.0 0.1; 0.2 1.0], UnitMap(u_in = SA[u"kg/s", u"kW"], u_out=SA[u"kg/s", u"kW"]))
+    mraw = SMatrix{2,2}(mrep)
+
+    @test mrep^2 ≈ mraw*mraw
+    @test mrep^3 ≈ mrep*mrep*mrep
+    @test mrep^2.0 ≈ mraw*mraw
+    @test dimension(exp(mrep)) == dimension(mrep)
+    @test dstrip(exp(mrep)) ≈ exp(dstrip(mrep))
+
 end
 
 @testset "Additional tests of FixedRational" begin

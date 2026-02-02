@@ -16,8 +16,9 @@ Useful for defining mathematical operations for dimensions
 end
 
 unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D(typemax(T))
-isunknown(d::D) where D<:AbstractDimensions = (d === unknown(D))
-isknown(d::D) where D<:AbstractDimensions = (d !== unknown(D))
+isunknown(d::D, fn::Symbol) where {T, D<:AbstractDimensions{T}} = (getproperty(d, fn) == typemax(T))
+isunknown(d::D) where D<:AbstractDimensions = isunknown(d, dimension_names(D)[end]) #Only need to check one dimension for speed
+isknown(d::D) where D<:AbstractDimensions = !isunknown(d, dimension_names(D)[end])
 isunknown(d::StaticDims{D}) where D = isunknown(D)
 isknown(d::StaticDims{D}) where D = isknown(D)
 
@@ -25,7 +26,7 @@ isknown(d::StaticDims{D}) where D = isknown(D)
 @inline equaldims(arg1::AbstractDimensions) = arg1
 equaldims(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(promote(arg1, arg2)...)
 function equaldims(d1::D, d2::D) where D<:AbstractDimensions
-    if (d1 === d2)
+    if (d1 == d2)
         return d1
     elseif isunknown(d2)
         return d1
@@ -71,10 +72,10 @@ function Base.:/(d1::AbstractDimensions, d2::AbstractDimensions)
 end
 
 function Base.:^(d::AbstractDimensions, p::Real) 
-    if isknown(d) 
-        return raw_pow(d, p) 
-    elseif iszero(p)
+    if iszero(p)
         return typeof(d)()
+    elseif isknown(d) 
+        return raw_pow(d, p) 
     else
         return d 
     end
@@ -300,6 +301,7 @@ Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), todims=T())
 
 #Common functions for initializers
 Base.one(::Type{<:QuantUnion{T}}) where T = one(T) #unitless
+Base.rtoldefault(::Type{<:QuantUnion{T}}) where T = Base.rtoldefault(T)
 
 #Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:StaticDims} = quantity(one(T), D()) #One with units
 #Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:AbstractDimensions} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
