@@ -92,8 +92,10 @@ qtranspose(vt::Transpose{<:Any, <:AbstractVector}) = transpose(VectorQuant(trans
 qisapprox(v1::AbstractVector, v2::AbstractVector) = dstrip(v1) ≈ dstrip(v2) && dimension(v1) == dimension(v2)
 
 #Factorizations
-qdiv(mq::AbstractMatrix, fq::FactorQuant) = LinmapQuant(dstrip(mq)/dstrip(fq), dimension(mq)/dimension(fq))
+qdiv(mq::AbstractMatrix, fq::FactorQuant)  = LinmapQuant(dstrip(mq)/dstrip(fq), dimension(mq)/dimension(fq))
 qldiv(fq::FactorQuant, mq::AbstractMatrix) = LinmapQuant(dstrip(fq)\dstrip(mq), dimension(fq)\dimension(mq))
+qldiv(fq::FactorQuant, v::AbstractVector) = VectorQuant(dstrip(fq)\dstrip(v), dimension(fq)\dimension(v))
+qdiv(vt::Adjoint{<:Any, <:AbstractVector}, fq::FactorQuant) = qldiv(fq', qadjoint(vt))'
 
 #Overload the accelerated LinmapQuant/VectorQuant methods
 Base.:+(m1::LinmapQuant, m2::LinmapQuant) = qadd(m1, m2)

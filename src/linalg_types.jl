@@ -188,6 +188,7 @@ end
 
 function LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T 
     todims(u::AbstractUnits, n) = u.todims(n)
+    todims(u::AbstractDimensions, n) = n
     new_m = todims.(u.u_out./u.u_in', m) 
     new_u = DimsMap(u_fac = zero(dimvaltype(u)), u_in = dimension.(u.u_in), u_out = dimension.(u.u_out))
     return LinmapQuant(new_m, new_u)
@@ -271,6 +272,8 @@ unit(fq::FactorQuant) = getfield(fq, :dims)
 dimension(fq::FactorQuant) = getfield(fq, :dims)
 Base.inv(fq::FactorQuant) = LinmapQuant(inv(ustrip(fq)), inv(unit(fq)))
 LinearAlgebra.inv!(fq::FactorQuant) = LinmapQuant(inv!(ustrip(fq)), inv(unit(fq)))
+Base.transpose(fq::FactorQuant) = FactorQuant(transpose(fq.factor), transpose(fq.dims))
+Base.adjoint(fq::FactorQuant) = FactorQuant(adjoint(fq.factor), adjoint(fq.dims))
 
 # LU Factorization ===================================================================================
 LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = FactorQuant(lu(ustrip(mq); kwargs...), unit(mq))
@@ -278,10 +281,10 @@ LinearAlgebra.lu(mq::LinmapQuant, ::Val{true}; kwargs...) = FactorQuant(lu(ustri
 LinearAlgebra.lu(mq::LinmapQuant, ::Val{false}; kwargs...) = FactorQuant(lu(ustrip(mq), Val(false); kwargs...), unit(mq))
 
 #May need to iterate over more subtypes of AbstractMatrix
-StaticArrays.lu(mq::StaticLUMatrix{N,M,<:Quantity}; kwargs...) where {N,M} = lu(LinmapQuant(DimsMap, mq); kwargs...)
-LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}; kwargs...) = lu(LinmapQuant(DimsMap, mq); kwargs...)
-LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{true}; kwargs...) = lu(LinmapQuant(DimsMap, mq), Val(true); kwargs...)
-LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{false}; kwargs...) = lu(LinmapQuant(DimsMap, mq), Val(false); kwargs...)
+StaticArrays.lu(mq::StaticLUMatrix{N,M,<:Quantity}; kwargs...) where {N,M} = lu(LinmapQuant(mq); kwargs...)
+LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}; kwargs...) = lu(LinmapQuant(mq); kwargs...)
+LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{true}; kwargs...) = lu(LinmapQuant(mq), Val(true); kwargs...)
+LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{false}; kwargs...) = lu(LinmapQuant(mq), Val(false); kwargs...)
 
 function Base.getproperty(fq::FactorQuant{<:Union{LU, StaticArrays.LU}, D}, fn::Symbol) where D
     F = ustrip(fq)
