@@ -100,9 +100,10 @@ Used to represent a unit transformation from input dimensions 'u_in' to outpout 
 This is like a unit map but focuses on dimensions and has matrix-like behaviour since dimensions 
 support linear algebra, but generic units may not (affine units, logarithmic units etc).
 
-WARNING: DimsMap constructor expects u_in and u_out to be scaled so that the first element is zero.
+WARNING: The DimsMap constructor expects u_in and u_out to be scaled so that the first element is dimensionless.
 In order to prevent excessive allocations, u_in and u_out will be mutated in-place if possible to fit these
-requirements. Ensure these requirements are met, supply immutable arguments or copies if mutating is undesirable.
+requirements. If mutating arguments is undesirable, supply immutable arguments or copies; otherwise, ensure 
+that u_in and u_out have dimensionless values in their first element.
 """
 @kwdef struct DimsMap{D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
     u_fac :: D
@@ -154,6 +155,7 @@ Wraps a dimension map as an adjoint/transpose (and avoids subtyping to AbstractA
 struct AdjointDmap{D, M<:AbstractDimsMap{D}} <: AbstractDimsMap{D}
     parent :: M 
 end
+
 Base.IndexStyle(::Type{AdjointDmap{D,M}}) where {D,M} = IndexStype(M)
 Base.transpose(m::AbstractDimsMap) = AdjointDmap(m)
 Base.transpose(m::AdjointDmap) = m.parent
@@ -184,6 +186,11 @@ unit inference and a smaller memory footprint (O(M+N) instead of O(M*N*N2) in th
 struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractDimsMap{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
     dims :: U
+    function LinmapQuant{T,D,M,U}(values::M, dims::U) where {T,D,M,U}
+        size(values) == size(dims) || throw(DimensionError("Inputs must have the same size. Recieved arguments with sizes: $(size(values)), $(size(dims))"))
+        return new{T,D,M,U}(values, dims)
+    end
+    LinmapQuant(values::M, dims::U) where {T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractDimsMap{D}} = new{T,D,M,U}(values, dims)
 end
 
 function LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T 

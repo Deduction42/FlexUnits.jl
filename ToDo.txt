@@ -8,16 +8,16 @@ Changelog:
 5.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
 
 Current Tasks:
-1.  Finish basic LinmapQuant/VectorQuant for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
-    -   Build subindexing schema around m::LinmapQuant
-        -   getindex(m::LinmapQuant, i::Integer, vj::Any) -> VectorQuant 
-        -   getindex(m::LinmapQuant, vi::Any, j::Integer) -> VectorQuant 
-        -   getindex(m::LinmapQuant, vi::Any, vj::Any) -> LinmapQuant
-    -   Build out test suite to achieve adequate coverage
-    -   Continue Rodas5P experiment
-    -   Add some factorizations with specialized getproperty methods
-    
-
+1.  Add some QoL improvements
+    -   UnitMap should allow scalar/vector values with static or dynamic units
+    -   LinmapQuant constructors will need to convert UnitMap to stricter forms
+        -   Broadcast scalar units to suit the matrix dimension (do this in the LinmapQuant constructor)
+            -   Scalar units should be converted to dynamic here (to prevent needless allocation)
+        -   Verify consistent size between DimsMap and matrix (again in the LinmapQuant constructor)
+        -   Convert static unit vectors to dynamic (this should be done at the DimsMap constructor)
+            -   A special passthrough function of "udynamic" should be applied to AbstractArray if dims are already dynamic
+                -   Otherwise it broadcasts "udynamic" on it 
+            -   A general constructor for AbstractVector{<:AbstractDimLike} calls "udynamic" on the arguments
 
 2.  Add LinearAlgebra extensions for certain factorizations
     -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
