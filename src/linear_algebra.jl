@@ -35,8 +35,8 @@ Base.:*(d1::AbstractDimsMap, d2::VectorOfDims) = uoutput(d1) .* (dotinv1(uinput(
 Base.:*(d1::Adjoint{<:AbstractDimensions, <:VectorOfDims}, d2::AbstractDimsMap) = ((d1*uoutput(d2))*ufactor(d2)./uinput(d1))'
 
 #Multiplying specific factorizations with single dimensions
-Base.:*(dm::DimsMap{<:AbstractDimensions}, d::AbstractDimensions) = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
-Base.:*(d::AbstractDimensions, dm::DimsMap{<:AbstractDimensions}) = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
+Base.:*(dm::DimsMap{<:AbstractDimensions}, d::AbstractDimLike) = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
+Base.:*(d::AbstractDimLike, dm::DimsMap{<:AbstractDimensions}) = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
 
 #Division of matrices
 Base.:/(d1::AbstractDimsMap, d2::AbstractDimsMap) = d1*inv(d2)
@@ -69,6 +69,8 @@ qinv(q::AbstractMatrix) = inv(LinmapQuant(q))
 qadd(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) + dstrip(m2), dimension(m1) + dimension(m2))
 qsub(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) - dstrip(m2), dimension(m1) - dimension(m2))
 qmul(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) * dstrip(m2), dimension(m1) * dimension(m2))
+qmul(m::AbstractMatrix, q::QuantUnion) = LinmapQuant(dstrip(m) * dstrip(q), dimension(m) * dimension(q))
+qmul(q::QuantUnion, m::AbstractMatrix) = LinmapQuant(dstrip(q) * dstrip(m), dimension(q) * dimension(m))
 qdiv(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) / dstrip(m2), dimension(m1) / dimension(m2))
 qldiv(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) \ dstrip(m2), dimension(m1) \ dimension(m2))
 qpow(m::AbstractMatrix, p::Real) = LinmapQuant(dstrip(m)^p, DimsMap(dimension(m))^p)
@@ -105,6 +107,8 @@ Base.:-(v1::VectorQuant, v2::VectorQuant) = qsub(v1, v2)
 Base.:*(m1::LinmapQuant, m2::LinmapQuant) = qmul(m1, m2)
 Base.:*(m::LinmapQuant, v::VectorQuant)   = qmul(m, v)
 Base.:*(vt::Adjoint{<:Any, <:VectorQuant}, m::LinmapQuant) = qmul(vt, m)
+Base.:*(m::LinmapQuant, q::QuantUnion) = qmul(m, q)
+Base.:*(q::QuantUnion, m::LinmapQuant) = qmul(q, m)
 Base.:/(m1::LinmapQuant, m2::LinmapQuant) = qdiv(m1, m2)
 Base.:/(vt::Adjoint{<:Any, <:VectorQuant}, m::LinmapQuant) = qdiv(vt, m)
 Base.:\(m1::LinmapQuant, m2::LinmapQuant) = qldiv(m1, m2)

@@ -129,18 +129,16 @@ const AT = AffineTransform{Float64}
 
     @test string(FlexUnits.unit_symbols(Dimensions{FixRat32})) == "(:length => :m, :mass => :kg, :time => :s, :current => :A, :temperature => :K, :luminosity => :cd, :amount => :mol)"
 
-    #Vector operations RETRY LATER
-    #=
-    vq = Quantity([1,2], u"m/s")
+    #Vector operations
+    vq = quantity([1,2], u"m/s")
     @test [1,2].*u"m/s" == [1u"m/s", 2u"m/s"]
     @test [1,2].*(5u"m/s") == [5.0u"m/s", 10.0u"m/s"]
-    @test vq[:] == Quantity([1,2], u"m/s")
+    @test vq[:] == quantity([1,2], u"m/s")
     @test vq[1] == 1*u"m/s"
     @test vq[CartesianIndex(1)] == 1*u"m/s"
     @test all([q for q in vq] .== vq)
     @test vq[begin] == 1*u"m/s"
     @test vq[end] == 2*u"m/s"
-    =#
 
     #Size indicators for quantities
     tx = [1, 3.6, 501.3]
@@ -886,6 +884,19 @@ end
     @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
     @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
 
+    #DimsMap constructor with units 
+    dm = DimsMap(u_fac=u"", u_in=[u"m/s", u"K", u"Pa"], u_out=[u"N"])
+    @test dm == DimsMap(u_fac=dimension(u""), u_in=dimension.([u"m/s", u"K", u"Pa"]), u_out=dimension.([ud"N"]))
+    @test axes(dm) == (Base.OneTo(1), Base.OneTo(3))
+    @test Base.IndexStyle(typeof(dm)) == Base.IndexStyle(typeof(dm'))
+    @test axes(dm') == (Base.OneTo(3), Base.OneTo(1))
+    @test axes(dm,1) == Base.OneTo(1)
+    @test axes(dm,2) == Base.OneTo(3)
+    @test axes(dm',1) == Base.OneTo(3)
+    @test axes(dm',2) == Base.OneTo(1)
+    @test +(dm) == dm 
+    @test -dm == dm
+
     #Quick linear algebra tests 
     u1 = SA[u"lbf*ft", u"kW", u"rpm"]
     u2 = SA[u"kg/s", u"m^3/hr", u"kW"]
@@ -903,31 +914,50 @@ end
     @test all(qC .≈ LinmapQuant(xm, UnitMap(u_in=inv.(u1), u_out=ud"")))
     @test all(qC .≈ LinmapQuant(xm, UnitMap(u_in=inv.(u1), u_out=fill(u"", length(u1)))))
     @test all(qC .≈ LinmapQuant(Matrix(xm), UnitMap(u_in=inv.(u1), u_out=fill(u"", length(u1)))))
-
+    @test !FlexUnits.ArrayInterface.can_setindex(dimension(Matrix(qMraw)))
+    @test !FlexUnits.ArrayInterface.can_setindex(dstrip(Matrix(qMraw)))
+    @test ubase(qM) == qM
 
     #Test alternate constructors
     @test qM ≈ LinmapQuant(xm, UnitMap(u_in = u1, u_out = u2))
     @test qM ≈ LinmapQuant(xm, UnitMap(u_in = Vector(u1), u_out = Vector(u2)))
     @test qM ≈ LinmapQuant(dstrip(Matrix(qMraw)), dimension(Matrix(qMraw)))
     @test qM == LinmapQuant(qM)
+    dm = dimension(qM)
+    @test qM ≈ LinmapQuant(dstrip(qMraw), UnitMap(u_in = dm.u_in, u_out=dm.u_out.*dm.u_fac))
+
+    qx = VectorQuant(dstrip(Vector(x)), dimension(Vector(x)))
+    @test VectorQuant(ustrip.(x), u1) == VectorQuant(ustrip.(x).*u1)
+    @test all(qx .≈ x)
+    @test ubase(qx) == qx
+    @test IndexStyle(typeof(VectorQuant(x))) == IndexStyle(typeof(x))
 
     #LU factorization
     luQ = lu(qM)
     luR = lu(dstrip.(qM))
     lup = luQ.p
+    luM = lu(LinmapQuant(Matrix(qMraw)))
     @test luQ isa FactorQuant
     @test inv(luQ.factor) ≈ inv(luR)
     @test inv(luQ) ≈ inv(qM)
+    @test LinearAlgebra.inv!(lu(LinmapQuant(Matrix(qMraw)))) ≈ inv(qM)    
     @test all( (luQ.L * luQ.U)[invperm(lup),:] .≈ qM )
     @test all( luQ.P * qM .≈ luQ.L*luQ.U )
     @test qM/luQ ≈ qM/qM
     @test luQ\qM ≈ qM\qM
     @test all(x .≈ luQ\y)
     @test all(x' .≈ y'/LinmapQuant(Matrix(qMraw)'))
+    @test ustrip(luM') == ustrip(luM)'
+    @test dimension(luM') == dimension(luM)'
+    @test ustrip(transpose(luM)) == transpose(ustrip(luM))
+    @test dimension(transpose(luM)) == transpose(dimension(luM))
+    @test dstrip(lu(qM, Val(true))) == lu(dstrip(qM), Val(true))
+    @test dstrip(lu(qM, Val(false))) == lu(dstrip(qM), Val(false))
     
     #Inverses and transposes
     @test all(x .≈ inv(qM)*y)
     @test all(x .≈ FlexUnits.qinv(qMraw)*y)
+    @test all(x' .≈ y'*inv(LinmapQuant(collect(qM'))))
     @test all(Matrix(y') .≈ Matrix(x'*qM'))
     @test all(Matrix(transpose(y)) .≈ Matrix(transpose(x)*transpose(qM)))
     @test all(FlexUnits.qtranspose(x) .≈ x')
@@ -967,6 +997,10 @@ end
     @test all(log(qR) .≈ log(dstrip(qR)) .* dimension(qR))
 
     #Indexing
+    @test UniformScaling(2ud"m/s")[2,2] == 2ud"m/s"
+    @test FlexUnits.isunknown(dimension(UniformScaling(2ud"m/s")[1,2]))
+    @test !FlexUnits.isunknown(dimension(UniformScaling(2u"m/s")[1,2]))
+
     @test qR[:,1] ≈ rR[:,1]
     @test qR[:,1] isa VectorQuant
     @test qR[2,:] ≈ rR[2,:]
@@ -1034,7 +1068,12 @@ end
     @test m\mraw ≈ miraw*m
     @test m'\m' ≈ miraw'*mraw'
     @test m'\mraw' ≈ miraw'*m'
-    
+
+    @test all(m*(2u"m/s") .≈ mraw.*(2u"m/s"))
+    @test all((2u"m/s")*m .≈ (2u"m/s").*mraw)
+    @test m*(2u"m/s") isa LinmapQuant
+    @test (2u"m/s")*m isa LinmapQuant
+
     @test m/m ≈ mraw*miraw
     @test mraw/m ≈ m*miraw
     @test m'/m' ≈ mraw'*miraw'

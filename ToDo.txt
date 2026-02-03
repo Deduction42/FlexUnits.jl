@@ -8,18 +8,7 @@ Changelog:
 5.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
 
 Current Tasks:
-1.  Add some QoL improvements
-    -   UnitMap should allow scalar/vector values with static or dynamic units
-    -   LinmapQuant constructors will need to convert UnitMap to stricter forms
-        -   Broadcast scalar units to suit the matrix dimension (do this in the LinmapQuant constructor)
-            -   Scalar units should be converted to dynamic here (to prevent needless allocation)
-        -   Verify consistent size between DimsMap and matrix (again in the LinmapQuant constructor)
-        -   Convert static unit vectors to dynamic (this should be done at the DimsMap constructor)
-            -   A special passthrough function of "udynamic" should be applied to AbstractArray if dims are already dynamic
-                -   Otherwise it broadcasts "udynamic" on it 
-            -   A general constructor for AbstractVector{<:AbstractDimLike} calls "udynamic" on the arguments
-
-2.  Add LinearAlgebra extensions for certain factorizations
+1.  Add LinearAlgebra extensions for certain factorizations
     -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
         -   eig = eigen(A::LinmapQuant)
         -   eig.vectors = LinmapQuant(ustrip(eig).vectors, UnitMap(fill(ud"", N), unit(eig).u_in))
@@ -29,7 +18,7 @@ Current Tasks:
         -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
     -   consider other factorizations as well
 
-3.  Build out documentation and a docs badge
+2.  Build out documentation and a docs badge
     -   Remove MirrorDims 
     -   Add warnings around "Affine Delta" and "zero/oneunit"
     -   Add Examples
@@ -37,8 +26,6 @@ Current Tasks:
         -   The unit dispatch pattern vs the static intermediate pattern
         -   DifferentialEquations if we can make them work
         -   Linear Dynamic System and Linear Algebra once added
-
-
 
 
 Backlog:

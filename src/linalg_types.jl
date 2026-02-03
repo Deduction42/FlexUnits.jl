@@ -47,7 +47,7 @@ Base.IndexStyle(::Type{<:QuantArrayDims{D,N,A}}) where{D,N,A} = IndexStyle(A)
 Base.getindex(m::QuantArrayDims, args...) = broadcast(dimension, getindex(m.array, args...))
 Base.size(m::QuantArrayDims) = size(m.array)
 Base.axes(m::QuantArrayDims) = axes(m.array)
-ArrayInterface.can_setindex(::Type{QuantArrayDims}) = false
+ArrayInterface.can_setindex(::Type{<:QuantArrayDims}) = false
 dimension(m::AbstractArray) = QuantArrayDims(m)
 dimension(m::SArray) = dimension.(m)
 
@@ -68,7 +68,7 @@ Base.IndexStyle(::Type{<:QuantArrayVals{D,N,A}}) where{D,N,A} = IndexStyle(A)
 Base.getindex(m::QuantArrayVals, args...) = broadcast(dstrip, getindex(m.array, args...))
 Base.size(m::QuantArrayVals) = size(m.array)
 Base.axes(m::QuantArrayVals) = axes(m.array)
-ArrayInterface.can_setindex(::Type{QuantArrayVals}) = false
+ArrayInterface.can_setindex(::Type{<:QuantArrayVals}) = false
 dstrip(m::AbstractArray) = QuantArrayVals(m)
 dstrip(m::SArray) = dstrip.(m)
 
@@ -173,7 +173,7 @@ struct AdjointDmap{D, M<:AbstractDimsMap{D}} <: AbstractDimsMap{D}
     parent :: M 
 end
 
-Base.IndexStyle(::Type{AdjointDmap{D,M}}) where {D,M} = IndexStype(M)
+Base.IndexStyle(::Type{AdjointDmap{D,M}}) where {D,M} = IndexStyle(M)
 Base.size(m::AdjointDmap) = reverse(size(m.parent))
 Base.transpose(m::AbstractDimsMap) = AdjointDmap(m)
 Base.transpose(m::AdjointDmap) = m.parent
@@ -268,8 +268,7 @@ struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVe
 end
 
 function VectorQuant(v::AbstractVector{T}, u::AbstractVector{<:AbstractUnits}) where T 
-    todims(ux::AbstractUnits, x) = ux.todims(x)
-    new_m = todims.(v, u)
+    new_m = todims.(u, v)
     new_u = dimension.(u)
     return VectorQuant(new_m, new_u)
 end
@@ -310,7 +309,7 @@ dstrip(fq::FactorQuant) = getfield(fq, :factor)
 unit(fq::FactorQuant) = getfield(fq, :dims)
 dimension(fq::FactorQuant) = getfield(fq, :dims)
 Base.inv(fq::FactorQuant) = LinmapQuant(inv(ustrip(fq)), inv(unit(fq)))
-LinearAlgebra.inv!(fq::FactorQuant) = LinmapQuant(inv!(ustrip(fq)), inv(unit(fq)))
+LinearAlgebra.inv!(fq::FactorQuant) = LinmapQuant(LinearAlgebra.inv!(ustrip(fq)), inv(unit(fq)))
 Base.transpose(fq::FactorQuant) = FactorQuant(transpose(fq.factor), transpose(fq.dims))
 Base.adjoint(fq::FactorQuant) = FactorQuant(adjoint(fq.factor), adjoint(fq.dims))
 
