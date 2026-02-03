@@ -181,7 +181,6 @@ for M in QUANT_MATRIX_TYPES
     @eval Base.:^(m::$M, p::Integer) = qpow(m, p)
     @eval Base.:exp(m::$M) = qexp(m)
     @eval Base.:log(m::$M) = qlog(m)
-    @eval Base.:inv(m::$M) = qinv(m)
 end
 
 #Add FactorQuant methods 

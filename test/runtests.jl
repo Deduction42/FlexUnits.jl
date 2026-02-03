@@ -893,6 +893,8 @@ end
     xm = SMatrix{3,3}(randn(3,3))
     qMraw = xm.*(u2./u1')
     qM = LinmapQuant(qMraw)
+    x = SVector{3}(randn(3)).*u1
+    y = qM*x
 
     #Test various constructors 
     @test all(qM .≈ LinmapQuant(xm, UnitMap(u_in=u1, u_out=u2)))
@@ -918,14 +920,27 @@ end
     @test inv(luQ) ≈ inv(qM)
     @test all( (luQ.L * luQ.U)[invperm(lup),:] .≈ qM )
     @test all( luQ.P * qM .≈ luQ.L*luQ.U )
-
-    #Matrix inversion
-    x = SVector{3}(randn(3)).*u1
-    y = qM*x
+    @test qM/luQ ≈ qM/qM
+    @test luQ\qM ≈ qM\qM
+    @test all(x .≈ luQ\y)
+    @test all(x' .≈ y'/LinmapQuant(Matrix(qMraw)'))
+    
+    #Inverses and transposes
     @test all(x .≈ inv(qM)*y)
-
-    #Matrix transpose
+    @test all(x .≈ FlexUnits.qinv(qMraw)*y)
     @test all(Matrix(y') .≈ Matrix(x'*qM'))
+    @test all(Matrix(transpose(y)) .≈ Matrix(transpose(x)*transpose(qM)))
+    @test all(FlexUnits.qtranspose(x) .≈ x')
+    @test all(transpose(FlexUnits.qtranspose(x)) .≈ x)
+    @test all(FlexUnits.qadjoint(x) .≈ x')
+    @test all((FlexUnits.qadjoint(x)') .≈ x)
+    @test all(FlexUnits.qtranspose(qMraw) .≈ qM')
+    @test all(transpose(FlexUnits.qtranspose(qMraw)) .≈ qM)
+    @test all(FlexUnits.qadjoint(qMraw) .≈ qM')
+    @test all((FlexUnits.qadjoint(qMraw)') .≈ qM)
+    @test inv(qM')*LinmapQuant(collect(qM')) ≈ inv(qM')*qM'
+    @test LinmapQuant(collect(qM'))*inv(qM') ≈ qM'*inv(qM')
+    @test FlexUnits.qinv(qMraw) ≈ inv(qM)
 
     #Square matrices
     Σ = cov(randn(20,3)*rand(3,3))
@@ -948,6 +963,8 @@ end
     @test FlexUnits.assert_repeatable(dimension(qR')) == dimension(qR')
     @test FlexUnits.assert_idempotent(dimension(qR)) == dimension(qR)
     @test FlexUnits.assert_idempotent(dimension(qR')) == dimension(qR')
+    @test all(exp(qR) .≈ exp(dstrip(qR)) .* dimension(qR)) 
+    @test all(log(qR) .≈ log(dstrip(qR)) .* dimension(qR))
 
     #Indexing
     @test qR[:,1] ≈ rR[:,1]
