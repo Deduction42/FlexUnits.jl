@@ -108,8 +108,8 @@ Nr = 200
 XY = randn(Nr, 6) * rand(6, 6)
 X = XY[:, begin:4]
 Y = XY[:, 5:end]
-Xu = LinmapQuant(X, UnitMap(u_out=fill(ud"",Nr), u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m"])))
-Yu = LinmapQuant(Y, UnitMap(u_out=fill(ud"",Nr), u_in=inv.([UnitRegistry.u"K", UnitRegistry.u"kPa"])))
+Xu = LinmapQuant(X, UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m"])))
+Yu = LinmapQuant(Y, UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"K", UnitRegistry.u"kPa"])))
 
 print("No Units:\t")
 @btime (X'X)\(X'Y)
@@ -140,7 +140,7 @@ Mdq = inv.(udq) .* M .* inv.(udqt)
 
 
 ufq = [UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m"]
-Xfq = LinmapQuant(X, UnitMap(u_out = fill(UnitRegistry.ud"", size(X,1)), u_in = inv.(ufq)))
+Xfq = LinmapQuant(X, UnitMap(u_out = UnitRegistry.u"", u_in = inv.(ufq)))
 Mfq = LinmapQuant(M, UnitMap(u_out = inv.(ufq), u_in=ufq))
 
 print("No Units:\t")

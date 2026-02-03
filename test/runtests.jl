@@ -894,6 +894,15 @@ end
     qMraw = xm.*(u2./u1')
     qM = LinmapQuant(qMraw)
 
+    #Test various constructors 
+    @test all(qM .≈ LinmapQuant(xm, UnitMap(u_in=u1, u_out=u2)))
+    qC = xm.*u1'
+    @test all(qC .≈ LinmapQuant(xm, UnitMap(u_in=inv.(u1), u_out=u"")))
+    @test all(qC .≈ LinmapQuant(xm, UnitMap(u_in=inv.(u1), u_out=ud"")))
+    @test all(qC .≈ LinmapQuant(xm, UnitMap(u_in=inv.(u1), u_out=fill(u"", length(u1)))))
+    @test all(qC .≈ LinmapQuant(Matrix(xm), UnitMap(u_in=inv.(u1), u_out=fill(u"", length(u1)))))
+
+
     #Test alternate constructors
     @test qM ≈ LinmapQuant(xm, UnitMap(u_in = u1, u_out = u2))
     @test qM ≈ LinmapQuant(xm, UnitMap(u_in = Vector(u1), u_out = Vector(u2)))
@@ -1135,6 +1144,8 @@ end
 @testset "Aqua.jl" begin
     Aqua.test_all(FlexUnits)
 end
+
+nothing
 
 #=
 #Benchmark testing

@@ -65,7 +65,7 @@ end
 Define "q" linear algebra methods that are distinct from LinearAlgebra and don't cause dispatch/ambiguitiy issues
 ======================================================================================================================#
 #Matrices
-qinv(q::AbstractMatrix) = inv(LinmapQuant(DimsMap, q))
+qinv(q::AbstractMatrix) = inv(LinmapQuant(q))
 qadd(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) + dstrip(m2), dimension(m1) + dimension(m2))
 qsub(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) - dstrip(m2), dimension(m1) - dimension(m2))
 qmul(m1::AbstractMatrix, m2::AbstractMatrix) = LinmapQuant(dstrip(m1) * dstrip(m2), dimension(m1) * dimension(m2))
@@ -181,6 +181,7 @@ for M in QUANT_MATRIX_TYPES
     @eval Base.:^(m::$M, p::Integer) = qpow(m, p)
     @eval Base.:exp(m::$M) = qexp(m)
     @eval Base.:log(m::$M) = qlog(m)
+    @eval Base.:inv(m::$M) = qinv(m)
 end
 
 #Add FactorQuant methods 

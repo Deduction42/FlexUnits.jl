@@ -59,7 +59,7 @@ abstract type AbstractUnits{D, T<:AbstractUnitTransform} <: AbstractUnitLike end
 
 const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
-abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} <: AbstractUnitLike end
+abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} end
 
 #Base.@assume_effects :consistent static_fieldnames(t::Type) = Base.fieldnames(t)
 static_fieldnames(t::Type) = Base.fieldnames(t)
@@ -277,7 +277,6 @@ dimension(u::Units) = u.dims
 usymbol(u::Units) = u.symbol
 remove_offset(u::U) where U<:AbstractUnits = constructorof(U)(dimension(u), remove_offset(u.todims))
 is_scalar(u::AbstractUnits) = is_scalar(todims(u))
-is_dimension(u::AbstractUnits) = is_identity(todims(u))
 udynamic(u::Units) = u
 dimtype(::Type{U}) where {D,U<:Units{D}} = dimtype(D)
 unit(x::NumUnion) = Units(NoTrnasform(), NoDims())
