@@ -62,8 +62,8 @@ print("DynamicQ:\t")
 print("FlexU:\t")
 @btime sum(x->x^2, $v1flex)
 
-# ========== S3. Broadcasting on large arrays ==========
-println("\nS3) Broadcasting on large arrays\n")
+# ========== S3.1 Broadcasting on large arrays ==========
+println("\nS3.1) Broadcasting on large arrays\n")
 x0 = randn(N)
 
 xu = x0 .* Unitful.u"km/s"
@@ -100,6 +100,60 @@ print("FlexU Dynamic:\t")
 
 print("FlexU Static:\t")
 @btime g.($xfs, $yfs)
+
+
+# ========== S3.2 Linear Regression ==========
+println("\nS3.2) Linear Regression \n")
+Nr = 200
+XY = randn(Nr, 6) * rand(6, 6)
+X = XY[:, begin:4]
+Y = XY[:, 5:end]
+Xu = LinmapQuant(X, UnitMap(u_out=fill(ud"",Nr), u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m"])))
+Yu = LinmapQuant(Y, UnitMap(u_out=fill(ud"",Nr), u_in=inv.([UnitRegistry.u"K", UnitRegistry.u"kPa"])))
+
+print("No Units:\t")
+@btime (X'X)\(X'Y)
+
+print("Unitful:\t  fails\n")
+
+print("DynamicQ:\t  fails\n")
+
+print("FlexUnits:\t")
+@btime Bu = (Xu'Xu)\(Xu'Yu)
+
+
+# ========== S3.2 Matrix Multiplication ==========
+println("\nS3.3) Matrix Multiplication, Mixed Units \n")
+
+X = randn(Nr, 4)
+M = rand(4,4)
+
+uu = [Unitful.u"kg/s", Unitful.u"kW", Unitful.u"rad/s", Unitful.u"N/m"]
+ut = reshape(uu, 1, :)
+Xu = X.*ut
+Mu = inv.(uu) .* M .* inv.(ut)
+
+udq = [DynamicQuantities.u"kg/s", DynamicQuantities.u"kW", DynamicQuantities.u"rad/s", DynamicQuantities.u"N/m"]
+udqt = reshape(udq, 1, :)
+Xdq = X.*udqt
+Mdq = inv.(udq) .* M .* inv.(udqt)
+
+
+ufq = [UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m"]
+Xfq = LinmapQuant(X, UnitMap(u_out = fill(UnitRegistry.ud"", size(X,1)), u_in = inv.(ufq)))
+Mfq = LinmapQuant(M, UnitMap(u_out = inv.(ufq), u_in=ufq))
+
+print("No Units:\t")
+@btime X*M
+
+print("Unitful:\t")
+@btime Xu*Mu
+
+print("DynamicQ:\t")
+@btime Xdq*Mdq
+
+print("FlexUnits:\t")
+@btime Xfq*Mfq
 
 # ========== S4.1. upreferred ==========
 println("\nS4.1) upreferred\n")
