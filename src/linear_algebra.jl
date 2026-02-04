@@ -32,7 +32,7 @@ Base.:*(d1::AbstractDimsMap, d2::MatrixOfDims) = DimsMap(u_in = inv.(d2'*inv.(ui
 
 #Multiplying factored dimensions with vectors of dimensions 
 Base.:*(d1::AbstractDimsMap, d2::VectorOfDims) = uoutput(d1) .* (dotinv1(uinput(d1), d2)*ufactor(d1))
-Base.:*(d1::Adjoint{<:AbstractDimensions, <:VectorOfDims}, d2::AbstractDimsMap) = ((d1*uoutput(d2))*ufactor(d2)./uinput(d1))'
+#Base.:*(d1::Adjoint{<:AbstractDimensions, <:VectorOfDims}, d2::AbstractDimsMap) = ((d1*uoutput(d2))*ufactor(d2)./uinput(d1))'
 
 #Multiplying specific factorizations with single dimensions
 Base.:*(dm::DimsMap{<:AbstractDimensions}, d::AbstractDimLike) = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
@@ -47,7 +47,6 @@ Base.:\(d1::MatrixOfDims, d2::AbstractDimsMap) = inv(DimsMap(d1))*d2
 Base.:\(d1::AbstractDimsMap, d2::MatrixOfDims) = inv(d1)*d2
 
 #Division of matrices and vectors
-Base.:/(d1::VectorOfDims, d2::AbstractDimsMap) = d1*inv(d2)
 Base.:\(d1::AbstractDimsMap, d2::VectorOfDims) = inv(d1)*d2
 
 #Matrix powers 
@@ -85,12 +84,12 @@ qadd(v1::AbstractVector, v2::AbstractVector) = VectorQuant(dstrip(v1) + dstrip(v
 qsub(v1::AbstractVector, v2::AbstractVector) = VectorQuant(dstrip(v1) - dstrip(v2), dimension(v1) - dimension(v2))
 qmul(m::AbstractMatrix, v::AbstractVector) = VectorQuant(dstrip(m) * dstrip(v), dimension(m) * dimension(v))
 qmul(vt::Adjoint{<:Any, <:AbstractVector}, m::AbstractMatrix) = qmul(m', qadjoint(vt))'
-qldiv(m::AbstractMatrix, v::AbstractVector) = VectorQuant(dstrip(m) \ dstrip(v), dimension(m) \ dimension(v))
+qldiv(m::AbstractMatrix, v::AbstractVector) = VectorQuant(dstrip(m) \ dstrip(v), DimsMap(dimension(m)) \ dimension(v))
 qdiv(vt::Adjoint{<:Any, <:AbstractVector}, m::AbstractMatrix) = qldiv(m', qadjoint(vt))'
 qadjoint(v::AbstractVector) = adjoint(VectorQuant(v))
 qadjoint(vt::Adjoint{<:Any, <:AbstractVector}) = VectorQuant(adjoint(vt))
 qtranspose(v::AbstractVector) = transpose(VectorQuant(v))
-qtranspose(vt::Transpose{<:Any, <:AbstractVector}) = transpose(VectorQuant(transpose(vt)))
+qtranspose(vt::Transpose{<:Any, <:AbstractVector}) = VectorQuant(transpose(vt))
 qisapprox(v1::AbstractVector, v2::AbstractVector) = dstrip(v1) ≈ dstrip(v2) && dimension(v1) == dimension(v2)
 
 #Factorizations

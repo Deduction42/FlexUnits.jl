@@ -17,8 +17,10 @@ Current Tasks:
         -   E' == inv(E) DOES NOT hold 
         -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
     -   consider other factorizations as well
+    
+2.  Add DiffEqBase extension
 
-2.  Build out documentation and a docs badge
+3.  Build out documentation and a docs badge
     -   Remove MirrorDims 
     -   Add warnings around "Affine Delta" and "zero/oneunit"
     -   Add Examples

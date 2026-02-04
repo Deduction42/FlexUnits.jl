@@ -946,7 +946,7 @@ end
     @test qM/luQ ≈ qM/qM
     @test luQ\qM ≈ qM\qM
     @test all(x .≈ luQ\y)
-    @test all(x' .≈ y'/LinmapQuant(Matrix(qMraw)'))
+    @test all(x' .≈ y'/lu(LinmapQuant(Matrix(qMraw)')))
     @test ustrip(luM') == ustrip(luM)'
     @test dimension(luM') == dimension(luM)'
     @test ustrip(transpose(luM)) == transpose(ustrip(luM))
@@ -958,6 +958,7 @@ end
     @test all(x .≈ inv(qM)*y)
     @test all(x .≈ FlexUnits.qinv(qMraw)*y)
     @test all(x' .≈ y'*inv(LinmapQuant(collect(qM'))))
+    @test all(x' .≈ identity.(y)'*inv(LinmapQuant(collect(qM'))))
     @test all(Matrix(y') .≈ Matrix(x'*qM'))
     @test all(Matrix(transpose(y)) .≈ Matrix(transpose(x)*transpose(qM)))
     @test all(FlexUnits.qtranspose(x) .≈ x')
@@ -965,6 +966,7 @@ end
     @test all(FlexUnits.qadjoint(x) .≈ x')
     @test all((FlexUnits.qadjoint(x)') .≈ x)
     @test all(FlexUnits.qtranspose(qMraw) .≈ qM')
+    @test all(FlexUnits.qtranspose(transpose(x)) .≈ x)
     @test all(transpose(FlexUnits.qtranspose(qMraw)) .≈ qM)
     @test all(FlexUnits.qadjoint(qMraw) .≈ qM')
     @test all((FlexUnits.qadjoint(qMraw)') .≈ qM)
@@ -1068,6 +1070,7 @@ end
     @test m\mraw ≈ miraw*m
     @test m'\m' ≈ miraw'*mraw'
     @test m'\mraw' ≈ miraw'*m'
+    @test mraw\m ≈ miraw*m
 
     @test all(m*(2u"m/s") .≈ mraw.*(2u"m/s"))
     @test all((2u"m/s")*m .≈ (2u"m/s").*mraw)
@@ -1076,15 +1079,19 @@ end
 
     @test m/m ≈ mraw*miraw
     @test mraw/m ≈ m*miraw
+    @test m/mraw ≈ m*miraw
     @test m'/m' ≈ mraw'*miraw'
     @test mraw'/m' ≈ m'*miraw'
 
     @test m*x ≈ yraw
+    @test mraw*x ≈ y
+    @test all(x'*mraw' .≈ y')
     @test mi*y ≈ xraw
     @test (x'*m')' ≈ yraw 
     @test (y'*mi')' ≈ xraw
     @test m\y ≈ xraw
     @test (y'/m')' ≈ xraw
+    @test mraw\y ≈ xraw
     @test transpose(transpose(y)) ≈ yraw
 
     mrep = LinmapQuant(SA[1.0 0.1; 0.2 1.0], UnitMap(u_in = SA[u"kg/s", u"kW"], u_out=SA[u"kg/s", u"kW"]))
@@ -1093,9 +1100,14 @@ end
     @test mrep^2 ≈ mraw*mraw
     @test mrep^3 ≈ mrep*mrep*mrep
     @test mrep^2.0 ≈ mraw*mraw
+    @test (mrep')^2 ≈ mraw'*mraw'
     @test dimension(exp(mrep)) == dimension(mrep)
-    @test dstrip(exp(mrep)) ≈ exp(dstrip(mrep))
+    @test mraw^2 ≈ mraw*mraw
+    @test mraw^2.0 ≈ mraw*mraw
 
+    @test dstrip(exp(mrep)) ≈ exp(dstrip(mrep))
+    @test dstrip(exp(mraw)) ≈ exp(dstrip(mrep))
+    @test dstrip(log(mraw)) ≈ log(dstrip(mrep))
 end
 
 @testset "Additional tests of FixedRational" begin
