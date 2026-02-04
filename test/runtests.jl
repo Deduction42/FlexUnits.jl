@@ -1061,6 +1061,7 @@ end
     @test x - x ≈ xraw - xraw
     @test x - xraw ≈ xraw - x
     @test m - m ≈ mraw - mraw
+    @test mraw - mraw ≈ m - m
     @test m - mraw ≈ mraw - m
 
     @test m*mi ≈ mraw*miraw
@@ -1091,8 +1092,12 @@ end
     @test (y'*mi')' ≈ xraw
     @test m\y ≈ xraw
     @test (y'/m')' ≈ xraw
-    @test mraw\y ≈ xraw
+    @test (y'/mraw')' ≈ xraw
+    @test (yraw'/LinmapQuant(mraw'))' ≈ xraw
+    @test m\yraw ≈ xraw
+    @test xraw ≈ mraw\y 
     @test transpose(transpose(y)) ≈ yraw
+    @test all(Diagonal(xraw)\x .≈ xraw./xraw)
 
     mrep = LinmapQuant(SA[1.0 0.1; 0.2 1.0], UnitMap(u_in = SA[u"kg/s", u"kW"], u_out=SA[u"kg/s", u"kW"]))
     mraw = SMatrix{2,2}(mrep)

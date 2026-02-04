@@ -191,7 +191,7 @@ Base.:/(mq::AbstractArray, fq::FactorQuant) = qdiv(mq, fq)
 Base.:\(fq::FactorQuant, mq::AbstractArray) = qldiv(fq, mq)
 
 #Special case ambiguities
-Base.:\(m::Diagonal{T, SVector{N,T}}, v::VectorQuant) where {N,T} = qldiv(m, v)
+Base.:\(m::Diagonal{T, SVector{N,T}}, v::VectorQuant) where {N,T} = inv(m)*v
 
 #======================================================================================================================
 Utility functions
