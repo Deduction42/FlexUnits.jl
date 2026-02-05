@@ -106,9 +106,9 @@ print("FlexU Static:\t")
 println("\nS3.2) Linear Regression \n")
 Nr = 200
 XY = randn(Nr, 6) * rand(6, 6)
-X = XY[:, begin:4]
+X = [XY[:, begin:4] ones(Nr)]
 Y = XY[:, 5:end]
-Xu = LinmapQuant(X, UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m"])))
+Xu = LinmapQuant(X, UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m", UnitRegistry.u""])))
 Yu = LinmapQuant(Y, UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"K", UnitRegistry.u"kPa"])))
 
 print("No Units:\t")
@@ -125,20 +125,24 @@ print("FlexUnits:\t")
 # ========== S3.2 Matrix Multiplication ==========
 println("\nS3.3) Matrix Multiplication, Mixed Units \n")
 
+#Use unitless matrices as a benchmark
+Nr = 200
 X = randn(Nr, 4)
 M = rand(4,4)
 
+#Construct unitful matrices
 uu = [Unitful.u"kg/s", Unitful.u"kW", Unitful.u"rad/s", Unitful.u"N/m"]
 ut = reshape(uu, 1, :)
 Xu = X.*ut
 Mu = inv.(uu) .* M .* inv.(ut)
 
+#Construct DynamicQuantity matrices
 udq = [DynamicQuantities.u"kg/s", DynamicQuantities.u"kW", DynamicQuantities.u"rad/s", DynamicQuantities.u"N/m"]
 udqt = reshape(udq, 1, :)
 Xdq = X.*udqt
 Mdq = inv.(udq) .* M .* inv.(udqt)
 
-
+#Construct LinmapQuant matrices
 ufq = [UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m"]
 Xfq = LinmapQuant(X, UnitMap(u_out = UnitRegistry.u"", u_in = inv.(ufq)))
 Mfq = LinmapQuant(M, UnitMap(u_out = inv.(ufq), u_in=ufq))
