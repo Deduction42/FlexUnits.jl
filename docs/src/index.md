@@ -23,7 +23,7 @@ julia> 1u"°C"   #@u_str produces static units (multiplication converts to base 
 julia> 1ud"°C"  #@ud_str produces dynamic units (multiplication converts to base units)
 274.15 K
 
-julia> quantity(1, u"°C") #Use "quantity" to avoid eager conversion to base units
+julia> quantity(1, u"°C") #Use 'quantity' to avoid eager conversion to base units
 1 °C
 ```
 
@@ -98,13 +98,7 @@ julia> [1u"m/s", 2u"m/s", 3u"lb/s"]   #Different static dimensions promote to a 
  2.0 m/s
  1.360776 kg/s
 
-julia> [1ud"m/s", 2ud"m/s", 3ud"lb/s"]  #Dynamic units are untouched
-3-element Vector{Quantity{Int64, Units{Dimensions{FixRat32}, AffineTransform}}}:
- 1 m/s
- 2 m/s
- 3 lb/s
-
-julia> [1ud"m/s", 2ud"m/s", 3ud"lb/s"].*1  #Mathematical operations tend to convert to SI units for performance
+julia> [1ud"m/s", 2ud"m/s", 3ud"lb/s"]  #Mathematical operations tend to convert to SI units for performance
 3-element Vector{Quantity{Float64, Dimensions{FixRat32}}}:
  1.0 m/s
  2.0 m/s

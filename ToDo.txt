@@ -8,7 +8,20 @@ Changelog:
 5.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
 
 Current Tasks:
-1.  Add LinearAlgebra extensions for certain factorizations
+1.  Build out documentation and a docs badge
+    -   Revamp the Readme to emphasize extended language support (linear algebra, zero(Quantity{<:Dimensions}))
+    -   Add warnings around "Affine Delta" and "zero/oneunit"
+    -   Add API/Functions section
+    -   Add benchmarks for linear algebra
+        -   Linear Regression (FlexUnits vs unitless)
+        -   Matrix Multiplication (All packages)
+    -   Add advanced examples 
+        -   Falling Object differential equation solvers (Tsit5 and Rodas5P)
+            -   Include "extension code"
+        -   Custom Unit Registry with Rational for exact conversions
+
+
+2.  Add LinearAlgebra factorizations
     -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
         -   eig = eigen(A::LinmapQuant)
         -   eig.vectors = LinmapQuant(ustrip(eig).vectors, UnitMap(fill(ud"", N), unit(eig).u_in))
@@ -17,18 +30,6 @@ Current Tasks:
         -   E' == inv(E) DOES NOT hold 
         -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
     -   consider other factorizations as well
-    
-2.  Add DiffEqBase extension
-
-3.  Build out documentation and a docs badge
-    -   Remove MirrorDims 
-    -   Add warnings around "Affine Delta" and "zero/oneunit"
-    -   Add Examples
-        -   The DynamicQ -> StaticQ -> DynamicQ (static intermediate) pattern with the PengRobinson benchmarks
-        -   The unit dispatch pattern vs the static intermediate pattern
-        -   DifferentialEquations if we can make them work
-        -   Linear Dynamic System and Linear Algebra once added
-
 
 Backlog:
 

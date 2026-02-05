@@ -8,6 +8,7 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Performance" => "performance.md",
+        "Linear Algebra" => "linearalgebra.md",
         "Types" => "types.md"
     ]
 )
