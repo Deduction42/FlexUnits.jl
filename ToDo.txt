@@ -8,18 +8,7 @@ Changelog:
 5.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
 
 Current Tasks:
-1.  Finish basic LinmapQuant/VectorQuant for +, -, *, /, \, lu, ^, exp, sin, cos, tan,
-    -   Build subindexing schema around m::LinmapQuant
-        -   getindex(m::LinmapQuant, i::Integer, vj::Any) -> VectorQuant 
-        -   getindex(m::LinmapQuant, vi::Any, j::Integer) -> VectorQuant 
-        -   getindex(m::LinmapQuant, vi::Any, vj::Any) -> LinmapQuant
-    -   Build out test suite to achieve adequate coverage
-    -   Continue Rodas5P experiment
-    -   Add some factorizations with specialized getproperty methods
-    
-
-
-2.  Add LinearAlgebra extensions for certain factorizations
+1.  Add LinearAlgebra extensions for certain factorizations
     -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
         -   eig = eigen(A::LinmapQuant)
         -   eig.vectors = LinmapQuant(ustrip(eig).vectors, UnitMap(fill(ud"", N), unit(eig).u_in))
@@ -28,6 +17,8 @@ Current Tasks:
         -   E' == inv(E) DOES NOT hold 
         -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
     -   consider other factorizations as well
+    
+2.  Add DiffEqBase extension
 
 3.  Build out documentation and a docs badge
     -   Remove MirrorDims 
@@ -37,8 +28,6 @@ Current Tasks:
         -   The unit dispatch pattern vs the static intermediate pattern
         -   DifferentialEquations if we can make them work
         -   Linear Dynamic System and Linear Algebra once added
-
-
 
 
 Backlog:

@@ -10,7 +10,7 @@ FlexUnits.jl is a unit package designed to resemble Unitful.jl, with similar per
 3. Return values in dynamic units with confidence that function output is type-stable
 
 ## Quick start examples
-The FlexUnits API is designed to resemble Unitful in a number of ways. One major difference is that string macros and parsing functions are not exported by default, instead they are exported by a unit registry. This way, users can define their own registries and use those as a basis for unit parsing. FlexUnits provides a unit registry (UnitRegistry) that can be imported to provide default unit parsing functionality.
+The FlexUnits API is designed to resemble Unitful in a number of ways. One major difference is that string macros and parsing functions are not exported by default, instead they are exported by a unit registry. This allows users to define their own registries and use those as a basis for unit parsing. FlexUnits provides a unit registry (UnitRegistry) that can be imported to provide default unit parsing functionality.
 ```
 add FlexUnits
 using FlexUnits, .UnitRegistry
@@ -18,10 +18,13 @@ using FlexUnits, .UnitRegistry
 
 Units are accessed primarily through string macros. The `@u_str` macro produces static units by default (for maximum performance when injected into low-level code), but if dynamic units are desired (particularly for interactive workflows) one can use the `@ud_str` macro. 
 ```
-julia> 1u"°C"   #@u_str produces static units which automatically convert quantities to SI on multiplication
+julia> 1u"°C"   #@u_str produces static units (multiplication converts to base units)
 274.15 K
 
-julia> 1ud"°C"   #@ud_str produces dynamic units which don't eagerly convert
+julia> 1ud"°C"  #@ud_str produces dynamic units (multiplication converts to base units)
+274.15 K
+
+julia> quantity(1, u"°C") #Use "quantity" to avoid eager conversion to base units
 1 °C
 ```
 
