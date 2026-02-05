@@ -148,6 +148,13 @@ function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
     return DimsMap(u_fac=u_fac, u_out=u_out, u_in=u_in)
 end
 
+function DimsMap(v::AbstractVector{D}) where D<:AbstractDimensions
+    u_fac = v[begin]
+    u_out = v./u_fac
+    u_in  = SVector{1}(D())
+    return DimsMap(u_fac=u_fac, u_out=u_out, u_in=u_in)
+end
+
 DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
 DimsMap(d::AbstractDimsMap) = d
 

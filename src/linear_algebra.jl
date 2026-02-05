@@ -60,6 +60,17 @@ for op in (:exp, :log)
     @eval Base.$op(d::AbstractDimsMap) = assert_idempotent(d)
 end
 
+#Concatenation 
+function Base.hcat(d1::AbstractDimsMap, d2::AbstractDimsMap)
+    uoutput(d1) == uoutput(d2) || throw(ArgumentError("Arguments have incompatible dimensions"))
+    u_in = vcat(uinput(d1), (ufactor(d1)/ufactor(d2)).*uinput(d2))
+    return DimsMap(u_fac = ufactor(d1), u_in = u_in, u_out = uoutput(d1))
+end
+Base.hcat(d1::MatrixOfDims, d2::AbstractDimsMap) = hcat(DimsMap(d1), d2)
+Base.hcat(d1::AbstractDimsMap, d2::MatrixOfDims) = hcat(d1, DimsMap(d2))
+Base.hcat(d1::AbstractDimsMap, d2::VectorOfDims) = hcat(d1, DimsMap(d2))
+Base.hcat(d1::VectorOfDims, d2::AbstractDimsMap) = hcat(DimsMap(d1), d2)
+
 #======================================================================================================================
 Define "q" linear algebra methods that are distinct from LinearAlgebra and don't cause dispatch/ambiguitiy issues
 ======================================================================================================================#
@@ -78,6 +89,7 @@ qlog(m::AbstractMatrix) = LinmapQuant(log(dstrip(m)), log(DimsMap(dimension(m)))
 qadjoint(m::AbstractMatrix) = adjoint(LinmapQuant(m))
 qtranspose(m::AbstractMatrix) = transpose(LinmapQuant(m))
 qisapprox(m1::AbstractMatrix, m2::AbstractMatrix) = dstrip(m1) ≈ dstrip(m2) && dimension(m1) == dimension(m2)
+qhcat(m1::AbstractArray, m2::AbstractArray) = LinmapQuant(hcat(dstrip(m1), dstrip(m2)), hcat(dimension(m1), dimension(m2)))
 
 #Vectors
 qadd(v1::AbstractVector, v2::AbstractVector) = VectorQuant(dstrip(v1) + dstrip(v2), dimension(v1) + dimension(v2))
@@ -119,6 +131,10 @@ Base.:log(m::LinmapQuant) = qlog(m)
 Base.:(≈)(m1::LinmapQuant, m2::LinmapQuant) = qisapprox(m1, m2)
 Base.:(≈)(v1::VectorQuant, v2::VectorQuant) = qisapprox(v1, v2)
 
+Base.hcat(m1::LinmapQuant, m2::LinmapQuant) = qhcat(m1, m2)
+Base.hcat(v::VectorQuant, m::LinmapQuant) = qhcat(v, m)
+Base.hcat(m::LinmapQuant, v::VectorQuant) = qhcat(m, v)
+
 #======================================================================================================================
 Specify Base methods combingin AbstractMatrix/AbstractVector subtypes with LinmapQuant and VectorQuant
 ======================================================================================================================#
@@ -158,6 +174,9 @@ for MU in COMB_MATRIX_TYPES
 
         @eval Base.:≈(m1::$M, m2::LinmapQuant) = qisapprox(m1, m2)
         @eval Base.:≈(m1::LinmapQuant, m2::$M) = qisapprox(m1, m2)
+
+        @eval Base.hcat(m1::$M, m2::LinmapQuant) = qhcat(m1, m2)
+        @eval Base.hcat(m1::LinmapQuant, m2::$M) = qhcat(m1, m2)
     end
 end 
 
@@ -176,6 +195,9 @@ for V in COMB_VECTOR_TYPES
 
     @eval Base.:≈(v1::$V, v2::VectorQuant) = qisapprox(v1, v2)
     @eval Base.:≈(v1::VectorQuant, v2::$V) = qisapprox(v1, v2)
+
+    @eval Base.hcat(v1::$V, m2::LinmapQuant) = qhcat(v1, m2)
+    @eval Base.hcat(m1::LinmapQuant, v2::$V) = qhcat(m1, v2)
 end
 
 #Apply the quantity-specific methods on single-argument matrix functions
