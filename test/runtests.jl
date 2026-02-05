@@ -935,7 +935,7 @@ end
     #LU factorization
     luQ = lu(qM)
     luR = lu(dstrip.(qM))
-    lup = luQ.p
+    lup = MVector{3}(luQ.p)
     luM = lu(LinmapQuant(Matrix(qMraw)))
     @test luQ isa FactorQuant
     @test inv(luQ.factor) ≈ inv(luR)
