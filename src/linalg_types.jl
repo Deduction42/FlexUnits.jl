@@ -21,7 +21,7 @@ Base.getindex(m::AbstractDimsMap, ind::Integer) = m[CartesianIndices(m)[ind]]
 #Base.iterate(m::AbstractDimsMap, i=1) = (@inline; (i - 1)%UInt < length(m)%UInt ? (m[i], i + 1) : nothing)
 Base.CartesianIndices(m::AbstractDimsMap) = CartesianIndices(axes(m))
 Base.length(m::AbstractDimsMap) = prod(size(m))
-Base.collect(m::AbstractDimsMap) = uoutput(m).*inv.(uinput(m)')
+Base.collect(m::AbstractDimsMap) = uoutput(m).*inv.(uinput(m)').*ufactor(m)
 Base.axes(m::AbstractDimsMap, d::Integer) = d <= 2 ? axes(m)[d] : OneTo(1)
 assert_symmetric(m::AbstractDimsMap)  = issymmetric(m) ? m : throw(ArgumentError("Input must be symmetric. Recieved $(m)"))
 assert_repeatable(m::AbstractDimsMap) = isrepeatable(m) ? m : throw(ArgumentError("Input must support repeatable multiplication. Received $(m)"))

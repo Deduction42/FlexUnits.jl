@@ -906,6 +906,10 @@ end
     qM = LinmapQuant(qMraw)
     x = SVector{3}(randn(3)).*u1
     y = qM*x
+    d = dimension(qM)
+
+    @test all(d .== collect(d))
+    @test all(qM .== collect(qM))
 
     #Test various constructors 
     @test all(qM .≈ LinmapQuant(xm, UnitMap(u_in=u1, u_out=u2)))

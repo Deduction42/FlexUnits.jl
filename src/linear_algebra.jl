@@ -60,6 +60,19 @@ for op in (:exp, :log)
     @eval Base.$op(d::AbstractDimsMap) = assert_idempotent(d)
 end
 
+#Broadcasting specific operations
+for op in (:+, :-, :*, :/, :\, :exp, :log)
+    @eval function Base.broadcasted(f::typeof($op), arg1::DimsMap, argN::DimsMap...)
+        args = (arg1, argN...)
+        return DimsMap(
+            u_fac = broadcast(f, map(ufactor, args)...), 
+            u_in  = broadcast(f, map(uinput, args)...), 
+            u_out = broadcast(f, map(uoutput, args)...)
+        )
+    end
+end
+
+
 #Concatenation 
 function Base.hcat(d1::AbstractDimsMap, d2::AbstractDimsMap)
     uoutput(d1) == uoutput(d2) || throw(ArgumentError("Arguments have incompatible dimensions"))
@@ -130,6 +143,17 @@ Base.:exp(m::LinmapQuant) = qexp(m)
 Base.:log(m::LinmapQuant) = qlog(m)
 Base.:(≈)(m1::LinmapQuant, m2::LinmapQuant) = qisapprox(m1, m2)
 Base.:(≈)(v1::VectorQuant, v2::VectorQuant) = qisapprox(v1, v2)
+
+for op in (:+, :-, :*, :/, :\, :exp, :log)
+    @eval function Base.broadcasted(f::typeof($op), arg1::LinmapQuant, argN::LinmapQuant...)
+        args = (arg1, argN...)
+        return LinmapQuant(
+            broadcast(f, map(dstrip, args)...), 
+            broadcast(f, map(dimension, args)...)
+        )
+    end
+end
+
 
 Base.hcat(m1::LinmapQuant, m2::LinmapQuant) = qhcat(m1, m2)
 Base.hcat(v::VectorQuant, m::LinmapQuant) = qhcat(v, m)

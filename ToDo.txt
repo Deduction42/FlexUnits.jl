@@ -9,12 +9,12 @@ Changelog:
 
 Current Tasks:
 1.  Build out documentation and a docs badge
+    -   Add "multiplication" syntax for vectors/matrices of numbers and UnitMap
+        -   Matrices produce LinmapQuant
+        -   Vectors produce VectorQuant
     -   Revamp the Readme to emphasize extended language support (linear algebra, zero(Quantity{<:Dimensions}))
     -   Add warnings around "Affine Delta" and "zero/oneunit"
     -   Add API/Functions section
-    -   Add benchmarks for linear algebra
-        -   Linear Regression (FlexUnits vs unitless)
-        -   Matrix Multiplication (All packages)
     -   Add advanced examples 
         -   Falling Object differential equation solvers (Tsit5 and Rodas5P)
             -   Include "extension code"
