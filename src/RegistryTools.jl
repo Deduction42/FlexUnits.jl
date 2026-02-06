@@ -139,7 +139,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
     K = dimension(reg[:K])
 
     _register_unit(:percent => 0.01*reg[:NoDims])
-    _register_unit(:L => reg[:dm]^3)
+    _register_unit(:L => 0.001*reg[:m]^3)
     _register_unit(:Hz => inv(s))
     _register_unit(:N => kg*m/s^2); N = reg[:N]
     _register_unit(:Pa => N/m^2);
@@ -184,7 +184,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
     _register_unit(:mi => 5280*ft)
     _register_unit(:lb => 0.453592*kg); lb = reg[:lb]
     _register_unit(:oz => (1/16)*lb)
-    _register_unit(:psi => lb/inch^2)
+    _register_unit(:psi => 6.89476*reg[:kPa])
     _register_unit(:lbf => 4.44822*N)
     _register_unit(:fl_oz => 29.5735*reg[:mL])
     _register_unit(:cup => 8*reg[:fl_oz])
@@ -193,8 +193,8 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
     _register_unit(:Ra => 5/9*reg[:K])
 
     #Strictly affine temperature measurements
-    _register_unit(:°C => Units(dims=K, todims=Trans(offset=273.15)))
-    _register_unit(:°F => Units(dims=K, todims=Trans(scale=5/9, offset=(273.15 - 32*5/9))))
+    _register_unit(:°C => Units(dims=K, todims=Trans(offset=(273 + 15//100))))
+    _register_unit(:°F => Units(dims=K, todims=Trans(scale=5//9, offset=(273 + 15//100 - 32*5//9))))
     _register_unit(:degC => reg[:°C])
     _register_unit(:degF => reg[:°F])
 
