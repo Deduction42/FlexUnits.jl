@@ -171,9 +171,9 @@ const COMB_MATRIX_TYPES = [Matrix, DenseMatrix, AbstractSparseMatrixCSC, Diagona
 const COMB_VECTOR_TYPES = [Vector, DenseVector, AbstractCompressedVector, SVector, SizedVector, FieldVector]                       
 
 #List out quantity matrix types we want to explicitly overload for univariate operations
-const QUANT_MATRIX_TYPES = [:(Matrix{<:Quantity}), :(Diagonal{<:Quantity}), :(Hermitian{<:Quantity}), :(Symmetric{<:Quantity}),
-                            :(SymTridiagonal{<:Quantity}), :(Tridiagonal{<:Quantity}), :(UpperHessenberg{<:Quantity}), :(SMatrix{<:Any,<:Any,<:Quantity}), 
-                            :(MMatrix{<:Any,<:Any,<:Quantity}), :(SizedMatrix{<:Any,<:Any,<:Quantity}), :(FieldMatrix{<:Any,<:Any,<:Quantity})]
+const QUANT_MATRIX_TYPES = [Matrix{<:Quantity}, Diagonal{<:Quantity}, Hermitian{<:Quantity}, Symmetric{<:Quantity},
+                            SymTridiagonal{<:Quantity}, Tridiagonal{<:Quantity}, UpperHessenberg{<:Quantity}, SMatrix{<:Any,<:Any,<:Quantity}, 
+                            MMatrix{<:Any,<:Any,<:Quantity}, SizedMatrix{<:Any,<:Any,<:Quantity}, FieldMatrix{<:Any,<:Any,<:Quantity}]
 
 #Apply the mixed methods with various kinds of matrices
 for MU in COMB_MATRIX_TYPES
@@ -228,8 +228,9 @@ end
 for M in QUANT_MATRIX_TYPES
     @eval Base.:^(m::$M, p::Real) = qpow(m, p)
     @eval Base.:^(m::$M, p::Integer) = qpow(m, p)
-    @eval Base.:exp(m::$M) = qexp(m)
-    @eval Base.:log(m::$M) = qlog(m)
+    @eval Base.exp(m::$M) = qexp(m)
+    @eval Base.log(m::$M) = qlog(m)
+    @eval LinearAlgebra.lu(m::$M; kwargs...) = qlu(m; kwargs...)
 end
 
 #Add FactorQuant methods 
@@ -238,6 +239,7 @@ Base.:\(fq::FactorQuant, mq::AbstractArray) = qldiv(fq, mq)
 
 #Special case ambiguities
 Base.:\(m::Diagonal{T, SVector{N,T}}, v::VectorQuant) where {N,T} = inv(m)*v
+LinearAlgebra.lu(m::StaticLUMatrix{<:Any, <:Any, <:Quantity}; check = true) = qlu(m, check=check)
 
 #======================================================================================================================
 Utility functions

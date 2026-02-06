@@ -115,7 +115,7 @@ If mutating arguments is undesirable, supply immutable arguments or copies; othe
 that u_in and u_out have dimensionless values in their first element.
 """
 @kwdef struct DimsMap{D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
-    u_fac :: D
+    u_fac :: D = nothing
     u_in  :: TI
     u_out :: TO
     function DimsMap{D, TI, TO}(u_fac, u_in_raw, u_out_raw) where {D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}}
@@ -129,10 +129,15 @@ that u_in and u_out have dimensionless values in their first element.
 end
 
 function DimsMap(u_fac::U, u_in::TI, u_out::TO) where {U<:AbstractUnitLike, TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
-    is_dimension(u_fac) || ArgumentError("First argument $(u_fac) must directly map to dimensions $(dimension(u_fac)) without scaling")
-    all(is_dimension, u_in) || ArgumentError("Second argument $(u_in) must directly map to dimensions $(dimension.(u_in)) without scaling")
-    all(is_dimension, u_out) || ArgumentError("Third argument $(u_out) must directly map to dimensions $(dimension.(u_out)) without scaling")
+    is_dimension(u_fac) || throw(ArgumentError("'u_fac' argument must directly map to dimensions $(dimension(u_fac)) without scaling"))
+    all(is_dimension, u_in) || throw(ArgumentError("'u_in' argument must directly map to dimensions $(dimension.(u_in)) without scaling"))
+    all(is_dimension, u_out) || throw(ArgumentError("'u_out' argument must directly map to dimensions $(dimension.(u_out)) without scaling"))
     return DimsMap(u_fac=dynamicdims(u_fac), u_in=dynamicdims.(u_in), u_out=dynamicdims.(u_out))
+end
+
+function DimsMap(u_fac::Nothing, u_in::TI, u_out::TO) where {TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
+    D = dimvaltype(eltype(TI))
+    return DimsMap(D(), u_in, u_out)
 end
 
 function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
@@ -260,6 +265,9 @@ Base.getindex(q::LinmapQuant, ii::Integer, vj::Any) = VectorQuant(q.values[ii,vj
 Base.getindex(q::LinmapQuant, vi::Any, jj::Integer) = VectorQuant(q.values[vi,jj], q.dims[vi,jj])
 Base.getindex(q::LinmapQuant, vi::Any, vj::Any) = LinmapQuant(q.values[vi,vj], q.dims[vi,vj])
 
+#Convenience constructors through "*"
+Base.:*(m::AbstractMatrix{<:NumUnion}, d::AbstractUnitMap) = LinmapQuant(m, d)
+
 """
 struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
     values :: V
@@ -321,9 +329,11 @@ Base.transpose(fq::FactorQuant) = FactorQuant(transpose(fq.factor), transpose(fq
 Base.adjoint(fq::FactorQuant) = FactorQuant(adjoint(fq.factor), adjoint(fq.dims))
 
 # LU Factorization ===================================================================================
-LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = FactorQuant(lu(ustrip(mq); kwargs...), unit(mq))
-LinearAlgebra.lu(mq::LinmapQuant, ::Val{true}; kwargs...) = FactorQuant(lu(ustrip(mq), Val(true); kwargs...), unit(mq))
-LinearAlgebra.lu(mq::LinmapQuant, ::Val{false}; kwargs...) = FactorQuant(lu(ustrip(mq), Val(false); kwargs...), unit(mq))
+qlu(mq::AbstractMatrix; kwargs...) = FactorQuant(lu(dstrip(mq); kwargs...), DimsMap(mq))
+LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = qlu(mq; kwargs...)
+
+#LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{true}; kwargs...) = error("Unsupported method")
+#LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{false}; kwargs...) = error("Unsupported method")
 
 function Base.getproperty(fq::FactorQuant{<:Union{LU, StaticArrays.LU}, D}, fn::Symbol) where D
     F = ustrip(fq)

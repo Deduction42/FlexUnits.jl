@@ -105,6 +105,109 @@ The `LinmapQuant` object separates a numerical matrix from a `DimsMap`. For vect
 2. Unit dimensions can be solved using efficient O(N) methods on DimsMap objects which only store (M+N+1) values instead of (M×N) values
 Thus, in order to perform a matrix operation, one simply performs the operations on the pure numerical values, and then perform the accelerated counterpart operation on the `DimsMap`.
 
+### Constructor Examples
+The easiest way to construct a `LinmapQuant` is to construct a `UnitMap` and multiply it to a matrix or use the constructor. `UnitMap` is generic and allows for units or dimensions.
+
+```julia 
+X = randn(20, 5)*rand(5,5)
+
+julia> X * UnitMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_out=fill(u"", size(X,1))) #Make sure to invert u_in if you want to assign units directly
+20×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}:
+  0.423785 K   1446.68 m   1.43043 mol   0.271962 kg    2.35996 A
+ -0.601045 K   150.874 m  0.608505 mol  -0.146254 kg   0.509313 A
+
+julia> X * UnitMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_out=u"") #Scalar arguments are repeated along the dimension for convenience
+20×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}:
+  0.423785 K   1446.68 m   1.43043 mol   0.271962 kg    2.35996 A
+ -0.601045 K   150.874 m  0.608505 mol  -0.146254 kg   0.509313 A
+
+julia> UnitMap(u_in=[u"°C", u"km", u"mol", u"kg", u"A"], u_out=u"") #Affine units can be used inside a UnitMap
+UnitMap{Units{Dimensions{FixRat32}, AffineTransform{Float64}}, Vector{Units{Dimensions{FixRat32}, AffineTransform{Float64}}}, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}(Units{Dimensions{FixRat32}, AffineTransform{Float64}}[°C, km, mol, kg, A], )
+
+julia> X * UnitMap(u_in=inv.([u"°C", u"km", u"mol", u"kg", u"A"]), u_out=u"") #Affine units cannot be used for a DimsMap however
+ERROR: NotScalarError: °C cannot be treated as scalar, operation only valid for scalar units
+```
+
+Using `UnitMap` will create a modified matrix (ensuring all values are dimensional). For more efficiency, one can use `DimsMap`, which won't allocate a new array, but this object has stricter requirements. `DimsMap` only accepts vector arguments (which must be appropriately sized), and only dimensional units (i.e. SI) can be used (so that the matrix of numbers is not modified).
+```julia
+julia> X * DimsMap(u_in=inv.([u"K", u"m", u"mol", u"kg", u"A"]), u_out=fill(u"", size(X,1))) #DimsMap is more efficient (doens't reallocate X) but is fussier
+20×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}:
+  0.423785 K     1.44668 m   1.43043 mol   0.271962 kg    2.35996 A
+ -0.601045 K    0.150874 m  0.608505 mol  -0.146254 kg   0.509313 A
+
+julia> X * DimsMap(u_in=inv.([u"K", u"m", u"mol", u"kg", u"A"]), u_out=u"") #Vector inputs are required
+ERROR: MethodError: no method matching DimsMap(::Nothing, ::Vector{Units{Dimensions{…}, AffineTransform{…}}}, ::StaticUnits{, AffineTransform{Float64}})
+
+julia> X * DimsMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_out=fill(u"", size(X,1))) #Units must be dimensional (i.e. SI)
+ERROR: ArgumentError: 'u_in' argument must directly map to dimensions Dimensions{FixRat32}[1/K, 1/m, 1/mol, 1/kg, 1/A] without scaling
+```
+
+Multiplication is simply shorthand for the `LinmapQuant` constructor that can also be used
+```julia
+julia> LinmapQuant(X, UnitMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_out=u"")) #You can also use LinmapQuant constructor
+20×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}:
+  0.423785 K   1446.68 m   1.43043 mol   0.271962 kg    2.35996 A
+ -0.601045 K   150.874 m  0.608505 mol  -0.146254 kg   0.509313 A
+```
+
+### Optimizations and pitfalls
+The goal is to optimize all possible linear algebra opterations on matrices that can be found in LinearAlgebra. However, some operations might resort to unoptimized fallbacks, particularly if a an optimized function or matrix type hasn't been implemented yet. The general rule is that if the operation returns a "LinmapQuant" or "VectorQuant", it has been optimized. As of the current release, matrix operators should optimized.
+
+```julia
+X = (randn(20, 5)*randn(5,5)) * UnitMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_out = u"")
+
+julia> X'*X #Adjoints of LinmapQuant shoudl work
+5×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+      91.9205 K²    41503.5 (m K)    -36.038 (K mol)     109.162 (kg K)   -40.1446 (A K)
+   41503.5 (m K)      2.7836e7 m²    3810.33 (m mol)     57686.8 (m kg)   -19885.5 (m A)
+
+julia> collect(X')*X #Multiplications with unoptimized matrices should return an optimized version
+5×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+      91.9205 K²    41503.5 (m K)    -36.038 (K mol)     109.162 (kg K)   -40.1446 (A K)
+   41503.5 (m K)      2.7836e7 m²    3810.33 (m mol)     57686.8 (m kg)   -19885.5 (m A)
+
+julia> inv(collect(X')*X) #Inversions should work
+5×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+        0.595211 1/K²     0.000584858 1/(m K)    0.00165344 1/(K mol)     -0.66111 1/(kg K)       0.14344 1/(A K)
+  0.000584858 1/(m K)         2.23064e-6 1/m²  -0.000378828 1/(m mol)  -0.00129237 1/(m kg)   0.000471164 1/(m A)
+
+julia> (X'*X)\(X'*X) #Matrix divisions should work
+5×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+               1.0     -1.79517e-13 m/K    3.46556e-15 mol/K    8.31693e-16 kg/K     3.71834e-15 A/K
+    1.83657e-17 K/m                1.0     4.06306e-18 mol/m   -2.30576e-19 kg/m     4.72759e-18 A/m
+
+julia> collect((X'*X))/(X'*X) #Matrix divisions with unoptimized matrices in the numerator should work (unoptimized denominator will fail)
+5×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+              1.0     1.83657e-17 K/m  -2.07142e-15 K/mol    -1.40926e-14 K/kg    4.03822e-15 K/A
+  -1.79517e-13 m/K               1.0   -2.13253e-14 m/mol      1.1747e-13 m/kg           -0.0 m/A
+
+julia> collect(X) + X #Addition/Subtraction with unoptimized matrices should work
+20×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+    7.2873 K   823.543 m   -7.70232 mol    6.54604 kg  -2.10165 A
+   5.14641 K   2081.26 m   -7.58251 mol    5.00889 kg  -6.87539 A
+
+julia> ((X'*X)\(X'*X)*u"s")^2 #Matrix powers will work if output units are similar to input units (can differ by a factor)
+5×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+                  1.0 s²    -3.59033e-13 (m s²)/K    6.93113e-15 (s² mol)/K    1.66339e-15 (kg s²)/K     7.43669e-15 (s² A)/K
+    3.67315e-17 (s² K)/m                   1.0 s²    8.12611e-18 (s² mol)/m   -4.61153e-19 (kg s²)/m     9.45517e-18 (s² A)/m
+```
+
+Broadcasting should work, but unfortunately, will not be optimized unless both values are a LinmapQuant. This is becuase broadcasting operations do not require both matrices to be proper linear mappings, and multiplication with a generic matrix can destroy this property.
+```julia
+julia> X .* X #Broadcasted operations will maintain factorization if all arguments are factorized
+20×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}:
+   13.2762 K²  1.69556e5 m²     14.8314 mol²    10.7127 kg²   1.10423 A²
+   6.62139 K²  1.08291e6 m²     14.3736 mol²    6.27226 kg²   11.8177 A²
+
+julia> X .* collect(X) #Factorization is lost with broadcasting if any argument is not factorized (observe the Matrix return type)
+20×5 Matrix{Quantity{Float64, Dimensions{FixRat32}}}:
+   13.2762 K²  1.69556e5 m²     14.8314 mol²    10.7127 kg²   1.10423 A²
+   6.62139 K²  1.08291e6 m²     14.3736 mol²    6.27226 kg²   11.8177 A²
+```
+
+## Factored Unit Tricks
+Shortcut tricks for factored units exist for many different matrix types and operations. More will likely be discovered and added in the future.
+
 ### DimsMap Matrix Multiplication
 To solve the `DimsMap` problem for matrix multiplication `m*n`, one simply has to perform these steps:
 1. Ensure that `u_in` for `m` is the inverse of the `u_out` for `n` (an O(N) operation)
