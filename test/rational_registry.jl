@@ -3,10 +3,10 @@ using FlexUnits
 module RationalRegistry
 
     #RegistryTools contains all you need to build a registry in one simple import
-    using ..FlexUnits.RegistryTools
+    using ..RegistryTools
 
     const UNIT_LOCK = ReentrantLock()
-    const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Rational{Int64}}}}()
+    const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Rational{Int64}}}}() #Just change the AffineTrnasform type
 
     #Fill the UNITS registry with default values
     registry_defaults!(UNITS)

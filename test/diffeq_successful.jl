@@ -6,11 +6,6 @@ using Plots
 using BenchmarkTools
 using LinearAlgebra
 
-# Required additional methods from DiffEqBase's Unitful Extension =============================================
-#OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.UNITLESS_ABS2(q::Quantity) = abs2(dstrip(q))
-#OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.value(q::Quantity) = dstrip(q)
-
-# =============================================================================================================
 include("diffeq_extension.jl")
 
 @kwdef struct FallingObjectState{T} <: FieldVector{2,T}
@@ -57,7 +52,6 @@ end
 
 #Jacobian needs to be wrapped around a "Real" version to support autodiff
 using ForwardDiff
-p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
 
 function wrapped_jacobian(f, x, p, t)
     u_in  = dimension.(x)
@@ -70,7 +64,9 @@ function wrapped_jacobian(f, x, p, t)
     return LinmapQuant(ForwardDiff.jacobian(f_unitless, dstrip.(x)), DimsMap(u_in=u_in, u_out=u_out))
 end
 
-wrapped_jacobian(acceleration_ustatic, FallingObjectState(0.0u"m/s", 100.0u"m"), p, 0*u"s")
+#Check results
+#p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
+#wrapped_jacobian(acceleration_ustatic, FallingObjectState(0.0u"m/s", 100.0u"m"), p, 0*u"s")
 
 
 # =============================================================================================================

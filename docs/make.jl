@@ -9,6 +9,7 @@ makedocs(
         "Home" => "index.md",
         "Performance" => "performance.md",
         "Linear Algebra" => "linearalgebra.md",
+        "Advanced Examples" => "examples.md",
         "Types" => "types.md"
     ]
 )
