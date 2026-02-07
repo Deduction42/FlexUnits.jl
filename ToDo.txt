@@ -10,12 +10,9 @@ Changelog:
 Current Tasks:
 1.  Build out documentation and a docs badge
     -   Revamp the Readme to emphasize extended language support (linear algebra, zero(Quantity{<:Dimensions}))
-    -   Add warnings around "Affine Delta" and "zero/oneunit"
+        -   Add warnings around "Affine Delta" and "zero/oneunit"
     -   Add API/Functions section
-    -   Add advanced examples 
-        -   Falling Object differential equation solvers (Tsit5 and Rodas5P)
-            -   Include "extension code"
-        -   Custom Unit Registry with Rational for exact conversions
+
 
 
 2.  Add LinearAlgebra factorizations
