@@ -106,7 +106,9 @@ dconvert(::AbstractUnitLike, ::FlexUnits.QuantUnion)
 
 ## Extracting units and values from quantities
 The following functions can be used to extract/inspect different attributes of a quantity
-- `ustrip` extracts the raw numerical value from a quantity
-- `dstrip` converts a quantitty to dimensional units and then returns the raw value
-- `unit` extracts the unit from a quantity (`Quantity{Float64, <:AbstractDimLike}` will return a dimension)
-- `dimension` will return the dimensions of a quantity (if dimensions are static, it returns the static value)
+- `ustrip(q::Quantity)` extracts the raw numerical value from a quantity
+- `ustrip(u::AbstractUnitLike, q::Quantity)` returns the value of a quantity in the desired units
+- `dstrip(q::Quantity)` converts a quantitty to dimensional units and returns the numerical value
+- `unit(q::Quantity)` extracts the unit from a quantity (`Quantity{Float64, <:AbstractDimLike}` will return a dimension)
+- `dimension(q::Quantity)` will return the dimensions of a quantity (if dimensions are static, it returns the static value)
+
