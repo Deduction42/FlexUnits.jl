@@ -4,10 +4,9 @@ DocTestSetup = quote
 end
 ```
 # FlexUnits.jl
-FlexUnits.jl is a unit package designed to resemble Unitful.jl, with similar performance when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units are uninferrable. This package allows the user to employ the following useful pattern:
-1. Define high-level operations on quantities with dynamic units that are type-stable even with mixed unit types
+FlexUnits.jl is a unit package designed to resemble Unitful.jl, with similar performance when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units are uninferrable. In addition, this package introduces special vector and matrix types that can infer output units for linear algebra operations at O(n) speeds, even if the numerical matrix operations are higher order (such as matrix inversions). When combining these techniques, this package allows the user to employ the following useful pattern:
+1. Define high-level linear-algebra operations on quantities with dynamic units that are fast and type-stable even with mixed-unit types
 2. Convert quantities to statically-inferred high-performance units in lower-level performance-sensitive code
-3. Return values in dynamic units with confidence that function output is type-stable
 
 ## Quick start examples
 The FlexUnits API is designed to resemble Unitful in a number of ways. One major difference is that string macros and parsing functions are not exported by default, instead they are exported by a unit registry. This allows users to define their own registries and use those as a basis for unit parsing. FlexUnits provides a unit registry (UnitRegistry) that can be imported to provide default unit parsing functionality.
@@ -24,7 +23,7 @@ julia> 1u"°C"   #@u_str produces static units (multiplication converts to base 
 julia> 1ud"°C"  #@ud_str produces dynamic units (multiplication converts to base units)
 274.15 K
 
-julia> quantity(1, u"°C") #Use "quantity" to avoid eager conversion to base units
+julia> quantity(1, u"°C") #Use 'quantity' to avoid eager conversion to base units
 1 °C
 ```
 
@@ -99,13 +98,7 @@ julia> [1u"m/s", 2u"m/s", 3u"lb/s"]   #Different static dimensions promote to a 
  2.0 m/s
  1.360776 kg/s
 
-julia> [1ud"m/s", 2ud"m/s", 3ud"lb/s"]  #Dynamic units are untouched
-3-element Vector{Quantity{Int64, Units{Dimensions{FixRat32}, AffineTransform}}}:
- 1 m/s
- 2 m/s
- 3 lb/s
-
-julia> [1ud"m/s", 2ud"m/s", 3ud"lb/s"].*1  #Mathematical operations tend to convert to SI units for performance
+julia> [1ud"m/s", 2ud"m/s", 3ud"lb/s"]  #Mathematical operations tend to convert to SI units for performance
 3-element Vector{Quantity{Float64, Dimensions{FixRat32}}}:
  1.0 m/s
  2.0 m/s
@@ -143,3 +136,51 @@ const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform}
 registry_defaults!(UNITS)
 ```
 The `UNITS` constant is the dictionary where all the units live. One can customize it so that the registry has a different dimension type or even a different transform type. The `registry_defaults!` function fills a dictionary with the default body of units (users can build their own if they like).
+
+
+## Linear Algebra
+This package devines a `LinmapQuant`, a matrix that is intended to be a linear mapping that takes a vector with units `u_in` and produces a vector with units `u_out` thus, the dimensiosn of all elements can be inferred by these two vectors of units. While in general, the units of matrix elements can be arbitrary, in order to support operations like matrix multiplication, the units must adhere to this structure, and the simplicity of this structure allows for shortcuts for inference.
+
+If we want to construct a matrix where all of the columns have the same units, we let `u_in` be the inverse of the units we desire, and `u_out` be dimensionless.
+```
+julia> Z = randn(200, 5)*randn(5,5)
+julia> Zu = LinmapQuant(Z, UnitMap(u_in=inv.([u"lb", u"ft", u"W", u"L", u"mol"]), u_out=u""))
+200×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+  -0.501901 kg    0.137162 m  -0.689416 (m² kg)/s³   -0.00173674 m³    4.09169 mol
+    1.84433 kg    0.335457 m   0.987017 (m² kg)/s³   -0.00204628 m³    3.95951 mol
+  -0.470226 kg   0.0676007 m   -2.44338 (m² kg)/s³     0.0013448 m³   -2.37904 mol
+  -0.373749 kg    0.157584 m   -2.97929 (m² kg)/s³    0.00555965 m³   -2.68827 mol
+```
+We could have also built the quantity matrix first and then used `LinmapQuant(m::AbstractMatrix{<:Quantity})`. Now let us suppose we wanted to do linear regression to predict the last two columsn given the first three.
+```
+julia> Xu = [Zu[:,1:3] fill(1.0u"", size(Zu,1))]
+200×4 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+  -0.501901 kg    0.137162 m  -0.689416 (m² kg)/s³  1.0
+    1.84433 kg    0.335457 m   0.987017 (m² kg)/s³  1.0
+  -0.470226 kg   0.0676007 m   -2.44338 (m² kg)/s³  1.0
+  -0.373749 kg    0.157584 m   -2.97929 (m² kg)/s³  1.0 
+
+julia> Yu = Zu[:,4:5]
+200×2 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+  -0.00173674 m³    4.09169 mol
+  -0.00204628 m³    3.95951 mol
+    0.0013448 m³   -2.37904 mol
+   0.00555965 m³   -2.68827 mol
+
+julia> Bu = (Xu'*Xu)\(Xu'*Yu)
+4×2 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+     -0.000206539 m³/kg          -0.109595 mol/kg
+          -0.0032453 m²             2.41413 mol/m
+ -0.000997411 (m s³)/kg  0.75641 (s³ mol)/(m² kg)
+        -0.000152683 m³              0.159627 mol  
+```
+We can verify that the output of the prediction matches `Yu`
+```
+julia> Xu*Bu
+200×2 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+  0.000193479 m³  0.0242788 mol
+  -0.00260673 m³    1.51392 mol
+    0.0021621 m³   -1.47384 mol
+   0.00238468 m³   -1.67255 mol
+    -0.001745 m³   0.810835 mol
+```

@@ -2,9 +2,11 @@
 # Types
 
 ## Quantities
-FlexUnits.jl only has one quantity type Quantity containing a value and a unit-like object (units or dimensions). Unlike Unitful, it doesn't subtype into Number, so its value can take any type. Mathematical operations on a Quantity with a Unit will convert to a dimensional quantity (SI by default) having an `AbstractDimension` instead of a `AbstractUnit`.
+FlexUnits.jl has two types of quantity values. FlexQuant, which can contain any object as a value, and Quantity which subtypes to Number (following the convention of most of Julia's unit packages). For convenience, they are often referred to together as `QuantUnion`. Mathematical operations on a `QuantUnion` with a Unit will convert to a dimensional quantity (SI by default) having an `AbstractDimension` instead of a `AbstractUnit`.
 ```@docs
 Quantity
+FlexQuant
+QuantUnion
 ```
 
 ## Dimensions
@@ -29,4 +31,20 @@ One unique feature to the FlexUnits design is the `AbstractUnitTransform` object
 AbstractUnitTransform
 NoTransform
 AffineTransform
+```
+
+## Linear Algebra
+Linear algebra functionality is achieved by observing that any matrix of quantities that supports multiplication is a special kind of quantity matrix that functions as a *linear mapping*. Such matrices have a special structure for units. These special unit structures are *unit mappings* that contain an input vector of units, and an output vector of units. Accellerated linear algebra operations are achived by keeping numerical matrices and unit mappings separate in a `LinmapQuant` and performing the linear algebra and unit inference separately (not unlike how a `Quantity` operates).
+
+### Unit Maps
+```@docs
+UnitMap
+DimsMap
+```
+
+### Objects with Unit Maps
+```@docs
+LinmapQuant
+FunctionQuant
+FactorQuant
 ```

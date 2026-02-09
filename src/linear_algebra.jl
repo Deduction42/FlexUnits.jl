@@ -1,6 +1,6 @@
 
-const MatrixOfDims{D} = AbstractMatrix{<:AbstractDimensions}
-const VectorOfDims{D} = AbstractVector{<:AbstractDimensions}
+const MatrixOfDims{D} = AbstractMatrix{<:AbstractDimLike}
+const VectorOfDims{D} = AbstractVector{<:AbstractDimLike}
 
 #======================================================================================================================
 Operators on dimensions objects
@@ -60,6 +60,30 @@ for op in (:exp, :log)
     @eval Base.$op(d::AbstractDimsMap) = assert_idempotent(d)
 end
 
+#Broadcasting specific operations
+for op in (:+, :-, :*, :/, :\, :exp, :log)
+    @eval function Base.broadcasted(f::typeof($op), arg1::DimsMap, argN::DimsMap...)
+        args = (arg1, argN...)
+        return DimsMap(
+            u_fac = broadcast(f, map(ufactor, args)...), 
+            u_in  = broadcast(f, map(uinput, args)...), 
+            u_out = broadcast(f, map(uoutput, args)...)
+        )
+    end
+end
+
+
+#Concatenation 
+function Base.hcat(d1::AbstractDimsMap, d2::AbstractDimsMap)
+    uoutput(d1) == uoutput(d2) || throw(ArgumentError("Arguments have incompatible dimensions"))
+    u_in = vcat(uinput(d1), (ufactor(d1)/ufactor(d2)).*uinput(d2))
+    return DimsMap(u_fac = ufactor(d1), u_in = u_in, u_out = uoutput(d1))
+end
+Base.hcat(d1::MatrixOfDims, d2::AbstractDimsMap) = hcat(DimsMap(d1), d2)
+Base.hcat(d1::AbstractDimsMap, d2::MatrixOfDims) = hcat(d1, DimsMap(d2))
+Base.hcat(d1::AbstractDimsMap, d2::VectorOfDims) = hcat(d1, DimsMap(d2))
+Base.hcat(d1::VectorOfDims, d2::AbstractDimsMap) = hcat(DimsMap(d1), d2)
+
 #======================================================================================================================
 Define "q" linear algebra methods that are distinct from LinearAlgebra and don't cause dispatch/ambiguitiy issues
 ======================================================================================================================#
@@ -78,6 +102,7 @@ qlog(m::AbstractMatrix) = LinmapQuant(log(dstrip(m)), log(DimsMap(dimension(m)))
 qadjoint(m::AbstractMatrix) = adjoint(LinmapQuant(m))
 qtranspose(m::AbstractMatrix) = transpose(LinmapQuant(m))
 qisapprox(m1::AbstractMatrix, m2::AbstractMatrix) = dstrip(m1) ≈ dstrip(m2) && dimension(m1) == dimension(m2)
+qhcat(m1::AbstractArray, m2::AbstractArray) = LinmapQuant(hcat(dstrip(m1), dstrip(m2)), hcat(dimension(m1), dimension(m2)))
 
 #Vectors
 qadd(v1::AbstractVector, v2::AbstractVector) = VectorQuant(dstrip(v1) + dstrip(v2), dimension(v1) + dimension(v2))
@@ -119,6 +144,21 @@ Base.:log(m::LinmapQuant) = qlog(m)
 Base.:(≈)(m1::LinmapQuant, m2::LinmapQuant) = qisapprox(m1, m2)
 Base.:(≈)(v1::VectorQuant, v2::VectorQuant) = qisapprox(v1, v2)
 
+for op in (:+, :-, :*, :/, :\, :exp, :log)
+    @eval function Base.broadcasted(f::typeof($op), arg1::LinmapQuant, argN::LinmapQuant...)
+        args = (arg1, argN...)
+        return LinmapQuant(
+            broadcast(f, map(dstrip, args)...), 
+            broadcast(f, map(dimension, args)...)
+        )
+    end
+end
+
+
+Base.hcat(m1::LinmapQuant, m2::LinmapQuant) = qhcat(m1, m2)
+Base.hcat(v::VectorQuant, m::LinmapQuant) = qhcat(v, m)
+Base.hcat(m::LinmapQuant, v::VectorQuant) = qhcat(m, v)
+
 #======================================================================================================================
 Specify Base methods combingin AbstractMatrix/AbstractVector subtypes with LinmapQuant and VectorQuant
 ======================================================================================================================#
@@ -131,9 +171,9 @@ const COMB_MATRIX_TYPES = [Matrix, DenseMatrix, AbstractSparseMatrixCSC, Diagona
 const COMB_VECTOR_TYPES = [Vector, DenseVector, AbstractCompressedVector, SVector, SizedVector, FieldVector]                       
 
 #List out quantity matrix types we want to explicitly overload for univariate operations
-const QUANT_MATRIX_TYPES = [:(Matrix{<:Quantity}), :(Diagonal{<:Quantity}), :(Hermitian{<:Quantity}), :(Symmetric{<:Quantity}),
-                            :(SymTridiagonal{<:Quantity}), :(Tridiagonal{<:Quantity}), :(UpperHessenberg{<:Quantity}), :(SMatrix{<:Any,<:Any,<:Quantity}), 
-                            :(MMatrix{<:Any,<:Any,<:Quantity}), :(SizedMatrix{<:Any,<:Any,<:Quantity}), :(FieldMatrix{<:Any,<:Any,<:Quantity})]
+const QUANT_MATRIX_TYPES = [Matrix{<:Quantity}, Diagonal{<:Quantity}, Hermitian{<:Quantity}, Symmetric{<:Quantity},
+                            SymTridiagonal{<:Quantity}, Tridiagonal{<:Quantity}, UpperHessenberg{<:Quantity}, SMatrix{<:Any,<:Any,<:Quantity}, 
+                            MMatrix{<:Any,<:Any,<:Quantity}, SizedMatrix{<:Any,<:Any,<:Quantity}, FieldMatrix{<:Any,<:Any,<:Quantity}]
 
 #Apply the mixed methods with various kinds of matrices
 for MU in COMB_MATRIX_TYPES
@@ -158,6 +198,9 @@ for MU in COMB_MATRIX_TYPES
 
         @eval Base.:≈(m1::$M, m2::LinmapQuant) = qisapprox(m1, m2)
         @eval Base.:≈(m1::LinmapQuant, m2::$M) = qisapprox(m1, m2)
+
+        @eval Base.hcat(m1::$M, m2::LinmapQuant) = qhcat(m1, m2)
+        @eval Base.hcat(m1::LinmapQuant, m2::$M) = qhcat(m1, m2)
     end
 end 
 
@@ -176,14 +219,20 @@ for V in COMB_VECTOR_TYPES
 
     @eval Base.:≈(v1::$V, v2::VectorQuant) = qisapprox(v1, v2)
     @eval Base.:≈(v1::VectorQuant, v2::$V) = qisapprox(v1, v2)
+
+    @eval Base.hcat(v1::$V, m2::LinmapQuant) = qhcat(v1, m2)
+    @eval Base.hcat(m1::LinmapQuant, v2::$V) = qhcat(m1, v2)
 end
 
 #Apply the quantity-specific methods on single-argument matrix functions
-for M in QUANT_MATRIX_TYPES
-    @eval Base.:^(m::$M, p::Real) = qpow(m, p)
-    @eval Base.:^(m::$M, p::Integer) = qpow(m, p)
-    @eval Base.:exp(m::$M) = qexp(m)
-    @eval Base.:log(m::$M) = qlog(m)
+for MU in QUANT_MATRIX_TYPES
+    for M in [MU, Adjoint{<:Quantity, <:MU}, Transpose{<:Quantity, <:MU}] #Disambiguate Transpose and Adjoint
+        @eval Base.:^(m::$M, p::Real) = qpow(m, p)
+        @eval Base.:^(m::$M, p::Integer) = qpow(m, p)
+        @eval Base.exp(m::$M) = qexp(m)
+        @eval Base.log(m::$M) = qlog(m)
+        @eval LinearAlgebra.lu(m::$M; kwargs...) = qlu(m; kwargs...)
+    end
 end
 
 #Add FactorQuant methods 
@@ -192,6 +241,7 @@ Base.:\(fq::FactorQuant, mq::AbstractArray) = qldiv(fq, mq)
 
 #Special case ambiguities
 Base.:\(m::Diagonal{T, SVector{N,T}}, v::VectorQuant) where {N,T} = inv(m)*v
+LinearAlgebra.lu(m::StaticLUMatrix{<:Any, <:Any, <:Quantity}; check = true) = qlu(m, check=check)
 
 #======================================================================================================================
 Utility functions

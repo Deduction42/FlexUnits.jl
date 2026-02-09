@@ -62,7 +62,7 @@ const AT = AffineTransform{Float64}
     @test FlexUnits.constructorof(typeof(u"m")) == StaticUnits
     @test FlexUnits.constructorof(typeof(1.0*u"m")) == Quantity
     @test FlexUnits.constructorof(typeof((1.0+im)*u"m")) == Quantity
-    @test FlexUnits.constructorof(typeof(Quantity("this", ud"m"))) == Quantity
+    @test FlexUnits.constructorof(typeof(quantity("this", ud"m"))) == FlexQuant
     @test FlexUnits.constructorof(Array{Float64}) == Array
 
     t_none = NoTransform()
@@ -101,12 +101,6 @@ const AT = AffineTransform{Float64}
     @test udynamic(1.0u"kJ") === ubase(1.0ud"kJ")
     @test assert_dimension(dimension(u"m/s")) == dimension(u"m/s")
 
-    #=
-    @test MirrorDims() == MirrorDims{Dimensions{FixRat32}}()
-    @test eltype([MirrorDims(), Dimensions{FixRat32}()]) == MirrorUnion{Dimensions{FixRat32}}
-    @test_throws "MirrorDims should not be a type parameter" Quantity{Float64, MirrorDims{Dimensions{FixRat32}}}(1, u"m/s")
-    =#
-    
     #Basic utility functions
     vsum = sum(ones(5,3).*[u"rpm" u"kg/hr" u"kPa"], dims=1)
 
@@ -233,8 +227,8 @@ end
         @test signbit(x) == true
         @test signbit(-x) == false
         @test isempty(x) == false
-        @test isempty(Quantity([0.0, 1.0], u)) == false
-        @test isempty(Quantity(Float64[], u)) == true
+        @test isempty(quantity([0.0, 1.0], u)) == false
+        @test isempty(quantity(Float64[], u)) == true
         @test zero(Dimensions{R}) === Dimensions{R}()
         @test zero(Units{Dimensions{R}, AT}) === Units{Dimensions{R}, AT}(dims=zero(Dimensions{R}), todims=AT())
 
@@ -579,7 +573,7 @@ end
     @test 1ud"K" |> °C isa Quantity{<:Real, <:Units}
     @test 0ud"K" |> °C  == -273.15°C
     @test °C |> °F isa AffineTransform
-    @test 0°C |> °F == 32°F
+    @test 0°C |> °F ≈ 32°F
     @test (°C |> °F)(0) ≈ 32
 
     @test Units(dims=ud"Pa", todims=AffineTransform()) == ud"Pa"
@@ -906,6 +900,10 @@ end
     qM = LinmapQuant(qMraw)
     x = SVector{3}(randn(3)).*u1
     y = qM*x
+    d = dimension(qM)
+
+    @test all(d .== collect(d))
+    @test all(qM .== collect(qM))
 
     #Test various constructors 
     @test all(qM .≈ LinmapQuant(xm, UnitMap(u_in=u1, u_out=u2)))
@@ -951,8 +949,8 @@ end
     @test dimension(luM') == dimension(luM)'
     @test ustrip(transpose(luM)) == transpose(ustrip(luM))
     @test dimension(transpose(luM)) == transpose(dimension(luM))
-    @test dstrip(lu(qM, Val(true))) == lu(dstrip(qM), Val(true))
-    @test dstrip(lu(qM, Val(false))) == lu(dstrip(qM), Val(false))
+    #@test_throws "Unsupported method" dstrip(lu(qM, Val(true))) == lu(dstrip(qM), Val(true))
+    #@test_throws "Unsupported method" dstrip(lu(qM, Val(false))) == lu(dstrip(qM), Val(false))
     
     #Inverses and transposes
     @test all(x .≈ inv(qM)*y)

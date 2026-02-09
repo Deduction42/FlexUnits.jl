@@ -2,6 +2,20 @@
 uconvert with transformation objects
 ============================================================================================#
 #Generic transformation generator
+"""
+    uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) 
+
+Produces a conversion rule to convert `u_current` to `u_target`. This result is a callable object that
+can be applied directly to numeric objects.
+
+```julia
+julia> uconvert(u"K", u"°C")
+AffineTransform{Float64}(1.0, 273.15)
+
+julia> uconvert(u"K", u"°C")(0)
+273.15
+```
+"""
 function uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) 
     dimension(u_target) == dimension(u_current) || throw(ConversionError(u_target, u_current))
     return inv(todims(u_target)) ∘ todims(u_current)
@@ -16,6 +30,11 @@ uconvert with quantities
     uconvert(u::AbstractUnitLike, q::QuantUnion)
 
 Converts quantity `q` to the equivalent quantity having units `u`
+
+```julia
+julia> uconvert(u"K", 25u"°C")
+298.15 K
+```
 """
 function uconvert(u::AbstractUnitLike, q::QuantUnion)
     dimension(u) == dimension(q) || throw(ConversionError(u, unit(q)))
@@ -28,6 +47,10 @@ end
     dconvert(u::AbstractUnitLike, q::QuantUnion)
 
 Converts quantity `q` to the equivalent dimensional quantity having the same dimensions as `u`
+```julia
+julia> dconvert(u"km/hr", 25u"km/hr")
+6.944444444444445 m/s
+```
 """
 dconvert(u::AbstractUnitLike, q::QuantUnion) = uconvert(dimension(u), q)
 
@@ -39,11 +62,11 @@ Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 function ubase(q::QuantUnion{<:Any,<:AbstractUnitLike})
     u  = unit(q)
     ft = todims(u)
-    return Quantity(ft(ustrip(q)), dimension(u))
+    return quantity(ft(ustrip(q)), dimension(u))
 end 
 function ubase(q::QuantUnion{T, <:StaticUnits{D}}) where {T,D}
     x = unit(q).todims(ustrip(q))
-    return Quantity{typeof(x), StaticDims{D}}(x, StaticDims{D}())
+    return quantity(x, StaticDims{D}())
 end
 ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
 

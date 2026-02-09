@@ -11,9 +11,9 @@ include("linear_algebra.jl")
 include("RegistryTools.jl")
 include("UnitRegistry.jl")
 
-export AbstractUnitLike, AbstractDimensions, AbstractUnits, AbstractUnitTransform
+export AbstractUnitLike, AbstractDimLike, AbstractDimensions, AbstractUnits, AbstractUnitTransform
 export ConversionError, DimensionError, NotScalarError, NotDimensionError, FixRat32
-export Dimensions, Units, Quantity, FlexQuant, AffineTransform, NoTransform 
+export Dimensions, Units, Quantity, FlexQuant, QuantUnion, AffineTransform, NoTransform 
 export StaticDims, StaticUnits
 export RegistryTools, UnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units

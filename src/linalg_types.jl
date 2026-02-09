@@ -21,7 +21,7 @@ Base.getindex(m::AbstractDimsMap, ind::Integer) = m[CartesianIndices(m)[ind]]
 #Base.iterate(m::AbstractDimsMap, i=1) = (@inline; (i - 1)%UInt < length(m)%UInt ? (m[i], i + 1) : nothing)
 Base.CartesianIndices(m::AbstractDimsMap) = CartesianIndices(axes(m))
 Base.length(m::AbstractDimsMap) = prod(size(m))
-Base.collect(m::AbstractDimsMap) = uoutput(m).*inv.(uinput(m)')
+Base.collect(m::AbstractDimsMap) = uoutput(m).*inv.(uinput(m)').*ufactor(m)
 Base.axes(m::AbstractDimsMap, d::Integer) = d <= 2 ? axes(m)[d] : OneTo(1)
 assert_symmetric(m::AbstractDimsMap)  = issymmetric(m) ? m : throw(ArgumentError("Input must be symmetric. Recieved $(m)"))
 assert_repeatable(m::AbstractDimsMap) = isrepeatable(m) ? m : throw(ArgumentError("Input must support repeatable multiplication. Received $(m)"))
@@ -73,13 +73,17 @@ dstrip(m::AbstractArray) = QuantArrayVals(m)
 dstrip(m::SArray) = dstrip.(m)
 
 """
-struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
-    u_in  :: TI
-    u_out :: TO
-end
+    struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+        u_in  :: TI
+        u_out :: TO
+    end
 
 Used to represent a unit transformation from input units 'u_in' to outpout units 'u_out'. Often applied
 to nonlinear functions.
+
+# Constructors 
+    UnitMap{U}(u_in::ScalarOrVec{<:AbstractUnitLike}, u_out::ScalarOrVec{<:AbstractUnitLike}) where U<:AbstractUnitLike
+    UnitMap(u_in::ScalarOrVec{U1}, u_out::ScalarOrVec{U2}) where {U1<:AbstractUnitLike, U2<:AbstractUnitLike}
 """
 @kwdef struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
     u_in  :: TI
@@ -99,11 +103,11 @@ uinput(m::UnitMap) = m.u_in
 
 
 """
-struct DimsMap{D<:AbstractDimLike, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
-    u_fac :: D
-    u_in  :: TI
-    u_out :: TO
-end
+    struct DimsMap{D<:AbstractDimLike, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
+        u_fac :: D
+        u_in  :: TI
+        u_out :: TO
+    end
 
 Used to represent a unit transformation from input dimensions 'u_in' to outpout dimensions 'u_out'.
 This is like a unit map but focuses on dimensions and has matrix-like behaviour since dimensions 
@@ -113,9 +117,16 @@ WARNING: The DimsMap constructor on dimensions expects u_in and u_out to be scal
 element is dimensionless. To prevent excessive allocations, u_in and u_out may be mutated in-place. 
 If mutating arguments is undesirable, supply immutable arguments or copies; otherwise, ensure 
 that u_in and u_out have dimensionless values in their first element.
+
+# Constructors 
+    DimsMap(u_fac::U, u_in::TI, u_out::TO) where {U<:AbstractUnitLike, TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
+    DimsMap(u_fac::Nothing, u_in::TI, u_out::TO) where {TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
+    DimsMap(md::AbstractMatrix{<:AbstractDimLike})
+    DimsMap(mq::AbstractMatrix{<:QuantUnion})
+    DimsMap(d::AbstractDimsMap)
 """
 @kwdef struct DimsMap{D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
-    u_fac :: D
+    u_fac :: D = nothing
     u_in  :: TI
     u_out :: TO
     function DimsMap{D, TI, TO}(u_fac, u_in_raw, u_out_raw) where {D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}}
@@ -129,14 +140,19 @@ that u_in and u_out have dimensionless values in their first element.
 end
 
 function DimsMap(u_fac::U, u_in::TI, u_out::TO) where {U<:AbstractUnitLike, TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
-    is_dimension(u_fac) || ArgumentError("First argument $(u_fac) must directly map to dimensions $(dimension(u_fac)) without scaling")
-    all(is_dimension, u_in) || ArgumentError("Second argument $(u_in) must directly map to dimensions $(dimension.(u_in)) without scaling")
-    all(is_dimension, u_out) || ArgumentError("Third argument $(u_out) must directly map to dimensions $(dimension.(u_out)) without scaling")
+    is_dimension(u_fac) || throw(ArgumentError("'u_fac' argument must directly map to dimensions $(dimension(u_fac)) without scaling"))
+    all(is_dimension, u_in) || throw(ArgumentError("'u_in' argument must directly map to dimensions $(dimension.(u_in)) without scaling"))
+    all(is_dimension, u_out) || throw(ArgumentError("'u_out' argument must directly map to dimensions $(dimension.(u_out)) without scaling"))
     return DimsMap(u_fac=dynamicdims(u_fac), u_in=dynamicdims.(u_in), u_out=dynamicdims.(u_out))
 end
 
-function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
-    u_fac = md[begin,begin]
+function DimsMap(u_fac::Nothing, u_in::TI, u_out::TO) where {TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
+    D = dimvaltype(eltype(TI))
+    return DimsMap(D(), u_in, u_out)
+end
+
+function DimsMap(md::AbstractMatrix{<:AbstractDimLike})
+    u_fac = udynamic(md[begin,begin])
     u_out = md[:,begin]./u_fac
     u_in  = u_fac./md[begin,:]
 
@@ -145,6 +161,13 @@ function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
         md_ij = u_out[ii]/u_in[jj]*u_fac
         (md_ij == md[ii, jj]) || error("Unit inconsistency around index $([ii, jj]) of original matrix, expected dimension '$(md_ij))', found dimension '$(md[ii, jj])'")
     end
+    return DimsMap(u_fac=u_fac, u_out=u_out, u_in=u_in)
+end
+
+function DimsMap(v::AbstractVector{D}) where D<:AbstractDimensions
+    u_fac = v[begin]
+    u_out = v./u_fac
+    u_in  = SVector{1}(D())
     return DimsMap(u_fac=u_fac, u_out=u_out, u_in=u_in)
 end
 
@@ -165,7 +188,9 @@ Base.getindex(m::DimsMap, vi::Any, vj::Any) = DimsMap(u_fac=m.u_fac, u_out=m.u_o
 
 
 """
-    AdjointDmap{D, M<:AbstractUnitMap{D}} <: AbstractUnitMap{D}
+    struct AdjointDmap{D, M<:AbstractDimsMap{D}} <: AbstractDimsMap{D}
+        parent :: M 
+    end
 
 Wraps a dimension map as an adjoint/transpose (and avoids subtyping to AbstractArray)
 """
@@ -192,14 +217,21 @@ Base.getindex(m::AdjointDmap, ind1::Any, ind2::Any) = AdjointDmap(getindex(m.par
 
 
 """
-struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
-    values :: M
-    units :: U
-end
+    struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
+        values :: M
+        units :: U
+    end
 
 A linear mapping of quantities. A special kind of matrix that is intended to be used for multiplying vectors of quantities;
 such matrices must be dimensionally consistent and can be represented by a UnitMap. These constraints lead to much faster 
 unit inference and a smaller memory footprint (O(M+N) instead of O(M*N*N2) in the case of multiplication).
+
+# Constructors
+    LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T
+    LinmapQuant(m::SMatrix{Nr,Nc,T}, u::UnitMap) where {T, Nr, Nc}
+    LinmapQuant(m::QuantArrayVals, d::QuantArrayDims)
+    LinmapQuant(m::AbstractMatrix)
+    LinmapQuant(m::LinmapQuant)
 """
 struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractDimsMap{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
@@ -253,14 +285,24 @@ Base.getindex(q::LinmapQuant, ii::Integer, vj::Any) = VectorQuant(q.values[ii,vj
 Base.getindex(q::LinmapQuant, vi::Any, jj::Integer) = VectorQuant(q.values[vi,jj], q.dims[vi,jj])
 Base.getindex(q::LinmapQuant, vi::Any, vj::Any) = LinmapQuant(q.values[vi,vj], q.dims[vi,vj])
 
+#Convenience constructors through "*"
+Base.:*(m::AbstractMatrix{<:NumUnion}, d::AbstractUnitMap) = LinmapQuant(m, d)
+
 """
-struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
-    values :: V
-    units :: U
-end
+    struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
+        values :: V
+        units :: U
+    end
 
 A vector of quantities. A special kind of vector that separates dimensions from values for easier dimension manipulation when used
 with LinmapQuant
+
+# Constructors
+    VectorQuant(v::AbstractVector{T}, u::AbstractVector{<:AbstractUnits}) where T
+    VectorQuant(m::QuantArrayVals, d::QuantArrayDims)
+    VectorQuant(v::AbstractVector)
+    VectorQuant(v::VectorQuant)
+
 """
 struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
     values :: V
@@ -292,10 +334,10 @@ Base.size(q::VectorQuant) = size(q.values)
 Linear Mapping Factorizations
 ======================================================================================================================#
 """
-struct FactorQuant{T, D<:AbstractDimensions, F<:Factorization{T}, U<:AbstractUnitMap{D}}
-    factor :: F
-    dims  :: U 
-end
+    struct FactorQuant{T, D<:AbstractDimensions, F<:Factorization{T}, U<:AbstractUnitMap{D}}
+        factor :: F
+        dims  :: U 
+    end
 
 A factored linear mapping. A subclass of Factorizations with a unit mapping attached. Calling getproperty
 is re-routed to the original factor, with the appropriate units calcualted from the mapping.
@@ -314,9 +356,11 @@ Base.transpose(fq::FactorQuant) = FactorQuant(transpose(fq.factor), transpose(fq
 Base.adjoint(fq::FactorQuant) = FactorQuant(adjoint(fq.factor), adjoint(fq.dims))
 
 # LU Factorization ===================================================================================
-LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = FactorQuant(lu(ustrip(mq); kwargs...), unit(mq))
-LinearAlgebra.lu(mq::LinmapQuant, ::Val{true}; kwargs...) = FactorQuant(lu(ustrip(mq), Val(true); kwargs...), unit(mq))
-LinearAlgebra.lu(mq::LinmapQuant, ::Val{false}; kwargs...) = FactorQuant(lu(ustrip(mq), Val(false); kwargs...), unit(mq))
+qlu(mq::AbstractMatrix; kwargs...) = FactorQuant(lu(dstrip(mq); kwargs...), DimsMap(mq))
+LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = qlu(mq; kwargs...)
+
+#LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{true}; kwargs...) = error("Unsupported method")
+#LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{false}; kwargs...) = error("Unsupported method")
 
 function Base.getproperty(fq::FactorQuant{<:Union{LU, StaticArrays.LU}, D}, fn::Symbol) where D
     F = ustrip(fq)
@@ -357,10 +401,10 @@ Eigenvalue decomposition will have a slightly different approach
 Nonlinear mapping
 ======================================================================================================================#
 """
-struct FunctionQuant{F, U<:AbstractUnitMap}
-    func  :: F
-    units :: U
-end
+    struct FunctionQuant{F, U<:AbstractUnitMap}
+        func  :: F
+        units :: U
+    end
 
 A generic mapping with units. Useful for applying units to unitless functions that assume units for inputs/outputs.
 """
