@@ -1,3 +1,4 @@
+using Revise
 using BenchmarkTools
 using Random
 Random.seed!(1)
@@ -61,38 +62,102 @@ print("DynamicQ:\t")
 print("FlexU:\t")
 @btime sum(x->x^2, $v1flex)
 
-# ========== S3. Broadcasting on large arrays ==========
-println("\nS3) Broadcasting on large arrays\n")
+# ========== S3.1 Broadcasting on large arrays ==========
+println("\nS3.1) Broadcasting on large arrays\n")
+x0 = randn(N)
 
-xu = randn(N) .* Unitful.u"km/s"
-yu = (0.3 .+ randn(N)) .* Unitful.u"km/s"
+xu = x0 .* Unitful.u"km/s"
+yu = (0.3 .+ x0) .* Unitful.u"km/s"
 
-xd = randn(N) .* DynamicQuantities.u"km/s"
-yd = (0.3 .+ randn(N)) .* DynamicQuantities.u"km/s"
+xd = x0 .* DynamicQuantities.u"km/s"
+yd = (0.3 .+ x0) .* DynamicQuantities.u"km/s"
 xqd = QuantityArray(xd);
 yqd = QuantityArray(yd);
 xsd = DynamicQuantities.uconvert.(DynamicQuantities.us"km/s", xd)
 ysd = DynamicQuantities.uconvert.(DynamicQuantities.us"km/s", yd)
 
-xf = randn(N) .* UnitRegistry.u"km/s"
-yf = (0.3 .+ randn(N)) .* UnitRegistry.u"km/s"
+xfs = x0 .* UnitRegistry.u"km/s"
+xfd = x0 .* UnitRegistry.ud"km/s"
+yfs = (0.3 .+ x0) .* UnitRegistry.u"km/s"
+yfd = ubase.((0.3 .+ x0) .* UnitRegistry.ud"km/s")
 
-g(x, y) = (x.^2) .+ 2.0.*x.*y .+ (y.^2)
+g(x, y) = (x^2) + 2.0*x*y + (y^2)
 
 print("Unitful:\t")
-@btime g($xu, $yu);
+@btime g.($xu, $yu)
 
-print("DynamicQ Sym:\t")
-@btime g($xsd, $ysd);
+#print("DynamicQ Sym:\t")
+#@btime g.($xsd, $ysd);
 
 print("DynamicQ Dim:\t")
-@btime g($xd, $yd);
+@btime g.($xd, $yd)
 
 print("DynamicQ Array:\t")
-@btime g($xqd, $yqd);
+@btime g.($xqd, $yqd)
 
-print("FlexU:\t")
-@btime g($xf, $yf);
+print("FlexU Dynamic:\t")
+@btime g.($xfd, $yfd)
+
+print("FlexU Static:\t")
+@btime g.($xfs, $yfs)
+
+
+# ========== S3.2 Linear Regression ==========
+println("\nS3.2) Linear Regression \n")
+Nr = 200
+XY = randn(Nr, 6) * rand(6, 6)
+X = [XY[:, begin:4] ones(Nr)]
+Y = XY[:, 5:end]
+Xu = X * UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m", UnitRegistry.u""]))
+Yu = Y * UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"K", UnitRegistry.u"kPa"]))
+
+print("No Units:\t")
+@btime (X'X)\(X'Y)
+
+print("Unitful:\t  fails\n")
+
+print("DynamicQ:\t  fails\n")
+
+print("FlexUnits:\t")
+@btime Bu = (Xu'Xu)\(Xu'Yu)
+
+
+# ========== S3.2 Matrix Multiplication ==========
+println("\nS3.3) Matrix Multiplication, Mixed Units \n")
+
+#Use unitless matrices as a benchmark
+Nr = 200
+X = randn(Nr, 4)
+M = rand(4,4)
+
+#Construct unitful matrices
+uu = [Unitful.u"kg/s", Unitful.u"kW", Unitful.u"rad/s", Unitful.u"N/m"]
+ut = reshape(uu, 1, :)
+Xu = X.*ut
+Mu = inv.(uu) .* M .* inv.(ut)
+
+#Construct DynamicQuantity matrices
+udq = [DynamicQuantities.u"kg/s", DynamicQuantities.u"kW", DynamicQuantities.u"rad/s", DynamicQuantities.u"N/m"]
+udqt = reshape(udq, 1, :)
+Xdq = X.*udqt
+Mdq = inv.(udq) .* M .* inv.(udqt)
+
+#Construct LinmapQuant matrices
+ufq = [UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m"]
+Xfq = X * UnitMap(u_out = UnitRegistry.u"", u_in = inv.(ufq))
+Mfq = M * UnitMap(u_out = inv.(ufq), u_in=ufq)
+
+print("No Units:\t")
+@btime X*M
+
+print("Unitful:\t")
+@btime Xu*Mu
+
+print("DynamicQ:\t")
+@btime Xdq*Mdq
+
+print("FlexUnits:\t")
+@btime Xfq*Mfq
 
 # ========== S4.1. upreferred ==========
 println("\nS4.1) upreferred\n")
@@ -250,10 +315,12 @@ print("FlexU:  \t")
 
 println("\nS7.1) Missing quantities\n")
 vdm = DynamicQuantities.GenericQuantity.(vm, Ref(DynamicQuantities.dimension(DynamicQuantities.u"m")))
-vfm = Quantity{eltype(vm)}.(vm, UnitRegistry.u"m")
+vfm = Quantity{eltype(vm)}.(vm, dimension(UnitRegistry.u"m"))
 
 print("Unitful:\t  fails\n")
 print("DynamicQ:\t")
 @btime sum($vdm)
 print("FlexU:  \t")
 @btime sum($vfm)
+
+print("\n\nBenchmarks Complete")

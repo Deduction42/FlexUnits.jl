@@ -2,15 +2,15 @@
 module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits,  ..AbstractDimensions, ..AbstractUnitTransform
-import ..Units, ..Dimensions, ..AffineTransform, ..StaticUnits, ..AbstractQuantity, ..Quantity, ..FixRat32, ..FixRat64
+import ..Units, ..Dimensions, ..AffineTransform, ..StaticUnits, ..QuantUnion, ..Quantity, ..FixRat32, ..FixRat64
 import ..uscale, ..uoffset, ..todims, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype
 
 export 
     AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64,
-    Units, Dimensions, AffineTransform, AbstractQuantity, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
+    Units, Dimensions, AffineTransform, QuantUnion, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
     PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, suparse_expr, dimtype
 
-const UnitOrQuantity = Union{AbstractUnitLike, AbstractQuantity}
+const UnitOrQuantity = Union{AbstractUnitLike, QuantUnion}
 const PARSE_CASES = Union{Expr,Symbol,Real,Nothing}
 """
     PermanentDict{K,T}
@@ -89,7 +89,7 @@ function _register_unit!(reg::AbstractDict{Symbol,Units{D,T}}, p::Pair{Symbol,<:
     return setindex!(reg, vn, k)
 end
 
-function _register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{Symbol, <:AbstractQuantity})
+function _register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{Symbol, <:QuantUnion})
     return _register_unit!(reg, p[1]=>Units(p[2]))
 end
 
@@ -139,7 +139,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
     K = dimension(reg[:K])
 
     _register_unit(:percent => 0.01*reg[:NoDims])
-    _register_unit(:L => reg[:dm]^3)
+    _register_unit(:L => 0.001*reg[:m]^3)
     _register_unit(:Hz => inv(s))
     _register_unit(:N => kg*m/s^2); N = reg[:N]
     _register_unit(:Pa => N/m^2);
@@ -184,7 +184,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
     _register_unit(:mi => 5280*ft)
     _register_unit(:lb => 0.453592*kg); lb = reg[:lb]
     _register_unit(:oz => (1/16)*lb)
-    _register_unit(:psi => lb/inch^2)
+    _register_unit(:psi => 6.89476*reg[:kPa])
     _register_unit(:lbf => 4.44822*N)
     _register_unit(:fl_oz => 29.5735*reg[:mL])
     _register_unit(:cup => 8*reg[:fl_oz])
@@ -193,8 +193,8 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
     _register_unit(:Ra => 5/9*reg[:K])
 
     #Strictly affine temperature measurements
-    _register_unit(:°C => Units(dims=K, todims=Trans(offset=273.15)))
-    _register_unit(:°F => Units(dims=K, todims=Trans(scale=5/9, offset=(273.15 - 32*5/9))))
+    _register_unit(:°C => Units(dims=K, todims=Trans(offset=(273 + 15//100))))
+    _register_unit(:°F => Units(dims=K, todims=Trans(scale=5//9, offset=(273 + 15//100 - 32*5//9))))
     _register_unit(:degC => reg[:°C])
     _register_unit(:degF => reg[:°F])
 
@@ -205,13 +205,13 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
 
     #If you want to add "angle" as a dimension, you can overload the appropriate function
 
-    #function apply_trig_func(f, q::AbstractQuantity{<:Any, <:RadDimensions{T}}) where T
+    #function apply_trig_func(f, q::QuantUnion{<:Any, <:RadDimensions{T}}) where T
     #   baseq = ubase(q)
     #   assert_radians(unit(baseq))
     #   return Quantity(f(ustrip(baseq)), RadDimensions{T}())
     #end
 
-    #sin(q::AbstractQuantity{<:RadDimensions}) = apply_trig_func(sin, q)
+    #sin(q::QuantUnion{<:RadDimensions}) = apply_trig_func(sin, q)
 
     return reg
 end
@@ -318,10 +318,6 @@ function _quant_preprocessing(str1::AbstractString)
 
     return (v, u)
 end
-
-
-
-
 
 end
 

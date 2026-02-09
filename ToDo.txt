@@ -1,58 +1,73 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
-Major Changes:
-1.  (breaking) Static units are now supported, and the string macro @u_str now produces static units that eagery convert to SI units 
-    (use @ud_str for old behaviour)
-2.  (breaking) `zero(::Quantity{T,D})` for dynamic units now outputs a new quanitity type Quantity{T, MirrorUnion{D}}
-    -   This allows an "additive identity" as MirrorUnion{D} mirrors the dimensions in the other argument
-    -   Enables functionality like var(X, dims=1) where X is a matrix of mixed units
-    -   Behaviour also applies to `typemin` and `typemax` as well
-3.  (breaking) `NoDims()` removed, make sure dimension objects have default arguments of zero
-4.  (breaking) `quantity` removed, use Quantity instead
-5.  (breaking) `UnitfulCallable` removed in favor of QuantMapping(f::Function, u::UnitMap)
-6.  `zero(::Quantity{T,D})` for static units behaves like Unitful
-7.  Added more promotion rules to convert numbers to quantities
-8.  FixRat32 is now exported
-9.  Added "dstrip" as shorthand for "ustrip_base"
-10. Added "dconvert" to convert to the dimensions of the unit
-
+Changelog:
+1.  Added support for linear algebra; LinmapQuant factorizes out units for efficient O(N+M) pure-unit ops while allowing efficient numeric methods to handle raw matrix ops
+2.  Quantity now subtypes to Number, use FlexQuant for values that don't subtype to number (quantity auto-selects appropriate container)
+3.  Multiplying with dynamic units now eagerly converts to dimensional quantities
+4.  Re-added "quantity" constructor function, does not eagerly convert to dimensional quantity
+5.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
 
 Current Tasks:
+1.  Build out documentation and a docs badge
 
-Backlog:
-1.  Finish basic QuantLinMap functionality for +,-,*,/,\,^,exp, (and matrix trigs)
-    -   This consists of building shortcuts for UnitMap types
-    -   Output should be the most specific form of unit mapping possible
-    -   Make sure operations convert to QuantLinMap and output that type
-
-    Notes on above:      
-    -   Matrix multiplication is ONLY valid with QuantLinMap and will ALWAYS produce a QuantLinMap
-        -   Multiplication should convert both AbstractMatrix{Quantity} to QuantLinMap
-        -   This may result in more allocations, but is more reliable in pointing out errors
-        -   It is recommendable to only store matrices as QuantLinMap if linear algebra is intended
-
-2.  Add LinearAlgebra extensions for certain factorizations
+2.  Add LinearAlgebra factorizations
+    -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
+        -   eig = eigen(A::LinmapQuant)
+        -   eig.vectors = LinmapQuant(ustrip(eig).vectors, UnitMap(fill(ud"", N), unit(eig).u_in))
     -   cholesky (requries symmetric transform)
     -   eigen (confusing becasue it can use both idempotent and symmetric) 
         -   E' == inv(E) DOES NOT hold 
         -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
-    -   consider other transformations as well
+    -   consider other factorizations as well
+
+Backlog:
 
 
-3.  Build out documentation and a docs badge
-    -   Include all-stops-out tutorial on defining a new dimension "RadDims"
-    -   Add angle to the dimension list
-    -   Create a new unit registry with that dimension 
-    -   Re-tool sin, cos, tan rules on this particular dimension
-4.  Add LinearAlgebra extensions for QuantLinMap
-5.  Add "unit_info(u::Union{Dimension, AbstractUnit{Dimension}})" 
-    -   Maps dimensions to a meaning (like Force or Inductance) and lists other units of that dimension
-    -   This can be done without documentation 
-        -   Use Dict{Dimension,String} to find dimension "meaning" (determine this by unique dimensions)
-        -   Iterate over registry and list other units that match the query dimension
+4.  Add interactive unit functionality
+    -   unit_index() (produces dict that lists all units for every dimension)
+    -   simplify(q::Quantity{T,AbstractDimLike}) (lists all standard SI units, performs a greedy search to make units as terse as possible)
+        e.g. simplify(1.0u"(m^2*kg)/s^3") = 1 kW
 
 
+#Example of #3 is shown below
 
+julia> using FlexUnits, .UnitRegistry
+
+julia> (x, y, z) = 1u"m/s", 1u"kg", 1u"kW"
+(1.0 m/s, 1.0 kg, 1000.0 (m² kg)/s³)
+
+julia> T = Union{typeof(x),typeof(y), typeof(z)}
+Union{Quantity{Float64, StaticDims{m/s}}, Quantity{Float64, StaticDims{kg}}, Quantity{Float64, StaticDims{(m² kg)/s³}}}
+
+julia> v = T[x,y,z]
+3-element Vector{Union{Quantity{Float64, StaticDims{m/s}}, Quantity{Float64, StaticDims{kg}}, Quantity{Float64, StaticDims{(m² kg)/s³}}}}:
+ 1.0 m/s
+ 1.0 kg
+ 1000.0 (m² kg)/s³
+
+julia> map(x->x*2, v)
+3-element Vector{Quantity{Float64}}:
+ 2.0 m/s
+ 2.0 kg
+ 2000.0 (m² kg)/s³
+
+julia> map(x->x*2, [x,y,z])
+3-element Vector{Quantity{Float64, Dimensions{FixRat32}}}:
+ 2.0 m/s
+ 2.0 kg
+ 2000.0 (m² kg)/s³
+
+julia> collect(map(x->x*2, (x,y,z)))
+3-element Vector{Quantity{Float64}}:
+ 2.0 m/s
+ 2.0 kg
+ 2000.0 (m² kg)/s³
+
+julia> vcat((map(x->x*2, (x,y,z)))...)
+3-element Vector{Quantity{Float64, Dimensions{FixRat32}}}:
+ 2.0 m/s
+ 2.0 kg
+ 2000.0 (m² kg)/s³
 
 
 
@@ -81,6 +96,4 @@ t1dyn  = (1*DynamicQuantities.u"m/s", 1*DynamicQuantities.u"J/kg", 1*DynamicQuan
 @btime sum(x->x^0, t1flex)
 @btime sum(x->x^0, t1dyn)
 
-Considerations:
-N.  Consider commutative macro for promote_rule to prevent repetition
-        https://discourse.julialang.org/t/techniques-for-defining-commutative-functions/113406/5
+

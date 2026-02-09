@@ -82,6 +82,11 @@ Base.iszero(x::FixedRational) = iszero(numerator(x))
 Base.isone(x::FixedRational)  = (numerator(x) == denominator(x))
 Base.isinteger(x::FixedRational) = iszero(numerator(x) % denominator(x))
 
+#Other functions 
+for f in (:typemin, :typemax, :zero, :one, :oneunit)
+    @eval Base.$f(::Type{FixedRational{B,T}}) where {B,T} = FixedRational{B}(Numerator($f(T)))
+end
+
 #Fixed rational conversions
 (::Type{F})(x::FixedRational{B}) where {B,F<:FixedRational{B}} = F(Numerator(x)) #Same-base shortcut
 (::Type{F})(x::FixedRational) where {F<:FixedRational} = F(numerator(x)/denominator(x))
@@ -112,6 +117,5 @@ function Base.show(io::IO, x::FixedRational{B,T}) where {B,T}
     return print(io, div(B, g))
 end
 
-function Base.show(io::IO, ::Type{R}) where {B,T,R<:FixedRational{B,T}}
-    return print(io, replace("FixRat$(T)", "Int"=>""))
-end
+Base.show(io::IO, ::Type{FixedRational{B, Int32}}) where B = print(io, "FixRat32")
+Base.show(io::IO, ::Type{FixedRational{B, Int64}}) where B = print(io, "FixRat64")

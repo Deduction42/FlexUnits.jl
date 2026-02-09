@@ -1,15 +1,31 @@
 name = "FlexUnits"
 uuid = "76e01b6b-c995-4ce6-8559-91e72a3d4e95"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Ruben Gonzalez <ruben.carbonbased@gmail.com> and contributors"]
 
+[workspace]
+projects = ["docs"]
+
+[deps]
+ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
 [weakdeps]
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [extensions]
 FlexUnitfulExt = "Unitful"
+ForwardDiffExt = "ForwardDiff"
 
 [compat]
+ArrayInterface = "7.22.0"
+ForwardDiff = "1.3"
+LinearAlgebra = "1.10.0"
+SparseArrays = "1.10.0"
+StaticArrays = "1.9.16"
 Test = "1.10"
 Unitful = "1.27.0"
 julia = "1.10"
