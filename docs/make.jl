@@ -18,4 +18,5 @@ makedocs(
 
 deploydocs(
     repo = "github.com/Deduction42/FlexUnits.jl.git",
+    push_preview = true
 )
