@@ -3,7 +3,9 @@
 [![Coverage Status](https://coveralls.io/repos/github/Deduction42/FlexUnits.jl/badge.svg?branch=main)](https://coveralls.io/github/Deduction42/FlexUnits.jl?branch=main)
 
 # FlexUnits.jl
-FlexUnits.jl is a rewrite of Unitful.jl that maintains similar performance to Unitful.jl when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units are uninferrable. In addition, FlexUnits provides shortcut inference methods for inferring units of linear algebra operations, allowing the use of high-performance linear algebra routines on numerical values, with separate, low-overhead unit inference. Throuh four major design decisions, FlexUnits seamlessly blends concepts from Unitful and DynamicQuantities to achieve the best of both worlds, and surpasses both packages in terms of linear algebra capability:
+FlexUnits.jl is a rewrite of Unitful.jl that maintains similar performance to Unitful.jl when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units are uninferrable. In addition, FlexUnits provides shortcut inference methods for inferring units of linear algebra operations, allowing the use of high-performance linear algebra routines on numerical values, with separate, low-overhead unit inference. This allows FlexUnits to be used with many more Julia packages including Statistics and DifferentialEquations.jl (refer to examples in the documentation). 
+
+Through four major design decisions, FlexUnits seamlessly blends concepts from Unitful and DynamicQuantities to achieve the best of both worlds, and surpasses both packages in terms of linear algebra capability:
 
 1. Promotion rules that convert Unitful-like `StaticDims` into DynamicQuantities-like `Dimensions` when units are mismatched or uninferrable. Operations on `Dimensions` are slower than `StaticDims` because dimension operations need to be performed at runtime; however, dynamic dimension ops are type-stable, compilable, and still much faster than dynamic dispatch that Unitful falls back to.
 
