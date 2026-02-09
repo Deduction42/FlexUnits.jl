@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Advanced Examples · FlexUnits.jl</title><meta name="title" content="Advanced Examples · FlexUnits.jl"/><meta property="og:title" content="Advanced Examples · FlexUnits.jl"/><meta property="twitter:title" content="Advanced Examples · FlexUnits.jl"/><meta name="description" content="Documentation for FlexUnits.jl."/><meta property="og:description" content="Documentation for FlexUnits.jl."/><meta property="twitter:description" content="Documentation for FlexUnits.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">FlexUnits.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../performance/">Performance</a></li><li><a class="tocitem" href="../manipulation/">Unit Manipulation</a></li><li><a class="tocitem" href="../linearalgebra/">Linear Algebra</a></li><li class="is-active"><a class="tocitem" href>Advanced Examples</a><ul class="internal"><li><a class="tocitem" href="#Solving-Differential-Equations"><span>Solving Differential Equations</span></a></li><li><a class="tocitem" href="#Exact-conversions-with-Rational"><span>Exact conversions with Rational</span></a></li></ul></li><li><a class="tocitem" href="../types/">Types</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Advanced Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Advanced Examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/Deduction42/FlexUnits.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/Deduction42/FlexUnits.jl/blob/main/docs/src/examples.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Advanced-Examples"><a class="docs-heading-anchor" href="#Advanced-Examples">Advanced Examples</a><a id="Advanced-Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Advanced-Examples" title="Permalink"></a></h1><h2 id="Solving-Differential-Equations"><a class="docs-heading-anchor" href="#Solving-Differential-Equations">Solving Differential Equations</a><a id="Solving-Differential-Equations-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-Differential-Equations" title="Permalink"></a></h2><p>It is currently possible to solve systems of differential equations using Unitful.jl, but it has some drawbacks:</p><ol><li>It requires <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/diffeq_arrays/#Example:-Dynamics-Equations">sectioning arrays with RecursiveArrayTools</a></li><li>It only works with explicit ODE solvers</li><li>Linear algebra operations are less efficient</li></ol><p>With FlexUnits, arrays with heterogeneous units are supported and linear algebra operations are efficient. Moreover, with a bit of extra work, it&#39;s possible to use explict solvers like <code>Rodas5P</code>. Integration with DifferentialEquations.jl is still rudimentary and extensions have not yet been added, but FlexUnits core features have proven to facilitate this integration with no effort on the SciML organization.</p><h3 id="Extension-Preamble-(Temporary-workaround)"><a class="docs-heading-anchor" href="#Extension-Preamble-(Temporary-workaround)">Extension Preamble (Temporary workaround)</a><a id="Extension-Preamble-(Temporary-workaround)-1"></a><a class="docs-heading-anchor-permalink" href="#Extension-Preamble-(Temporary-workaround)" title="Permalink"></a></h3><p>There are currently no extensions between DifferentialEquations.jl and FlexUnits.jl. However, the <a href="https://github.com/SciML/DiffEqBase.jl/blob/master/ext/DiffEqBaseUnitfulExt.jl">extension provided for Unitful.jl</a> can be easily retooled to fit FlexUnits.jl. To achieve compatibility, one has to simply run this code, and in the near future it likely won&#39;t be neccessary.</p><pre><code class="language-julia hljs">import OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase
+import .DiffEqBase: SciMLBase
+import .SciMLBase: unitfulvalue, value
+using FlexUnits
+
+# Support adaptive errors should be errorless for exponentiation
+value(::Type{Quantity{T,U}}) where {T,U} = T
+value(x::Quantity{T,U}) where {T,U} = dstrip(x)
+
+unitfulvalue(x::Type{T}) where {T &lt;: Quantity} = T
+unitfulvalue(x::Quantity) = x
+
+@inline function DiffEqBase.ODE_DEFAULT_NORM(u::AbstractArray{&lt;:Quantity, N}, t) where {N}
+    return sqrt(
+        sum(
+            x -&gt; DiffEqBase.ODE_DEFAULT_NORM(x[1], x[2]),
+            zip((value(x) for x in u), Iterators.repeated(t))
+        ) / length(u)
+    )
+end
+@inline function DiffEqBase.ODE_DEFAULT_NORM(u::Array{&lt;:Quantity, N}, t) where {N}
+    return sqrt(
+        sum(
+            x -&gt; DiffEqBase.ODE_DEFAULT_NORM(x[1], x[2]),
+            zip((value(x) for x in u), Iterators.repeated(t))
+        ) / length(u)
+    )
+end
+@inline DiffEqBase.ODE_DEFAULT_NORM(u::Quantity, t) = abs(value(u))
+@inline DiffEqBase.UNITLESS_ABS2(x::Quantity) = real(abs2(dstrip(x)))
+
+DiffEqBase._rate_prototype(u, t, onet) = u / unit(t)</code></pre><h3 id="The-ODE-problem-(falling-object)"><a class="docs-heading-anchor" href="#The-ODE-problem-(falling-object)">The ODE problem (falling object)</a><a id="The-ODE-problem-(falling-object)-1"></a><a class="docs-heading-anchor-permalink" href="#The-ODE-problem-(falling-object)" title="Permalink"></a></h3><p>This example will model a falling object with the drag force equation.</p><pre><code class="language-julia hljs">using FlexUnits, .UnitRegistry
+using OrdinaryDiffEq
+using StaticArrays
+using Plots
+using BenchmarkTools
+using LinearAlgebra
+
+#Use named vectors for readability
+@kwdef struct FallingObjectState{T} &lt;: FieldVector{2,T}
+    v  :: T
+    h  :: T
+end
+
+@kwdef struct FallingObjectProps{T} &lt;: FieldVector{5,T}
+    Cd :: T
+    A  :: T
+    ρ  :: T
+    m  :: T
+    g  :: T
+end 
+
+#Convert dynamic units to static units for performance
+function ustatic(state::FallingObjectState{&lt;:Quantity})
+    return (
+        v = dconvert(u&quot;m/s&quot;, state.v),
+        h = dconvert(u&quot;m&quot;, state.h)
+    )
+end
+
+function ustatic(props::FallingObjectProps{&lt;:Quantity})
+    return (
+        Cd = dconvert(u&quot;&quot;, props.Cd),
+        A  = dconvert(u&quot;m^2&quot;, props.A),
+        ρ  = dconvert(u&quot;kg/m^3&quot;, props.ρ),
+        m  = dconvert(u&quot;kg&quot;, props.m),
+        g  = dconvert(u&quot;m/s^2&quot;, props.g)
+    )
+end
+
+#Main differntial equation (unit-agnostic)
+function acceleration_raw(u, p, t)
+    fd = -sign(u.v)*0.5*p.ρ*u.v^2*p.Cd*p.A
+    dv = fd/p.m - p.g
+    dh = u.v
+    return FallingObjectState(v=dv, h=dh)
+end
+
+#Main differential equation with a static unit wrapper (for performance)
+function acceleration_ustatic(u::AbstractVector{&lt;:Quantity}, p::AbstractVector{&lt;:Quantity}, t)
+    du = acceleration_raw(ustatic(FallingObjectState(u)), ustatic(FallingObjectProps(p)), t)
+    return FallingObjectState(du)
+end</code></pre><h3 id="Solving-with-an-explict-solver-(Tsit5)"><a class="docs-heading-anchor" href="#Solving-with-an-explict-solver-(Tsit5)">Solving with an explict solver (Tsit5)</a><a id="Solving-with-an-explict-solver-(Tsit5)-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-with-an-explict-solver-(Tsit5)" title="Permalink"></a></h3><p>Solving this differential equation with an explicit solver like <code>Tsit5</code> is relatively straightforward.</p><pre><code class="language-julia hljs">u0 = FallingObjectState(v=0.0u&quot;m/s&quot;, h=100u&quot;m&quot;)
+p  = FallingObjectProps(Cd=1.0u&quot;&quot;, A=0.1u&quot;m^2&quot;, ρ=1.0u&quot;kg/m^3&quot;, m=50u&quot;kg&quot;, g=9.81u&quot;m/s^2&quot;)
+
+tspan = (0.0u&quot;s&quot;, 10.0u&quot;s&quot;)
+prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_ustatic, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
+sol = solve(prob, Tsit5())
+plt = plot(ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label=&quot;Tsit5&quot;)</code></pre><h3 id="Solving-with-an-implicit-solver-(Rodas5P)"><a class="docs-heading-anchor" href="#Solving-with-an-implicit-solver-(Rodas5P)">Solving with an implicit solver (Rodas5P)</a><a id="Solving-with-an-implicit-solver-(Rodas5P)-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-with-an-implicit-solver-(Rodas5P)" title="Permalink"></a></h3><p>Unfortunately, implicit ODE solvers are a bit more complicated. The first major challenge is the fact that implicit solvers require differentiation. Automatic differentiation can differntiate <em>through</em> quantities, but it can&#39;t differentiate <em>with respect to</em> quantities. This means that the automatic differentiator needs to differentiate through the function <em>without units</em>, and the return a final Jacobian <em>with units</em> as shown in the <code>wrapped_jacboan</code> function definition below.</p><pre><code class="language-julia hljs">using ForwardDiff
+function wrapped_jacobian(f, x, p, t)
+    u_in  = dimension.(x)
+    u_out = dimension.(f(x,p,t))
+
+    function f_unitless(xn)
+        return dstrip.(f(xn.*u_in, p, t))
+    end
+    
+    return ForwardDiff.jacobian(f_unitless, dstrip.(x)) * DimsMap(u_in=u_in, u_out=u_out)
+end
+
+static_jac(u,p,t) = wrapped_jacobian(acceleration_ustatic, u, p, t)</code></pre><p>In addition, we need to define some other parametrs to make <code>Rodas5P</code> work. The first is the <code>tgrad</code> parameter which differentiates the function with respect to time. Becuase this set of equations does not explicitly use time, the <code>tgrad</code> can simply be set to zero with units of <code>dx/s</code>, otherwise, we would neeed to use another wrapped gradient.</p><pre><code class="language-julia hljs">static_tgrad(u,p,t) = [0.0u&quot;m/s^3&quot;, 0.0u&quot;m/s^2&quot;]</code></pre><p>Finally, in order to properly make use of these customized gradient/Jacobian functions, we need to construct an <code>ODEFunction</code> object. In order to make it properly function however, we need to overwrite the default mass matrix</p><pre><code class="language-julia hljs">mass_matrix = I*1ud&quot;&quot;</code></pre><p>This is different from the default identy matrix <code>I</code> becasue it is unit-agnositc on the off-diagonals, where the default <code>I</code> assumes dimensionless values for all elements and causes unit validation failures when elements of <code>v</code> have different unit-dimensions. Using unit-agnostic elements ensures that <code>mass_matrix*v</code> always returns <code>v</code> regardless of its unit-dimensions. One can check this by verifying that off diagonals produce <code>?/?</code>.</p><pre><code class="language-julia hljs">julia&gt; mass_matrix[1,2]
+0.0 ?/?</code></pre><p>With this completed, we can now create an appropriate <code>ODEFunction</code> object and use the typical steps to solve.</p><pre><code class="language-julia hljs">f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_ustatic, 
+    jac = static_jac, 
+    tgrad = static_tgrad,
+    mass_matrix = mass_matrix
+)
+
+u0 = FallingObjectState(v=0.0u&quot;m/s&quot;, h=100u&quot;m&quot;)
+p  = FallingObjectProps(Cd=1.0u&quot;&quot;, A=0.1u&quot;m^2&quot;, ρ=1.0u&quot;kg/m^3&quot;, m=50u&quot;kg&quot;, g=9.81u&quot;m/s^2&quot;)
+
+tspan = (0.0u&quot;s&quot;, 10.0u&quot;s&quot;)
+prob = ODEProblem(f_static, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
+
+sol = solve(prob, Rodas5P())
+plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label=&quot;Rodas5P&quot;)</code></pre><p>While moving from <code>Tsit5</code> to <code>Rodas5P</code> is significantly more effort with quantities than raw numbers, FlexUnits is the only package known to be capable of this functionality. Moreover, these steps, which are already baked into defaults for regular number, could be potentially baked into defaults through an extension on the future.</p><h2 id="Exact-conversions-with-Rational"><a class="docs-heading-anchor" href="#Exact-conversions-with-Rational">Exact conversions with Rational</a><a id="Exact-conversions-with-Rational-1"></a><a class="docs-heading-anchor-permalink" href="#Exact-conversions-with-Rational" title="Permalink"></a></h2><p>This package defaults to using Float64 conversion factors to accomplish conversions. This often results in small but visually annoying roundoff errors.</p><pre><code class="language-julia hljs">using FlexUnits, .UnitRegistry
+julia&gt; uconvert(u&quot;°C&quot;, 32u&quot;°F&quot;)
+5.684341886080802e-14 °C
+
+julia&gt; uconvert(u&quot;°C&quot;, 14u&quot;°F&quot;)
+-9.999999999999943 °C</code></pre><p>However, FlexUnits is designed to be registry-agnostic, with simply registry construction so this default Float64 conversion behaviour doesn&#39;t have to be the case (which is why it isn&#39;t exported by default). A user can simply copy-paste the &quot;UnitRegistry.jl&quot; file and modify one line of code that assigns <code>const UNITS</code> to use the transform type <code>AffineTransform{Rational{Int64}}</code> instead of <code>AffineTransform{Float64}</code>. </p><pre><code class="language-julia hljs">using FlexUnits
+
+module RationalRegistry
+    #RegistryTools contains all you need to build a registry in one simple import
+    using ..RegistryTools
+
+    const UNIT_LOCK = ReentrantLock()
+    const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Rational{Int64}}}}() #Just change the AffineTrnasform type
+
+    #Fill the UNITS registry with default values
+    registry_defaults!(UNITS)
+
+    #Ueses a ReentrantLock() on register_unit to prevent race conditions when multithreading
+    register_unit(p::Pair{String, &lt;:Any}) = lock(UNIT_LOCK) do 
+        register_unit!(UNITS, p)
+    end
+
+    #Parsing functions that don&#39;t require a dictionary argument
+    uparse(str::String) = RegistryTools.uparse(str, UNITS)
+    qparse(str::String) = RegistryTools.qparse(str, UNITS)
+
+    #String macros are possible now that we are internally referring to UNITS
+    macro u_str(str)
+        return esc(suparse_expr(str, UNITS))
+    end
+
+    macro ud_str(str)
+        return esc(uparse_expr(str, UNITS))
+    end
+
+    macro q_str(str)
+        return esc(qparse_expr(str, UNITS))
+    end
+    
+    #Functions to facilitate knowing types ahead of time, DO NOT EXPORT IF MULTIPLE REGISTRIES ARE USED
+    unittype() = RegistryTools.unittype(UNITS)
+    dimtype()  = RegistryTools.dimtype(UNITS)
+
+    #Registry is exported but these functions/macros are not (in case user wants their own verison)
+    #You can import these by invoking `using .Registry`
+    export @u_str, @ud_str, uparse, @q_str, qparse, register_unit
+end</code></pre><p>We can then export all of the macros from our newly created <code>RationalRegistry</code> model, and check out the new behaviour.</p><pre><code class="language-julia hljs">using .RationalRegistry
+
+julia&gt; uconvert(u&quot;°C&quot;, 32u&quot;°F&quot;)
+0//1 °C
+
+julia&gt; uconvert(u&quot;°C&quot;, 14u&quot;°F&quot;)
+-10//1 °C</code></pre><p>This can be used to modify many different behaviours if you don&#39;t agree with the design decisions of the default registry. FlexUnits registries are designed to be truly modular and flexible.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../linearalgebra/">« Linear Algebra</a><a class="docs-footer-nextpage" href="../types/">Types »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Monday 9 February 2026 20:45">Monday 9 February 2026</span>. Using Julia version 1.12.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
