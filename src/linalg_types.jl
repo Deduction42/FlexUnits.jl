@@ -73,13 +73,17 @@ dstrip(m::AbstractArray) = QuantArrayVals(m)
 dstrip(m::SArray) = dstrip.(m)
 
 """
-struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
-    u_in  :: TI
-    u_out :: TO
-end
+    struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+        u_in  :: TI
+        u_out :: TO
+    end
 
 Used to represent a unit transformation from input units 'u_in' to outpout units 'u_out'. Often applied
 to nonlinear functions.
+
+# Constructors 
+    UnitMap{U}(u_in::ScalarOrVec{<:AbstractUnitLike}, u_out::ScalarOrVec{<:AbstractUnitLike}) where U<:AbstractUnitLike
+    UnitMap(u_in::ScalarOrVec{U1}, u_out::ScalarOrVec{U2}) where {U1<:AbstractUnitLike, U2<:AbstractUnitLike}
 """
 @kwdef struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
     u_in  :: TI
@@ -99,11 +103,11 @@ uinput(m::UnitMap) = m.u_in
 
 
 """
-struct DimsMap{D<:AbstractDimLike, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
-    u_fac :: D
-    u_in  :: TI
-    u_out :: TO
-end
+    struct DimsMap{D<:AbstractDimLike, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
+        u_fac :: D
+        u_in  :: TI
+        u_out :: TO
+    end
 
 Used to represent a unit transformation from input dimensions 'u_in' to outpout dimensions 'u_out'.
 This is like a unit map but focuses on dimensions and has matrix-like behaviour since dimensions 
@@ -113,6 +117,13 @@ WARNING: The DimsMap constructor on dimensions expects u_in and u_out to be scal
 element is dimensionless. To prevent excessive allocations, u_in and u_out may be mutated in-place. 
 If mutating arguments is undesirable, supply immutable arguments or copies; otherwise, ensure 
 that u_in and u_out have dimensionless values in their first element.
+
+# Constructors 
+    DimsMap(u_fac::U, u_in::TI, u_out::TO) where {U<:AbstractUnitLike, TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
+    DimsMap(u_fac::Nothing, u_in::TI, u_out::TO) where {TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
+    DimsMap(md::AbstractMatrix{<:AbstractDimLike})
+    DimsMap(mq::AbstractMatrix{<:QuantUnion})
+    DimsMap(d::AbstractDimsMap)
 """
 @kwdef struct DimsMap{D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
     u_fac :: D = nothing
@@ -177,7 +188,9 @@ Base.getindex(m::DimsMap, vi::Any, vj::Any) = DimsMap(u_fac=m.u_fac, u_out=m.u_o
 
 
 """
-    AdjointDmap{D, M<:AbstractUnitMap{D}} <: AbstractUnitMap{D}
+    struct AdjointDmap{D, M<:AbstractDimsMap{D}} <: AbstractDimsMap{D}
+        parent :: M 
+    end
 
 Wraps a dimension map as an adjoint/transpose (and avoids subtyping to AbstractArray)
 """
@@ -204,14 +217,21 @@ Base.getindex(m::AdjointDmap, ind1::Any, ind2::Any) = AdjointDmap(getindex(m.par
 
 
 """
-struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
-    values :: M
-    units :: U
-end
+    struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:UnitMaps{D}} <: AbstractMatrix{Quantity{T,D}}
+        values :: M
+        units :: U
+    end
 
 A linear mapping of quantities. A special kind of matrix that is intended to be used for multiplying vectors of quantities;
 such matrices must be dimensionally consistent and can be represented by a UnitMap. These constraints lead to much faster 
 unit inference and a smaller memory footprint (O(M+N) instead of O(M*N*N2) in the case of multiplication).
+
+# Constructors
+    LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T
+    LinmapQuant(m::SMatrix{Nr,Nc,T}, u::UnitMap) where {T, Nr, Nc}
+    LinmapQuant(m::QuantArrayVals, d::QuantArrayDims)
+    LinmapQuant(m::AbstractMatrix)
+    LinmapQuant(m::LinmapQuant)
 """
 struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractDimsMap{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
@@ -269,13 +289,20 @@ Base.getindex(q::LinmapQuant, vi::Any, vj::Any) = LinmapQuant(q.values[vi,vj], q
 Base.:*(m::AbstractMatrix{<:NumUnion}, d::AbstractUnitMap) = LinmapQuant(m, d)
 
 """
-struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
-    values :: V
-    units :: U
-end
+    struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
+        values :: V
+        units :: U
+    end
 
 A vector of quantities. A special kind of vector that separates dimensions from values for easier dimension manipulation when used
 with LinmapQuant
+
+# Constructors
+    VectorQuant(v::AbstractVector{T}, u::AbstractVector{<:AbstractUnits}) where T
+    VectorQuant(m::QuantArrayVals, d::QuantArrayDims)
+    VectorQuant(v::AbstractVector)
+    VectorQuant(v::VectorQuant)
+
 """
 struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
     values :: V
@@ -307,10 +334,10 @@ Base.size(q::VectorQuant) = size(q.values)
 Linear Mapping Factorizations
 ======================================================================================================================#
 """
-struct FactorQuant{T, D<:AbstractDimensions, F<:Factorization{T}, U<:AbstractUnitMap{D}}
-    factor :: F
-    dims  :: U 
-end
+    struct FactorQuant{T, D<:AbstractDimensions, F<:Factorization{T}, U<:AbstractUnitMap{D}}
+        factor :: F
+        dims  :: U 
+    end
 
 A factored linear mapping. A subclass of Factorizations with a unit mapping attached. Calling getproperty
 is re-routed to the original factor, with the appropriate units calcualted from the mapping.
@@ -374,10 +401,10 @@ Eigenvalue decomposition will have a slightly different approach
 Nonlinear mapping
 ======================================================================================================================#
 """
-struct FunctionQuant{F, U<:AbstractUnitMap}
-    func  :: F
-    units :: U
-end
+    struct FunctionQuant{F, U<:AbstractUnitMap}
+        func  :: F
+        units :: U
+    end
 
 A generic mapping with units. Useful for applying units to unitless functions that assume units for inputs/outputs.
 """
