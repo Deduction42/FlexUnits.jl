@@ -4,6 +4,7 @@ using Documenter, FlexUnits
 import FlexUnits.QuantUnion
 
 DocMeta.setdocmeta!(FlexUnits, :DocTestSetup, :(using FlexUnits, .UnitRegistry))
+
 makedocs(
     sitename="FlexUnits.jl",
     pages = [
@@ -18,5 +19,6 @@ makedocs(
 
 deploydocs(
     repo = "github.com/Deduction42/FlexUnits.jl.git",
-    push_preview = true
+    push_preview = true,
+    devbranch = "main"
 )
