@@ -14,11 +14,11 @@ v1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"J/kg", 1.0*Dynam
 v1flex = [1.0u"m/s", 1.0u"J/kg", 1.0u"A/V"]
 
 @btime sum(x->x^0.0, $v1uni)
-  7.575 μs (86 allocations: 3.92 KiB)
+  8.100 μs (86 allocations: 3.92 KiB)
 @btime sum(x->x^0.0, $v1dyn)
-  41.667 ns (0 allocations: 0 bytes)
+  41.717 ns (0 allocations: 0 bytes)
 @btime sum(x->x^0.0, $v1flex)
-  27.209 ns (0 allocations: 0 bytes)
+  5.300 ns (0 allocations: 0 bytes)
 ```
 In the second example, we see that FlexUnits.jl and Unitful.jl outperform DynanicQuantities.jl when units can be inferred by the compiler.
 ```julia
@@ -26,12 +26,12 @@ t1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s"]
 t1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s"]
 t1flex = [1.0u"m/s", 1.0u"m/s", 1.0u"m/s"]
 
-@btime sum(x->x*x, $t1uni)
-  2.900 ns (0 allocations: 0 bytes)
-@btime sum(x->x*x, $t1dyn)
-  7.800 ns (0 allocations: 0 bytes)
-@btime sum(x->x*x, $t1flex)
-  2.900 ns (0 allocations: 0 bytes)
+@btime sum(x->x^2, $t1uni)
+  3.000 ns (0 allocations: 0 bytes)
+@btime sum(x->x^2, $t1dyn)
+  7.407 ns (0 allocations: 0 bytes)
+@btime sum(x->x^2, $t1flex)
+  3.000 ns (0 allocations: 0 bytes)
 ```
 While this performance boost over DynamicQuantities.jl isn't as dramatic as the previous boost over Unitful.jl, it is still significant. In most benchmarks (examples can be found in the test folder of the FlexUnits repo) FlexUnits matches the best performing alternative (DynamicQuantities or Unitful). There are two notable exceptions:
 1. FlexUnits.jl is slightly slower than Unitful.jl at `uconvert`, but still much faster than DynamicQuantities.jl
