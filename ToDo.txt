@@ -9,11 +9,6 @@ Changelog:
 
 Current Tasks:
 1.  Build out documentation and a docs badge
-    -   Revamp the Readme to emphasize extended language support (linear algebra, zero(Quantity{<:Dimensions}))
-        -   Add warnings around "Affine Delta" and "zero/oneunit"
-    -   Add API/Functions section
-
-
 
 2.  Add LinearAlgebra factorizations
     -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
