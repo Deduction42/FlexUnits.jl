@@ -1,6 +1,6 @@
 
-const MatrixOfDims{D} = AbstractMatrix{<:AbstractDimensions}
-const VectorOfDims{D} = AbstractVector{<:AbstractDimensions}
+const MatrixOfDims{D} = AbstractMatrix{<:AbstractDimLike}
+const VectorOfDims{D} = AbstractVector{<:AbstractDimLike}
 
 #======================================================================================================================
 Operators on dimensions objects
@@ -225,12 +225,14 @@ for V in COMB_VECTOR_TYPES
 end
 
 #Apply the quantity-specific methods on single-argument matrix functions
-for M in QUANT_MATRIX_TYPES
-    @eval Base.:^(m::$M, p::Real) = qpow(m, p)
-    @eval Base.:^(m::$M, p::Integer) = qpow(m, p)
-    @eval Base.exp(m::$M) = qexp(m)
-    @eval Base.log(m::$M) = qlog(m)
-    @eval LinearAlgebra.lu(m::$M; kwargs...) = qlu(m; kwargs...)
+for MU in QUANT_MATRIX_TYPES
+    for M in [MU, Adjoint{<:Quantity, <:MU}, Transpose{<:Quantity, <:MU}] #Disambiguate Transpose and Adjoint
+        @eval Base.:^(m::$M, p::Real) = qpow(m, p)
+        @eval Base.:^(m::$M, p::Integer) = qpow(m, p)
+        @eval Base.exp(m::$M) = qexp(m)
+        @eval Base.log(m::$M) = qlog(m)
+        @eval LinearAlgebra.lu(m::$M; kwargs...) = qlu(m; kwargs...)
+    end
 end
 
 #Add FactorQuant methods 

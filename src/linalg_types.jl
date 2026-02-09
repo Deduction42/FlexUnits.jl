@@ -140,8 +140,8 @@ function DimsMap(u_fac::Nothing, u_in::TI, u_out::TO) where {TI<:AbstractVector{
     return DimsMap(D(), u_in, u_out)
 end
 
-function DimsMap(md::AbstractMatrix{<:AbstractDimensions})
-    u_fac = md[begin,begin]
+function DimsMap(md::AbstractMatrix{<:AbstractDimLike})
+    u_fac = udynamic(md[begin,begin])
     u_out = md[:,begin]./u_fac
     u_in  = u_fac./md[begin,:]
 

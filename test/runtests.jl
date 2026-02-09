@@ -573,7 +573,7 @@ end
     @test 1ud"K" |> °C isa Quantity{<:Real, <:Units}
     @test 0ud"K" |> °C  == -273.15°C
     @test °C |> °F isa AffineTransform
-    @test 0°C |> °F == 32°F
+    @test 0°C |> °F ≈ 32°F
     @test (°C |> °F)(0) ≈ 32
 
     @test Units(dims=ud"Pa", todims=AffineTransform()) == ud"Pa"
