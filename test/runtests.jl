@@ -62,7 +62,7 @@ const AT = AffineTransform{Float64}
     @test FlexUnits.constructorof(typeof(u"m")) == StaticUnits
     @test FlexUnits.constructorof(typeof(1.0*u"m")) == Quantity
     @test FlexUnits.constructorof(typeof((1.0+im)*u"m")) == Quantity
-    @test FlexUnits.constructorof(typeof(Quantity("this", ud"m"))) == Quantity
+    @test FlexUnits.constructorof(typeof(quantity("this", ud"m"))) == FlexQuant
     @test FlexUnits.constructorof(Array{Float64}) == Array
 
     t_none = NoTransform()
@@ -227,8 +227,8 @@ end
         @test signbit(x) == true
         @test signbit(-x) == false
         @test isempty(x) == false
-        @test isempty(Quantity([0.0, 1.0], u)) == false
-        @test isempty(Quantity(Float64[], u)) == true
+        @test isempty(quantity([0.0, 1.0], u)) == false
+        @test isempty(quantity(Float64[], u)) == true
         @test zero(Dimensions{R}) === Dimensions{R}()
         @test zero(Units{Dimensions{R}, AT}) === Units{Dimensions{R}, AT}(dims=zero(Dimensions{R}), todims=AT())
 

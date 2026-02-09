@@ -62,11 +62,11 @@ Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 function ubase(q::QuantUnion{<:Any,<:AbstractUnitLike})
     u  = unit(q)
     ft = todims(u)
-    return Quantity(ft(ustrip(q)), dimension(u))
+    return quantity(ft(ustrip(q)), dimension(u))
 end 
 function ubase(q::QuantUnion{T, <:StaticUnits{D}}) where {T,D}
     x = unit(q).todims(ustrip(q))
-    return Quantity{typeof(x), StaticDims{D}}(x, StaticDims{D}())
+    return quantity(x, StaticDims{D}())
 end
 ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
 
