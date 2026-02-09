@@ -15,3 +15,7 @@ makedocs(
         "Types" => "types.md"
     ]
 )
+
+deploydocs(
+    repo = "github.com/Deduction42/FlexUnits.jl.git",
+)
