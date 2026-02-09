@@ -1,6 +1,8 @@
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 [![Build Status](https://github.com/Deduction42/FlexUnits.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Deduction42/FlexUnits.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage Status](https://coveralls.io/repos/github/Deduction42/FlexUnits.jl/badge.svg?branch=main)](https://coveralls.io/github/Deduction42/FlexUnits.jl?branch=main)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://deduction42.github.io/FlexUnits.jl/stable)
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://deduction42.github.io/FlexUnits.jl/dev)
 
 # FlexUnits.jl
 FlexUnits.jl is a rewrite of Unitful.jl that maintains similar performance to Unitful.jl when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units are uninferrable. In addition, FlexUnits provides shortcut inference methods for inferring units of linear algebra operations, allowing the use of high-performance linear algebra routines on numerical values, with separate, low-overhead unit inference. This allows FlexUnits to be used with many more Julia packages including Statistics and DifferentialEquations.jl (refer to examples in the documentation). 
