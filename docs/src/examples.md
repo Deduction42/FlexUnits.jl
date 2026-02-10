@@ -6,44 +6,7 @@ It is currently possible to solve systems of differential equations using Unitfu
 2. It only works with explicit ODE solvers
 3. Linear algebra operations are less efficient
 
-With FlexUnits, arrays with heterogeneous units are supported and linear algebra operations are efficient. Moreover, with a bit of extra work, it's possible to use explict solvers like `Rodas5P`. Integration with DifferentialEquations.jl is still rudimentary and extensions have not yet been added, but FlexUnits core features have proven to facilitate this integration with no effort on the SciML organization.
-
-### Extension Preamble (Temporary workaround)
-There are currently no extensions between DifferentialEquations.jl and FlexUnits.jl. However, the [extension provided for Unitful.jl](https://github.com/SciML/DiffEqBase.jl/blob/master/ext/DiffEqBaseUnitfulExt.jl) can be easily retooled to fit FlexUnits.jl. To achieve compatibility, one has to simply run this code, and in the near future it likely won't be neccessary.
-```julia
-import OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase
-import .DiffEqBase: SciMLBase
-import .SciMLBase: unitfulvalue, value
-using FlexUnits
-
-# Support adaptive errors should be errorless for exponentiation
-value(::Type{Quantity{T,U}}) where {T,U} = T
-value(x::Quantity{T,U}) where {T,U} = dstrip(x)
-
-unitfulvalue(x::Type{T}) where {T <: Quantity} = T
-unitfulvalue(x::Quantity) = x
-
-@inline function DiffEqBase.ODE_DEFAULT_NORM(u::AbstractArray{<:Quantity, N}, t) where {N}
-    return sqrt(
-        sum(
-            x -> DiffEqBase.ODE_DEFAULT_NORM(x[1], x[2]),
-            zip((value(x) for x in u), Iterators.repeated(t))
-        ) / length(u)
-    )
-end
-@inline function DiffEqBase.ODE_DEFAULT_NORM(u::Array{<:Quantity, N}, t) where {N}
-    return sqrt(
-        sum(
-            x -> DiffEqBase.ODE_DEFAULT_NORM(x[1], x[2]),
-            zip((value(x) for x in u), Iterators.repeated(t))
-        ) / length(u)
-    )
-end
-@inline DiffEqBase.ODE_DEFAULT_NORM(u::Quantity, t) = abs(value(u))
-@inline DiffEqBase.UNITLESS_ABS2(x::Quantity) = real(abs2(dstrip(x)))
-
-DiffEqBase._rate_prototype(u, t, onet) = u / unit(t)
-```
+With FlexUnits, arrays with heterogeneous units are supported and linear algebra operations are efficient. Moreover, with a bit of extra work, it is now possible to use units with explict solvers like `Rodas5P`. Integration with DifferentialEquations.jl is still in its early stages, but so far, FlexUnits support for mixed-unit linear algebra has already proven to make itegration relatively easy.
 
 ### The ODE problem (falling object)
 This example will model a falling object with the drag force equation.
