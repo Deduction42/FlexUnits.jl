@@ -1,3 +1,5 @@
+import NestedNumbers
+
 const DEFAULT_RATIONAL = FixRat32
 const DEFAULT_USYMBOL = :_
 
@@ -333,14 +335,14 @@ Quantity types
 The basic type is Quantity, which belongs to <:Any (hence it has no real hierarchy)
 =================================================================================================#
 """
-    struct Quantity{T<:Number, U<:AbstractUnitLike} <: Number
+    struct Quantity{T<:Number, U<:AbstractUnitLike} <: NestedNumbers.QuantityNumber{T}
         value :: T
         unit  :: U
     end
 
 Numeric quantity type (that sutypes to number) with fields `value` and `unit`
 """
-struct Quantity{T<:Number, U<:AbstractUnitLike} <: Number
+struct Quantity{T<:Number, U<:AbstractUnitLike} <: NestedNumbers.QuantityNumber{T}
     value :: T
     unit  :: U
 end
