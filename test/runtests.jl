@@ -881,9 +881,11 @@ end
     #Test Cholesky and Eigenvalue decompositions
     S = cov(Q)
     eig = eigen(S)
+    @test eig isa FactorQuant
     @test all(S .≈ (eig.vectors * Diagonal(eig.values) * eig.vectors'))
 
     ch  = cholesky(S)
+    @test ch isa FactorQuant
     @test all(S .≈ (ch.L * ch.U))
 
     #DimsMap constructor with units 

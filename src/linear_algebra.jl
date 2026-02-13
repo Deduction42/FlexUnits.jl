@@ -233,6 +233,7 @@ for MU in QUANT_MATRIX_TYPES
         @eval Base.log(m::$M) = qlog(m)
         @eval LinearAlgebra.lu(m::$M; kwargs...) = qlu(m; kwargs...)
         @eval LinearAlgebra.eigen(m::$M; kwargs...) = qeigen(m; kwargs...)
+        @eval LinearAlgebra.cholesky(m::$M; kwargs...) = qcholesky(m; kwargs...)
     end
 end
 

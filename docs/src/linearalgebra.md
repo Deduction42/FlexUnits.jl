@@ -158,6 +158,82 @@ julia> LinmapQuant(X, UnitMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_o
  -0.601045 K   150.874 m  0.608505 mol  -0.146254 kg   0.509313 A
 ```
 
+### Matrix Factorizations
+Some matrix factorizations are also enabled by FlexUnits. Currently, the supported factorization functions include `lu`, `cholesky`, and `eigen`. Certain factorization have constraints on the pattern of units supported. 
+- `lu` has no constraints
+- `cholesky` only supports symmetric unit mappings
+- `eigen` only supports symmetric and repeatable unit mappings (where repeatable means the output units are proportional to input units)
+
+Let us consider an example with a covariance matrix, which is compatible with all of the factorizations mentioned above.
+```julia
+using Statistics
+X = randn(30,3)*rand(3,3) * UnitMap(u_out=u"", u_in=inv.(SA[u"ft", u"W", u"psi"]))
+
+julia> S = cov(collect(X)) #Specialized LinmapQuant version doesn't exist yet
+3×3 Matrix{Quantity{Float64, Dimensions{FixRat32}}}:
+        0.0301835 m²  0.178333 (m³ kg)/s³          451.029 kg/s²
+ 0.178333 (m³ kg)/s³  1.18397 (m⁴ kg²)/s⁶     3101.84 (m kg²)/s⁵
+       451.029 kg/s²   3101.84 (m kg²)/s⁵  1.15374e7 kg²/(m² s⁴)
+```
+
+#### LU Factorization
+LU Factoriztion works on LinmapQuant and a selection of matrix types containing quantities. If your desired matrix type isn't supported, you may want to try using `FlexUnits.qlu`. You can access factorizations with `.L` and `.U` and the permutation vector with `.p`
+
+```julia
+slu = lu(S)
+
+julia> slu.L
+3×3 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+        1.0 kg/(m² s²)  0.0 kg/(m² s²)  0.0 kg/(m² s²)
+ 0.000395392 (m kg)/s³   1.0 (m kg)/s³   0.0 (m kg)/s³
+           6.69216e-5        0.688662             1.0
+
+julia> slu.U
+3×3 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+ 451.029 m²    3101.84 (m³ kg)/s³  1.15374e7 kg/s²
+     0.0 m²  -0.042469 (m³ kg)/s³   -1459.96 kg/s²
+     0.0 m²        0.0 (m³ kg)/s³    684.349 kg/s²
+
+```
+
+#### Cholesky Factorization
+Much like LU factorization, you can also perform Cholesky factorization on a matrix of quantities. If your desired matrix type isn't supported you can use `FlexUnits.qcholesky`.
+
+```julia
+schol = cholesky(S)
+
+julia> schol.U
+3×3 LinmapQuant{Float64, Dimensions{FixRat32}, UpperTriangular{Float64, Matrix{Float64}}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+ 0.173734 m   1.02647 (m² kg)/s³  2596.09 kg/(m s²)
+      0.0 m  0.361012 (m² kg)/s³  1210.57 kg/(m s²)
+      0.0 m       0.0 (m² kg)/s³  1825.45 kg/(m s²)
+
+julia> schol.L
+3×3 LinmapQuant{Float64, Dimensions{FixRat32}, LowerTriangular{Float64, Matrix{Float64}}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+         0.173734 m                0.0 m              0.0 m
+ 1.02647 (m² kg)/s³  0.361012 (m² kg)/s³     0.0 (m² kg)/s³
+  2596.09 kg/(m s²)    1210.57 kg/(m s²)  1825.45 kg/(m s²)
+```
+
+#### Eigenvalue Decomposition
+Eigenvalue decomposition can also be performed by calling `eigen`. If this matrix type isn't supproted, you can also attempt to use `FlexUnits.qeigen`. You can access the fields `.vectors` and `.values` as normal.
+
+```julia
+seig = eigen(S)
+
+julia> seig.vectors
+3×3 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+           0.986733 m            -0.162351 m            3.90927e-5 m
+ -0.162351 (m² kg)/s³   -0.986733 (m² kg)/s³  0.000268851 (m² kg)/s³
+ 5.07415e-6 kg/(m s²)  0.000271631 kg/(m s²)           1.0 kg/(m s²)
+
+julia> seig.values
+3-element Vector{Float64}:
+ 0.0031610089377130763
+ 0.35943390882999254
+ 1.1537410911880754e7
+ ```
+
 ### Optimizations and pitfalls
 The goal is to optimize all possible linear algebra opterations on matrices that can be found in LinearAlgebra. However, some operations might resort to unoptimized fallbacks, particularly if a an optimized function or matrix type hasn't been implemented yet. The general rule is that if the operation returns a "LinmapQuant" or "VectorQuant", it has been optimized. As of the current release, matrix operators should optimized.
 
