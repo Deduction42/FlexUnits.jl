@@ -878,6 +878,16 @@ end
     @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
     @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
 
+    #Test Cholesky and Eigenvalue decompositions
+    S = cov(Q)
+    eig = eigen(S)
+    @test eig isa FactorQuant
+    @test all(S .≈ (eig.vectors * Diagonal(eig.values) * eig.vectors'))
+
+    ch  = cholesky(S)
+    @test ch isa FactorQuant
+    @test all(S .≈ (ch.L * ch.U))
+
     #DimsMap constructor with units 
     dm = DimsMap(u_fac=u"", u_in=[u"m/s", u"K", u"Pa"], u_out=[u"N"])
     @test dm == DimsMap(u_fac=dimension(u""), u_in=dimension.([u"m/s", u"K", u"Pa"]), u_out=dimension.([ud"N"]))

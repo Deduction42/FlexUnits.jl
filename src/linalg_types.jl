@@ -171,7 +171,7 @@ function DimsMap(v::AbstractVector{D}) where D<:AbstractDimensions
     return DimsMap(u_fac=u_fac, u_out=u_out, u_in=u_in)
 end
 
-DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
+DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(dimension(mq))
 DimsMap(d::AbstractDimsMap) = d
 
 Base.axes(m::DimsMap) = (axes(m.u_out)[1], axes(m.u_in)[1])
@@ -355,12 +355,13 @@ LinearAlgebra.inv!(fq::FactorQuant) = LinmapQuant(LinearAlgebra.inv!(ustrip(fq))
 Base.transpose(fq::FactorQuant) = FactorQuant(transpose(fq.factor), transpose(fq.dims))
 Base.adjoint(fq::FactorQuant) = FactorQuant(adjoint(fq.factor), adjoint(fq.dims))
 
-# LU Factorization ===================================================================================
-qlu(mq::AbstractMatrix; kwargs...) = FactorQuant(lu(dstrip(mq); kwargs...), DimsMap(mq))
-LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = qlu(mq; kwargs...)
 
-#LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{true}; kwargs...) = error("Unsupported method")
-#LinearAlgebra.lu(mq::AbstractMatrix{<:Quantity}, ::Val{false}; kwargs...) = error("Unsupported method")
+# LU Factorization =======================================================================================================
+function qlu(m::AbstractMatrix; kwargs...) 
+    mq = LinmapQuant(m)
+    return FactorQuant(lu(dstrip(mq); kwargs...), dimension(mq))
+end
+LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = qlu(mq; kwargs...)
 
 function Base.getproperty(fq::FactorQuant{<:Union{LU, StaticArrays.LU}, D}, fn::Symbol) where D
     F = ustrip(fq)
@@ -386,16 +387,53 @@ function Base.getproperty(fq::FactorQuant{<:Union{LU, StaticArrays.LU}, D}, fn::
     end
 end
 
-#======================================================================================================================
-Eigenvalue decomposition will have a slightly different approach
 
-1.  Firstly, the eigenvalues will always be dimensionless 
-2.  Secondly, the eigenvector matrix will have a dimensionless output, but dimensionful input 
-    -   Can be performed on both repeatable and symmetric matrices
-        -   this will require "issymmetric" and "isrepeatable" functions
-    -   Symmetric matrices are recovered using the transpose of the DimsMap
-    -   Repeatable matrices are recovered using the inverse of the DimsMap
-======================================================================================================================#
+# Eigenvalue Decomposition =================================================================================================
+function qeigen(mq::AbstractMatrix; kwargs...)
+    md = LinmapQuant(mq)
+    mdims = dimension(md)
+    isrepeatable(mdims) || issymmetric(mdims) || throw(ArgumentError("Units must be either repeatable (output similar to input) or symmetric"))
+    return FactorQuant(eigen(dstrip(md); kwargs...), mdims)
+end
+LinearAlgebra.eigen(mq::LinmapQuant; kwargs...) = qeigen(mq; kwargs...)
+
+function Base.getproperty(fq::FactorQuant{<:Eigen, D}, fn::Symbol) where D
+    E = ustrip(fq)
+
+    if fn === :values
+        return E.values
+    elseif fn === :vectors
+        u = unit(fq)
+        return LinmapQuant(E.vectors, DimsMap(u_fac=sqrt(ufactor(u)), u_in=uinput(u).^0, u_out=uoutput(u)))
+    else
+        getfield(fq, fn)
+    end
+end
+
+# Cholesky Factorization== =================================================================================================
+function qcholesky(mq::AbstractMatrix; kwargs...) 
+    md = LinmapQuant(mq)
+    mdims = dimension(md)
+    issymmetric(mdims) || throw(ArgumentError("Units must be symmetric"))
+    return FactorQuant(cholesky(dstrip(md); kwargs...), mdims)
+end
+LinearAlgebra.cholesky(mq::LinmapQuant; kwargs...) = qeigen(mq; kwargs...)
+
+function Base.getproperty(fq::FactorQuant{<:Cholesky, D}, fn::Symbol) where D 
+    Ch = ustrip(fq)
+
+    if fn === :U
+        u = unit(fq)
+        return LinmapQuant(Ch.U, DimsMap(u_fac=sqrt(ufactor(u)), u_in=uinput(u), u_out=uoutput(u).^0))
+    elseif fn === :L 
+        u = unit(fq)
+        return LinmapQuant(Ch.L, DimsMap(u_fac=sqrt(ufactor(u)), u_in=uinput(u).^0, u_out=uoutput(u)))
+    else
+        getfield(fq, fn)
+    end
+end
+
+
 
 #======================================================================================================================
 Nonlinear mapping
