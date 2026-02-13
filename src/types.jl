@@ -198,6 +198,8 @@ Base.getproperty(d::NoDims, ::Symbol) = getfield(d,:any)
 dimension(x::NumUnion) = NoDims()
 dimtype(::Type{<:NumUnion}) = NoDims
 unit_symbols(::Type{<:NoDims}) = NoDims()
+ustrip(x::NumUnion) = x 
+dstrip(x::NumUnion) = x
 
 #=======================================================================================
 Affine Units and Transforms
@@ -285,7 +287,7 @@ remove_offset(u::U) where U<:AbstractUnits = constructorof(U)(dimension(u), remo
 is_scalar(u::AbstractUnits) = is_scalar(todims(u))
 udynamic(u::Units) = u
 dimtype(::Type{U}) where {D,U<:Units{D}} = dimtype(D)
-unit(x::NumUnion) = Units(NoTrnasform(), NoDims())
+unit(x::NumUnion) = Units(NoDims(), NoTransform(), DEFAULT_USYMBOL)
 
 """
     @kwdef struct StaticUnits{D, T<:AbstractUnitTransform} <: AbstractUnits{D,T}

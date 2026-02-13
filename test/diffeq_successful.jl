@@ -6,8 +6,6 @@ using Plots
 using BenchmarkTools
 using LinearAlgebra
 
-include("diffeq_extension.jl")
-
 @kwdef struct FallingObjectState{T} <: FieldVector{2,T}
     v  :: T
     h  :: T
