@@ -169,7 +169,7 @@ Let us consider an example with a covariance matrix, which is compatible with al
 using Statistics
 X = randn(30,3)*rand(3,3) * UnitMap(u_out=u"", u_in=inv.(SA[u"ft", u"W", u"psi"]))
 
-julia> S = cov(collect(X)) #Specialized LinmapQuant version doesn't exist yet
+julia> S = cov(X) #Specialized LinmapQuant version doesn't exist yet
 3×3 Matrix{Quantity{Float64, Dimensions{FixRat32}}}:
         0.0301835 m²  0.178333 (m³ kg)/s³          451.029 kg/s²
  0.178333 (m³ kg)/s³  1.18397 (m⁴ kg²)/s⁶     3101.84 (m kg²)/s⁵

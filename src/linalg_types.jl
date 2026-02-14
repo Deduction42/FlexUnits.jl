@@ -275,15 +275,18 @@ unit(lq::LinmapQuant) = lq.dims
 dimension(lq::LinmapQuant) = lq.dims
 ubase(lq::LinmapQuant) = lq
 
+const VecInd = Union{Colon, AbstractVector}
+const IntInd = Union{Integer, CartesianIndex{1}}
+
 Base.IndexStyle(::Type{<:LinmapQuant}) = IndexCartesian()
 Base.size(q::LinmapQuant) = size(q.values)
 Base.inv(q::LinmapQuant) = LinmapQuant(inv(q.values), inv(q.dims))
 Base.transpose(q::LinmapQuant) = LinmapQuant(transpose(q.values), transpose(q.dims))
 Base.adjoint(q::LinmapQuant) = LinmapQuant(adjoint(q.values), adjoint(q.dims))
-Base.getindex(q::LinmapQuant, ii::Integer, jj::Integer) = q.values[ii,jj] * q.dims[ii,jj]
-Base.getindex(q::LinmapQuant, ii::Integer, vj::Any) = VectorQuant(q.values[ii,vj], q.dims[ii,vj])
-Base.getindex(q::LinmapQuant, vi::Any, jj::Integer) = VectorQuant(q.values[vi,jj], q.dims[vi,jj])
-Base.getindex(q::LinmapQuant, vi::Any, vj::Any) = LinmapQuant(q.values[vi,vj], q.dims[vi,vj])
+Base.getindex(q::LinmapQuant, ii::IntInd, jj::IntInd) = q.values[ii,jj] * q.dims[ii,jj]
+Base.getindex(q::LinmapQuant, ii::IntInd, vj::VecInd) = VectorQuant(q.values[ii,vj], q.dims[ii,vj])
+Base.getindex(q::LinmapQuant, vi::VecInd, jj::IntInd) = VectorQuant(q.values[vi,jj], q.dims[vi,jj])
+Base.getindex(q::LinmapQuant, vi::VecInd, vj::VecInd) = LinmapQuant(q.values[vi,vj], q.dims[vi,vj])
 
 #Convenience constructors through "*"
 Base.:*(m::AbstractMatrix{<:NumUnion}, d::AbstractUnitMap) = LinmapQuant(m, d)

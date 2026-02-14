@@ -878,8 +878,11 @@ end
     @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
     @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
 
-    #Test Cholesky and Eigenvalue decompositions
+    #Test cov on raw matrix and LinmapQuant
     S = cov(Q)
+    @test all(S .≈ cov(LinmapQuant(Q)))
+
+    #Test Cholesky and Eigenvalue decompositions
     eig = eigen(S)
     @test eig isa FactorQuant
     @test all(S .≈ (eig.vectors * Diagonal(eig.values) * eig.vectors'))
