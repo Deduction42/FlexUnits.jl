@@ -232,7 +232,7 @@ julia> seig.values
  0.0031610089377130763
  0.35943390882999254
  1.1537410911880754e7
- ```
+```
 
 ### Optimizations and pitfalls
 The goal is to optimize all possible linear algebra opterations on matrices that can be found in LinearAlgebra. However, some operations might resort to unoptimized fallbacks, particularly if a an optimized function or matrix type hasn't been implemented yet. The general rule is that if the operation returns a "LinmapQuant" or "VectorQuant", it has been optimized. As of the current release, matrix operators should optimized.
