@@ -68,7 +68,7 @@ julia> 9u"μm/(m*K)" |> u"μm/(m*Ra)"
 5.0 μm/(m*Ra)
 ```
 
-### Linear algebra
+### Mixed-dimension linear algebra
 Linear algebra is accellerated through `LinmapQuant` objects that define a linear mapping from input units to output units. To attach these units, simply multiply a matrix times a `UnitMap` constructer that specifies an example of the input and output units expected by a multiplication.
 ```julia
 u = [u"kg/s", u"kW", u"rad/s", u"N/m"]
@@ -162,8 +162,8 @@ In this case, the performance boost from static inference is only ~2.5x but in m
 
 More benchmarks can be accessed through the "benchmarks.jl" file in the "test" folder of this repo.
 
-### Linear algebra
-The first example consists of multiplying a 200x4 matrix by a 4x4 matrix
+### Mixed-unit linear algebra
+The first example consists of multiplying a 200x4 matrix by a 4x4 matrix with mixed units
 ```julia
 #Use unitless matrices as a benchmark
 Nr = 200
