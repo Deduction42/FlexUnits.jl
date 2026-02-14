@@ -1,24 +1,20 @@
 This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
 
 Changelog:
-1.  Added support for linear algebra; LinmapQuant factorizes out units for efficient O(N+M) pure-unit ops while allowing efficient numeric methods to handle raw matrix ops
-2.  Quantity now subtypes to Number, use FlexQuant for values that don't subtype to number (quantity auto-selects appropriate container)
-3.  Multiplying with dynamic units now eagerly converts to dimensional quantities
-4.  Re-added "quantity" constructor function, does not eagerly convert to dimensional quantity
-5.  Replaced MirrorDims() dispatch with a sentinel value approach; this results in greatest compatibility of dynamic Quantity with Number
+
 
 Current Tasks:
-1.  Build out documentation and a docs badge
+1.  Support other functions for AbstractDimsMap and LinmapQuant like
+    -   mapreduce(f, op, A::AbstractArrayOrBroadcasted; dims=:, init=_InitialValue())
+        -   This should cascade to solving other operations like
+        -   sum(m, dims=n) #Sum on DimsMap essentially checks if they're the same
+    -   mean(m, dims=n) #Should overload to "sum" for AbstractDimsMap
+    -   cov(m), cor(m) #Should have special DimsMap operations
+2.  Add the ability to use StaticDims vectors in DimsMap
+    -   Type-Parameter D is obtained through promotion
+    -   getindex will convert automatically through promotion
+    -   This should accellerate "dot" and "dotinv" methods (may want to write a shortcut eventually)
 
-2.  Add LinearAlgebra factorizations
-    -   overload the "getproperty" function to use the UnitMap to reconstruct the factoriation fields with units
-        -   eig = eigen(A::LinmapQuant)
-        -   eig.vectors = LinmapQuant(ustrip(eig).vectors, UnitMap(fill(ud"", N), unit(eig).u_in))
-    -   cholesky (requries symmetric transform)
-    -   eigen (confusing becasue it can use both idempotent and symmetric) 
-        -   E' == inv(E) DOES NOT hold 
-        -   For back-transformation, symmetric uses E' to produce inverse units, idempotent uses inv(E) produce same units
-    -   consider other factorizations as well
 
 Backlog:
 
