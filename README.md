@@ -5,7 +5,7 @@
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://deduction42.github.io/FlexUnits.jl/dev)
 
 # FlexUnits.jl
-FlexUnits.jl is a rewrite of Unitful.jl that maintains similar performance to Unitful.jl when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units are uninferrable. In addition, FlexUnits provides shortcut unit-inference methods for mixed-unit linear algebra operations; this allows us to use existing high-performance linear algebra operations on raw numbers with separate, low-overhead unit inference. This allows FlexUnits to be used with many more Julia packages including Statistics and DifferentialEquations.jl (refer to examples in the documentation). 
+FlexUnits.jl is a rewrite of Unitful.jl that maintains similar performance to Unitful.jl when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units are uninferrable. In addition, FlexUnits provides shortcut unit-inference methods for mixed-unit linear algebra operations; this allows us to use existing high-performance linear algebra operations on raw numbers with separate, low-overhead unit inference. With this new functionality, FlexUnits can be used with many more Julia packages including Statistics and DifferentialEquations.jl (refer to examples in the documentation). 
 
 Through four major design decisions, FlexUnits seamlessly blends concepts from Unitful and DynamicQuantities to achieve the best of both worlds, and surpasses both packages in terms of linear algebra capability:
 
@@ -68,7 +68,7 @@ julia> 9u"μm/(m*K)" |> u"μm/(m*Ra)"
 5.0 μm/(m*Ra)
 ```
 
-### Mixed-dimension linear algebra
+### Mixed-unit linear algebra
 Linear algebra is accellerated through `LinmapQuant` objects that define a linear mapping from input units to output units. To attach these units, simply multiply a matrix times a `UnitMap` constructer that specifies an example of the input and output units expected by a multiplication.
 ```julia
 u = [u"kg/s", u"kW", u"rad/s", u"N/m"]
@@ -197,7 +197,7 @@ julia> @btime Xu*Mu #Unitful, more than 500x slower
 julia> @btime Xdq*Mdq #DynamicQuantities, about 8x slower
   5.700 μs (3 allocations: 31.34 KiB)
 
-julia> @btime Xfq*Mfq #LinmapQuant, almsot no overhead
+julia> @btime Xfq*Mfq #LinmapQuant, almost no overhead
   710.000 ns (4 allocations: 6.41 KiB)
 ```
 The main reason why FlexUnits.jl has nearly no overhead is that only the inner product of the units between matrices is considered. Only the first 4-element row of X and the first column of M need to be compared. Unit inference does not touch the other 199 rows of X or the other 3 colums of M.
