@@ -46,11 +46,6 @@ raw_inv(d::AbstractDimensions) = map_dimensions(-, d)
 #=============================================================================================
  Mathematical operations on dimensions
 =============================================================================================#
-#=
-Base.:*(arg1::AbstractDimensions, arg2::AbstractDimensions) = map_dimensions(+, arg1, arg2)
-Base.:/(arg1::AbstractDimensions, arg2::AbstractDimensions) = map_dimensions(-, arg1, arg2)
-=#
-
 function Base.:*(d1::AbstractDimensions, d2::AbstractDimensions) 
     if isunknown(d1)
         return d1 

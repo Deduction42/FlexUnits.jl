@@ -5,10 +5,14 @@ Changelog:
 
 Current Tasks:
 1.  Support other functions for AbstractDimsMap and LinmapQuant like
-    -   mapreduce(f, op, A::AbstractArrayOrBroadcasted; dims=:, init=_InitialValue())
-        -   This should cascade to solving other operations like
-        -   sum(m, dims=n) #Sum on DimsMap essentially checks if they're the same
-    -   mean(m, dims=n) #Should overload to "sum" for AbstractDimsMap
+    -   ureduce(f, A::AbstractArrayOrBroadcasted; dims=:, init=_InitialValue())
+        -   Essentially checks if all values are the same, implement for same-units functions
+            -   https://github.com/JuliaLang/julia/blob/5fe89b8ddc166260bfcd4a195b305aff0ccad686/base/reduce.jl#L444-L478
+        -   These methods should call ureduce on a DimsMap
+            -   maximum, minimum, sum, mean, std, var
+        -   Prod should also have a shortcut implementation 
+            -   dims=1, u_input = inv(prod(uoutput(d)) .* ufactor(d)^n) .* uinput(d).^n    
+            -   mean(m, dims=n) #Should overload to "sum" for AbstractDimsMap
     -   cov(m), cor(m) #Should have special DimsMap operations
 2.  Add the ability to use StaticDims vectors in DimsMap
     -   Type-Parameter D is obtained through promotion
