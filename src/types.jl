@@ -280,6 +280,9 @@ Units{D}(units, todims::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTrans
 Units(dims::D, todims::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimensions = Units(dims, todims, symbol)
 Units(units::D, todims::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where D<:AbstractUnits = Units(dimension(assert_dimension(units)), todims, symbol)
 
+#TEMPORARY!!! In the future, remove StaticUnits and just allow Units to have static dimensions
+Units(dims::D, todims::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:StaticDims = Units(udynamic(dims), todims, symbol)
+
 todims(u::Units) = u.todims
 dimension(u::Units) = u.dims 
 usymbol(u::Units) = u.symbol
@@ -319,7 +322,7 @@ StaticUnits(d::AbstractDimensions, todims::AbstractUnitTransform, symb=DEFAULT_U
 StaticUnits(d::StaticDims{D}, todims::AbstractUnitTransform, symb=DEFAULT_USYMBOL) where D = StaticUnits{D}(todims, symb)
 
 constructorof(::Type{<:StaticUnits}) = StaticUnits
-Units(u::StaticUnits) = Units{dimtype(u)}(dimval(u), todims(u), usymbol(u))
+Units(u::StaticUnits) = Units{dimtype(u)}(dimval(u), todims(u), usymbol(u)) #TEMPORARY, in the future, Units will allow for static dimensions
 udynamic(u::StaticUnits) = Units(u)
 todims(u::StaticUnits) = u.todims
 dimtype(::Type{U}) where {D, U<:StaticUnits{D}} = dimtype(D)

@@ -1202,6 +1202,9 @@ register_unit("psig" => Units(todims=AffineTransform(scale=uscale(ud"psi"), offs
     register_unit("psig" => Units(todims=AffineTransform(scale=uscale(ud"psi"), offset=101.3ud"kPa"), dims=ud"Pa"))
     @test 0*ud"psig" == 101.3ud"kPa"
     @test q"0psig" == 101.3ud"kPa"
+
+    #Test registering a static unit
+    @test register_unit("Rg" => 8.314u"J/mol/K") isa AbstractDict
     
     #Test registration for a different registry base type
     IntDimType = Dimensions{Int32}
