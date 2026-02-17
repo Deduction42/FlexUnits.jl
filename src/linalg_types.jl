@@ -12,7 +12,8 @@ dimvaltype(::Type{<:AbstractUnitMap{U}}) where U = dimvaltype(U)
 
 # AbstractDimsMap is similar to AbstractArray, but doesn't subtype to it; it subtypes to AbstractUnitMap which is not really an array
 # Moreover subtyping to AbstractArray produces ambiguity problems, it's easier to just redefine the API methods
-abstract type AbstractDimsMap{D<:AbstractDimensions} <: AbstractUnitMap{D} end
+abstract type AbstractDimsMap{D<:AbstractDimLike} <: AbstractUnitMap{D} end
+const AbstractDimVector = AbstractVector{<:AbstractDimLike}
 
 Base.eltype(::Type{<:AbstractDimsMap{D}}) where D = D
 Base.IndexStyle(::Type{<:AbstractDimsMap}) = IndexCartesian()
@@ -36,7 +37,7 @@ isidempotent(m::AbstractDimsMap) = isdimensionless(m.u_fac) && isrepeatable(m)
 
 Wraps a quantity matrix A so that getting its index returns the dimensiosn of the element
 """
-struct QuantArrayDims{D<:AbstractDimensions, N, A<:AbstractArray} <: AbstractArray{D,N}
+struct QuantArrayDims{D<:AbstractDimLike, N, A<:AbstractArray} <: AbstractArray{D,N}
     array :: A
     function QuantArrayDims(a::AbstractArray{<:Any,N}) where N
         D = dimvaltype(eltype(a))
@@ -125,17 +126,18 @@ that u_in and u_out have dimensionless values in their first element.
     DimsMap(mq::AbstractMatrix{<:QuantUnion})
     DimsMap(d::AbstractDimsMap)
 """
-@kwdef struct DimsMap{D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
+@kwdef struct DimsMap{D<:AbstractDimLike, TI<:AbstractDimVector, TO<:AbstractDimVector} <: AbstractDimsMap{D}
     u_fac :: D = nothing
     u_in  :: TI
     u_out :: TO
-    function DimsMap{D, TI, TO}(u_fac, u_in_raw, u_out_raw) where {D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}}
+    function DimsMap{D}(u_fac, u_in_raw::AbstractDimVector, u_out_raw::AbstractDimVector) where {D<:AbstractDimLike}
         (u_fac, u_in)  = canonical_input!(u_fac, u_in_raw)
         (u_fac, u_out) = canonical_output!(u_fac, u_out_raw)
-        return new{D, TI, TO}(u_fac, u_in, u_out)
+        return new{D, typeof(u_in), typeof(u_out)}(u_fac, u_in, u_out)
     end
-    function DimsMap(u_fac::D, u_in::TI, u_out::TO) where {D<:AbstractDimensions, TI<:AbstractVector{D}, TO<:AbstractVector{D}}
-        return DimsMap{D, TI, TO}(u_fac, u_in, u_out)
+    function DimsMap(u_fac::AbstractDimLike, u_in::AbstractDimVector, u_out::AbstractDimVector)
+        D = promote_type(typeof(u_fac), eltype(u_in), eltype(u_out))
+        return DimsMap{D}(u_fac, u_in, u_out)
     end
 end
 
@@ -143,11 +145,11 @@ function DimsMap(u_fac::U, u_in::TI, u_out::TO) where {U<:AbstractUnitLike, TI<:
     is_dimension(u_fac) || throw(ArgumentError("'u_fac' argument must directly map to dimensions $(dimension(u_fac)) without scaling"))
     all(is_dimension, u_in) || throw(ArgumentError("'u_in' argument must directly map to dimensions $(dimension.(u_in)) without scaling"))
     all(is_dimension, u_out) || throw(ArgumentError("'u_out' argument must directly map to dimensions $(dimension.(u_out)) without scaling"))
-    return DimsMap(u_fac=dynamicdims(u_fac), u_in=dynamicdims.(u_in), u_out=dynamicdims.(u_out))
+    return DimsMap(u_fac=dimension(u_fac), u_in=dimension.(u_in), u_out=dimension.(u_out))
 end
 
 function DimsMap(u_fac::Nothing, u_in::TI, u_out::TO) where {TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
-    D = dimvaltype(eltype(TI))
+    D = promote_type(dimtype(eltype(TI), dimtype(eltype(TO))))
     return DimsMap(D(), u_in, u_out)
 end
 
@@ -164,7 +166,7 @@ function DimsMap(md::AbstractMatrix{<:AbstractDimLike})
     return DimsMap(u_fac=u_fac, u_out=u_out, u_in=u_in)
 end
 
-function DimsMap(v::AbstractVector{D}) where D<:AbstractDimensions
+function DimsMap(v::AbstractVector{D}) where D<:AbstractDimLike
     u_fac = v[begin]
     u_out = v./u_fac
     u_in  = SVector{1}(D())
@@ -233,14 +235,14 @@ unit inference and a smaller memory footprint (O(M+N) instead of O(M*N*N2) in th
     LinmapQuant(m::AbstractMatrix)
     LinmapQuant(m::LinmapQuant)
 """
-struct LinmapQuant{T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractDimsMap{D}} <: AbstractMatrix{Quantity{T,D}}
+struct LinmapQuant{T, D<:AbstractDimLike, M<:AbstractMatrix{T}, U<:AbstractDimsMap{D}} <: AbstractMatrix{Quantity{T,D}}
     values :: M
     dims :: U
     function LinmapQuant{T,D,M,U}(values::M, dims::U) where {T,D,M,U}
         size(values) == size(dims) || throw(DimensionError("Inputs must have the same size. Recieved arguments with sizes: $(size(values)), $(size(dims))"))
         return new{T,D,M,U}(values, dims)
     end
-    LinmapQuant(values::M, dims::U) where {T, D<:AbstractDimensions, M<:AbstractMatrix{T}, U<:AbstractDimsMap{D}} = LinmapQuant{T,D,M,U}(values, dims)
+    LinmapQuant(values::M, dims::U) where {T, D<:AbstractDimLike, M<:AbstractMatrix{T}, U<:AbstractDimsMap{D}} = LinmapQuant{T,D,M,U}(values, dims)
 end
 
 function LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T 
@@ -248,8 +250,8 @@ function LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T
     new_m = todims.(u.u_out./u.u_in', m)
     new_u = DimsMap(
         u_fac = zero(dimvaltype(u)), 
-        u_in  = dynamicdim_sized(u.u_in, Nc), 
-        u_out = dynamicdim_sized(u.u_out, Nr),
+        u_in  = dims_sized(u.u_in, Nc), 
+        u_out = dims_sized(u.u_out, Nr),
     )
     return LinmapQuant(new_m, new_u)
 end
@@ -258,8 +260,8 @@ function LinmapQuant(m::SMatrix{Nr,Nc,T}, u::UnitMap) where {T, Nr, Nc}
      new_m = SMatrix{Nr,Nc}(todims.(u.u_out./u.u_in', m))
      new_u = DimsMap(
         u_fac = zero(dimvaltype(u)), 
-        u_in  = SVector{Nc}(dynamicdim_sized(u.u_in, Nc)), 
-        u_out = SVector{Nr}(dynamicdim_sized(u.u_out, Nc)),
+        u_in  = SVector{Nc}(dims_sized(u.u_in, Nc)), 
+        u_out = SVector{Nr}(dims_sized(u.u_out, Nr)),
     )
     return LinmapQuant(new_m, new_u)
 end
@@ -307,7 +309,7 @@ with LinmapQuant
     VectorQuant(v::VectorQuant)
 
 """
-struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
+struct VectorQuant{T, D<:AbstractDimLike, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}
     values :: V
     dims :: U
 end
@@ -345,7 +347,7 @@ Linear Mapping Factorizations
 A factored linear mapping. A subclass of Factorizations with a unit mapping attached. Calling getproperty
 is re-routed to the original factor, with the appropriate units calcualted from the mapping.
 """
-struct FactorQuant{F, D<:AbstractDimensions, U<:AbstractDimsMap{D}}
+struct FactorQuant{F, D<:AbstractDimLike, U<:AbstractDimsMap{D}}
     factor :: F
     dims  :: U 
 end
@@ -481,29 +483,28 @@ Base.getindex(J::UniformScaling{T}, i::Integer, j::Integer) where T<:Quantity = 
 #======================================================================================================================
 Utility functions
 ======================================================================================================================#
-dynamicdims(x::AbstractUnitLike) = udynamic(dimension(x))
-dynamicdim_sized(x::AbstractVector{<:AbstractUnitLike}, n::Integer) = length(x) == n ? dynamicdims.(x) : throw(ArgumentError("Length of input ($(length(x))) must match the specification ($(n))"))
-dynamicdim_sized(x::AbstractVector{<:AbstractDimensions}, n::Integer) = length(x) == n ? x : throw(ArgumentError("Length of input ($(length(x))) must match the specification ($(n))"))
-dynamicdim_sized(x::AbstractUnitLike, n::Integer) = fill(dynamicdims(x), n)
+dims_sized(x::AbstractVector{<:AbstractUnitLike}, n::Integer) = length(x) == n ? dimension.(x) : throw(ArgumentError("Length of input ($(length(x))) must match the specification ($(n))"))
+dims_sized(x::AbstractVector{<:AbstractDimLike}, n::Integer) = length(x) == n ? x : throw(ArgumentError("Length of input ($(length(x))) must match the specification ($(n))"))
+dims_sized(x::AbstractUnitLike, n::Integer) = fill(dimension(x), n)
 
 todims(u::AbstractUnits, x) = u.todims(x)
-todims(u::AbstractDimensions, x) = x
+todims(u::AbstractDimLike, x) = x
 
-function canonical_input!(u_fac::D, u_in::V) where {D<:AbstractDimensions, V<:AbstractVector{D}}
+function canonical_input!(u_fac::D, u_in::V) where {D<:AbstractDimLike, V<:AbstractVector{<:AbstractDimLike}}
     u0 = u_in[begin]
     return isdimensionless(u0) ? (u_fac, u_in) : (u_fac/u0, ufactor!(u_in, inv(u0)))
 end
 
-function canonical_output!(u_fac::D, u_out::V) where {D<:AbstractDimensions, V<:AbstractVector{D}}
+function canonical_output!(u_fac::D, u_out::V) where {D<:AbstractDimLike, V<:AbstractVector{<:AbstractDimLike}}
     u0 = u_out[begin]
     return isdimensionless(u0) ? (u_fac, u_out) : (u_fac*u0, ufactor!(u_out, inv(u0)))
 end
 
-function ufactor!(u::V, u_fac::D) where {D<:AbstractDimensions, V<:AbstractVector{D}}
-    if ArrayInterface.can_setindex(u)
+function ufactor!(u::V, u_fac::D) where {D<:AbstractDimLike, V<:AbstractVector{<:AbstractDimLike}}
+    if ArrayInterface.can_setindex(u) && (eltype(V) <: AbstractDimensions)
         u .= u .* u_fac
         return u
     else
-        return convert(V, u .* u_fac)
+        return u .* u_fac
     end
 end
