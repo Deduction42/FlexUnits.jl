@@ -39,7 +39,7 @@ const AT = AffineTransform{Float64}
     @test d.mass == 1
     @test d.time == -2
     @test FlexUnits.dimtype(typeof(d)) == DEFAULT_DIM_TYPE
-    @test FlexUnits.dimtype(typeof(u"m/s")) == DEFAULT_DIM_TYPE
+    @test FlexUnits.dimvaltype(typeof(u"m/s")) == DEFAULT_DIM_TYPE
     @test uscale(d) == 1
     @test uoffset(d) == 0
     @test FlexUnits.usymbol(d) == FlexUnits.DEFAULT_USYMBOL
@@ -59,7 +59,7 @@ const AT = AffineTransform{Float64}
 
     @test FlexUnits.remove_offset(u"°C") == u"K"
     @test FlexUnits.constructorof(typeof(Dimensions())) == Dimensions
-    @test FlexUnits.constructorof(typeof(u"m")) == StaticUnits
+    @test FlexUnits.constructorof(typeof(u"m")) == Units
     @test FlexUnits.constructorof(typeof(1.0*u"m")) == Quantity
     @test FlexUnits.constructorof(typeof((1.0+im)*u"m")) == Quantity
     @test FlexUnits.constructorof(typeof(quantity("this", ud"m"))) == FlexQuant
@@ -86,16 +86,16 @@ const AT = AffineTransform{Float64}
     @test uoffset(t_affine2) == 1
 
     @test Units{Dimensions{FixRat32}}(Dimensions{FixRat64}(length=1), AffineTransform()) == ud"m" 
-    @test Units(ud"m/s") == ud"m/s"
-    @test Units(u"m/s") == ud"m/s"
+    @test Units(ud"m/s") === ud"m/s"
+    @test Units(u"m/s") === u"m/s"
     @test FlexUnits.dimtype(Units{Dimensions{FixRat32}}(Dimensions{FixRat64}(length=1), AffineTransform())) <: Dimensions{FixRat32}
     @test FlexUnits.dimtype(Units(Dimensions{FixRat64}(length=1), AffineTransform())) <: Dimensions{FixRat64}
-    @test FlexUnits.dimtype(u"m/s") == typeof(dimension(ud"m/s"))
-    @test StaticUnits(dimension(ud"m/s"), AffineTransform()) == u"m/s"
+    @test FlexUnits.dimtype(u"m/s") == typeof(dimension(u"m/s"))
+    @test ustatic(Units(dimension(ud"m/s"), AffineTransform(), Symbol("m/s"))) === u"m/s"
 
     @test ustrip(Quantity{Float32}(1.0, u"m/s")) === Float32(1)
     @test FlexUnits.unittype(Quantity{Float64, typeof(u"m/s")}) == typeof(u"m/s")
-    @test FlexUnits.dimtype(Quantity{Float64, typeof(u"m/s")}) == Dimensions{FixRat32}
+    @test FlexUnits.dimvaltype(Quantity{Float64, typeof(u"m/s")}) == Dimensions{FixRat32}
     @test FlexUnits.dimvaltype(1.0u"kJ") == Dimensions{FixRat32}
     @test FlexUnits.dimtype(1.0u"m") == StaticDims{Dimensions(length=1)}
     @test udynamic(1.0u"kJ") === ubase(1.0ud"kJ")
@@ -108,8 +108,7 @@ const AT = AffineTransform{Float64}
     @test string(1.0u"kg*m^2/s^2") == "(1.0)(m^2*kg)/s^2"
     @test string(1.0u"1/s^2") == "(1.0)1/s^2"
     @test string(1.0*(ud"km/hr"*ud"m/s")) == "(0.2777777777777778)m^2/s^2"
-    @test string(u"m/s"*u"m/s") == "StaticUnits{m^2/s^2, AffineTransform{Float64}}(AffineTransform{Float64}(1.0, 0.0), :_)"
-    #@test string(MirrorDims{Dimensions{FixRat32}}()) == "MirrorDims{Dimensions{FixRat32}}()"
+    @test string(u"m/s"*u"m/s") == "Units{StaticDims{m^2/s^2}, AffineTransform{Float64}}(m^2/s^2, AffineTransform{Float64}(1.0, 0.0), :_)"
     @test string(zero(typeof(1ud"m/s"))) == "(0.0)?/?"
     @test string(vsum) == "Quantity{Float64, Dimensions{FixRat32}}[(0.5235987755982988)1/s (0.001388888888888889)kg/s (5000.0)kg/(m*s^2)]"
     
@@ -117,7 +116,7 @@ const AT = AffineTransform{Float64}
     @test string(1.0u"kg*m^2/s^2")  == "1.0 (m² kg)/s²"
     @test string(1.0u"1/s^2")  == "1.0 1/s²"
     @test string(1.0*(ud"km/hr"*ud"m/s")) == "0.2777777777777778 m²/s²"
-    @test string(u"m/s"*u"m/s") == "StaticUnits{m²/s², AffineTransform{Float64}}(AffineTransform{Float64}(1.0, 0.0), :_)"
+    @test string(u"m/s"*u"m/s") == "Units{StaticDims{m²/s²}, AffineTransform{Float64}}(m²/s², AffineTransform{Float64}(1.0, 0.0), :_)"
     @test string(zero(typeof(1ud"m/s"))) == "0.0 ?/?"
     @test string(vsum) == "Quantity{Float64, Dimensions{FixRat32}}[0.5235987755982988 1/s 0.001388888888888889 kg/s 5000.0 kg/(m s²)]"
 
@@ -649,7 +648,7 @@ end
     @test eltype([u"m/s", ud"m/s"]) <: Units{Dimensions{FixRat32}, AffineTransform{Float64}}
     @test eltype([dimension(u"m/s"), dimension(u"kg/hr")]) <: Dimensions{FixRat32}
     @test eltype([dimension(u"m/s"), dimension(ud"m/s")]) <: Dimensions{FixRat32}
-    @test eltype([u"m/s", u"m/s"]) <: StaticUnits{dimval(u"m/s"), AffineTransform{Float64}}
+    @test eltype([u"m/s", u"m/s"]) <: Units{typeof(dimension(u"m/s")), AffineTransform{Float64}}
     @test eltype([dimension(u"m/s"), dimension(u"m/s")]) <: StaticDims{dimval(u"m/s")}
     
 

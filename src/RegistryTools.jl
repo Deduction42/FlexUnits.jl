@@ -2,8 +2,8 @@
 module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits,  ..AbstractDimensions, ..AbstractUnitTransform
-import ..Units, ..Dimensions, ..AffineTransform, ..StaticUnits, ..QuantUnion, ..Quantity, ..FixRat32, ..FixRat64
-import ..uscale, ..uoffset, ..todims, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype
+import ..Units, ..Dimensions, ..AffineTransform, ..QuantUnion, ..Quantity, ..FixRat32, ..FixRat64
+import ..uscale, ..uoffset, ..todims, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype, ..ustatic
 
 export 
     AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64,
@@ -236,7 +236,7 @@ end
 
 function suparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     uex = uparse_expr(str, reg)
-    return :($StaticUnits($uex))
+    return :($ustatic($uex))
 end
 
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike

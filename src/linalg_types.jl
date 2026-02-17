@@ -149,7 +149,7 @@ function DimsMap(u_fac::U, u_in::TI, u_out::TO) where {U<:AbstractUnitLike, TI<:
 end
 
 function DimsMap(u_fac::Nothing, u_in::TI, u_out::TO) where {TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
-    D = promote_type(dimtype(eltype(TI), dimtype(eltype(TO))))
+    D = promote_type(dimtype(eltype(TI)), dimtype(eltype(TO)))
     return DimsMap(D(), u_in, u_out)
 end
 
