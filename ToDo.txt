@@ -14,11 +14,15 @@ Current Tasks:
             -   dims=1, u_input = inv(prod(uoutput(d)) .* ufactor(d)^n) .* uinput(d).^n    
             -   mean(m, dims=n) #Should overload to "sum" for AbstractDimsMap
     -   cov(m), cor(m) #Should have special DimsMap operations
-2.  Add the ability to use StaticDims vectors in DimsMap
+
+2.  Remove StaticUnits
+    -   Just have Units{StaticDims{D}} instead
+    -   This is simpler, and units are just intermediate anyway
+
+3.  Add the ability to use StaticDims vectors in DimsMap
     -   Type-Parameter D is obtained through promotion
     -   getindex will convert automatically through promotion
     -   This should accellerate "dot" and "dotinv" methods (may want to write a shortcut eventually)
-
 
 Backlog:
 
