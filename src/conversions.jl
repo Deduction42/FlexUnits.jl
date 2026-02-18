@@ -192,20 +192,6 @@ function Base.promote_rule(::Type{Units{D1,T1}}, ::Type{Units{D2,T2}}) where {D1
     return Units{promote_type(D1, D2), promote_type(T1,T2)}
 end
 
-#Promote static unit quantities to static dimenion quantities, double definition needed for specificity
-#=
-function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1<:StaticUnits, U2<:StaticDims, Q1<:QuantUnion{T1,U1}, Q2<:QuantUnion{T2,U2}}
-    D = equaldims(dimval(U1), dimval(U2))
-    T = promote_type(T1, T2)
-    return quant_type(T){T, StaticDims{D}}
-end
-function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1<:StaticDims, U2<:StaticUnits, Q1<:QuantUnion{T1,U1}, Q2<:QuantUnion{T2,U2}}
-    D = equaldims(dimval(U1), dimval(U2))
-    T = promote_type(T1, T2)
-    return quant_type(T){T, StaticDims{D}}
-end
-=#
-
 #Quantity promotion (favors Dimensions, as converting quantities to SI does not result in information loss)
 function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U1<:AbstractUnitLike, U2<:AbstractUnitLike, Q1<:QuantUnion{T1,U1}, Q2<:QuantUnion{T2,U2}}
     D = promote_type(dimtype(U1), dimtype(U2))

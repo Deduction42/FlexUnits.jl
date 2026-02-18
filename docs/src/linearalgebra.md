@@ -55,7 +55,7 @@ julia> max(500*oneunit(Quantity{Float64, Dimensions{FixRat32}}), 2u"J") #Compari
 ### Mitigating risks of silently wrong results
 One potential issue for unkown dimensions is the ability to silently retrun the wrong results. The main way this is mitigated is to only support unknown values on raw dimensions. Since all dimensional units (like SI) can be converted to each other without any scaling factors, the scale numerical results will always be consistent. The only kind of error that can happen is a wrongly bypassed dimensional validation. Since validation can only be bypassed once, initializers (which predate validation) are not going to be an issue.
 
-```
+```julia
 julia> zero(Quantity{Float64, Dimensions{FixRat32}}) + 3u"km/hr" #This makes sense, initializer is ignorant
 0.8333333333333334 m/s
 
@@ -142,7 +142,7 @@ julia> X * DimsMap(u_in=inv.([u"K", u"m", u"mol", u"kg", u"A"]), u_out=fill(u"",
 
 #Vector inputs are required
 julia> X * DimsMap(u_in=inv.([u"K", u"m", u"mol", u"kg", u"A"]), u_out=u"") 
-ERROR: MethodError: no method matching DimsMap(::Nothing, ::Vector{Units{Dimensions{…}, AffineTransform{…}}}, ::StaticUnits{, AffineTransform{Float64}})
+ERROR: MethodError: no method matching DimsMap(::Nothing, ::Vector{Units{Dimensions{…}, AffineTransform{…}}}, ::Units{StaticDims{}, AffineTransform{Float64}})
 
 #Units must be dimensional (i.e. SI)
 julia> X * DimsMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_out=fill(u"", size(X,1))) 

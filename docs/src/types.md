@@ -22,7 +22,6 @@ Units contain an `AbstractDimensions` and an `AbstractUnitTransform` which repre
 ```@docs
 AbstractUnits
 Units
-StaticUnits
 ```
 
 ## Unit Transforms
