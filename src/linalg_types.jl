@@ -7,12 +7,14 @@ import StaticArrays.StaticLUMatrix
 import SparseArrays.AbstractSparseMatrixCSC
 import SparseArrays.AbstractCompressedVector
 
-dimtype(::Type{<:AbstractUnitMap{U}}) where U = dimtype(U)
-dimvaltype(::Type{<:AbstractUnitMap{U}}) where U = dimvaltype(U)
+abstract type AbstractUnitMap{UI<:AbstractUnitLike, UO<:AbstractUnitLike} end
+
+dimtype(::Type{<:AbstractUnitMap{UI,UO}}) where {UI,UO} = dimtype(promote_type(UI,UO))
+dimvaltype(::Type{<:AbstractUnitMap{UI,UO}}) where {UI,UO} = dimvaltype(promote_type(UI,UO))
 
 # AbstractDimsMap is similar to AbstractArray, but doesn't subtype to it; it subtypes to AbstractUnitMap which is not really an array
 # Moreover subtyping to AbstractArray produces ambiguity problems, it's easier to just redefine the API methods
-abstract type AbstractDimsMap{D<:AbstractDimLike} <: AbstractUnitMap{D} end
+abstract type AbstractDimsMap{D<:AbstractDimLike} <: AbstractUnitMap{D,D} end
 const AbstractDimVector = AbstractVector{<:AbstractDimLike}
 
 Base.eltype(::Type{<:AbstractDimsMap{D}}) where D = D
@@ -74,7 +76,7 @@ dstrip(m::AbstractArray) = QuantArrayVals(m)
 dstrip(m::SArray) = dstrip.(m)
 
 """
-    struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+    struct UnitMap{UI, UO, TI<:ScalarOrVec{UI}, TO<:ScalarOrVec{UO}} <: AbstractUnitMap{UI,UO}
         u_in  :: TI
         u_out :: TO
     end
@@ -83,28 +85,19 @@ Used to represent a unit transformation from input units 'u_in' to outpout units
 to nonlinear functions.
 
 # Constructors 
-    UnitMap{U}(u_in::ScalarOrVec{<:AbstractUnitLike}, u_out::ScalarOrVec{<:AbstractUnitLike}) where U<:AbstractUnitLike
-    UnitMap(u_in::ScalarOrVec{U1}, u_out::ScalarOrVec{U2}) where {U1<:AbstractUnitLike, U2<:AbstractUnitLike}
+    UnitMap(u_in::ScalarOrVec{<:AbstractUnitLike}, u_out::ScalarOrVec{<:AbstractUnitLike}) where U<:AbstractUnitLike
 """
-@kwdef struct UnitMap{U<:UnitOrDims, TI<:ScalarOrVec{U}, TO<:ScalarOrVec{U}} <: AbstractUnitMap{U}
+@kwdef struct UnitMap{UI, UO, TI<:ScalarOrVec{UI}, TO<:ScalarOrVec{UO}} <: AbstractUnitMap{UI,UO}
     u_in  :: TI
     u_out :: TO
 end
-
-function UnitMap{U}(u_in::ScalarOrVec{<:AbstractUnitLike}, u_out::ScalarOrVec{<:AbstractUnitLike}) where U<:AbstractUnitLike
-    u_in_new = convert.(U, u_in)
-    u_out_new = convert.(U, u_out)
-    return UnitMap{U, typeof(u_in_new), typeof(u_out_new)}(u_in_new, u_out_new)
-end
-
-UnitMap(u_in::ScalarOrVec{U1}, u_out::ScalarOrVec{U2}) where {U1<:AbstractUnitLike, U2<:AbstractUnitLike} = UnitMap{promote_type(U1,U2)}(u_in, u_out)
 
 uoutput(m::UnitMap) = m.u_out
 uinput(m::UnitMap) = m.u_in
 
 
 """
-    struct DimsMap{D<:AbstractDimLike, TI<:AbstractVector{D}, TO<:AbstractVector{D}} <: AbstractDimsMap{D}
+    struct struct DimsMap{D<:AbstractDimLike, TI<:AbstractDimVector, TO<:AbstractDimVector} <: AbstractDimsMap{D}
         u_fac :: D
         u_in  :: TI
         u_out :: TO

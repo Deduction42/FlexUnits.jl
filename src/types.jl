@@ -57,9 +57,8 @@ All units in FlexDims contain two entities:
 abstract type AbstractUnits{D, T<:AbstractUnitTransform} <: AbstractUnitLike end
 
 
-const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
+const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimLike
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
-abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} end
 
 #Base.@assume_effects :consistent static_fieldnames(t::Type) = Base.fieldnames(t)
 static_fieldnames(t::Type) = Base.fieldnames(t)
