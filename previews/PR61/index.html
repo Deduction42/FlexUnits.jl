@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · FlexUnits.jl</title><meta name="title" content="Home · FlexUnits.jl"/><meta property="og:title" content="Home · FlexUnits.jl"/><meta property="twitter:title" content="Home · FlexUnits.jl"/><meta name="description" content="Documentation for FlexUnits.jl."/><meta property="og:description" content="Documentation for FlexUnits.jl."/><meta property="twitter:description" content="Documentation for FlexUnits.jl."/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href>FlexUnits.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Home</a><ul class="internal"><li><a class="tocitem" href="#Quick-start-examples"><span>Quick start examples</span></a></li><li><a class="tocitem" href="#Registering-units"><span>Registering units</span></a></li><li><a class="tocitem" href="#Linear-Algebra"><span>Linear Algebra</span></a></li></ul></li><li><a class="tocitem" href="performance/">Performance</a></li><li><a class="tocitem" href="manipulation/">Unit Manipulation</a></li><li><a class="tocitem" href="linearalgebra/">Linear Algebra</a></li><li><a class="tocitem" href="examples/">Advanced Examples</a></li><li><a class="tocitem" href="types/">Types</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Home</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Home</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/Deduction42/FlexUnits.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/Deduction42/FlexUnits.jl/blob/main/docs/src/index.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="FlexUnits.jl"><a class="docs-heading-anchor" href="#FlexUnits.jl">FlexUnits.jl</a><a id="FlexUnits.jl-1"></a><a class="docs-heading-anchor-permalink" href="#FlexUnits.jl" title="Permalink"></a></h1><p>FlexUnits.jl is a unit package designed to resemble Unitful.jl, with similar performance when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful&#39;s performance pitfalls when units are uninferrable. In addition, this package introduces special vector and matrix types that can infer output units for linear algebra operations at O(n) speeds, even if the numerical matrix operations are higher order (such as matrix inversions). When combining these techniques, this package allows the user to employ the following useful pattern:</p><ol><li>Define high-level linear-algebra operations on quantities with dynamic units that are fast and type-stable even with mixed-unit types</li><li>Convert quantities to statically-inferred high-performance units in lower-level performance-sensitive code</li></ol><h2 id="Quick-start-examples"><a class="docs-heading-anchor" href="#Quick-start-examples">Quick start examples</a><a id="Quick-start-examples-1"></a><a class="docs-heading-anchor-permalink" href="#Quick-start-examples" title="Permalink"></a></h2><p>The FlexUnits API is designed to resemble Unitful in a number of ways. One major difference is that string macros and parsing functions are not exported by default, instead they are exported by a unit registry. This allows users to define their own registries and use those as a basis for unit parsing. FlexUnits provides a unit registry (UnitRegistry) that can be imported to provide default unit parsing functionality.</p><pre><code class="language-julia hljs">import Pkg; Pkg.add(&quot;FlexUnits&quot;)
+using FlexUnits, .UnitRegistry</code></pre><p>Units are accessed primarily through string macros. The <code>@u_str</code> macro produces static units by default (for maximum performance when injected into low-level code), but if dynamic units are desired (particularly for interactive workflows) one can use the <code>@ud_str</code> macro. </p><pre><code class="language-julia hljs">julia&gt; 1u&quot;°C&quot;   #@u_str produces static units (multiplication converts to base units)
+274.15 K
+
+julia&gt; 1ud&quot;°C&quot;  #@ud_str produces dynamic units (multiplication converts to base units)
+274.15 K
+
+julia&gt; quantity(1, u&quot;°C&quot;) #Use &#39;quantity&#39; to avoid eager conversion to base units
+1 °C</code></pre><p>Unlike macros, units that need to be parsed from strings cannot be statically inferred, so the <code>uparse</code> function will always produce dynamic units in order to make it type-stable.</p><pre><code class="language-julia hljs">julia&gt; uparse(&quot;km/hr&quot;)  #Uparse always produces dynamic units
+km/hr
+
+julia&gt; typeof(uparse(&quot;km/hr&quot;)) == typeof(uparse(&quot;kPa&quot;)) #Uparse is type-stable
+true</code></pre><p>The function <code>uconvert</code> pays attention to the unit type converted to. If the unit is static, the resulting quantity will be static, if it&#39;s dynamic, the result will be dynamic.</p><pre><code class="language-julia hljs">julia&gt; typeof(uconvert(u&quot;°F&quot;, 1u&quot;°C&quot;)) #Converting to static units produces a static quantity
+Quantity{Float64, Units{StaticDims{K}, AffineTransform{Float64}}}
+
+julia&gt; typeof(uconvert(ud&quot;°F&quot;, 1u&quot;°C&quot;)) #Converting to dynamic units produces a dynamic quantity
+Quantity{Float64, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}
+
+julia&gt; 1u&quot;°C&quot; |&gt; u&quot;°F&quot;  #The &quot;pipe&quot; operator is syntctic sugar for unit conversion
+33.7999999999999 °F</code></pre><p>The function <code>uconvert</code> can also be used on two unit types. This produces an <code>AbstractUnitTransform</code> that when called on a number, applies the unit conversion conversion formula produced by the two units.</p><pre><code class="language-julia hljs">julia&gt; (u&quot;°C&quot; |&gt; u&quot;°F&quot;)(0)  #uconvert between two units produces a callable conversion formula
+31.999999999999886</code></pre><p>Because operatins on dimensional quantities are more efficient than ones with units, FlexUnits also provides a <code>dconvert</code> function that will convert a quantity to the dimension of the units provided. This is particularly useful when converting dynanmic quantities to static-dimension quantities (the most peformant type).</p><pre><code class="language-julia hljs">julia&gt; q = dconvert(u&quot;mi/hr&quot;, 1ud&quot;km/hr&quot;)  #dconvert converts to dimensions of the target unit
+0.2777777777777778 m/s
+
+julia&gt; typeof(q) #Using dconvert produces high-performance quantities (expecially with static units)
+Quantity{Float64, StaticDims{m/s}}</code></pre><p>Much like Unitful, equivalence implies conversion (especially since there is a lot of eager conversion to dimensional quantities in this package).</p><pre><code class="language-julia hljs">julia&gt; 1u&quot;kg&quot; == 1000ud&quot;g&quot; #Equivalence implies conversion (even if using different static/dynamic modes)
+true</code></pre><p>FlexUnits parsing tends to be more flexible than other unit packages. For example, the empty string will parse to a unitless quantity. String macros also produce units whose symbol matches the input exactly. This information is erased however, if one tries to manipulate units directly. Because this packages converts to dimensional quantities for all mathematical operations, only dimensions need to be tracked, which is much more straightforward than tracking units.</p><pre><code class="language-julia hljs">julia&gt; 1u&quot;&quot;  #Empty string produces unitless value
+1.0
+
+julia&gt; R = quantity(8.314, u&quot;kJ/(mol K)&quot;)  #String macros produce the unit&#39;s symbols exactly
+8.314 kJ/(mol K)
+
+julia&gt; R = quantity(8.314, u&quot;kJ/(K*mol)&quot;)  #This displays a different result
+8.314 kJ/(K*mol)
+
+julia&gt; u&quot;kJ&quot;/(u&quot;K&quot;*u&quot;mol&quot;)  #Math operations on units delete symbol information (don&#39;t do this)
+Units{Dimensions{FixRat32}, AffineTransform{Float64}}((m² kg)/(s² K mol), AffineTransform{Float64}(1000.0, 0.0), :_)</code></pre><p>Promotion rules will convert static dimensional quantities to dynamic ones if the dimensions are different</p><pre><code class="language-julia hljs">julia&gt; [1u&quot;m/s&quot;, 2u&quot;m/s&quot;, 3u&quot;km/hr&quot;]  #Same static dimensions produces an array with static units
+3-element Vector{Quantity{Float64, StaticDims{m/s}}}:
+ 1.0 m/s
+ 2.0 m/s
+ 0.8333333333333334 m/s
+
+julia&gt; [1u&quot;m/s&quot;, 2u&quot;m/s&quot;, 3u&quot;lb/s&quot;]   #Different static dimensions promote to a dynamic dimension
+3-element Vector{Quantity{Float64, Dimensions{FixRat32}}}:
+ 1.0 m/s
+ 2.0 m/s
+ 1.360776 kg/s
+
+julia&gt; [1ud&quot;m/s&quot;, 2ud&quot;m/s&quot;, 3ud&quot;lb/s&quot;]  #Mathematical operations tend to convert to SI units for performance
+3-element Vector{Quantity{Float64, Dimensions{FixRat32}}}:
+ 1.0 m/s
+ 2.0 m/s
+ 1.360776 kg/s</code></pre><h2 id="Registering-units"><a class="docs-heading-anchor" href="#Registering-units">Registering units</a><a id="Registering-units-1"></a><a class="docs-heading-anchor-permalink" href="#Registering-units" title="Permalink"></a></h2><p>You can register units to UnitRegistry (or your own registry) using the <code>register_unit</code> function. You can simply provide it a single pair argument of type <code>Pair{String, AbstractUnitLike}</code> or <code>Pair{String, Quantity}</code> as follows: </p><pre><code class="language-julia hljs">julia&gt; register_unit(&quot;bbl&quot; =&gt; 0.158987*u&quot;m^3&quot;)
+FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+  :Ω      =&gt; Ω
+  :μs     =&gt; μs
+  :μV     =&gt; μV</code></pre><p>However, due to the nature of macros, these dictionaries are permanent. You can re-register units with the same values (so that you can re-run scripts) but changing them is not allowed.</p><pre><code class="language-julia hljs">julia&gt; register_unit(&quot;bbl&quot; =&gt; 0.158987*u&quot;m^3&quot;)
+FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+  :Ω      =&gt; Ω
+  :μs     =&gt; μs
+  :μV     =&gt; μV
+
+julia&gt; register_unit(&quot;bbl&quot; =&gt; 22.5*u&quot;m^3&quot;)
+ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.</code></pre><p>It is possible for users to create their own registries (for example, if they wanted different dimension types or different classes of units). The default UnitRegistry (see the UnitRegistry.jl file in the source code) was constructed with less than 50 lines of code, and users can use that as a template. Most custom registries only need to modify two of these lines of code:</p><pre><code class="language-julia hljs">using .RegistryTools
+const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform}}()
+
+#Fill the UNITS registry with default values
+registry_defaults!(UNITS)</code></pre><p>The <code>UNITS</code> constant is the dictionary where all the units live. One can customize it so that the registry has a different dimension type or even a different transform type. The <code>registry_defaults!</code> function fills a dictionary with the default body of units (users can build their own if they like).</p><h2 id="Linear-Algebra"><a class="docs-heading-anchor" href="#Linear-Algebra">Linear Algebra</a><a id="Linear-Algebra-1"></a><a class="docs-heading-anchor-permalink" href="#Linear-Algebra" title="Permalink"></a></h2><p>This package devines a <code>LinmapQuant</code>, a matrix that is intended to be a linear mapping that takes a vector with units <code>u_in</code> and produces a vector with units <code>u_out</code> thus, the dimensiosn of all elements can be inferred by these two vectors of units. While in general, the units of matrix elements can be arbitrary, in order to support operations like matrix multiplication, the units must adhere to this structure, and the simplicity of this structure allows for shortcuts for inference.</p><p>If we want to construct a matrix where all of the columns have the same units, we let <code>u_in</code> be the inverse of the units we desire, and <code>u_out</code> be dimensionless.</p><pre><code class="language-julia hljs">julia&gt; Z = randn(200, 5)*randn(5,5)
+julia&gt; Zu = LinmapQuant(Z, UnitMap(u_in=inv.([u&quot;lb&quot;, u&quot;ft&quot;, u&quot;W&quot;, u&quot;L&quot;, u&quot;mol&quot;]), u_out=u&quot;&quot;))
+200×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+  -0.501901 kg    0.137162 m  -0.689416 (m² kg)/s³   -0.00173674 m³    4.09169 mol
+    1.84433 kg    0.335457 m   0.987017 (m² kg)/s³   -0.00204628 m³    3.95951 mol
+  -0.470226 kg   0.0676007 m   -2.44338 (m² kg)/s³     0.0013448 m³   -2.37904 mol
+  -0.373749 kg    0.157584 m   -2.97929 (m² kg)/s³    0.00555965 m³   -2.68827 mol</code></pre><p>We could have also built the quantity matrix first and then used <code>LinmapQuant(m::AbstractMatrix{&lt;:Quantity})</code>. Now let us suppose we wanted to do linear regression to predict the last two columsn given the first three.</p><pre><code class="language-julia hljs">julia&gt; Xu = [Zu[:,1:3] fill(1.0u&quot;&quot;, size(Zu,1))]
+200×4 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+  -0.501901 kg    0.137162 m  -0.689416 (m² kg)/s³  1.0
+    1.84433 kg    0.335457 m   0.987017 (m² kg)/s³  1.0
+  -0.470226 kg   0.0676007 m   -2.44338 (m² kg)/s³  1.0
+  -0.373749 kg    0.157584 m   -2.97929 (m² kg)/s³  1.0 
+
+julia&gt; Yu = Zu[:,4:5]
+200×2 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+  -0.00173674 m³    4.09169 mol
+  -0.00204628 m³    3.95951 mol
+    0.0013448 m³   -2.37904 mol
+   0.00555965 m³   -2.68827 mol
+
+julia&gt; Bu = (Xu&#39;*Xu)\(Xu&#39;*Yu)
+4×2 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+     -0.000206539 m³/kg          -0.109595 mol/kg
+          -0.0032453 m²             2.41413 mol/m
+ -0.000997411 (m s³)/kg  0.75641 (s³ mol)/(m² kg)
+        -0.000152683 m³              0.159627 mol  </code></pre><p>We can verify that the output of the prediction matches <code>Yu</code></p><pre><code class="language-julia hljs">julia&gt; Xu*Bu
+200×2 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+  0.000193479 m³  0.0242788 mol
+  -0.00260673 m³    1.51392 mol
+    0.0021621 m³   -1.47384 mol
+   0.00238468 m³   -1.67255 mol
+    -0.001745 m³   0.810835 mol</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="performance/">Performance »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 18 February 2026 21:28">Wednesday 18 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
