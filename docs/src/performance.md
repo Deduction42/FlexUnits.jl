@@ -1,7 +1,7 @@
 # Performance
 
 ## Why FlexUnits is fast
-FexUnits.jl combines techniques from Unitful.jl on "static units" to obtain near zero overhead performance when units can be resolved at parse time, but falls back to "dynamic unit" methods used by DynamicQuantities.jl if units cannot be inferred at parse time. This is done through promotion rules which convert static-dimension quantities to dynamic-dimension quantities if different dimensions are present. This retains the high-performance behaviour of Unitful.jl when units are known at compile time, but often falls back to the performance of DynanicQuantity.jl if they can't be inferred. In the first set of benchmarks, we see that FlexUnits.jl and DynamicQuantities.jl vastly outperform Unitful.jl (by more than 100x) when units cannot be inferred.
+FlexUnits.jl borrows techniques from Unitful.jl that focus on "static units" to obtain near zero overhead performance when units can be resolved at parse time. However, FlexUnits can vall back to using "dynamic units" techniques from DynamicQuantities.jl if units cannot be inferred at parse time. This is done through promotion rules which convert static-dimension quantities to dynamic-dimension quantities if different dimensions are present. This retains the high-performance behaviour of Unitful.jl when units are known at compile time, but often falls back to the performance of DynanicQuantity.jl if they can't be inferred. In the first set of benchmarks, we see that FlexUnits.jl and DynamicQuantities.jl vastly outperform Unitful.jl (by more than 100x) when units cannot be inferred.
 ```julia
 using FlexUnits
 using .UnitRegistry
@@ -42,7 +42,7 @@ In order for matrix multiplication and other linear algebra operations to be pos
 - A scalar dimension factor `u_fact`
 - An M-1 vector of input units `u_in`
 - An N-1 vector of output units `u_out`
-This results in a matrix being described by N+M-1 values instead of NxM, this can result in a significant amount of compressions. Addiitonally, these factored units are stored separately from the matrix of numerical values. This factorization and separation provides the two main benefits:
+This results in a matrix being described by N+M-1 values instead of NxM, this can result in a significant amount of compressions. Additionally, these factored units are stored separately from the matrix of numerical values. This factorization and separation provides the two main benefits:
 1. Efficient, well-tested, pure-numerical matrix operations can be performed on the raw numerical values
 2. Unit dimensions can be solved using efficient O(N) methods on DimsMap objects which only store (M+N+1) values instead of (M×N) values (DimsMap stores two more values than the bare-minimum for validation purposes).
 
@@ -111,28 +111,29 @@ julia> Mfq/Mfq #FlexUnits LinmapQuant matrices actually work
 
 We can use linear algebra to complete the linear regression as follows:
 ```julia
-Nr = 200
+Nr = 2000
 XY = randn(Nr, 6) * rand(6, 6)
 X = [XY[:, begin:4] ones(Nr)]
 Y = XY[:, 5:end]
 Xu = LinmapQuant(X, UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m", UnitRegistry.u""])))
 Yu = LinmapQuant(Y, UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"K", UnitRegistry.u"kPa"])))
 
-julia> @btime B = (X'X)\(X'Y) #No units
-  5.200 μs (12 allocations: 992 bytes)
+julia> @btime B = ($X'*$X)\($X'*$Y) #No units
+  17.300 μs (10 allocations: 960 bytes)
 
-julia> @btime Bu = (Xu'Xu)\(Xu'Yu) #Nearly the same speed
-  5.200 μs (19 allocations: 1.66 KiB)
+julia> @btime Bu = ($Xu'*$Xu)\($Xu'*$Yu) #Nearly the same speed
+  17.300 μs (14 allocations: 1.34 KiB)
+
 ```
-For this operation, the overhead of adding units was also negligible. The reason for this is that even though `Xu'*Xu` is a long multiplication that compares the 200 columns of `Xu'` vs the 200 rows of `Xu`, the 200 rows of units are uniform and static. This means the inference is greatly accellerated for both `Xu'*Xu` and `Xu'*Yu`. So while unit inference is about 5-8x slower than actual multiplication, static unit inference in one dimension was able to bypass most of the computation. If we used tynamic units instead, the overhead would become noticeable.
+For this operation, the overhead of adding units was also negligible. Even though `Xu'*Xu` is a long multiplication that compares the 2k column of units in `Xu'` vs the 2k rows units in `Xu`, the 2k rows of units are uniform and static which means the inference is greatly accellerated for both `Xu'*Xu` and `Xu'*Yu`. So while *dynamic* unit inference is about 5x slower than the numerical multiplcation, static unit inference in one dimension was able to bypass most of this overhead. If we used dynamic units instead, the overhead would become noticeable.
 ```julia
 Xu = LinmapQuant(X, UnitMap(u_out=UnitRegistry.ud"", u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m", UnitRegistry.u""])))
 Yu = LinmapQuant(Y, UnitMap(u_out=UnitRegistry.ud"", u_in=inv.([UnitRegistry.u"K", UnitRegistry.u"kPa"])))
 
-julia> @btime Bu = (Xu'Xu)\(Xu'Yu) #Nearly the same speed
-  6.200 μs (19 allocations: 1.66 KiB)
+julia> @btime Bu = ($Xu'*$Xu)\($Xu'*$Yu) #Nearly the same speed
+  21.900 μs (14 allocations: 1.34 KiB)
 ```
-While this overhead is noticeable, it's not large because even with dynamic inference, the 200 rows of units only need to be multiplied once for `Xu'*Xu` and once `Xu'*Yu`, while the numeric calcualtions must do this (5x5) + (2x5) = 35 times.
+While the performance penalty is noticeable (roughly 1.3x) it's not that large. Even with dynamic inference being ~5x slower than numeric computation, the 2k rows of units only need to be inferred once for `Xu'*Xu` and once `Xu'*Yu`. Meanwhile the numeric calcualtions for the 2k rows must be done for each element of the denominator matrix (5x5) plus each element of the numerator matrix (2x5) for a grand total of 35 times. This would yield a performance penalty of about (35 + 2*5)/35 = 1.2857 which is very close to what we observed.
 
 ## Performance Tips
 While FlexUnits is generally fast, there are a few things one may need to watch out for to get the most out of this package.
