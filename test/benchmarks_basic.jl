@@ -315,7 +315,7 @@ print("FlexU:  \t")
 
 println("\nS7.1) Missing quantities\n")
 vdm = DynamicQuantities.GenericQuantity.(vm, Ref(DynamicQuantities.dimension(DynamicQuantities.u"m")))
-vfm = Quantity{eltype(vm)}.(vm, dimension(UnitRegistry.u"m"))
+vfm = FlexQuant{eltype(vm)}.(vm, dimension(UnitRegistry.u"m"))
 
 print("Unitful:\t  fails\n")
 print("DynamicQ:\t")

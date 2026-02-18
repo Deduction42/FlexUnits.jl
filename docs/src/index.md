@@ -10,13 +10,13 @@ FlexUnits.jl is a unit package designed to resemble Unitful.jl, with similar per
 
 ## Quick start examples
 The FlexUnits API is designed to resemble Unitful in a number of ways. One major difference is that string macros and parsing functions are not exported by default, instead they are exported by a unit registry. This allows users to define their own registries and use those as a basis for unit parsing. FlexUnits provides a unit registry (UnitRegistry) that can be imported to provide default unit parsing functionality.
-```
-add FlexUnits
+```julia
+import Pkg; Pkg.add("FlexUnits")
 using FlexUnits, .UnitRegistry
 ```
 
 Units are accessed primarily through string macros. The `@u_str` macro produces static units by default (for maximum performance when injected into low-level code), but if dynamic units are desired (particularly for interactive workflows) one can use the `@ud_str` macro. 
-```
+```julia
 julia> 1u"°C"   #@u_str produces static units (multiplication converts to base units)
 274.15 K
 
@@ -28,7 +28,7 @@ julia> quantity(1, u"°C") #Use 'quantity' to avoid eager conversion to base uni
 ```
 
 Unlike macros, units that need to be parsed from strings cannot be statically inferred, so the `uparse` function will always produce dynamic units in order to make it type-stable.
-```
+```julia
 julia> uparse("km/hr")  #Uparse always produces dynamic units
 km/hr
 
@@ -37,25 +37,25 @@ true
 ```
 
 The function `uconvert` pays attention to the unit type converted to. If the unit is static, the resulting quantity will be static, if it's dynamic, the result will be dynamic.
-```
+```julia
 julia> typeof(uconvert(u"°F", 1u"°C")) #Converting to static units produces a static quantity
-Quantity{Float64, StaticUnits{K, AffineTransform}}
+Quantity{Float64, Units{StaticDims{K}, AffineTransform{Float64}}}
 
 julia> typeof(uconvert(ud"°F", 1u"°C")) #Converting to dynamic units produces a dynamic quantity
-Quantity{Float64, Units{Dimensions{FixRat32}, AffineTransform}}
+Quantity{Float64, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}
 
 julia> 1u"°C" |> u"°F"  #The "pipe" operator is syntctic sugar for unit conversion
-33.799999999999955 °F
+33.7999999999999 °F
 ```
 
 The function `uconvert` can also be used on two unit types. This produces an `AbstractUnitTransform` that when called on a number, applies the unit conversion conversion formula produced by the two units.
-```
+```julia
 julia> (u"°C" |> u"°F")(0)  #uconvert between two units produces a callable conversion formula
-31.999999999999943
+31.999999999999886
 ```
 
 Because operatins on dimensional quantities are more efficient than ones with units, FlexUnits also provides a `dconvert` function that will convert a quantity to the dimension of the units provided. This is particularly useful when converting dynanmic quantities to static-dimension quantities (the most peformant type).
-```
+```julia
 julia> q = dconvert(u"mi/hr", 1ud"km/hr")  #dconvert converts to dimensions of the target unit
 0.2777777777777778 m/s
 
@@ -64,28 +64,28 @@ Quantity{Float64, StaticDims{m/s}}
 ```
 
 Much like Unitful, equivalence implies conversion (especially since there is a lot of eager conversion to dimensional quantities in this package).
-```
+```julia
 julia> 1u"kg" == 1000ud"g" #Equivalence implies conversion (even if using different static/dynamic modes)
 true
 ```
 
 FlexUnits parsing tends to be more flexible than other unit packages. For example, the empty string will parse to a unitless quantity. String macros also produce units whose symbol matches the input exactly. This information is erased however, if one tries to manipulate units directly. Because this packages converts to dimensional quantities for all mathematical operations, only dimensions need to be tracked, which is much more straightforward than tracking units.
-```
+```julia
 julia> 1u""  #Empty string produces unitless value
 1.0
 
-julia> R = 8.314ud"kJ/(mol K)"  #String macros produce the unit's symbols exactly
+julia> R = quantity(8.314, u"kJ/(mol K)")  #String macros produce the unit's symbols exactly
 8.314 kJ/(mol K)
 
-julia> R = 8.314ud"kJ/(K*mol)"  #This displays a different result
+julia> R = quantity(8.314, u"kJ/(K*mol)")  #This displays a different result
 8.314 kJ/(K*mol)
 
 julia> u"kJ"/(u"K"*u"mol")  #Math operations on units delete symbol information (don't do this)
-Units{Dimensions{FixRat32}, AffineTransform}((m² kg)/(s² K mol), AffineTransform(1000.0, 0.0), :_)
+Units{Dimensions{FixRat32}, AffineTransform{Float64}}((m² kg)/(s² K mol), AffineTransform{Float64}(1000.0, 0.0), :_)
 ```
 
 Promotion rules will convert static dimensional quantities to dynamic ones if the dimensions are different
-```
+```julia
 julia> [1u"m/s", 2u"m/s", 3u"km/hr"]  #Same static dimensions produces an array with static units
 3-element Vector{Quantity{Float64, StaticDims{m/s}}}:
  1.0 m/s
@@ -108,7 +108,7 @@ julia> [1ud"m/s", 2ud"m/s", 3ud"lb/s"]  #Mathematical operations tend to convert
 ## Registering units
 You can register units to UnitRegistry (or your own registry) using the `register_unit` function. You can simply provide it a single pair argument of type `Pair{String, AbstractUnitLike}` or `Pair{String, Quantity}` as follows: 
 
-```
+```julia
 julia> register_unit("bbl" => 0.158987*u"m^3")
 FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
   :Ω      => Ω
@@ -117,7 +117,7 @@ FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRation
 ```
 
 However, due to the nature of macros, these dictionaries are permanent. You can re-register units with the same values (so that you can re-run scripts) but changing them is not allowed.
-```
+```julia
 julia> register_unit("bbl" => 0.158987*u"m^3")
 FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
   :Ω      => Ω
@@ -129,7 +129,8 @@ ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different val
 ```
 
 It is possible for users to create their own registries (for example, if they wanted different dimension types or different classes of units). The default UnitRegistry (see the UnitRegistry.jl file in the source code) was constructed with less than 50 lines of code, and users can use that as a template. Most custom registries only need to modify two of these lines of code:
-```
+```julia
+using .RegistryTools
 const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform}}()
 
 #Fill the UNITS registry with default values
@@ -142,7 +143,7 @@ The `UNITS` constant is the dictionary where all the units live. One can customi
 This package devines a `LinmapQuant`, a matrix that is intended to be a linear mapping that takes a vector with units `u_in` and produces a vector with units `u_out` thus, the dimensiosn of all elements can be inferred by these two vectors of units. While in general, the units of matrix elements can be arbitrary, in order to support operations like matrix multiplication, the units must adhere to this structure, and the simplicity of this structure allows for shortcuts for inference.
 
 If we want to construct a matrix where all of the columns have the same units, we let `u_in` be the inverse of the units we desire, and `u_out` be dimensionless.
-```
+```julia
 julia> Z = randn(200, 5)*randn(5,5)
 julia> Zu = LinmapQuant(Z, UnitMap(u_in=inv.([u"lb", u"ft", u"W", u"L", u"mol"]), u_out=u""))
 200×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
@@ -152,7 +153,7 @@ julia> Zu = LinmapQuant(Z, UnitMap(u_in=inv.([u"lb", u"ft", u"W", u"L", u"mol"])
   -0.373749 kg    0.157584 m   -2.97929 (m² kg)/s³    0.00555965 m³   -2.68827 mol
 ```
 We could have also built the quantity matrix first and then used `LinmapQuant(m::AbstractMatrix{<:Quantity})`. Now let us suppose we wanted to do linear regression to predict the last two columsn given the first three.
-```
+```julia
 julia> Xu = [Zu[:,1:3] fill(1.0u"", size(Zu,1))]
 200×4 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
   -0.501901 kg    0.137162 m  -0.689416 (m² kg)/s³  1.0
@@ -175,7 +176,7 @@ julia> Bu = (Xu'*Xu)\(Xu'*Yu)
         -0.000152683 m³              0.159627 mol  
 ```
 We can verify that the output of the prediction matches `Yu`
-```
+```julia
 julia> Xu*Bu
 200×2 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
   0.000193479 m³  0.0242788 mol
