@@ -118,14 +118,21 @@ Y = XY[:, 5:end]
 Xu = LinmapQuant(X, UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m", UnitRegistry.u""])))
 Yu = LinmapQuant(Y, UnitMap(u_out=UnitRegistry.u"", u_in=inv.([UnitRegistry.u"K", UnitRegistry.u"kPa"])))
 
-julia> @btime (X'X)\(X'Y) #No units
-  4.880 μs (12 allocations: 992 bytes)
+julia> @btime B = (X'X)\(X'Y) #No units
+  5.200 μs (12 allocations: 992 bytes)
 
-julia> @btime Bu = (Xu'Xu)\(Xu'Yu) #LinmapQuant, about 1.3x slower
-  6.400 μs (19 allocations: 1.66 KiB)
+julia> @btime Bu = (Xu'Xu)\(Xu'Yu) #Nearly the same speed
+  5.200 μs (19 allocations: 1.66 KiB)
 ```
-This time, the overhead from unit inference was noticeable, but still much less than 2x. The reason for this is because `Xu'*Xu` is a long multiplication that compares the 200 columns of `Xu'` vs the 200 rows of `Xu`, with the same thing happening again in `Xu'*Yu`. Thankfully, this 200-row comparison is required only once for the 25 combinations of `Xu'*Xu` and once for the 10 combinations of `Xu'*Yju`. In general, unit inference is about 6x to 8x slower than floating-point operations, so having two unit inferences for every 35 floating-point operations gives a slowdown factor of (35+2*7)/35 = 1.4, almost exactly the slowdown that was seen in the benchmarks.
+For this operation, the overhead of adding units was also negligible. The reason for this is that even though `Xu'*Xu` is a long multiplication that compares the 200 columns of `Xu'` vs the 200 rows of `Xu`, the 200 rows of units are uniform and static. This means the inference is greatly accellerated for both `Xu'*Xu` and `Xu'*Yu`. So while unit inference is about 5-8x slower than actual multiplication, static unit inference in one dimension was able to bypass most of the computation. If we used tynamic units instead, the overhead would become noticeable.
+```julia
+Xu = LinmapQuant(X, UnitMap(u_out=UnitRegistry.ud"", u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m", UnitRegistry.u""])))
+Yu = LinmapQuant(Y, UnitMap(u_out=UnitRegistry.ud"", u_in=inv.([UnitRegistry.u"K", UnitRegistry.u"kPa"])))
 
+julia> @btime Bu = (Xu'Xu)\(Xu'Yu) #Nearly the same speed
+  6.200 μs (19 allocations: 1.66 KiB)
+```
+While this overhead is noticeable, it's not large because even with dynamic inference, the 200 rows of units only need to be multiplied once for `Xu'*Xu` and once `Xu'*Yu`, while the numeric calcualtions must do this (5x5) + (2x5) = 35 times.
 
 ## Performance Tips
 While FlexUnits is generally fast, there are a few things one may need to watch out for to get the most out of this package.
