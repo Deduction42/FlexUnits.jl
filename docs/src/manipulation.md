@@ -90,7 +90,6 @@ uconvert(::AbstractUnitLike, ::QuantUnion)
 Note that using `uconvert` between two unit object will produce a unit conversion formula that can be called directly. Additionally, pipe operator `|>` can also be used as a shorthand for `uconvert`
 ```@docs
 uconvert(::AbstractUnitLike, ::AbstractUnitLike)
-|>(u1::AbstractUnitLike, u2::Union{AbstractUnitLike, QuantUnion})
 ```
 
 ### Use `dconvert` before performance-sensitive code
