@@ -649,9 +649,8 @@ end
     @test eltype([dimension(u"m/s"), dimension(u"kg/hr")]) <: Dimensions{FixRat32}
     @test eltype([dimension(u"m/s"), dimension(ud"m/s")]) <: Dimensions{FixRat32}
     @test eltype([u"m/s", u"m/s"]) <: Units{typeof(dimension(u"m/s")), AffineTransform{Float64}}
-    @test eltype([dimension(u"m/s"), dimension(u"m/s")]) <: StaticDims{dimval(u"m/s")}
+    @test eltype([dimension(u"m/s"), dimension(u"m/s")]) <: StaticDims
     
-
     #Addition/Sybtraction preserves static unit information but Multiplication/Division don't 
     @test (1u"m/s" + 1ud"m/s") isa Quantity{Float64, <:StaticDims}
     @test (1u"m/s" - 1ud"m/s") isa Quantity{Float64, <:StaticDims}
