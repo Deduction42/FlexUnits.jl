@@ -13,13 +13,12 @@ include("UnitRegistry.jl")
 
 export AbstractUnitLike, AbstractDimLike, AbstractDimensions, AbstractUnits, AbstractUnitTransform
 export ConversionError, DimensionError, NotScalarError, NotDimensionError, FixRat32
-export Dimensions, Units, Quantity, FlexQuant, QuantUnion, AffineTransform, NoTransform 
-export StaticDims, StaticUnits
+export Dimensions, Units, StaticDims, Quantity, FlexQuant, QuantUnion, AffineTransform, NoTransform 
 export RegistryTools, UnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units
 export assert_scalar, assert_dimension, assert_dimensionless
 export with_ubase, ustrip, dstrip, ustrip_base, unit, quantity
-export ubase, uconvert, dconvert, ustrip_dimensionless, udynamic
+export ubase, uconvert, dconvert, ustrip_dimensionless, udynamic, ustatic
 export LinmapQuant, VectorQuant, FactorQuant, FunctionQuant, UnitMap, DimsMap
 export uinput, uoutput, ufactor
 

@@ -83,7 +83,7 @@ u0 = FallingObjectState(v=0.0u"m/s", h=100u"m")
 p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
 
 tspan = (0.0u"s", 10.0u"s")
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_static, u0, tspan, p, abstol=[1e-6u"m/s", 1e-6u"m"], reltol=[1e-6, 1e-6])
+prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_static, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 
 sol = solve(prob, Tsit5())
 @btime solve(prob, Tsit5())
@@ -92,7 +92,7 @@ plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="v_static")
 # =============================================================================================================
 println("\nDynamic Unit Solution")
 # =============================================================================================================
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_dynamic, u0, tspan, p, abstol=[1e-6u"m/s", 1e-6u"m"], reltol=[1e-6, 1e-6])
+prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_dynamic, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 
 sol = solve(prob, Tsit5())
 @btime solve(prob, Tsit5())

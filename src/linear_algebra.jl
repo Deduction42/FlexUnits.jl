@@ -32,11 +32,11 @@ Base.:*(d1::AbstractDimsMap, d2::MatrixOfDims) = DimsMap(u_in = inv.(d2'*inv.(ui
 
 #Multiplying factored dimensions with vectors of dimensions 
 Base.:*(d1::AbstractDimsMap, d2::VectorOfDims) = uoutput(d1) .* (dotinv1(uinput(d1), d2)*ufactor(d1))
-#Base.:*(d1::Adjoint{<:AbstractDimensions, <:VectorOfDims}, d2::AbstractDimsMap) = ((d1*uoutput(d2))*ufactor(d2)./uinput(d1))'
+#Base.:*(d1::Adjoint{<:AbstractDimLike, <:VectorOfDims}, d2::AbstractDimsMap) = ((d1*uoutput(d2))*ufactor(d2)./uinput(d1))'
 
 #Multiplying specific factorizations with single dimensions
-Base.:*(dm::DimsMap{<:AbstractDimensions}, d::AbstractDimLike) = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
-Base.:*(d::AbstractDimLike, dm::DimsMap{<:AbstractDimensions}) = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
+Base.:*(dm::DimsMap{<:AbstractDimLike}, d::AbstractDimLike) = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
+Base.:*(d::AbstractDimLike, dm::DimsMap{<:AbstractDimLike}) = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)
 
 #Division of matrices
 Base.:/(d1::AbstractDimsMap, d2::AbstractDimsMap) = d1*inv(d2)
@@ -259,16 +259,16 @@ ufactor(d1::AbstractDimsMap, d2::AdjointDmap) = ufactor(d1)*ufactor(d2)*dotinv(u
 ufactor(d1::AdjointDmap, d2::AdjointDmap)     = ufactor(d1)*ufactor(d2)*dotinv2(uoutput(d1.parent), uinput(d2.parent))
 
 
-LinearAlgebra.dot(d1::AbstractDimensions, d2::AbstractDimensions) = d1*d2
+LinearAlgebra.dot(d1::AbstractDimLike, d2::AbstractDimLike) = d1*d2
 
 #dot products with the second inverse
-dotinv(d1::AbstractDimensions, d2::AbstractDimensions) = inv(d1)*inv(d2)
+dotinv(d1::AbstractDimLike, d2::AbstractDimLike) = inv(d1)*inv(d2)
 dotinv(d1::AbstractVector, d2::AbstractVector) = _sumfunc(dotinv, d1, d2)
 
-dotinv1(d1::AbstractDimensions, d2::AbstractDimensions) = inv(d1)*d2
+dotinv1(d1::AbstractDimLike, d2::AbstractDimLike) = inv(d1)*d2
 dotinv1(d1::AbstractVector, d2::AbstractVector) = _sumfunc(dotinv1, d1, d2)
 
-dotinv2(d1::AbstractDimensions, d2::AbstractDimensions) = d1*inv(d2)
+dotinv2(d1::AbstractDimLike, d2::AbstractDimLike) = d1*inv(d2)
 dotinv2(d1::AbstractVector, d2::AbstractVector) = _sumfunc(dotinv2, d1, d2)
 
 #Dot products after applying a two-argument function

@@ -57,9 +57,8 @@ All units in FlexDims contain two entities:
 abstract type AbstractUnits{D, T<:AbstractUnitTransform} <: AbstractUnitLike end
 
 
-const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimensions
+const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimLike
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
-abstract type AbstractUnitMap{U<:UnitOrDims{<:AbstractDimensions}} end
 
 #Base.@assume_effects :consistent static_fieldnames(t::Type) = Base.fieldnames(t)
 static_fieldnames(t::Type) = Base.fieldnames(t)
@@ -165,7 +164,6 @@ Can use this to overload the default "fieldnames" behaviour
     return static_fieldnames(D)
 end
 
-
 """
     StaticDims{D} <: AbstractDimLike
 
@@ -182,8 +180,8 @@ StaticDims{D}(d::AbstractDimensions) where D = (D == d) ? StaticDims{D} : throw(
 dimval(::Type{<:StaticDims{D}}) where D = D
 dimval(d::StaticDims) = dimval(typeof(d))
 udynamic(u::StaticDims{D}) where D = D
+ustatic(u::AbstractDimensions) = StaticDims{u}()
 dimvaltype(::Type{D}) where {d, D<:StaticDims{d}} = dimtype(d)
-
 
 """
     NoDims
@@ -242,7 +240,7 @@ is_scalar(t::AffineTransform) = iszero(t.offset)
 remove_offset(t::AffineTransform) = AffineTransform(scale=t.scale, offset=0)
 
 """
-    @kwdef struct Units{D<:AbstractDimensions, T<:AbstractUnitTransform} <: AbstractUnits{D, T}
+    @kwdef struct Units{D<:AbstractDimLike, T<:AbstractUnitTransform} <: AbstractUnits{D, T}
         dims   :: D
         todims :: T
         symbol :: Symbol = DEFAULT_USYMBOL
@@ -250,7 +248,8 @@ remove_offset(t::AffineTransform) = AffineTransform(scale=t.scale, offset=0)
 
 A dynamic unit object that contains dimensions (dims) and its conversion formula to said dimensions (todims). The conversion 
 formula determines what kind of unit is referred to. An AffineTransform implies affine units, a NoTransform implies dimensions.
-Dynamic units can generated through the `@ud_str` macro.
+Units with dynamic dimensions can generated through the `@ud_str` macro, while units with static dimensions can be generated
+throiugh the `@u_str` macro.
 
 # Constructors
     Units{D}(units, todims::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} 
@@ -271,67 +270,26 @@ julia> (ustrip(5ud"°C") + ustrip(2ud"°C"))*u"°C" #Strips, adds raw quantity v
 7 °C
 ```
 """
-@kwdef struct Units{D<:AbstractDimensions, T<:AbstractUnitTransform} <: AbstractUnits{D, T}
+@kwdef struct Units{D<:AbstractDimLike, T<:AbstractUnitTransform} <: AbstractUnits{D, T}
     dims   :: D
     todims :: T
     symbol :: Symbol = DEFAULT_USYMBOL
 end
 Units{D}(units, todims::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} = Units{D,T}(units, todims, symbol)
-Units(dims::D, todims::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimensions = Units(dims, todims, symbol)
-Units(units::D, todims::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where D<:AbstractUnits = Units(dimension(assert_dimension(units)), todims, symbol)
-
-#TEMPORARY!!! In the future, remove StaticUnits and just allow Units to have static dimensions
-Units(dims::D, todims::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:StaticDims = Units(udynamic(dims), todims, symbol)
+Units(dims::D, todims::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimLike = Units(dims, todims, symbol)
+Units(units::U, todims::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where U<:AbstractUnits = Units(dimension(assert_dimension(units)), todims, symbol)
 
 todims(u::Units) = u.todims
 dimension(u::Units) = u.dims 
 usymbol(u::Units) = u.symbol
 remove_offset(u::U) where U<:AbstractUnits = constructorof(U)(dimension(u), remove_offset(u.todims))
 is_scalar(u::AbstractUnits) = is_scalar(todims(u))
-udynamic(u::Units) = u
+udynamic(u::Units) = Units(udynamic(dimension(u)), todims(u), usymbol(u))
+ustatic(u::Units) = Units(ustatic(dimension(u)), todims(u), usymbol(u))
 dimtype(::Type{U}) where {D,U<:Units{D}} = dimtype(D)
+dimvaltype(::Type{U}) where {D,U<:Units{D}} = dimvaltype(D)
+dimval(u::Units) = dimval(dimension(u))
 unit(x::NumUnion) = Units(NoDims(), NoTransform(), DEFAULT_USYMBOL)
-
-"""
-    @kwdef struct StaticUnits{D, T<:AbstractUnitTransform} <: AbstractUnits{D,T}
-        todims :: T
-        symbol :: Symbol
-    end
-
-A static version of units, where the value of dimensions `D` is a a parameter.
-Static units can generated through the `@u_str` macro. This improves performance when
-dimensions are statically inferrable.
-
-# Constructors
-    StaticUnits(u::Units) = StaticUnits{dimension(u)}(todims(u), usymbol(u))
-    StaticUnits(d::AbstractDimensions, todims::AbstractUnitTransform, symb=DEFAULT_USYMBOL) = StaticUnits{d}(todims, symb)
-    StaticUnits(d::StaticDims{D}, todims::AbstractUnitTransform, symb=DEFAULT_USYMBOL) where D = StaticUnits{D}(todims, symb)
-"""
-@kwdef struct StaticUnits{D, T<:AbstractUnitTransform} <: AbstractUnits{D,T}
-    todims :: T
-    symbol :: Symbol
-    function StaticUnits{D,C}(conv::AbstractUnitTransform, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitTransform}
-        return (D isa AbstractDimensions) ? new{D,C}(conv, symb) : error("Type parameter must be a dimension")
-    end
-    function StaticUnits{D}(conv::C, symb=DEFAULT_USYMBOL::Symbol) where {D, C<:AbstractUnitTransform}
-        return (D isa AbstractDimensions) ? new{D,C}(conv, symb) : error("Type parameter must be a dimension")
-    end
-end
-StaticUnits(u::Units) = StaticUnits{dimension(u)}(todims(u), usymbol(u))
-StaticUnits(d::AbstractDimensions, todims::AbstractUnitTransform, symb=DEFAULT_USYMBOL) = StaticUnits{d}(todims, symb)
-StaticUnits(d::StaticDims{D}, todims::AbstractUnitTransform, symb=DEFAULT_USYMBOL) where D = StaticUnits{D}(todims, symb)
-
-constructorof(::Type{<:StaticUnits}) = StaticUnits
-Units(u::StaticUnits) = Units{dimtype(u)}(dimval(u), todims(u), usymbol(u)) #TEMPORARY, in the future, Units will allow for static dimensions
-udynamic(u::StaticUnits) = Units(u)
-todims(u::StaticUnits) = u.todims
-dimtype(::Type{U}) where {D, U<:StaticUnits{D}} = dimtype(D)
-dimval(::Type{<:StaticUnits{D}}) where D = D
-dimval(d::StaticUnits) = dimval(typeof(d))
-dimvaltype(::Type{U}) where {D, U<:StaticUnits{D}} = dimvaltype(D)
-dimension(::Type{StaticUnits{D,T}}) where {D,T} = StaticDims{D}()
-dimension(d::StaticUnits) = dimension(typeof(d))
-usymbol(u::StaticUnits) = u.symbol
 
 #=================================================================================================
 Quantity types
@@ -371,8 +329,6 @@ Convenience union that allows Number and Non-Number types to be considered toget
 const QuantUnion{T,U} = Union{Quantity{T,U}, FlexQuant{T,U}}
 
 Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
-#Quantity(x::T, u::StaticUnits{D}) where {T,D} = Quantity(u.todims(x), StaticDims{D}())
-#Quantity{T}(x, u::StaticUnits{D}) where {T,D} = Quantity{T}(convert(T, u.todims(x)), StaticDims{D}())
 Quantity{T}(q::QuantUnion) where T = Quantity{T}(ustrip(q), unit(q))
 Quantity{T,U}(q::QuantUnion) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
 Quantity{T,StaticDims{d}}(q::QuantUnion) where {T,d} = Quantity{T,StaticDims{d}}(ustrip(d, q), StaticDims{d}())
@@ -381,8 +337,6 @@ Quantity{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dst
 Quantity{T,D}(x::Number) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D())
 
 FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
-#FlexQuant(x::T, u::StaticUnits{D}) where {T,D} = FlexQuant(u.todims(x), StaticDims{D}())
-#FlexQuant{T}(x, u::StaticUnits{D}) where {T,D} = FlexQuant{T}(convert(T, u.todims(x)), StaticDims{D}())
 FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))
 FlexQuant{T,U}(q::QuantUnion) where {T,U} = FlexQuant{T,U}(ustrip(q), unit(q))
 
@@ -510,7 +464,7 @@ dimensionless(n) = n
 
 isdimensionless(u::AbstractUnitLike) = isdimensionless(dimension(u))
 isdimensionless(::Type{StaticDims{d}}) where d = isdimensionless(d)
-isdimensionless(::Type{StaticUnits{d,T}}) where {d,T} = isdimensionless(d)
+isdimensionless(::Type{Units{StaticDims{d},T}}) where {d,T} = isdimensionless(d)
 isdimensionless(d::AbstractDimLike)  = iszero(d) || isunknown(d)
 isdimensionless(d::NoDims) = true
 Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))
