@@ -15,7 +15,7 @@ import Pkg; Pkg.add("FlexUnits")
 using FlexUnits, .UnitRegistry
 ```
 
-Units are accessed primarily through string macros. The `@u_str` macro produces static units by default (for maximum performance when injected into low-level code), but if dynamic units are desired (particularly for interactive workflows) one can use the `@ud_str` macro. 
+Units are accessed primarily through string macros. The `@u_str` macro produces static units by default (for maximum performance when injected into low-level code), but if dynamic units are desired (particularly for interactive workflows) one can use the `@ud_str` macro.
 ```julia
 julia> 1u"°C"   #@u_str produces static units (multiplication converts to base units)
 274.15 K
@@ -44,7 +44,7 @@ Quantity{Float64, Units{StaticDims{K}, AffineTransform{Float64}}}
 julia> typeof(uconvert(ud"°F", 1u"°C")) #Converting to dynamic units produces a dynamic quantity
 Quantity{Float64, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}
 
-julia> 1u"°C" |> u"°F"  #The "pipe" operator is syntctic sugar for unit conversion
+julia> 1u"°C" |> u"°F"  #The "pipe" operator is syntactic sugar for unit conversion
 33.7999999999999 °F
 ```
 
@@ -54,12 +54,12 @@ julia> (u"°C" |> u"°F")(0)  #uconvert between two units produces a callable co
 31.999999999999886
 ```
 
-Because operatins on dimensional quantities are more efficient than ones with units, FlexUnits also provides a `dconvert` function that will convert a quantity to the dimension of the units provided. This is particularly useful when converting dynanmic quantities to static-dimension quantities (the most peformant type).
+Because operations on dimensional quantities are more efficient than ones with units, FlexUnits also provides a `dconvert` function that will convert a quantity to the dimension of the units provided. This is particularly useful when converting dynamic quantities to static-dimension quantities (the most performant type).
 ```julia
 julia> q = dconvert(u"mi/hr", 1ud"km/hr")  #dconvert converts to dimensions of the target unit
 0.2777777777777778 m/s
 
-julia> typeof(q) #Using dconvert produces high-performance quantities (expecially with static units)
+julia> typeof(q) #Using dconvert produces high-performance quantities (especially with static units)
 Quantity{Float64, StaticDims{m/s}}
 ```
 
@@ -106,7 +106,7 @@ julia> [1ud"m/s", 2ud"m/s", 3ud"lb/s"]  #Mathematical operations tend to convert
 ```
 
 ## Registering units
-You can register units to UnitRegistry (or your own registry) using the `register_unit` function. You can simply provide it a single pair argument of type `Pair{String, AbstractUnitLike}` or `Pair{String, Quantity}` as follows: 
+You can register units to UnitRegistry (or your own registry) using the `register_unit` function. You can simply provide it a single pair argument of type `Pair{String, AbstractUnitLike}` or `Pair{String, Quantity}` as follows:
 
 ```julia
 julia> register_unit("bbl" => 0.158987*u"m^3")
@@ -138,9 +138,8 @@ registry_defaults!(UNITS)
 ```
 The `UNITS` constant is the dictionary where all the units live. One can customize it so that the registry has a different dimension type or even a different transform type. The `registry_defaults!` function fills a dictionary with the default body of units (users can build their own if they like).
 
-
 ## Linear Algebra
-This package devines a `LinmapQuant`, a matrix that is intended to be a linear mapping that takes a vector with units `u_in` and produces a vector with units `u_out` thus, the dimensiosn of all elements can be inferred by these two vectors of units. While in general, the units of matrix elements can be arbitrary, in order to support operations like matrix multiplication, the units must adhere to this structure, and the simplicity of this structure allows for shortcuts for inference.
+This package defines a `LinmapQuant`, a matrix that is intended to be a linear mapping that takes a vector with units `u_in` and produces a vector with units `u_out` thus, the dimensions of all elements can be inferred by these two vectors of units. While in general, the units of matrix elements can be arbitrary, in order to support operations like matrix multiplication, the units must adhere to this structure, and the simplicity of this structure allows for shortcuts for inference.
 
 If we want to construct a matrix where all of the columns have the same units, we let `u_in` be the inverse of the units we desire, and `u_out` be dimensionless.
 ```julia
@@ -152,14 +151,14 @@ julia> Zu = LinmapQuant(Z, UnitMap(u_in=inv.([u"lb", u"ft", u"W", u"L", u"mol"])
   -0.470226 kg   0.0676007 m   -2.44338 (m² kg)/s³     0.0013448 m³   -2.37904 mol
   -0.373749 kg    0.157584 m   -2.97929 (m² kg)/s³    0.00555965 m³   -2.68827 mol
 ```
-We could have also built the quantity matrix first and then used `LinmapQuant(m::AbstractMatrix{<:Quantity})`. Now let us suppose we wanted to do linear regression to predict the last two columsn given the first three.
+We could have also built the quantity matrix first and then used `LinmapQuant(m::AbstractMatrix{<:Quantity})`. Now let us suppose we wanted to do linear regression to predict the last two columns given the first three.
 ```julia
 julia> Xu = [Zu[:,1:3] fill(1.0u"", size(Zu,1))]
 200×4 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
   -0.501901 kg    0.137162 m  -0.689416 (m² kg)/s³  1.0
     1.84433 kg    0.335457 m   0.987017 (m² kg)/s³  1.0
   -0.470226 kg   0.0676007 m   -2.44338 (m² kg)/s³  1.0
-  -0.373749 kg    0.157584 m   -2.97929 (m² kg)/s³  1.0 
+  -0.373749 kg    0.157584 m   -2.97929 (m² kg)/s³  1.0
 
 julia> Yu = Zu[:,4:5]
 200×2 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
@@ -173,7 +172,7 @@ julia> Bu = (Xu'*Xu)\(Xu'*Yu)
      -0.000206539 m³/kg          -0.109595 mol/kg
           -0.0032453 m²             2.41413 mol/m
  -0.000997411 (m s³)/kg  0.75641 (s³ mol)/(m² kg)
-        -0.000152683 m³              0.159627 mol  
+        -0.000152683 m³              0.159627 mol
 ```
 We can verify that the output of the prediction matches `Yu`
 ```julia

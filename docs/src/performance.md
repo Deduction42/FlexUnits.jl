@@ -1,7 +1,7 @@
 # Performance
 
 ## Why FlexUnits is fast
-FlexUnits.jl borrows techniques from Unitful.jl that focus on "static units" to obtain near zero overhead performance when units can be resolved at parse time. However, FlexUnits can vall back to using "dynamic units" techniques from DynamicQuantities.jl if units cannot be inferred at parse time. This is done through promotion rules which convert static-dimension quantities to dynamic-dimension quantities if different dimensions are present. This retains the high-performance behaviour of Unitful.jl when units are known at compile time, but often falls back to the performance of DynanicQuantity.jl if they can't be inferred. In the first set of benchmarks, we see that FlexUnits.jl and DynamicQuantities.jl vastly outperform Unitful.jl (by more than 100x) when units cannot be inferred.
+FlexUnits.jl borrows techniques from Unitful.jl that focus on "static units" to obtain near zero overhead performance when units can be resolved at parse time. However, FlexUnits can fall back to using "dynamic units" techniques from DynamicQuantities.jl if units cannot be inferred at parse time. This is done through promotion rules which convert static-dimension quantities to dynamic-dimension quantities if different dimensions are present. This retains the high-performance behaviour of Unitful.jl when units are known at compile time, but often falls back to the performance of DynamicQuantity.jl if they can't be inferred. In the first set of benchmarks, we see that FlexUnits.jl and DynamicQuantities.jl vastly outperform Unitful.jl (by more than 100x) when units cannot be inferred.
 ```julia
 using FlexUnits
 using .UnitRegistry
@@ -20,7 +20,7 @@ v1flex = [1.0u"m/s", 1.0u"J/kg", 1.0u"A/V"]
 @btime sum(x->x^0.0, $v1flex)
   5.300 ns (0 allocations: 0 bytes)
 ```
-In the second example, we see that FlexUnits.jl and Unitful.jl outperform DynanicQuantities.jl when units can be inferred by the compiler.
+In the second example, we see that FlexUnits.jl and Unitful.jl outperform DynamicQuantities.jl when units can be inferred by the compiler.
 ```julia
 t1uni  = [1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s", 1.0*Unitful.u"m/s"]
 t1dyn  = [1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s", 1.0*DynamicQuantities.u"m/s"]
@@ -35,7 +35,7 @@ t1flex = [1.0u"m/s", 1.0u"m/s", 1.0u"m/s"]
 ```
 While this performance boost over DynamicQuantities.jl isn't as dramatic as the previous boost over Unitful.jl, it is still significant. In most benchmarks (examples can be found in the test folder of the FlexUnits repo) FlexUnits matches the best performing alternative (DynamicQuantities or Unitful). There are two notable exceptions:
 1. FlexUnits.jl is slightly slower than Unitful.jl at `uconvert`, but still much faster than DynamicQuantities.jl
-2. FlexUnits.jl can be significantlhy faster than both Unitful.jl and DynamicQuantities.jl for iterative statically-inferred algorithms where unitful values are reassigned (Unitful tends to overspecialize but the FlexUnits design avoids this)
+2. FlexUnits.jl can be significantly faster than both Unitful.jl and DynamicQuantities.jl for iterative statically-inferred algorithms where unitful values are reassigned (Unitful tends to overspecialize but the FlexUnits design avoids this)
 
 ## Why FlexUnits is efficient at linear algebra
 In order for matrix multiplication and other linear algebra operations to be possible, the units need to be consistent. In order to be consistent, the matrix must be constructed to take a vector with units `u_in` and produce a vector of units `u_out`. To do this, the units of an entire N×M matrix can be described by the following factorization
@@ -46,7 +46,7 @@ This results in a matrix being described by N+M-1 values instead of NxM, this ca
 1. Efficient, well-tested, pure-numerical matrix operations can be performed on the raw numerical values
 2. Unit dimensions can be solved using efficient O(N) methods on DimsMap objects which only store (M+N+1) values instead of (M×N) values (DimsMap stores two more values than the bare-minimum for validation purposes).
 
-These efficiency gains means that even if units must be dynamic (due to different units in the array), the overhead of resolving these units can be minimal. Let's compare mixed-unit matrix multiplication with differnt packages.
+These efficiency gains means that even if units must be dynamic (due to different units in the array), the overhead of resolving these units can be minimal. Let's compare mixed-unit matrix multiplication with different packages.
 
 ### Matrix Multiplication Benchmarks
 The first example consists of multiplying a 200x4 matrix by a 4x4 matrix
@@ -83,10 +83,10 @@ julia> @btime Xu*Mu #Unitful, more than 500x slower
 julia> @btime Xdq*Mdq #DynamicQuantities, about 8x slower
   5.700 μs (3 allocations: 31.34 KiB)
 
-julia> @btime Xfq*Mfq #LinmapQuant, almsot no overhead
+julia> @btime Xfq*Mfq #LinmapQuant, almost no overhead
   710.000 ns (4 allocations: 6.41 KiB)
 ```
-The main reason why FlexUnits.jl has nearly no overhead is that only the inner product of the units between matrices is considered. Only the first 4-element row of X and the first column of M need to be compared. Unit inference does not touch the other 199 rows of X or the other 3 colums of M.
+The main reason why FlexUnits.jl has nearly no overhead is that only the inner product of the units between matrices is considered. Only the first 4-element row of X and the first column of M need to be compared. Unit inference does not touch the other 199 rows of X or the other 3 columns of M.
 
 ### Linear Regression Benchmarks
 Linear regression benchmarks can only be compared between FlexUnits and the raw numerical methods. Neither Unitful.jl nor DynamicQuantities.jl can handle matrix inversions.
@@ -98,7 +98,7 @@ This error has been manually thrown, explicitly, so the method may exist but be 
 julia> Mdq/Mdq #DynamicQuantities also fails at 'oneunit'
 ERROR: Cannot create a dimensionful 1 from `Type{DynamicQuantities.Quantity}` without knowing the dimensions. Please use `oneunit(::DynamicQuantities.Quantity)` instead.
 
-julia> collect(Mfq)/collect(Mfq) #Matrices of FlexUnit quantities fails further down becuase LU-factorization logic eventually compares quantities of different units
+julia> collect(Mfq)/collect(Mfq) #Matrices of FlexUnit quantities fails further down because LU-factorization logic eventually compares quantities of different units
 ERROR: DimensionError: (s²/kg², s⁴/(m² kg²)) have incompatible dimensions
 
 julia> Mfq/Mfq #FlexUnits LinmapQuant matrices actually work
@@ -125,7 +125,7 @@ julia> @btime Bu = ($Xu'*$Xu)\($Xu'*$Yu) #Nearly the same speed
   17.300 μs (14 allocations: 1.34 KiB)
 
 ```
-For this operation, the overhead of adding units was also negligible. Even though `Xu'*Xu` is a long multiplication that compares the 2k column of units in `Xu'` vs the 2k rows units in `Xu`, the 2k rows of units are uniform and static which means the inference is greatly accellerated for both `Xu'*Xu` and `Xu'*Yu`. So while *dynamic* unit inference is about 5x slower than the numerical multiplcation, static unit inference in one dimension was able to bypass most of this overhead. If we used dynamic units instead, the overhead would become noticeable.
+For this operation, the overhead of adding units was also negligible. Even though `Xu'*Xu` is a long multiplication that compares the 2k column of units in `Xu'` vs the 2k rows units in `Xu`, the 2k rows of units are uniform and static which means the inference is greatly accelerated for both `Xu'*Xu` and `Xu'*Yu`. So while *dynamic* unit inference is about 5x slower than the numerical multiplication, static unit inference in one dimension was able to bypass most of this overhead. If we used dynamic units instead, the overhead would become noticeable.
 ```julia
 Xu = LinmapQuant(X, UnitMap(u_out=UnitRegistry.ud"", u_in=inv.([UnitRegistry.u"kg/s", UnitRegistry.u"kW", UnitRegistry.u"rad/s", UnitRegistry.u"N/m", UnitRegistry.u""])))
 Yu = LinmapQuant(Y, UnitMap(u_out=UnitRegistry.ud"", u_in=inv.([UnitRegistry.u"K", UnitRegistry.u"kPa"])))
@@ -133,7 +133,7 @@ Yu = LinmapQuant(Y, UnitMap(u_out=UnitRegistry.ud"", u_in=inv.([UnitRegistry.u"K
 julia> @btime Bu = ($Xu'*$Xu)\($Xu'*$Yu) #Nearly the same speed
   21.900 μs (14 allocations: 1.34 KiB)
 ```
-While the performance penalty is noticeable (roughly 1.3x) it's not that large. Even with dynamic inference being ~5x slower than numeric computation, the 2k rows of units only need to be inferred once for `Xu'*Xu` and once `Xu'*Yu`. Meanwhile the numeric calcualtions for the 2k rows must be done for each element of the denominator matrix (5x5) plus each element of the numerator matrix (2x5) for a grand total of 35 times. This would yield a performance penalty of about (35 + 2*5)/35 = 1.2857 which is very close to what we observed.
+While the performance penalty is noticeable (roughly 1.3x) it's not that large. Even with dynamic inference being ~5x slower than numeric computation, the 2k rows of units only need to be inferred once for `Xu'*Xu` and once `Xu'*Yu`. Meanwhile the numeric calculations for the 2k rows must be done for each element of the denominator matrix (5x5) plus each element of the numerator matrix (2x5) for a grand total of 35 times. This would yield a performance penalty of about (35 + 2*5)/35 = 1.2857 which is very close to what we observed.
 
 ## Performance Tips
 While FlexUnits is generally fast, there are a few things one may need to watch out for to get the most out of this package.
@@ -142,7 +142,7 @@ While FlexUnits is generally fast, there are a few things one may need to watch 
 A great deal of the work done in this package was devoted to building a performant type-stable dynamic unit/dimension system that can represent many different unit types and promotion rules that avoid mixed-type containers. While promotion rules help, some Julia functions don't apply conversion (this includes `collect` and `map`, but `vcat(...)` reliably promotes); if such mixed-type containers occur, use `udynamic` to explicitly convert static units to dynamic ones.
 
 ### 2. Use dynamic units for high-level code
-Dynanmic quantities are always type-stable and are less likely to result in accidental performance-killing dynamic dispatch calls. This is increasingly important if you want to produce small static binaries with Julia because dynamic dispatch can inhibit this. Using dynamic units can also prevent long compile times as it reduces specialization.
+Dynamic quantities are always type-stable and are less likely to result in accidental performance-killing dynamic dispatch calls. This is increasingly important if you want to produce small static binaries with Julia because dynamic dispatch can inhibit this. Using dynamic units can also prevent long compile times as it reduces specialization.
 
 ### 3. Use LinmapQuant/VectorQuant for linear algebra
 These representations allow the use of optimized numerical methods for linear algebra, and employ shortcuts to solve the units of the matrix separately. This is especially important for large matrices. If input values are already numerical matrices, constructors for `LinmapQuant` are more efficient at *attaching units* to said vectors, as only N+M+1 dimension values are stored instead of the full M×N.
@@ -151,8 +151,7 @@ These representations allow the use of optimized numerical methods for linear al
 If a shortcut method is implemented, the output should be either a `LinmapQuant` or a `VectorQuant`. Otherwise a slower fallback method has been used. If this happens where not expected, please submit a bug report. It is likely that a method has been overlooked.
 
 ### 5. Use `dconvert` to transition from dynamic units to static units in low-level code
-Dynamic units are great for achieving effortless type stability, but static units really shine in performance-sensitive low-level code where there's a small number of variables with known dimensions. In such cases, one can simply use `dconvert(u"...", q)` to convert `q` to a quantity with the same dimensions as `u`. Because most of the calcualtion is done using dimensional quantities, no conversion math needs to take place, one simply needs to verify that the units match, thus `dconvert` has very little overhead.
+Dynamic units are great for achieving effortless type stability, but static units really shine in performance-sensitive low-level code where there's a small number of variables with known dimensions. In such cases, one can simply use `dconvert(u"...", q)` to convert `q` to a quantity with the same dimensions as `u`. Because most of the calculation is done using dimensional quantities, no conversion math needs to take place, one simply needs to verify that the units match, thus `dconvert` has very little overhead.
 
 ### 6. Use `vcat` or some other promoting method to transition from low-level code to high-level code
-As mentioned before, some functions like `collect` and `map` don't use `promote`. However, other methods like explicit vector construction like `v=[x,y,z]` and using `vcat` on splatted tuples properly trigger `promote`. When returning containers with multiple units, make sure they are properly promoted to dynamic units, otherwise overspecialization and dynanmic calls may leak to other parts of your code.
-
+As mentioned before, some functions like `collect` and `map` don't use `promote`. However, other methods like explicit vector construction like `v=[x,y,z]` and using `vcat` on splatted tuples properly trigger `promote`. When returning containers with multiple units, make sure they are properly promoted to dynamic units, otherwise overspecialization and dynamic calls may leak to other parts of your code.
