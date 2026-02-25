@@ -1,9 +1,7 @@
-This package should look like Unitful.jl but behave like DynamicQuantities.jl under the hood
-
 Changelog:
 
-
 Current Tasks:
+0.  Look at UnitfulLinearAlgebra for possible implementation improvements 
 1.  Support other functions for AbstractDimsMap and LinmapQuant like
     -   ureduce(f, A::AbstractArrayOrBroadcasted; dims=:, init=_InitialValue())
         -   Essentially checks if all values are the same, implement for same-units functions
