@@ -1,8 +1,8 @@
 Changelog:
 
 Current Tasks:
-0.  Look at UnitfulLinearAlgebra for possible implementation improvements 
-1.  Support other functions for AbstractDimsMap and LinmapQuant like
+1.  Look at UnitfulLinearAlgebra, and UnitfulTensors for possible implementation improvements 
+2.  Support other functions for AbstractDimsMap and LinmapQuant like
     -   ureduce(f, A::AbstractArrayOrBroadcasted; dims=:, init=_InitialValue())
         -   Essentially checks if all values are the same, implement for same-units functions
             -   https://github.com/JuliaLang/julia/blob/5fe89b8ddc166260bfcd4a195b305aff0ccad686/base/reduce.jl#L444-L478
@@ -12,15 +12,6 @@ Current Tasks:
             -   dims=1, u_input = inv(prod(uoutput(d)) .* ufactor(d)^n) .* uinput(d).^n    
             -   mean(m, dims=n) #Should overload to "sum" for AbstractDimsMap
     -   cov(m), cor(m) #Should have special DimsMap operations
-
-2.  Remove StaticUnits
-    -   Just have Units{StaticDims{D}} instead
-    -   This is simpler, and units are just intermediate anyway
-
-3.  Add the ability to use StaticDims vectors in DimsMap
-    -   Type-Parameter D is obtained through promotion
-    -   getindex will convert automatically through promotion
-    -   This should accellerate "dot" and "dotinv" methods (may want to write a shortcut eventually)
 
 Backlog:
 
