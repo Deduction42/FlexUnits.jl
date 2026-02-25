@@ -6,7 +6,7 @@ It is currently possible to solve systems of differential equations using Unitfu
 2. It only works with explicit ODE solvers
 3. Linear algebra operations are less efficient
 
-With FlexUnits, arrays with heterogeneous units are supported and linear algebra operations are efficient. Moreover, with a bit of extra work, it is now possible to use units with explict solvers like `Rodas5P`. Integration with DifferentialEquations.jl is still in its early stages, but so far, FlexUnits support for mixed-unit linear algebra has already proven to make itegration relatively easy.
+With FlexUnits, arrays with heterogeneous units are supported and linear algebra operations are efficient. Moreover, with a bit of extra work, it is now possible to use units with explicit solvers like `Rodas5P`. Integration with DifferentialEquations.jl is still in its early stages, but so far, FlexUnits support for mixed-unit linear algebra has already proven to make integration relatively easy.
 
 ### The ODE problem (falling object)
 This example will model a falling object with the drag force equation.
@@ -30,7 +30,7 @@ end
     ρ  :: T
     m  :: T
     g  :: T
-end 
+end
 
 #Convert dynamic units to static units for performance
 function ustatic(state::FallingObjectState{<:Quantity})
@@ -50,7 +50,7 @@ function ustatic(props::FallingObjectProps{<:Quantity})
     )
 end
 
-#Main differntial equation (unit-agnostic)
+#Main differential equation (unit-agnostic)
 function acceleration_raw(u, p, t)
     fd = -sign(u.v)*0.5*p.ρ*u.v^2*p.Cd*p.A
     dv = fd/p.m - p.g
@@ -78,7 +78,7 @@ plt = plot(ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="Tsit5")
 ```
 
 ### Solving with an implicit solver (Rodas5P)
-Unfortunately, implicit ODE solvers are a bit more complicated. The first major challenge is the fact that implicit solvers require differentiation. Automatic differentiation can differntiate *through* quantities, but it can't differentiate *with respect to* quantities. This means that the automatic differentiator needs to differentiate through the function *without units*, and the return a final Jacobian *with units* as shown in the `wrapped_jacboan` function definition below.
+Unfortunately, implicit ODE solvers are a bit more complicated. The first major challenge is the fact that implicit solvers require differentiation. Automatic differentiation can differentiate *through* quantities, but it can't differentiate *with respect to* quantities. This means that the automatic differentiator needs to differentiate through the function *without units*, and the return a final Jacobian *with units* as shown in the `wrapped_jacboan` function definition below.
 
 ``` julia
 using ForwardDiff
@@ -89,14 +89,14 @@ function wrapped_jacobian(f, x, p, t)
     function f_unitless(xn)
         return dstrip.(f(xn.*u_in, p, t))
     end
-    
+
     return ForwardDiff.jacobian(f_unitless, dstrip.(x)) * DimsMap(u_in=u_in, u_out=u_out)
 end
 
 static_jac(u,p,t) = wrapped_jacobian(acceleration_ustatic, u, p, t)
 ```
 
-In addition, we need to define some other parametrs to make `Rodas5P` work. The first is the `tgrad` parameter which differentiates the function with respect to time. Becuase this set of equations does not explicitly use time, the `tgrad` can simply be set to zero with units of `dx/s`, otherwise, we would neeed to use another wrapped gradient.
+In addition, we need to define some other parameters to make `Rodas5P` work. The first is the `tgrad` parameter which differentiates the function with respect to time. Because this set of equations does not explicitly use time, the `tgrad` can simply be set to zero with units of `dx/s`, otherwise, we would need to use another wrapped gradient.
 ```julia
 static_tgrad(u,p,t) = [0.0u"m/s^3", 0.0u"m/s^2"]
 ```
@@ -106,7 +106,7 @@ Finally, in order to properly make use of these customized gradient/Jacobian fun
 mass_matrix = I*1ud""
 ```
 
-This is different from the default identy matrix `I` becasue it is unit-agnositc on the off-diagonals, where the default `I` assumes dimensionless values for all elements and causes unit validation failures when elements of `v` have different unit-dimensions. Using unit-agnostic elements ensures that `mass_matrix*v` always returns `v` regardless of its unit-dimensions. One can check this by verifying that off diagonals produce `?/?`.
+This is different from the default identity matrix `I` because it is unit-agnostic on the off-diagonals, where the default `I` assumes dimensionless values for all elements and causes unit validation failures when elements of `v` have different unit-dimensions. Using unit-agnostic elements ensures that `mass_matrix*v` always returns `v` regardless of its unit-dimensions. One can check this by verifying that off diagonals produce `?/?`.
 ```julia
 julia> mass_matrix[1,2]
 0.0 ?/?
@@ -114,8 +114,8 @@ julia> mass_matrix[1,2]
 
 With this completed, we can now create an appropriate `ODEFunction` object and use the typical steps to solve.
 ```julia
-f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_ustatic, 
-    jac = static_jac, 
+f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_ustatic,
+    jac = static_jac,
     tgrad = static_tgrad,
     mass_matrix = mass_matrix
 )
@@ -143,7 +143,7 @@ julia> uconvert(u"°C", 14u"°F")
 -9.999999999999943 °C
 ```
 
-However, FlexUnits is designed to be registry-agnostic, with simply registry construction so this default Float64 conversion behaviour doesn't have to be the case (which is why it isn't exported by default). A user can simply copy-paste the "UnitRegistry.jl" file and modify one line of code that assigns `const UNITS` to use the transform type `AffineTransform{Rational{Int64}}` instead of `AffineTransform{Float64}`. 
+However, FlexUnits is designed to be registry-agnostic, with simply registry construction so this default Float64 conversion behaviour doesn't have to be the case (which is why it isn't exported by default). A user can simply copy-paste the "UnitRegistry.jl" file and modify one line of code that assigns `const UNITS` to use the transform type `AffineTransform{Rational{Int64}}` instead of `AffineTransform{Float64}`.
 
 ```julia
 using FlexUnits
@@ -153,13 +153,13 @@ module RationalRegistry
     using ..RegistryTools
 
     const UNIT_LOCK = ReentrantLock()
-    const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Rational{Int64}}}}() #Just change the AffineTrnasform type
+    const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Rational{Int64}}}}() #Just change the AffineTransform type
 
     #Fill the UNITS registry with default values
     registry_defaults!(UNITS)
 
-    #Ueses a ReentrantLock() on register_unit to prevent race conditions when multithreading
-    register_unit(p::Pair{String, <:Any}) = lock(UNIT_LOCK) do 
+    #Uses a ReentrantLock() on register_unit to prevent race conditions when multithreading
+    register_unit(p::Pair{String, <:Any}) = lock(UNIT_LOCK) do
         register_unit!(UNITS, p)
     end
 
@@ -179,12 +179,12 @@ module RationalRegistry
     macro q_str(str)
         return esc(qparse_expr(str, UNITS))
     end
-    
+
     #Functions to facilitate knowing types ahead of time, DO NOT EXPORT IF MULTIPLE REGISTRIES ARE USED
     unittype() = RegistryTools.unittype(UNITS)
     dimtype()  = RegistryTools.dimtype(UNITS)
 
-    #Registry is exported but these functions/macros are not (in case user wants their own verison)
+    #Registry is exported but these functions/macros are not (in case user wants their own version)
     #You can import these by invoking `using .Registry`
     export @u_str, @ud_str, uparse, @q_str, qparse, register_unit
 end

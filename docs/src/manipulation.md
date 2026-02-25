@@ -42,9 +42,9 @@ There are also two types of parsing functions:
 1. One that parses units `uparse` such as `uparse("N")`
 2. One that parses quantities `qparse` such as `qparse("5 lbf")`
 
-Parsing functions always produce dynamic units, as they are primarily used to parse free text as units (such as csv spreadsheets); in such cases, producing dynamic units resolves type-stability issues from not knowing the units beforehand. 
+Parsing functions always produce dynamic units, as they are primarily used to parse free text as units (such as csv spreadsheets); in such cases, producing dynamic units resolves type-stability issues from not knowing the units beforehand.
 
-It should also be notced that using string macros and parsing functions will cause units to be displayed exactly how they will be parsed (use `quantity` to prevent eagerly converting to dimensional units).
+It should also be noticed that using string macros and parsing functions will cause units to be displayed exactly how they will be parsed (use `quantity` to prevent eagerly converting to dimensional units).
 ```julia
 julia> quantity(5, u"J/(K*mol)")
 5 J/(K*mol)
@@ -70,7 +70,7 @@ You can register units to a registry using other units or quantities using the `
 ```
 julia> register_unit("bbl" => 0.158987*u"m^3")
 ```
-However, because macros only look up units at compile time, *changing* these values won't update macro outputs in functions that have already been compiled. Becuase of this, we use the `PermanentDict` object to produce errors when overwriting units with different values. You can re-register units with the same values (so that you can re-run scripts) but overwriting them as different values is not allowed.
+However, because macros only look up units at compile time, *changing* these values won't update macro outputs in functions that have already been compiled. Because of this, we use the `PermanentDict` object to produce errors when overwriting units with different values. You can re-register units with the same values (so that you can re-run scripts) but overwriting them as different values is not allowed.
 ```
 julia> register_unit("bbl" => 0.158987*u"m^3")
 FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
@@ -80,7 +80,7 @@ ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different val
 ```
 
 ## Converting units
-FlexUnits mimics Unitful where possible, so the `uconvert` function is used to convert quantities to desired units. However, internally, most math is done using dimensional quantities (i.e. SI units) so that no internal conversion factors are neccessary. Because dimensional quantities are higher-performacne, the `dconvert` function is also used, mainly to verify the dimensions of the input units and remove any scaling/offsets before calculation.
+FlexUnits mimics Unitful where possible, so the `uconvert` function is used to convert quantities to desired units. However, internally, most math is done using dimensional quantities (i.e. SI units) so that no internal conversion factors are necessary. Because dimensional quantities are higher-performance, the `dconvert` function is also used, mainly to verify the dimensions of the input units and remove any scaling/offsets before calculation.
 
 ### Use `uconvert` for displaying results
 The function `uconvert` is most often used for converting results of a calculation (usually SI) to the desired units.
@@ -107,7 +107,6 @@ dconvert(::AbstractUnitLike, ::FlexUnits.QuantUnion)
 The following functions can be used to extract/inspect different attributes of a quantity
 - `ustrip(q::Quantity)` extracts the raw numerical value from a quantity
 - `ustrip(u::AbstractUnitLike, q::Quantity)` returns the value of a quantity in the desired units
-- `dstrip(q::Quantity)` converts a quantitty to dimensional units and returns the numerical value
+- `dstrip(q::Quantity)` converts a quantity to dimensional units and returns the numerical value
 - `unit(q::Quantity)` extracts the unit from a quantity (`Quantity{Float64, <:AbstractDimLike}` will return a dimension)
 - `dimension(q::Quantity)` will return the dimensions of a quantity (if dimensions are static, it returns the static value)
-
