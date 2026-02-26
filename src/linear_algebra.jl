@@ -32,7 +32,6 @@ Base.:*(d1::AbstractDimsMap, d2::MatrixOfDims) = DimsMap(u_in = inv.(d2'*inv.(ui
 
 #Multiplying factored dimensions with vectors of dimensions 
 Base.:*(d1::AbstractDimsMap, d2::VectorOfDims) = uoutput(d1) .* (dotinv1(uinput(d1), d2)*ufactor(d1))
-#Base.:*(d1::Adjoint{<:AbstractDimLike, <:VectorOfDims}, d2::AbstractDimsMap) = ((d1*uoutput(d2))*ufactor(d2)./uinput(d1))'
 
 #Multiplying specific factorizations with single dimensions
 Base.:*(dm::DimsMap{<:AbstractDimLike}, d::AbstractDimLike) = DimsMap(u_in = dm.u_in, u_out = dm.u_out, u_fac = dm.u_fac*d)

@@ -6,7 +6,7 @@ It is currently possible to solve systems of differential equations using Unitfu
 2. It only works with explicit ODE solvers
 3. Linear algebra operations are less efficient
 
-With FlexUnits, arrays with heterogeneous units are supported and linear algebra operations are efficient. Moreover, with a bit of extra work, it is now possible to use units with explicit solvers like `Rodas5P`. Integration with DifferentialEquations.jl is still in its early stages, but so far, FlexUnits support for mixed-unit linear algebra has already proven to make integration relatively easy.
+With FlexUnits, arrays with heterogeneous units are supported and linear algebra operations are efficient. Moreover, with a bit of extra work, it is now possible to use units with implicit solvers like `Rodas5P`. Integration with DifferentialEquations.jl is still in its early stages, but so far, FlexUnits support for mixed-unit linear algebra has already proven to make integration relatively easy.
 
 ### The ODE problem (falling object)
 This example will model a falling object with the drag force equation.
@@ -65,7 +65,7 @@ function acceleration_ustatic(u::AbstractVector{<:Quantity}, p::AbstractVector{<
 end
 ```
 
-### Solving with an explict solver (Tsit5)
+### Solving with an explicit solver (Tsit5)
 Solving this differential equation with an explicit solver like `Tsit5` is relatively straightforward.
 ```julia
 u0 = FallingObjectState(v=0.0u"m/s", h=100u"m")

@@ -67,12 +67,13 @@ end
 ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
 
 """
-    |>(u1::AbstractUnitLike, u2::Union{AbstractUnitLike, QuantUnion})
+    |>(u2::Union{AbstractUnitLike, QuantUnion}, u1::AbstractUnitLike)
 
 Using `q |> qout` is an alias for `uconvert(u, q)`.
 """
+Base.:(|>)(q::QuantUnion, u::AbstractUnitLike) = uconvert(u, q)
 Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
-Base.:(|>)(q::QuantUnion, u::AbstractUnitLike,) = uconvert(u, q)
+
 
 """
     ustrip(u::AbstractUnitLike, q::QuantUnion)
