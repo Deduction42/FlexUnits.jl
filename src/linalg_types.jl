@@ -397,12 +397,12 @@ LinearAlgebra.eigen(mq::LinmapQuant; kwargs...) = qeigen(mq; kwargs...)
 
 function Base.getproperty(fq::FactorQuant{<:Eigen, D}, fn::Symbol) where D
     E = ustrip(fq)
+    u = unit(fq)
 
     if fn === :values
-        return E.values
+        return E.values .* ufactor(u)
     elseif fn === :vectors
-        u = unit(fq)
-        return LinmapQuant(E.vectors, DimsMap(u_fac=sqrt(ufactor(u)), u_in=uinput(u).^0, u_out=uoutput(u)))
+        return LinmapQuant(E.vectors, DimsMap(u_fac=ufactor(u)^0, u_in=uinput(u).^0, u_out=uoutput(u)))
     else
         getfield(fq, fn)
     end
