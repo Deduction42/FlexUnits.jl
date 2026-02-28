@@ -282,6 +282,7 @@ Base.getindex(q::LinmapQuant, ii::IntInd, jj::IntInd) = q.values[ii,jj] * q.dims
 Base.getindex(q::LinmapQuant, ii::IntInd, vj::VecInd) = VectorQuant(q.values[ii,vj], q.dims[ii,vj])
 Base.getindex(q::LinmapQuant, vi::VecInd, jj::IntInd) = VectorQuant(q.values[vi,jj], q.dims[vi,jj])
 Base.getindex(q::LinmapQuant, vi::VecInd, vj::VecInd) = LinmapQuant(q.values[vi,vj], q.dims[vi,vj])
+Base.setindex!(q::LinmapQuant, x, ii::IntInd, jj::IntInd) = setindex!(q.values, ustrip(q.dims[ii,jj], x), ii, jj)
 
 #Convenience constructors through "*"
 Base.:*(m::AbstractMatrix{<:NumUnion}, d::AbstractUnitMap) = LinmapQuant(m, d)
