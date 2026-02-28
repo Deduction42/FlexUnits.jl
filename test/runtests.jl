@@ -876,14 +876,29 @@ end
     @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
     @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
 
+    #Test shortcut methods 
+    MQ = X * UnitMap(u_out=u"", u_in=inv.(U))
+    @test sum(MQ, dims=1) isa LinmapQuant
+    @test all(sum(MQ, dims=1) .≈ sum(X, dims=1).*U')
+    @test minimum(MQ, dims=1) isa LinmapQuant
+    @test all(minimum(MQ, dims=1) .≈ minimum(X, dims=1).*U')
+    @test maximum(MQ, dims=1) isa LinmapQuant
+    @test all(maximum(MQ, dims=1) .≈ maximum(X, dims=1).*U')
+    @test all(sum(MQ', dims=2) .≈ sum(X', dims=2).*U)
+
     #Test cov on raw matrix and LinmapQuant
     S = cov(Q)
     @test all(S .≈ cov(LinmapQuant(Q)))
 
     #Test Cholesky and Eigenvalue decompositions
-    eig = eigen(S)
+    eig = eigen(S) #symmetric eigendecomposition
     @test eig isa FactorQuant
     @test all(S .≈ (eig.vectors * Diagonal(eig.values) * eig.vectors'))
+
+    a = rand(3,3)
+    A = (a'*a) * UnitMap(u_in=U, u_out=U.*u"s")
+    eig = eigen(A) #repeatable eigendecomposition
+    @test all(A^2 .≈ eig.vectors * Diagonal(eig.values.^2) * inv(eig.vectors))
 
     ch  = cholesky(S)
     @test ch isa FactorQuant

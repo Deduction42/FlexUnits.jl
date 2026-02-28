@@ -178,9 +178,10 @@ Base.hcat(m1::LinmapQuant, m2::LinmapQuant) = qhcat(m1, m2)
 Base.hcat(v::VectorQuant, m::LinmapQuant) = qhcat(v, m)
 Base.hcat(m::LinmapQuant, v::VectorQuant) = qhcat(m, v)
 
+#May need to be explicit due to the fact that you can't initialize these in the same way
 for op in (:sum, :maximum, :minimum)
-    @eval function Base.$(op)(q::LinmapQuant{T,D}; dims=nothing, init=unknown(D)) where {T,D} 
-        return LinmapQuant($(op)(dstrip(q), dims=dims, init=init), ureduce(dimension(q), dims=dims, init=init))
+    @eval function Base.$(op)(q::LinmapQuant{T,D}; dims=nothing) where {T,D}
+        return LinmapQuant($(op)(dstrip(q), dims=dims), ureduce(dimension(q), dims=dims, init=unknown(D)))
     end
 end
 
