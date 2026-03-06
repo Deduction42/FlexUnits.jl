@@ -23,25 +23,25 @@ qparse(str::String) = RegistryTools.qparse(str, UNITS)
 
 #String macros are possible now that we are internally referring to UNITS
 macro u_str(str)
-    return esc(suparse_expr(str, UNITS))
+    return suparse_expr(str, UNITS)
 end
 
 macro ud_str(str)
-    return esc(uparse_expr(str, UNITS))
+    return uparse_expr(str, UNITS)
 end
 
 macro q_str(str)
-    return esc(qparse_expr(str, UNITS))
+    return qparse_expr(str, UNITS)
 end
 
 macro U_str(str)
     suexpr = suparse_expr(str, UNITS)
-    return esc(:($typeof($suexpr)))
+    return :($typeof($suexpr))
 end
 
 macro D_str(str)
     suexpr = suparse_expr(str, UNITS)
-    return esc(:($dimtype($suexpr)))
+    return :($dimtype($suexpr))
 end
 
 #Add these functions to facilitate knowing types ahead of time, DO NOT EXPORT IF MULTIPLE REGISTRIES ARE USED
