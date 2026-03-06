@@ -83,6 +83,26 @@ Base.hcat(d1::AbstractDimsMap, d2::MatrixOfDims) = hcat(d1, DimsMap(d2))
 Base.hcat(d1::AbstractDimsMap, d2::VectorOfDims) = hcat(d1, DimsMap(d2))
 Base.hcat(d1::VectorOfDims, d2::AbstractDimsMap) = hcat(DimsMap(d1), d2)
 
+#Unit reduction 
+function ureduce(d::AbstractDimsMap{D}; dims=nothing, init=unknown(D)) where D
+    if dims == 1
+        uo = reduce(equaldims, uoutput(d), init=init)
+        return DimsMap(u_fac=ufactor(d), u_in=uinput(d), u_out=SVector{1}(uo))
+
+    elseif dims == 2
+        ui = reduce(equaldims, uinput(d), init=init)
+        return DimsMap(u_fac=ufactor(d), u_in=SVector{1}(ui), u_out=uoutput(d))
+
+    elseif isnothing(dims)
+        uo = reduce(equaldims, uoutput(d), init=init)
+        ui = reduce(equaldims, uinput(d), init=init)
+        return uo/ui*ufactor(d)
+    
+    else
+        throw(ArgumentError("Argument 'dims' can only take one of the following values: {1, 2, nothing}"))
+    end
+end
+
 #======================================================================================================================
 Define "q" linear algebra methods that are distinct from LinearAlgebra and don't cause dispatch/ambiguitiy issues
 ======================================================================================================================#
@@ -157,6 +177,14 @@ end
 Base.hcat(m1::LinmapQuant, m2::LinmapQuant) = qhcat(m1, m2)
 Base.hcat(v::VectorQuant, m::LinmapQuant) = qhcat(v, m)
 Base.hcat(m::LinmapQuant, v::VectorQuant) = qhcat(m, v)
+
+#May need to be explicit due to the fact that you can't initialize these in the same way
+for op in (:sum, :maximum, :minimum)
+    @eval function Base.$(op)(q::LinmapQuant{T,D}; dims=nothing) where {T,D}
+        return LinmapQuant($(op)(dstrip(q), dims=dims), ureduce(dimension(q), dims=dims, init=unknown(D)))
+    end
+end
+
 
 #======================================================================================================================
 Specify Base methods combingin AbstractMatrix/AbstractVector subtypes with LinmapQuant and VectorQuant

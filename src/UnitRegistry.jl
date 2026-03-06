@@ -3,6 +3,8 @@ module UnitRegistry
 
 #RegistryTools contains all you need to build a registry in one simple import
 using ..RegistryTools
+import ..RegistryTools.dimtype 
+import ..RegistryTools.unittype
 
 const UNIT_LOCK = ReentrantLock()
 const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}()
@@ -21,23 +23,33 @@ qparse(str::String) = RegistryTools.qparse(str, UNITS)
 
 #String macros are possible now that we are internally referring to UNITS
 macro u_str(str)
-    return esc(suparse_expr(str, UNITS))
+    return suparse_expr(str, UNITS)
 end
 
 macro ud_str(str)
-    return esc(uparse_expr(str, UNITS))
+    return uparse_expr(str, UNITS)
 end
 
 macro q_str(str)
-    return esc(qparse_expr(str, UNITS))
+    return qparse_expr(str, UNITS)
+end
+
+macro U_str(str)
+    suexpr = suparse_expr(str, UNITS)
+    return :($typeof($suexpr))
+end
+
+macro D_str(str)
+    suexpr = suparse_expr(str, UNITS)
+    return :($dimtype($suexpr))
 end
 
 #Add these functions to facilitate knowing types ahead of time, DO NOT EXPORT IF MULTIPLE REGISTRIES ARE USED
-unittype() = RegistryTools.unittype(UNITS)
-dimtype()  = RegistryTools.dimtype(UNITS)
+unittype() = RegistryTools.regunittype(UNITS)
+dimtype()  = RegistryTools.regdimtype(UNITS)
 
 #Registry is exported but these functions/macros are not (in case user wants their own verison)
 #You can import these by invoking `using .Registry`
-export @u_str, @ud_str, uparse, @q_str, qparse, register_unit
+export @u_str, @ud_str, @q_str, @U_str, @D_str, uparse, qparse, register_unit
 
 end

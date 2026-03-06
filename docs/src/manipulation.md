@@ -24,8 +24,8 @@ julia> distance1 + distance2 + distance3
 ```
 
 ### String macro and parsing behaviour
-There are two types of string macros:
-1. One that produces staticly-typed units `@u_str` such as `1u"m/s"`
+There are two types of string macros for units:
+1. One that produces statically-typed units `@u_str` such as `1u"m/s"`
 2. One that produces dynamic units `@ud_str` such as `1ud"m/s"`
 
 Most of the time users will want to use the static unit macro inside code, because the Julia compiler can reason about the units with constants, resulting in better runtime because unit checking is all done at compile-time. One can check the types produced by these macros.
@@ -63,6 +63,38 @@ julia> 5u"J/(K*mol)"
 
 julia> 5*u"J*(mol K)^(-1)"
 5.0 (m² kg)/(s² K mol)
+```
+
+### String macros for static unit types
+This package also exports type macros allowing users to easily constrain and dispatch on static dimension types. The two macros are
+1. `@D_str` which produces the static dimension type of the string expression
+2. `@U_str` which produces the static unit type of the string expression 
+Generally the use of `@D_str` is preferred as this will produce more performant objects. Lets consider an example where these macros could be used. Consider a process where flow and pressure are measured. One could create an object that stipulates these measurement types.
+```julia 
+struct MyProcess
+    flow :: Quantity{Float64, U"kg/hr"}
+    pressure :: Quantity{Float64, U"kPa"}
+end
+
+julia> MyProcess(quantity(5, u"lb/hr"), quantity(6, u"kPa"))
+MyProcess(5.0 lb/hr, 6.0 kPa)
+```
+
+Using incompatible dimensions will desirably produce an error
+```julia
+julia> MyProcess(quantity(5, u"ft^3/hr"), quantity(6, u"kPa"))
+ERROR: ConversionError: Cannot convert unit 'm³/s' to target unit 'kg/s'. Consider multiplying 'kg/s' by 'm³/kg' or similar.
+```
+
+Similarly, one can also use this pattern for dimensions as well, that will automatically convert fields into high-performance static dimension quantities
+```julia
+struct MySiProcess
+    flow :: Quantity{Float64, D"kg/hr"}
+    pressure :: Quantity{Float64, D"kPa"}
+end
+
+julia> MySiProcess(quantity(5, u"lb/hr"), quantity(6, u"kPa"))
+MySiProcess(0.0006299888888888889 kg/s, 6000.0 kg/(m s²))
 ```
 
 ### Registering units

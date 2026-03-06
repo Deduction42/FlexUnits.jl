@@ -17,7 +17,7 @@ julia> uconvert(u"K", u"°C")(0)
 ```
 """
 function uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) 
-    dimension(u_target) == dimension(u_current) || throw(ConversionError(u_target, u_current))
+    compatible_dims(u_target, u_current) || throw(ConversionError(u_target, u_current))
     return inv(todims(u_target)) ∘ todims(u_current)
 end
 uconvert(ft::AbstractUnitTransform, x) = ft(x)
@@ -37,7 +37,7 @@ julia> uconvert(u"K", 25u"°C")
 ```
 """
 function uconvert(u::AbstractUnitLike, q::QuantUnion)
-    dimension(u) == dimension(q) || throw(ConversionError(u, unit(q)))
+    compatible_dims(u, q) || throw(ConversionError(u, unit(q)))
     ft = uconvert(u, unit(q))
     newval = ft(ustrip(q))
     return Quantity{typeof(newval), typeof(u)}(newval, u)
@@ -107,6 +107,9 @@ Convert quantity `q` into a unit of the same magnitude
 """
 Units(q::QuantUnion{<:Number, <:AbstractUnitLike}) = Units(dims=dimension(q), todims=todims(unit(q))*ustrip(q), symbol=DEFAULT_USYMBOL)
 Units(u::Units) = u
+
+compatible_dims(d_target::AbstractDimLike, d_current::AbstractDimLike) = (d_target == d_current || isunknown(d_current))
+compatible_dims(target, current) = compatible_dims(dimension(target), dimension(current))
 
 #=================================================================================================
 Conversion and Promotion

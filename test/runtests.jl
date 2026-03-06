@@ -57,6 +57,9 @@ const AT = AffineTransform{Float64}
     @test udynamic(u"m/s") === ud"m/s"
     @test udynamic(dimension(u"m/s")) === dimension(ud"m/s")
 
+    @test U"kg" == typeof(u"kg")
+    @test D"kg" == StaticDims{DEFAULT_DIM_TYPE(mass=1)}
+
     @test FlexUnits.remove_offset(u"°C") == u"K"
     @test FlexUnits.constructorof(typeof(Dimensions())) == Dimensions
     @test FlexUnits.constructorof(typeof(u"m")) == Units
@@ -876,15 +879,32 @@ end
     @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
     @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
 
+    #Test shortcut methods 
+    MQ = X * UnitMap(u_out=u"", u_in=inv.(U))
+    @test sum(MQ, dims=1) isa LinmapQuant
+    @test all(sum(MQ, dims=1) .≈ sum(X, dims=1).*U')
+    @test minimum(MQ, dims=1) isa LinmapQuant
+    @test all(minimum(MQ, dims=1) .≈ minimum(X, dims=1).*U')
+    @test maximum(MQ, dims=1) isa LinmapQuant
+    @test all(maximum(MQ, dims=1) .≈ maximum(X, dims=1).*U')
+    @test all(sum(MQ', dims=2) .≈ sum(X', dims=2).*U)
+
     #Test cov on raw matrix and LinmapQuant
     S = cov(Q)
     @test all(S .≈ cov(LinmapQuant(Q)))
 
-    #Test Cholesky and Eigenvalue decompositions
-    eig = eigen(S)
+    #Test Eigenvalue decompsoition
+    R = dconvert.(u"", cor(Q)) #PCA must use correlation matrix
+    eig = eigen(R) #symmetric eigendecomposition
     @test eig isa FactorQuant
-    @test all(S .≈ (eig.vectors * Diagonal(eig.values) * eig.vectors'))
+    @test all(R .≈ (eig.vectors * Diagonal(eig.values) * eig.vectors'))
 
+    a = rand(3,3)
+    A = (a'*a) * UnitMap(u_in=U, u_out=U.*u"s")
+    eig = eigen(A) #repeatable eigendecomposition
+    @test all(A^2 .≈ eig.vectors * Diagonal(eig.values.^2) * inv(eig.vectors))
+
+    #Test cholesky decomposition
     ch  = cholesky(S)
     @test ch isa FactorQuant
     @test all(S .≈ (ch.L * ch.U))

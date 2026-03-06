@@ -282,6 +282,7 @@ Base.getindex(q::LinmapQuant, ii::IntInd, jj::IntInd) = q.values[ii,jj] * q.dims
 Base.getindex(q::LinmapQuant, ii::IntInd, vj::VecInd) = VectorQuant(q.values[ii,vj], q.dims[ii,vj])
 Base.getindex(q::LinmapQuant, vi::VecInd, jj::IntInd) = VectorQuant(q.values[vi,jj], q.dims[vi,jj])
 Base.getindex(q::LinmapQuant, vi::VecInd, vj::VecInd) = LinmapQuant(q.values[vi,vj], q.dims[vi,vj])
+Base.setindex!(q::LinmapQuant, x, ii::IntInd, jj::IntInd) = setindex!(q.values, ustrip(q.dims[ii,jj], x), ii, jj)
 
 #Convenience constructors through "*"
 Base.:*(m::AbstractMatrix{<:NumUnion}, d::AbstractUnitMap) = LinmapQuant(m, d)
@@ -390,19 +391,19 @@ end
 function qeigen(mq::AbstractMatrix; kwargs...)
     md = LinmapQuant(mq)
     mdims = dimension(md)
-    isrepeatable(mdims) || issymmetric(mdims) || throw(ArgumentError("Units must be either repeatable (output similar to input) or symmetric"))
+    assert_repeatable(mdims)
     return FactorQuant(eigen(dstrip(md); kwargs...), mdims)
 end
 LinearAlgebra.eigen(mq::LinmapQuant; kwargs...) = qeigen(mq; kwargs...)
 
 function Base.getproperty(fq::FactorQuant{<:Eigen, D}, fn::Symbol) where D
     E = ustrip(fq)
+    u = unit(fq)
 
     if fn === :values
-        return E.values
+        return E.values .* ufactor(u)
     elseif fn === :vectors
-        u = unit(fq)
-        return LinmapQuant(E.vectors, DimsMap(u_fac=sqrt(ufactor(u)), u_in=uinput(u).^0, u_out=uoutput(u)))
+        return LinmapQuant(E.vectors, DimsMap(u_fac=ufactor(u)^0, u_in=uinput(u).^0, u_out=uoutput(u)))
     else
         getfield(fq, fn)
     end

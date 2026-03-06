@@ -5,10 +5,9 @@ import ..AbstractUnitLike, ..AbstractUnits,  ..AbstractDimensions, ..AbstractUni
 import ..Units, ..Dimensions, ..AffineTransform, ..QuantUnion, ..Quantity, ..FixRat32, ..FixRat64
 import ..uscale, ..uoffset, ..todims, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype, ..ustatic
 
-export 
-    AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64,
-    Units, Dimensions, AffineTransform, QuantUnion, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol,
-    PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, suparse_expr, dimtype
+export AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64 
+export Units, Dimensions, AffineTransform, QuantUnion, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol
+export PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, suparse_expr, dimtype
 
 const UnitOrQuantity = Union{AbstractUnitLike, QuantUnion}
 const PARSE_CASES = Union{Expr,Symbol,Real,Nothing}
@@ -70,18 +69,18 @@ function register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{String,<:Unit
 end
 
 """
-    unittype(reg::AbstractDict{Symbol,<:AbstractUnitLike})
+    regunittype(reg::AbstractDict{Symbol,<:AbstractUnitLike})
 
 Returns the unit type of a registry
 """
-unittype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = U
+regunittype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = U
 
 """
-    dimtype(reg::AbstractDict{Symbol,<:AbstractUnitLike})
+    regdimtype(reg::AbstractDict{Symbol,<:AbstractUnitLike})
 
 Returns the dimension type of a registry
 """
-dimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
+regdimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 
 function _register_unit!(reg::AbstractDict{Symbol,Units{D,T}}, p::Pair{Symbol,<:AbstractUnitLike}) where {D,T<:AbstractUnitTransform}
     (k,v) = p
