@@ -57,6 +57,9 @@ const AT = AffineTransform{Float64}
     @test udynamic(u"m/s") === ud"m/s"
     @test udynamic(dimension(u"m/s")) === dimension(ud"m/s")
 
+    @test U"kg" == typeof(u"kg")
+    @test D"kg" == StaticDims{DEFAULT_DIM_TYPE(mass=1)}
+
     @test FlexUnits.remove_offset(u"°C") == u"K"
     @test FlexUnits.constructorof(typeof(Dimensions())) == Dimensions
     @test FlexUnits.constructorof(typeof(u"m")) == Units
@@ -890,16 +893,18 @@ end
     S = cov(Q)
     @test all(S .≈ cov(LinmapQuant(Q)))
 
-    #Test Cholesky and Eigenvalue decompositions
-    eig = eigen(S) #symmetric eigendecomposition
+    #Test Eigenvalue decompsoition
+    R = dconvert.(u"", cor(Q)) #PCA must use correlation matrix
+    eig = eigen(R) #symmetric eigendecomposition
     @test eig isa FactorQuant
-    @test all(S .≈ (eig.vectors * Diagonal(eig.values) * eig.vectors'))
+    @test all(R .≈ (eig.vectors * Diagonal(eig.values) * eig.vectors'))
 
     a = rand(3,3)
     A = (a'*a) * UnitMap(u_in=U, u_out=U.*u"s")
     eig = eigen(A) #repeatable eigendecomposition
     @test all(A^2 .≈ eig.vectors * Diagonal(eig.values.^2) * inv(eig.vectors))
 
+    #Test cholesky decomposition
     ch  = cholesky(S)
     @test ch isa FactorQuant
     @test all(S .≈ (ch.L * ch.U))

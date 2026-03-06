@@ -218,19 +218,25 @@ julia> schol.L
 Eigenvalue decomposition can also be performed by calling `eigen`. If this matrix type isn't supported, you can also attempt to use `FlexUnits.qeigen`. You can access the fields `.vectors` and `.values` as normal.
 
 ```julia
-seig = eigen(S)
+u = [u"K", u"km", u"mol", u"kg", u"A"]
+M = rand(5,5)*UnitMap(u_in=u, u_out=u.*u"1/s")
+seig = eigen(M)
 
 julia> seig.vectors
-3×3 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
-           0.986733 m            -0.162351 m            3.90927e-5 m
- -0.162351 (m² kg)/s³   -0.986733 (m² kg)/s³  0.000268851 (m² kg)/s³
- 5.07415e-6 kg/(m s²)  0.000271631 kg/(m s²)           1.0 kg/(m s²)
+5×5 LinmapQuant{ComplexF64, Dimensions{FixRat32}, Matrix{ComplexF64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
+      -0.00122657+0.0im       -0.000191314+0.0im        -0.000494347-0.000450996im        -0.000494347+0.000450996im        0.00143302+0.0im 
+     -0.999998+0.0im m/K       0.999999+0.0im m/K                0.999999-0.0im m/K                0.999999+0.0im m/K      0.999996+0.0im m/K        
+ 0.000560408+0.0im mol/K  -0.00062311+0.0im mol/K  -0.000234875+0.000915166im mol/K  -0.000234875-0.000915166im mol/K  0.00120702+0.0im mol/K
+   0.00122029+0.0im kg/K   -0.00081637+0.0im kg/K    -0.00021252-0.000408571im kg/K    -0.00021252+0.000408571im kg/K   0.00163129+0.0im kg/K        
+   0.000258627+0.0im A/K    0.000799008+0.0im A/K     -0.00022051-0.000530854im A/K     -0.00022051+0.000530854im A/K    0.00108907+0.0im A/K  
 
 julia> seig.values
-3-element Vector{Float64}:
- 0.0031610089377130763
- 0.35943390882999254
- 1.1537410911880754e7
+5-element Vector{Quantity{ComplexF64, Dimensions{FixRat32}}}:
+                -0.6883246714965388 + 0.0im 1/s
+               -0.37475621618175714 + 0.0im 1/s
+ 0.07284728574878586 - 0.4867587301566229im 1/s
+ 0.07284728574878586 + 0.4867587301566229im 1/s
+                 2.1764535737470068 + 0.0im 1/s
 ```
 
 ### Optimizations and pitfalls

@@ -391,7 +391,7 @@ end
 function qeigen(mq::AbstractMatrix; kwargs...)
     md = LinmapQuant(mq)
     mdims = dimension(md)
-    isrepeatable(mdims) || issymmetric(mdims) || throw(ArgumentError("Units must be either repeatable (output similar to input) or symmetric"))
+    assert_repeatable(mdims)
     return FactorQuant(eigen(dstrip(md); kwargs...), mdims)
 end
 LinearAlgebra.eigen(mq::LinmapQuant; kwargs...) = qeigen(mq; kwargs...)
