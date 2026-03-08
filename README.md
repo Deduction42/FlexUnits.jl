@@ -5,7 +5,7 @@
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://deduction42.github.io/FlexUnits.jl/dev)
 
 # FlexUnits.jl
-FlexUnits.jl combines the low-level static performance of Unitful.jl and the type-stable high-level performance of DynamicQuantities.jl in one elegant package. Supporting both static and dynamic modes allows for promotion rules to select the most performant mode based on the context allowing for performance improvements where both techniques are required. This functionality also enables FlexUnits to support high-performance mixed-unit linear algebra. With these new functionalities, FlexUnits can be used with many more Julia packages than Unitful and DynamicQuantities including Statistics.jl and DifferentialEquations.jl (refer to examples in the documentation).
+FlexUnits.jl combines the low-level static performance of Unitful.jl and the type-stable high-level performance of DynamicQuantities.jl in one elegant package. Supporting both static and dynamic modes allows for promotion rules to select the most performant mode based on the context. Dual-mode functionality also enables FlexUnits to achieve high-performance in mixed-unit linear algebra. Moreover, with these new functionalities, FlexUnits can be used with many more Julia packages than Unitful and DynamicQuantities including Statistics.jl and DifferentialEquations.jl (refer to examples in the documentation).
 
 Through four major design decisions, FlexUnits seamlessly blends concepts from Unitful and DynamicQuantities to achieve the best of both worlds, and surpasses both packages in terms of linear algebra capability:
 
