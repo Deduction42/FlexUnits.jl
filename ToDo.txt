@@ -1,26 +1,11 @@
 Changelog:
-1.  Added LinmapQuant shortcut methods for "sum, maximum, minimum"
-2.  More semantically correct eigenvalue decomposition
-3.  `uconvert(u, q)` now works for quantities with unknown dimensions
-4.  Added type macros
-4.  Improved documentation
-
 
 Current Tasks:
 1.  Look at UnitfulLinearAlgebra, and UnitfulTensors for possible implementation improvements 
-2.  Remove "eigen" for symmetric matrices
-    -   This doesn't solve the eigenproblem
-    -   If using PCA, on different units you generally want to use it on the correlation matrix anyway
-3.  Support other functions for AbstractDimsMap and LinmapQuant like
-    -   ureduce(f, A::AbstractArrayOrBroadcasted; dims=:, init=_InitialValue())
-        -   Essentially checks if all values are the same, implement for same-units functions
-            -   https://github.com/JuliaLang/julia/blob/5fe89b8ddc166260bfcd4a195b305aff0ccad686/base/reduce.jl#L444-L478
-        -   These methods should call ureduce on a DimsMap
-            -   maximum, minimum, sum, mean, std, var
-        -   Prod should also have a shortcut implementation 
-            -   dims=1, u_input = inv(prod(uoutput(d)) .* ufactor(d)^n) .* uinput(d).^n    
-            -   mean(m, dims=n) #Should overload to "sum" for AbstractDimsMap
-    -   cov(m), cor(m) #Should have special DimsMap operations
+2.  Add "Statistics" extension
+    -   mean(m), std(m), var(m), cov(m), cor(m) #Should have special DimsMap operations
+3.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
+4.  still need to implement vcat
 
 Backlog:
 

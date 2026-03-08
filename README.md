@@ -5,7 +5,7 @@
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://deduction42.github.io/FlexUnits.jl/dev)
 
 # FlexUnits.jl
-FlexUnits.jl is a rewrite of Unitful.jl that maintains similar performance to Unitful.jl when units can be statically inferred, but leverages techniques in DynamicQuantities.jl to eliminate many of Unitful's performance pitfalls when units are uninferrable. In addition, FlexUnits provides shortcut unit-inference methods for mixed-unit linear algebra operations; this allows us to use existing high-performance linear algebra operations on raw numbers with separate, low-overhead unit inference. With this new functionality, FlexUnits can be used with many more Julia packages including Statistics and DifferentialEquations.jl (refer to examples in the documentation).
+FlexUnits.jl combines the low-level static performance of Unitful.jl and the type-stable high-level performance of DynamicQuantities.jl in one elegant package. Supporting both static and dynamic modes allows for promotion rules to select the most performant mode based on the context allowing for performance improvements where both techniques are required. This functionality also enables FlexUnits to support high-performance mixed-unit linear algebra. With these new functionalities, FlexUnits can be used with many more Julia packages than Unitful and DynamicQuantities including Statistics.jl and DifferentialEquations.jl (refer to examples in the documentation).
 
 Through four major design decisions, FlexUnits seamlessly blends concepts from Unitful and DynamicQuantities to achieve the best of both worlds, and surpasses both packages in terms of linear algebra capability:
 
@@ -15,7 +15,7 @@ Through four major design decisions, FlexUnits seamlessly blends concepts from U
 
 3. The use of a sentinel value to denote an `unknown` dimension. This helps functionality in many cases where `zero(T)` is called (such as initializing matrices, or indexing sparse or diagonal matrices) where we want to produce a zero value with unknown units dynamic units. This value sets all dimensions to the exponent's `typemax`, and is displayed as `?/?`. This alone has been able to make certain functions like `mean` and `cov` work out of the box, where other unit packages failed.
 
-4. Intorudcing a special array type called a `LinmapQuant`, a special matrix type of `Quantity` that is intended for linear algebra operations. Not all matrices of `Quantity` can be multiplied; if not carefully structured, multiplication will fail when summing results, as these must have the same dimension. `Quantity` matrices that can be multiplied are quantified linear mappings (hence `LinmapQuant`) that map input dimensions to output dimensions. Enforcing this structure results in a dimension-matrix that can be summarized by two vectors and a scalar, resulting in unit inference techniques that are much simpler than the linear algebra itself. For example, matrix multiplication is an O(n³) operation, but its unit inference is only O(n); matrix inversion is also O(n³) but its unit inference is only O(1). Many two-argument linear algebra functions guarantee a `LinmapQuant` result, so these matrices tend to propagate, resulting in better performance if even one matrix is a `LinmapQuant` (broadcasting is an exception).
+4. Introducing a special array type called a `LinmapQuant`, a special matrix type of `Quantity` that is intended for linear algebra operations. `Quantity` matrices that can be multiplied are *linear mappings* (hence `LinmapQuant`) that map input dimensions to output dimensions. Enforcing this structure results in a dimension-matrix that can be summarized by two vectors and a scalar, resulting in unit inference techniques that are much simpler than the linear algebra itself. For example, matrix multiplication is an O(n³) operation, but its unit inference is only O(n); matrix inversion is also O(n³) but its unit inference is only O(1). Many two-argument linear algebra functions guarantee a `LinmapQuant` result, so these matrices tend to propagate, resulting in better performance if even one matrix is a `LinmapQuant` (broadcasting is an exception).
 
 In addition to these design changes, there are a number of other notable differences.
 
@@ -26,8 +26,8 @@ In addition to these design changes, there are a number of other notable differe
 4. Operations on affine units do not produce errors (due to automatic conversion to dimensions). **This the correct action for the vast majority of cases, but care must be taken to make sure that affine differences such as ***temperature differences*** are in absolute units.** For example, try running following commands:
     - ```(5u"°C" - 2u"°C") == 3u"°C"```
     - ```(5u"°C" - 2u"°C") == 3u"K"```
-5. FlexUnits registries are somewhat simpler; much like Unitful, a registry is a module that contains units. However, because dynamic units are type-stable, they can all be stored efficiently inside a single dictionary. A FlexUnits registry exports string macros which, at parse time, looks up the units inside its own internal dictionary and substitutes them into the string expression.
-6. `Quantity` in FlexUnits.jl does not subtype to `Number` in order to support more value types (such as a Distribution or Array)
+5. FlexUnits registries are somewhat simpler than Unitful. A FlexUnits registry is a dictionary of units living inside a module that exports string macros and dynamic parsing functions. String macros can produce static units while string parsing functions produce dynamic units (as the code cannot infer such static units at parse time).
+6. Much like Unitful, `Quantity` subtypes to number, but an additional type `FlexQuant` can support any value type (such as a Distribution or Array). The function `quantity(q, u)` selects the appropriate output type based on the arguments.
 
 ## General Use
 
@@ -45,7 +45,7 @@ julia> R = 8.314*u
 julia> v_satp = R*(25u"°C")/(101.3u"kPa") #Temperature is auto-converted to Kelvin
 0.024470079960513324 m³/mol
 ```
-The string macro `@u_str` produces static units, while `@ud_str` produces dynamic units; generally users want static units from string macros as promotion rules will usually promote to dynamic when dynamic units are more performant. All mathematical operations auto-convert to SI units, including multiplication of units. Use the `quantity` function to bypass this behaviour
+The string macro `@u_str` produces static units, while `@ud_str` produces dynamic units; generally users want static units from string macros as promotion rules will usually promote to dynamic when dynamic units are more performant. All mathematical operations auto-convert to SI units, including multiplication of units. Use the `quantity` function to bypass this behaviour.
 ```julia
 julia> 212u"°F"
 373.15000000000003 K
@@ -59,7 +59,7 @@ julia> 212ud"°F"
 julia> quantity(212, ud"°F")
 212 °F
 ```
-The uconvert function will always result in the desired units. Note that much like DynamicQuantities, you can use the `|>` operator for unit conversions.
+The `uconvert` function will always result in the desired units. Note that much like DynamicQuantities, you can use the `|>` operator for unit conversions.
 ```julia
 julia> uconvert(u"°F", 373.15*u"K")
 212.0 °F
