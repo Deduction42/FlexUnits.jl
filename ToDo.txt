@@ -1,20 +1,21 @@
 Changelog:
 
 Current Tasks:
-1.  Look at UnitfulLinearAlgebra, and UnitfulTensors for possible implementation improvements 
+1.  Look at UnitfulLinearAlgebra, and UnitfulTensors for possible implementation improvements
 2.  Add "Statistics" extension
     -   mean(m), std(m), var(m), cov(m), cor(m) #Should have special DimsMap operations
 3.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
 4.  still need to implement vcat
 
 Backlog:
-
 1.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
 2.  Add interactive unit functionality
     -   unit_index() (produces dict that lists all units for every dimension)
-    -   simplify(q::Quantity{T,AbstractDimLike}) (lists all standard SI units, performs a greedy search to make units as terse as possible)
-        e.g. simplify(1.0u"(m^2*kg)/s^3") = 1 kW
+    -   simplify(q::Quantity{T,AbstractDimLike}) 
+        -   Lists all standard SI units, performs a greedy search to make units as terse as possible
+            e.g. simplify(1.0u"(m^2*kg)/s^3") = 1 kW
+        -   Only works if all unit powers are integers
 
 
 #Example of #3 is shown below

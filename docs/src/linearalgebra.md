@@ -161,7 +161,7 @@ julia> LinmapQuant(X, UnitMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_o
 Some matrix factorizations are also enabled by FlexUnits. Currently, the supported factorization functions include `lu`, `cholesky`, and `eigen`. Certain factorization have constraints on the pattern of units supported.
 - `lu` has no constraints
 - `cholesky` only supports symmetric unit mappings
-- `eigen` only supports symmetric and repeatable unit mappings (where repeatable means the output units are proportional to input units)
+- `eigen` only supports repeatable unit mappings (where repeatable means the output units are proportional to input units)
 
 Let us consider an example with a covariance matrix, which is compatible with all of the factorizations mentioned above.
 ```julia
