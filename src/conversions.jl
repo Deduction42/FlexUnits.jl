@@ -37,7 +37,6 @@ julia> uconvert(u"K", 25u"°C")
 ```
 """
 function uconvert(u::AbstractUnitLike, q::QuantUnion)
-    compatible_dims(u, q) || throw(ConversionError(u, unit(q)))
     ft = uconvert(u, unit(q))
     newval = ft(ustrip(q))
     return Quantity{typeof(newval), typeof(u)}(newval, u)
@@ -78,19 +77,18 @@ Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
 """
     ustrip(u::AbstractUnitLike, q::QuantUnion)
 
-Converts quantity `q` to units `q`` equivalent and removes units
+Converts quantity `q` to units `u` equivalent and removes units
 """
 ustrip(u::AbstractUnitLike, q::QuantUnion) = uconvert(u, unit(q))(ustrip(q))
 ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
 
 """
-    dstrip(q::QuantUnion)
+    dstrip(u::AbstractUnitLike, q::QuantUnion)
 
-Converts quantity `q` to its raw dimensional equivalent and removes units
+Converts quantity `q` to its raw dimensional equivalent and verifies if its dimensions are consistent with `u`
+Leaving out the unit argument `u` skips the dimensioonal verification process
 """
-dstrip(q::QuantUnion) = todims(q)(ustrip(q))
-ustrip_base(q::QuantUnion) = dstrip(q)
-
+dstrip(u::AbstractUnitLike, q::QuantUnion) = ustrip(dimension(u), q)
 
 """
     ustrip_dimensionless(q::QuantUnion)

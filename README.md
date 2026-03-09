@@ -5,23 +5,23 @@
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://deduction42.github.io/FlexUnits.jl/dev)
 
 # FlexUnits.jl
-FlexUnits.jl combines the low-level static performance of Unitful.jl and the type-stable high-level performance of DynamicQuantities.jl in one elegant package. Supporting both static and dynamic modes allows for promotion rules to select the most performant mode based on the context allowing for performance improvements where both techniques are required. This functionality also enables FlexUnits to support high-performance mixed-unit linear algebra. With these new functionalities, FlexUnits can be used with many more Julia packages than Unitful and DynamicQuantities including Statistics.jl and DifferentialEquations.jl (refer to examples in the documentation).
+FlexUnits.jl is the Julia units package for demanding users who want the low-level static performance of Unitful.jl, the type-stable high-level dynamic performance of DynamicQuantities.jl and intelligent selection on which mode should be applied. If that's not enough, FlexUnits also has tooling that enables high-performance linear algebra on mixed-unit matrices and has mixed-unit compatibility for Julia packages like Statistics.jl and DifferentialEquations.jl (something that other unit packages struggle with). 
 
-Through four major design decisions, FlexUnits seamlessly blends concepts from Unitful and DynamicQuantities to achieve the best of both worlds, and surpasses both packages in terms of linear algebra capability:
+This functionality is enabled through four major design decisions:
 
 1. Promotion rules that convert Unitful-like `StaticDims` into DynamicQuantities-like `Dimensions` when units are mismatched or uninferrable. Operations on `Dimensions` are slower than `StaticDims` because dimension operations need to be performed at runtime; however, dynamic dimension ops are type-stable, compilable, and still much faster than dynamic dispatch that Unitful falls back to.
 
-2. Quantities with units are converted to quantities with dimensions (i.e. SI units) before any calculation is performed. This greatly simplifies many calculation operations. When applied to `StaticDims`, this greatly reduces over-specialization, because there is only one unit for every dimension. For example, velocity is always in "m/s", temperature is always in "K", and pressure is always in "Pa"="kg/(m s²)". This decision tends to result in FlexUnits exhibiting better performance than Unitful in cases where variables are re-assigned during iteration (a common pattern in performance-sensitive code), but this comes at the cost of slightly slower unit conversions (which is more common in less performance-sensitive code).
+2. Quantities with units are converted to quantities with dimensions (i.e. SI units) before any calculation is performed. This greatly simplifies many calculation operations. When applied to `StaticDims`, this greatly reduces over-specialization, because there is only one unit for every dimension. For example, velocity is always in "m/s", temperature is always in "K", and pressure is always in "Pa"="kg/(m s²)". This can lead to faster compile times and greater type-stability when variables are re-assigned.
 
 3. The use of a sentinel value to denote an `unknown` dimension. This helps functionality in many cases where `zero(T)` is called (such as initializing matrices, or indexing sparse or diagonal matrices) where we want to produce a zero value with unknown units dynamic units. This value sets all dimensions to the exponent's `typemax`, and is displayed as `?/?`. This alone has been able to make certain functions like `mean` and `cov` work out of the box, where other unit packages failed.
 
 4. Introducing a special array type called a `LinmapQuant`, a special matrix type of `Quantity` that is intended for linear algebra operations. `Quantity` matrices that can be multiplied are *linear mappings* (hence `LinmapQuant`) that map input dimensions to output dimensions. Enforcing this structure results in a dimension-matrix that can be summarized by two vectors and a scalar, resulting in unit inference techniques that are much simpler than the linear algebra itself. For example, matrix multiplication is an O(n³) operation, but its unit inference is only O(n); matrix inversion is also O(n³) but its unit inference is only O(1). Many two-argument linear algebra functions guarantee a `LinmapQuant` result, so these matrices tend to propagate, resulting in better performance if even one matrix is a `LinmapQuant` (broadcasting is an exception).
 
-In addition to these design changes, there are a number of other notable differences.
+In addition to these design changes, there are a number of other notable differences from Unitful.
 
 #### Notable differences between FlexUnits.jl and Unitful.jl
 1. The string macro `u_str` and parsing function `uparse` are not automatically exported (allowing users to export their own registries)
-2. Units are not dynamically tracked through calculations, ony dimensions; calculation results are displayed as though `upreferred` was called on them.
+2. Units are not tracked through calculations, ony dimensions; calculation results are displayed as though `upreferred` was called on them.
 3. The function `upreferred` is replaced by `ubase` which converts to raw dimensions (like SI)
 4. Operations on affine units do not produce errors (due to automatic conversion to dimensions). **This the correct action for the vast majority of cases, but care must be taken to make sure that affine differences such as ***temperature differences*** are in absolute units.** For example, try running following commands:
     - ```(5u"°C" - 2u"°C") == 3u"°C"```

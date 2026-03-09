@@ -2,12 +2,10 @@ Changelog:
 
 Current Tasks:
 1.  Look at UnitfulLinearAlgebra, and UnitfulTensors for possible implementation improvements
-2.  Add "real" to LinmapQuant
-3.  Add dstrip(u"...", q)
-4.  Add "Statistics" extension
+2.  Add "Statistics" extension
     -   mean(m), std(m), var(m), cov(m), cor(m) #Should have special DimsMap operations
-5.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
-6.  still need to implement vcat
+3.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
+4.  still need to implement vcat
 
 Backlog:
 1.  Add plot recipes
