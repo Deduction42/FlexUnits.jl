@@ -759,8 +759,8 @@ end
     #Static unit type conversions 
     @test convert(Quantity{Int64, typeof(u"m/s")}, 1u"m/s") isa Quantity{Int64, typeof(u"m/s")}
     @test convert(Quantity{Int64, typeof(dimension(u"m/s"))}, 1u"m/s") isa Quantity{Int64, typeof(dimension(u"m/s"))}
-    @test_throws ConversionError convert(Quantity{Float64, typeof(u"m/s")}, 1u"kg/hr")
-    @test_throws ConversionError convert(Quantity{Int64, typeof(dimension(u"m/s"))}, 1u"kg/hr")
+    @test_throws DimensionError convert(Quantity{Float64, U"m/s"}, 1u"kg/hr")
+    @test_throws ConversionError convert(Quantity{Int64, D"m/s"}, 1u"kg/hr")
 
     # Test that regular type promotion applies:
     q = Quantity(2, d)

@@ -145,7 +145,7 @@ Basic SI dimensions:
     luminosity::P = FixedRational(0)
     amount::P = FixedRational(0)
 end
-Dimensions(args...) = Dimensions{FixRat32}(args...)
+Dimensions(args::Real...) = Dimensions{FixRat32}(args...)
 
 function unit_symbols(::Type{<:Dimensions})
     return Dimensions{Symbol}(
