@@ -280,9 +280,6 @@ end
 Base.:^(q::QuantUnion, p::Real) = with_ubase(Base.Fix2(^, p), q)
 Base.:^(q::QuantUnion, p::Integer) = with_ubase(Base.Fix2(^, p), q)
 Base.:^(q::QuantUnion, p::Rational) = with_ubase(Base.Fix2(^, p), q)
-#Base.:^(q::QuantUnion, p::Real) = with_ubase(Base.Fix2(^, p), q)
-#Base.:^(q::MathUnion, p::Quantity)  = q^dimensionless(p)
-#Base.:^(q::QuantUnion, p::Quantity) = with_ubase(Base.Fix2(^, dimensionless(p)), q)
 
 @inline Base.literal_pow(::typeof(^), q::QuantUnion, ::Val{p}) where {p} = with_ubase(x->Base.literal_pow(^, x, Val(dimensionless(p))), q)
 
@@ -298,17 +295,10 @@ Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), todims=T())
 Base.one(::Type{<:QuantUnion{T}}) where T = one(T) #unitless
 Base.rtoldefault(::Type{<:QuantUnion{T}}) where T = Base.rtoldefault(T)
 
-#Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:StaticDims} = quantity(one(T), D()) #One with units
-#Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:AbstractDimensions} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
-#Base.oneunit(::Type{<:QuantUnion{T,D}}) where {T,D<:Units} = throw(ArgumentError("Cannot inver value of a dynamic dimension from its type"))
-
 for f in (:zero, :typemin, :typemax, :oneunit, :eps)
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractDimensions} = quantity($f(T), unknown(D))
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:StaticDims} = quantity($f(T), D())
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractUnits} = throw(ArgumentError("This operation only supports dimensional quantities"))
-    #@eval Base.$f(::Type{<:QuantUnion{T, <:MirrorDims{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
-    #@eval Base.$f(::Type{<:QuantUnion{T, <:MirrorUnion{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
-    #@eval Base.$f(::Type{<:QuantUnion{T, <:AbstractUnits{D}}}) where {T, D<:AbstractDimensions} = $f(quant_type(T){T,D})
 end
 
 #Comparison functions (returns a bool)
