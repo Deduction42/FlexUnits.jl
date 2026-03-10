@@ -58,10 +58,6 @@ function acceleration_dynamic(u::AbstractVector{<:Quantity}, p::AbstractVector{<
     return FallingObjectState(du)
 end
 
-# Required additional methods from DiffEqBase's Unitful Extension =============================================
-OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.UNITLESS_ABS2(q::Quantity) = abs2(dstrip(q))
-OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.value(q::Quantity) = dstrip(q)
-# =============================================================================================================
 
 
 # =============================================================================================================

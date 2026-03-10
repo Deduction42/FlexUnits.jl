@@ -145,7 +145,7 @@ Basic SI dimensions:
     luminosity::P = FixedRational(0)
     amount::P = FixedRational(0)
 end
-Dimensions(args...) = Dimensions{FixRat32}(args...)
+Dimensions(args::Real...) = Dimensions{FixRat32}(args...)
 
 function unit_symbols(::Type{<:Dimensions})
     return Dimensions{Symbol}(
@@ -177,6 +177,8 @@ struct StaticDims{D} <: AbstractDimLike
 end 
 StaticDims(D::AbstractDimensions) = StaticDims{D}()
 StaticDims{D}(d::AbstractDimensions) where D = (D == d) ? StaticDims{D} : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
+(::Type{D})(d::StaticDims) where {D<:AbstractDimensions} = D(dimval(d))
+
 dimval(::Type{<:StaticDims{D}}) where D = D
 dimval(d::StaticDims) = dimval(typeof(d))
 udynamic(u::StaticDims{D}) where D = D
@@ -289,6 +291,7 @@ ustatic(u::Units) = Units(ustatic(dimension(u)), todims(u), usymbol(u))
 dimtype(::Type{U}) where {D,U<:Units{D}} = dimtype(D)
 dimvaltype(::Type{U}) where {D,U<:Units{D}} = dimvaltype(D)
 dimval(u::Units) = dimval(dimension(u))
+dimval(::Type{<:Units{StaticDims{D}}}) where D = D
 unit(x::NumUnion) = Units(NoDims(), NoTransform(), DEFAULT_USYMBOL)
 
 #=================================================================================================

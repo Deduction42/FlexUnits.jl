@@ -1,11 +1,14 @@
 Changelog:
+1.  Better conversions between static/dynamic dimensions and units
+2.  Added support for `dstrip(u"...", q)`
+3.  Added suport for `real(q::LinmapQuant)`
 
 Current Tasks:
-1.  Look at UnitfulLinearAlgebra, and UnitfulTensors for possible implementation improvements
-2.  Add "Statistics" extension
+1.  Add "Statistics" extension
     -   mean(m), std(m), var(m), cov(m), cor(m) #Should have special DimsMap operations
-3.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
-4.  still need to implement vcat
+2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
+3.  still need to implement vcat
+4.  Look at UnitfulLinearAlgebra, and UnitfulTensors for possible implementation improvements
 
 Backlog:
 1.  Add plot recipes
