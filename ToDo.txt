@@ -1,17 +1,11 @@
 Changelog:
 
 Current Tasks:
-1.  (before new release) Ensure conversions between StaticDims, AbstractDimensions, and Units are all supported 
-    -   This will clean up automatic tag validation for TagValue{D<:AbstractDimLike} or TagSeries{D<:AbstractDimLike}
-    -   AbstractDimensions => StaticDims asserts equality
-    -   StaticDims => D::AbstractDims is automatic 
-    -   D0::AbstractDimensions => Units{D,T} converts D0=>D, and uses T(NoTransform)
-    -   Units{D0,T} => AbstractDimensions converts D0=>D, and asserts isidentity(T)
-2.  Add "Statistics" extension
+1.  Add "Statistics" extension
     -   mean(m), std(m), var(m), cov(m), cor(m) #Should have special DimsMap operations
-3.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
-4.  still need to implement vcat
-5.  Look at UnitfulLinearAlgebra, and UnitfulTensors for possible implementation improvements
+2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
+3.  still need to implement vcat
+4.  Look at UnitfulLinearAlgebra, and UnitfulTensors for possible implementation improvements
 
 Backlog:
 1.  Add plot recipes

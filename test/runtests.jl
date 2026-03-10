@@ -784,6 +784,21 @@ end
     # Test that adding different dimension subtypes still works
     @test 1*Dimensions{Int64}(length=1) + 1ud"m" == 2ud"m"
 
+    # Tests on conversions between static/dynamic units and dimensions
+    @test convert(D"m/s", u"m/s") == dimension(u"m/s")
+    @test convert(Dimensions{FixRat32}, u"m/s") == dimval(u"m/s")
+    @test convert(U"m/s", u"km/hr")  === u"km/hr"
+    @test convert(U"m/s", ud"km/hr") === u"km/hr"
+    @test convert(U"m/s", dimension(ud"km/hr")) == u"m/s"
+    @test convert(Units{Dimensions{FixRat32}, AffineTransform{Float64}}, u"km/hr") == ud"km/hr"
+
+    @test_throws DimensionError convert(U"kg/s", u"m/s")
+    @test_throws DimensionError convert(D"m/s", u"kg/s")
+    @test_throws DimensionError convert(U"kg/s", ud"m/s")
+    @test_throws DimensionError convert(D"m/s", ud"kg/s")
+    @test_throws NotDimensionError convert(D"m/s", u"km/hr")
+    @test_throws NotDimensionError convert(Dimensions{FixRat32}, u"km/hr")
+    
     # Automatic conversions via constructor:
     for T in [Float16, Float32, Float64, BigFloat], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
         D = Dimensions{R}

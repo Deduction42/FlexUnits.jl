@@ -122,7 +122,7 @@ this can yield potentially unintuitive results like 2°C/1°C = 1.00364763815429
 =================================================================================================#
 Base.convert(::Type{AffineTransform{T}}, t::AffineTransform) where T = AffineTransform{T}(t.scale, t.offset)
 Base.convert(::Type{AffineTransform{T}}, t::NoTransform) where T = AffineTransform{T}(1,0)
-Base.convert(::Type{NoTransform}, t::AffineTransform) = is_identity(t) ? NoTransform() : throw(ArgumentError("Cannot convert non-identity AffineTransform to NoTrnasform"))
+Base.convert(::Type{NoTransform}, t::AffineTransform) = is_identity(t) ? NoTransform() : throw(ArgumentError("Cannot convert non-identity AffineTransform to NoTransform"))
 
 #Converting dynamic Quantity types ====================================================
 Base.convert(::Type{Quantity{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
@@ -157,8 +157,10 @@ Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa 
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = D(dimension(assert_dimension(u)))
 Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)
 Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D, dimval(d))
+
+Base.convert(::Type{D}, u::AbstractUnitLike) where {D<:StaticDims} = convert(D, dimension(assert_dimension(u)))
 Base.convert(::Type{D}, d::AbstractDimensions) where {D<:StaticDims} = equaldims(D(), d)
-Base.convert(::Type{StaticDims{d1}}, d2::StaticDims) where d1 = dimval(d2) == dimval(d1) ? StaticDims{d1} : throw(ConversionError(d1, dimval(d2)))
+Base.convert(::Type{D}, d::StaticDims) where {D<:StaticDims} = equaldims(D(), d)
 Base.convert(::Type{D}, d::NoDims) where {D<:StaticDims} = assert_dimensionless(D())
 
 # Converting transform types ===============================================
