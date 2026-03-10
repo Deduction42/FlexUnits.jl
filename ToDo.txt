@@ -1,4 +1,7 @@
 Changelog:
+1.  Better conversions between static/dynamic dimensions and units
+2.  Added support for `dstrip(u"...", q)`
+3.  Added suport for `real(q::LinmapQuant)`
 
 Current Tasks:
 1.  Add "Statistics" extension
