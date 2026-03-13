@@ -7,13 +7,21 @@
 # FlexUnits.jl
 FlexUnits.jl is the Julia units package for demanding users who want the low-level static performance of Unitful.jl, the type-stable high-level dynamic performance of DynamicQuantities.jl and intelligent selection on which mode should be applied. In addition, FlexUnits also enables high-performance linear algebra on mixed-unit matrices and extends mixed-unit compatibility for Julia packages like Statistics.jl and DifferentialEquations.jl (something that other unit packages struggle with). 
 
-This functionality is enabled through four major design decisions:
+To get started, simply run
+```
+import Pkg; Pkg.add("FlexUnits")
+using FlexUnits, .UnitRegistry
+```
+Note that the unit registry isn't exported by default (this allows users to create their own custom registries). 
+
+## Design Philosophy
+This packages is built around the following major design decisions:
 
 1. Promotion rules that convert Unitful-like `StaticDims` into DynamicQuantities-like `Dimensions` when units are mismatched or uninferrable. Operations on `Dimensions` are slower than `StaticDims` because dimension operations need to be performed at runtime; however, dynamic dimension ops are type-stable, compilable, and still much faster than dynamic dispatch that Unitful falls back to.
 
-2. Quantities with units are converted to quantities with dimensions (i.e. SI units) before any calculation is performed. This greatly simplifies many calculation operations. When applied to `StaticDims`, this greatly reduces over-specialization, because there is only one unit for every dimension. For example, velocity is always in "m/s", temperature is always in "K", and pressure is always in "Pa"="kg/(m s²)". This can lead to faster compile times and greater type-stability when variables are re-assigned.
+2. Quantities with units are converted to quantities with dimensions (i.e. SI units) before any calculation is performed which greatly simplifies many calculation operations. When applied to `StaticDims`, this also reduces over-specialization because there is only one unit for every dimension. For example, velocity is always in "m/s", temperature is always in "K", and pressure is always in "Pa"="kg/(m s²)". This can lead to faster compile times and greater type-stability when variables are re-assigned.
 
-3. The use of a sentinel value to denote an `unknown` dimension. This helps functionality in many cases where `zero(T)` is called (such as initializing matrices, or indexing sparse or diagonal matrices) where we want to produce a zero value with unknown units dynamic units. This value sets all dimensions to the exponent's `typemax`, and is displayed as `?/?`. This alone has been able to make certain functions like `mean` and `cov` work out of the box, where other unit packages failed.
+3. The use of a sentinel value to denote an `unknown` dimension. This enhances compatibility for Julia codbases where `zero(T)` is called without foreknowledge of units (such as initializing mixed-unit matrices, or indexing sparse/diagonal matrices). This special value sets all dimensions to the exponent's `typemax`, and is displayed as `?/?`. This alone has been able to make certain functions like `mean` and `cov` work out of the box, where other unit packages failed.
 
 4. Introducing a special array type called a `LinmapQuant`, a special matrix type of `Quantity` that is intended for linear algebra operations. `Quantity` matrices that can be multiplied are *linear mappings* (hence `LinmapQuant`) that map input dimensions to output dimensions. Enforcing this structure results in a dimension-matrix that can be summarized by two vectors and a scalar, resulting in unit inference techniques that are much simpler than the linear algebra itself. For example, matrix multiplication is an O(n³) operation, but its unit inference is only O(n); matrix inversion is also O(n³) but its unit inference is only O(1). Many two-argument linear algebra functions guarantee a `LinmapQuant` result, so these matrices tend to propagate, resulting in better performance if even one matrix is a `LinmapQuant` (broadcasting is an exception).
 
