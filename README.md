@@ -12,7 +12,7 @@ To get started, simply run
 import Pkg; Pkg.add("FlexUnits")
 using FlexUnits, .UnitRegistry
 ```
-Note that the unit registry isn't exported by default, it must be manually imported (this allows users to create their own custom registries and import them instead). 
+Note that the unit registry isn't exported by default; it must be manually imported (this allows users to create their own custom registries and import them instead). 
 
 ## Design Philosophy
 This packages is built around the following major design decisions:
