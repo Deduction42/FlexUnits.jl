@@ -1,19 +1,24 @@
 Changelog:
-1.  Better conversions between static/dynamic dimensions and units
-2.  Added support for `dstrip(u"...", q)`
-3.  Added suport for `real(q::LinmapQuant)`
 
 Current Tasks:
 1.  Add "Statistics" extension
     -   mean(m), std(m), var(m), cov(m), cor(m) #Should have special DimsMap operations
+        -   cor(m) should produce a regular numeric matrix (no dimensions at all)
 2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
 3.  still need to implement vcat
-4.  Look at UnitfulLinearAlgebra, and UnitfulTensors for possible implementation improvements
+4.  Move factorizations to LinearAlgebra extension
+    -   implement a unitful "cholupdate!" and "choldowndate!"
+    -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
+    -   Add performance benchmarks
 
 Backlog:
-1.  Add plot recipes
+1.  Add support for logarithmic quantities 
+    -   Should be able to convert to log units using (dB(), log(), log10(), log2())
+    -   Multiplying a number with Units{D, LogTransform} should produce a LogQuant{T, D}
+    -   Additional registry is not required here, just a new transform and new kind of quantity
+2.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
-2.  Add interactive unit functionality
+3.  Add interactive unit functionality
     -   unit_index() (produces dict that lists all units for every dimension)
     -   simplify(q::Quantity{T,AbstractDimLike}) 
         -   Lists all standard SI units, performs a greedy search to make units as terse as possible
