@@ -10,12 +10,28 @@ Current Tasks:
     -   implement a unitful "cholupdate!" and "choldowndate!"
     -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
     -   Add performance benchmarks
+5.  Condider refacotring "todims" to "tobase"
+    -   Base units is a ubiquitous technical term
+    -   This is a better description and matches what "ubase" does
 
 Backlog:
 1.  Add support for logarithmic quantities 
     -   Should be able to convert to log units using (dB(), log(), log10(), log2())
-    -   Multiplying a number with Units{D, LogTransform} should produce a LogQuant{T, D}
+    -   Multiplying a number with Units{D, ExpAffine} should produce a LogQuant{T, D}
     -   Additional registry is not required here, just a new transform and new kind of quantity
+    -   A logarithmic unit is a Unit{D, ExpAffine}
+        -   (t<:ExpAffine)(x) = exp(x*t.scale + t.offset)
+            -   this is because "todims" is how you transform the value to a base units
+            -   log(t::ExpAffine) = AffineTransform(scale=t.scale, offset=t.offset)
+            -   exp(t::AffineTransform) = ExpAffine(scale=t.scale, offset=t.offset)
+    -   LogQuant{T, U} can have SI units or Affine Transforms (no ExpAffine)
+        -   uconvert(u::Unit{D,ExpAffine}, u::Unit{D,ExpAffine}) produces an AffineTransform
+        -   uconvert(u::Unit{D,ExpAffine}, q::LogQuant) also produces a LogQuant{T, U{D,T<:AffineTransform}}
+            -   This just applies an affine transform on the value of q
+            -   This is done by using log(todims(u))
+        -   uconvert(u::Unit{D,ExpAffine}, q::Quantity) produces a LogQuant{T, U{D,T<:AffineTransform}}
+            -   This chains an inv(ExpAffine) transform onto a log(q)
+
 2.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
 3.  Add interactive unit functionality
