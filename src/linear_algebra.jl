@@ -97,7 +97,7 @@ function ureduce(d::AbstractDimsMap{D}; dims=:, init=unknown(D)) where D
 
     elseif dims == 2
         ui = assert_allequal(uinput(d), init=init)
-        return DimsMap(u_fac=f(ufactor(d)), u_in=SVector{1}(ui), u_out=uoutput(d))
+        return DimsMap(u_fac=ufactor(d), u_in=SVector{1}(ui), u_out=uoutput(d))
 
     elseif dims === (:)
         uo = assert_allequal(uoutput(d), init=init)

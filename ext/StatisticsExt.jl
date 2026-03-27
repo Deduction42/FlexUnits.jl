@@ -1,7 +1,7 @@
 module StatisticsExt 
     import Statistics 
     import FlexUnits
-    import FlexUnits: LinmapQuant, dstrip, dimension, ureduce
+    import FlexUnits: LinmapQuant, Quantity, dstrip, dimension, ureduce
     import FlexUnits: DimsMap, uinput, uoutput, ufactor
 
     #===========================================================================================================================================
@@ -26,16 +26,16 @@ module StatisticsExt
     Statistics.var(q::LinmapQuant; corrected=true, mean=nothing, dims=:) = _usquared(_with_mean_kwarg(Statistics.var, q; corrected=corrected, mean=mean, dims=dims))
     Statistics.varm(q::LinmapQuant, mean; corrected=true, dims=:) = _usquared(_with_mean_arg(Statistics.varm, q, mean; corrected=corrected, dims=dims))
 
-    function Statistics.cov(q::LimapQuant; corrected=true, dims=1)
+    function Statistics.cov(q::LinmapQuant; corrected=true, dims=1)
         d = _dimcov(q, dims=dims)
         x = Statistics.cov(dstrip(q), corrected=corrected, dims=dims)
-        return LinmapQuant(d, x)
+        return LinmapQuant(x, d)
     end
 
-    function Statistics.cov(q1::LimapQuant, q2::LimapQuant; corrected=true, dims=1)
+    function Statistics.cov(q1::LinmapQuant, q2::LinmapQuant; corrected=true, dims=1)
         d = _dimcov(q1, q2, dims=dims)
         x = Statistics.cov(dstrip(q1), dstrip(q2), corrected=corrected, dims=dims)
-        return LinmapQuant(d, x)
+        return LinmapQuant(x, d)
     end 
 
     #Correlation matrices are always dimensionless, so simply dstrip them
@@ -82,7 +82,7 @@ module StatisticsExt
     _usquared(q::LinmapQuant) = LinmapQuant(dstrip(q), _usquared(dimension(q)))
     
     #Checks dimension of vector to see if it matches the ureduce results
-    function _dstrip(d::DimsMap, v::AbstractMatrix{<:AbstractQuantity})
+    function _dstrip(d::DimsMap, v::AbstractMatrix{<:Quantity})
         size(v) == size(d) || throw(DimensionMismatch("Quantity matrix had size $(size(v)) but dimensions had size $(size(d)), sizes must be the same"))
         return dstrip.(d, v)
     end
