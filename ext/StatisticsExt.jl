@@ -39,8 +39,8 @@ module StatisticsExt
     end 
 
     #Correlation matrices are always dimensionless, so simply dstrip them
-    Statistics.cor(q::LinmapQuant; corrected=true, dims=1) = Statistics.cor(dstrip(q), corrected=corrected, dims=dims)
-    Statistics.cor(q1::LinmapQuant, q2::LinmapQuant; corrected=true, dims=1) = Statistics.cor(dstrip(q1), dstrip(q2), corrected=corrected, dims=dims)
+    Statistics.cor(q::LinmapQuant; dims=1) = Statistics.cor(dstrip(q), dims=dims)
+    Statistics.cor(q1::LinmapQuant, q2::LinmapQuant; dims=1) = Statistics.cor(dstrip(q1), dstrip(q2), dims=dims)
 
 
     #===========================================================================================================================================

@@ -102,7 +102,7 @@ function ureduce(d::AbstractDimsMap{D}; dims=:, init=unknown(D)) where D
     elseif dims === (:)
         uo = assert_allequal(uoutput(d), init=init)
         ui = assert_allequal(uinput(d), init=init)
-        return uo/ui*ufactor(d)
+        return ufactor(d)*uo/ui
     
     else
         throw(ArgumentError("Argument 'dims' can only take one of the following values: {1, 2, nothing}"))
@@ -206,8 +206,12 @@ Base.hcat(m::LinmapQuant, v::VectorQuant) = qhcat(m, v)
 
 #May need to be explicit due to the fact that you can't initialize these in the same way
 for op in (:sum, :maximum, :minimum)
-    @eval function Base.$(op)(q::LinmapQuant{T,D}; dims=nothing) where {T,D}
-        return LinmapQuant($(op)(dstrip(q), dims=dims), ureduce(dimension(q), dims=dims, init=unknown(D)))
+    @eval function Base.$(op)(q::LinmapQuant{T,D}; dims=:, init=unknown(D)) where {T,D}
+        if dims === (:) #This returns a scalar
+            return $(op)(dstrip(q), dims=dims) * ureduce(dimension(q), dims=dims, init=init)
+        else #This returns a LinmapQuant
+            return LinmapQuant($(op)(dstrip(q), dims=dims), ureduce(dimension(q), dims=dims, init=init))
+        end
     end
 end
 
