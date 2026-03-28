@@ -83,23 +83,48 @@ Base.hcat(d1::AbstractDimsMap, d2::MatrixOfDims) = hcat(d1, DimsMap(d2))
 Base.hcat(d1::AbstractDimsMap, d2::VectorOfDims) = hcat(d1, DimsMap(d2))
 Base.hcat(d1::VectorOfDims, d2::AbstractDimsMap) = hcat(DimsMap(d1), d2)
 
+#Asserts all values are equal and returns the results
+assert_allequal(f, m::AbstractArray{D}; init=unknown(D)) where D<:AbstractDimLike = mapreduce(f, equaldims, m, init=init)
+assert_allequal(f, v::AbstractArray{D}; init=nothing) where D<:StaticDims = f(D())
+assert_allequal(v::AbstractArray{D}; init=unknown(D)) where D<:AbstractDimensions = reduce(equaldims, v, init=init)
+assert_allequal(v::AbstractArray{D}; init=nothing) where D<:StaticDims = D()
+
 #Unit reduction 
-function ureduce(d::AbstractDimsMap{D}; dims=nothing, init=unknown(D)) where D
+function ureduce(d::AbstractDimsMap{D}; dims=:, init=unknown(D)) where D
     if dims == 1
-        uo = reduce(equaldims, uoutput(d), init=init)
+        uo = assert_allequal(uoutput(d), init=init)
         return DimsMap(u_fac=ufactor(d), u_in=uinput(d), u_out=SVector{1}(uo))
 
     elseif dims == 2
-        ui = reduce(equaldims, uinput(d), init=init)
+        ui = assert_allequal(uinput(d), init=init)
         return DimsMap(u_fac=ufactor(d), u_in=SVector{1}(ui), u_out=uoutput(d))
 
-    elseif isnothing(dims)
-        uo = reduce(equaldims, uoutput(d), init=init)
-        ui = reduce(equaldims, uinput(d), init=init)
-        return uo/ui*ufactor(d)
+    elseif dims === (:)
+        uo = assert_allequal(uoutput(d), init=init)
+        ui = assert_allequal(uinput(d), init=init)
+        return ufactor(d)*uo/ui
     
     else
-        throw(ArgumentError("Argument 'dims' can only take one of the following values: {1, 2, nothing}"))
+        throw(ArgumentError("Argument 'dims' can only take one of the following values: {1, 2, :"))
+    end
+end
+
+function ureduce(f, d::AbstractDimsMap{D}; dims=:, init=unknown(D)) where D
+    if dims == 1 
+        urow = SVector{1}(ufactor(d)*assert_allequal(uoutput(d), init=init))
+        return DimsMap(f.(urow ./ uinput(d)'))
+    
+    elseif dims == 2 
+        ucol = SVector{1}(ufactor(d)/assert_allequal(uinput(d), init=init))
+        return DimsMap(f.(uoutput(d) .* ucol'))
+
+    elseif dims === (:)
+        uo = assert_allequal(uoutput(d), init=init)
+        ui = assert_allequal(uinput(d), init=init)
+        return f(ufactor(d)*uo/ui)
+
+    else
+        throw(ArgumentError("Argument 'dims' can only take one of the following values: {1, 2, :}"))
     end
 end
 
@@ -181,8 +206,12 @@ Base.hcat(m::LinmapQuant, v::VectorQuant) = qhcat(m, v)
 
 #May need to be explicit due to the fact that you can't initialize these in the same way
 for op in (:sum, :maximum, :minimum)
-    @eval function Base.$(op)(q::LinmapQuant{T,D}; dims=nothing) where {T,D}
-        return LinmapQuant($(op)(dstrip(q), dims=dims), ureduce(dimension(q), dims=dims, init=unknown(D)))
+    @eval function Base.$(op)(q::LinmapQuant{T,D}; dims=:, init=unknown(D)) where {T,D}
+        if dims === (:) #This returns a scalar
+            return $(op)(dstrip(q), dims=dims) * ureduce(dimension(q), dims=dims, init=init)
+        else #This returns a LinmapQuant
+            return LinmapQuant($(op)(dstrip(q), dims=dims), ureduce(dimension(q), dims=dims, init=init))
+        end
     end
 end
 
@@ -301,6 +330,7 @@ dotinv2(d1::AbstractVector, d2::AbstractVector) = _sumfunc(dotinv2, d1, d2)
 
 #Dot products after applying a two-argument function
 _sumfunc(f, v1::AbstractVector, v2::AbstractVector) = sum(f(x1, x2) for (x1, x2) in strictzip(v1, v2))
+_sumfunc(f, v1::AbstractVector{StaticDims{d1}}, v2::AbstractVector{StaticDims{d2}}) where {d1, d2} = f(d1, d2)
 
-
-
+isdimensionless(v::AbstractVector{AbstractDimensions}) = all(isdimensionless, v)
+isdimensionless(v::AbstractVector{StaticDims{d}}) where d = isdimensionless(d)
