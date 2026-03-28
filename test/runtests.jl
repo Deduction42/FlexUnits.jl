@@ -1,6 +1,6 @@
 #============================================================================================================================
 Run these commands at startup to see coverage
-julia --startup-file=no --depwarn=yes --threads=auto -e 'using Coverage; clean_folder(\"src\"); clean_folder(\"test\"); clean_folder(\"ext\") '
+julia --startup-file=no --depwarn=yes --threads=auto -e 'using Coverage; clean_folder("src"); clean_folder("test"); clean_folder("ext") '
 julia --startup-file=no --depwarn=yes --threads=auto --code-coverage=user --project=. -e 'using Pkg; Pkg.test(coverage=true)'
 julia --startup-file=no --depwarn=yes --threads=auto coverage.jl
 
@@ -22,6 +22,8 @@ using Aqua
 using LinearAlgebra
 using Statistics
 using StaticArrays
+
+import Random
 import Unitful
 
 const DEFAULT_UNIT_TYPE = typeof(first(values(UnitRegistry.UNITS)))
@@ -854,10 +856,7 @@ end
     @test x2[2] ≈ (2000ud"g")
 end
 
-@testset "Stats and Linear Algebra" begin
-    using StaticArrays
-    import Random
-    using Statistics
+@testset "Linear Algebra" begin
 
     #Nonlinear map
     @kwdef struct PumpInput{T} <: FieldVector{2,T}
@@ -883,30 +882,7 @@ end
     U = [ud"kg/s", ud"kW", ud"Hz"]
     X = (rand(30,3)*rand(3,3) .+ 0.001.*randn(30,3))
     Q = ubase.(X .* U')
-
-    #Test summations, stats and some linear algebra
-    @test all(sum(Q, dims=1) .≈ sum(X, dims=1).*U')
-    @test all(mean(Q, dims=1) .≈ mean(X, dims=1).*U')
-    @test all(var(Q, dims=1) .≈ var(X, dims=1).*(U.^2)')
-    @test all(cov(Q) .≈ cov(X).*U.*U')
-    @test all((cor(Q) .+ 0u"") .≈ cor(X))
-    @test sum(Q*inv.(U)) ≈ sum(X)
-    @test all(minimum(Q, dims=1, init=typemax(eltype(Q))) .≈ minimum(X, dims=1).*U')
-    @test all(maximum(Q, dims=1, init=typemin(eltype(Q))) .≈ maximum(X, dims=1).*U')
-
-    #Test shortcut methods 
-    MQ = X * UnitMap(u_out=u"", u_in=inv.(U))
-    @test sum(MQ, dims=1) isa LinmapQuant
-    @test all(sum(MQ, dims=1) .≈ sum(X, dims=1).*U')
-    @test minimum(MQ, dims=1) isa LinmapQuant
-    @test all(minimum(MQ, dims=1) .≈ minimum(X, dims=1).*U')
-    @test maximum(MQ, dims=1) isa LinmapQuant
-    @test all(maximum(MQ, dims=1) .≈ maximum(X, dims=1).*U')
-    @test all(sum(MQ', dims=2) .≈ sum(X', dims=2).*U)
-
-    #Test cov on raw matrix and LinmapQuant
     S = cov(Q)
-    @test all(S .≈ cov(LinmapQuant(Q)))
 
     #Test Eigenvalue decompsoition
     R = dconvert.(u"", cor(Q)) #PCA must use correlation matrix
@@ -1158,6 +1134,71 @@ end
     @test dstrip(exp(mraw)) ≈ exp(dstrip(mrep))
     @test dstrip(log(mraw)) ≈ log(dstrip(mrep))
 end
+
+@testset "Statistics" begin 
+    Random.seed!(1234)
+
+    #Generate a correlated test set
+    UX  = [ud"kg/s", ud"kW", ud"Hz"]
+    UY  = [ud"kPa", ud"K"]
+    X   = (rand(30,3)*rand(3,3) .+ 0.001.*randn(30,3))
+    Y   = X*rand(3,2) .+ 0.001.*randn(30,2)
+    QX  = X * UnitMap(u_in=inv.(UX), u_out=u"")
+    QY  = Y * UnitMap(u_in=inv.(UY), u_out=u"")
+
+    #Test summations, stats and some linear algebra
+    @test sum(QX, dims=1) isa LinmapQuant
+    @test all(sum(QX, dims=1) .≈ sum(X, dims=1).*UX')
+    @test all(sum(QX', dims=2) .≈ sum(X', dims=2).*UX)
+
+    @test mean(QX, dims=1) isa LinmapQuant
+    @test all(mean(QX, dims=1) .≈ mean(X, dims=1).*UX')
+    @test all(mean(QX', dims=2) .≈ mean(X', dims=2).*UX)
+    @test mean(abs2, QX, dims=1) isa LinmapQuant
+    @test all(mean(abs2, QX, dims=1) .≈ mean(abs2, X, dims=1).*(UX.^2)')
+
+    @test median(QX, dims=1) isa LinmapQuant
+    @test all(median(QX, dims=1) .≈ median(X, dims=1).*UX')
+    @test all(median(QX', dims=2) .≈ median(X', dims=2).*UX)
+
+    @test var(QX, dims=1) isa LinmapQuant
+    @test all(var(QX, dims=1) .≈ var(X, dims=1).*(UX.^2)')
+    @test all(varm(QX, mean(QX, dims=1), dims=1) .≈ varm(X, mean(X, dims=1), dims=1).*(UX.^2)')
+    @test all(var(QX, mean=mean(QX, dims=1), dims=1) .≈ var(X, mean=mean(X, dims=1), dims=1).*(UX.^2)')
+    
+
+    @test std(QX, dims=1) isa LinmapQuant
+    @test all(std(QX, dims=1) .≈ std(X, dims=1).*UX')
+    @test all(stdm(QX, mean(QX, dims=1), dims=1) .≈ stdm(X, mean(X, dims=1), dims=1).*UX')
+    @test all(std(QX, mean=mean(QX, dims=1), dims=1) .≈ std(X, mean=mean(X, dims=1), dims=1).*UX')
+
+    @test cov(QX) isa LinmapQuant
+    @test all(cov(QX) .≈ cov(X).*UX.*UX')
+    @test cov(QX, QY) isa LinmapQuant
+    @test all(cov(QX, QY) .≈ cov(X,Y).*(UX.*UY'))
+    @test all(cov(QX', dims=2) .≈ cov(QX, dims=1))
+    @test_throws ArgumentError cov(QX, dims=3)
+
+    @test cor(QX) isa Matrix{<:Real}
+    @test all(cor(QX) .≈ cor(X))
+    @test cor(QX, QY) isa Matrix{<:Real}
+    @test all(cor(QX, QY) .≈ cor(QX, QY))
+
+    @test sum(X * UnitMap(u_in=u"", u_out=u"")) ≈ sum(X)
+    @test all(minimum(QX, dims=1, init=typemax(eltype(QX))) .≈ minimum(X, dims=1).*UX')
+    @test all(maximum(QX, dims=1, init=typemin(eltype(QX))) .≈ maximum(X, dims=1).*UX')
+
+    #Test shortcut methods 
+    MQ = X * UnitMap(u_out=u"", u_in=inv.(UX))
+    @test sum(MQ, dims=1) isa LinmapQuant
+    @test all(sum(MQ, dims=1) .≈ sum(X, dims=1).*UX')
+    @test minimum(MQ, dims=1) isa LinmapQuant
+    @test all(minimum(MQ, dims=1) .≈ minimum(X, dims=1).*UX')
+    @test maximum(MQ, dims=1) isa LinmapQuant
+    @test all(maximum(MQ, dims=1) .≈ maximum(X, dims=1).*UX')
+    @test all(sum(MQ', dims=2) .≈ sum(X', dims=2).*UX)
+end
+
 
 @testset "Additional tests of FixedRational" begin
     #Tests were basically copied from DynamicQuantities, since FixedRational isn't its own package
