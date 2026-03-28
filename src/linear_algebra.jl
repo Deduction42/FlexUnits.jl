@@ -105,7 +105,7 @@ function ureduce(d::AbstractDimsMap{D}; dims=:, init=unknown(D)) where D
         return ufactor(d)*uo/ui
     
     else
-        throw(ArgumentError("Argument 'dims' can only take one of the following values: {1, 2, nothing}"))
+        throw(ArgumentError("Argument 'dims' can only take one of the following values: {1, 2, :"))
     end
 end
 
@@ -124,7 +124,7 @@ function ureduce(f, d::AbstractDimsMap{D}; dims=:, init=unknown(D)) where D
         return f(ufactor(d)*uo/ui)
 
     else
-        throw(ArgumentError("Argument 'dims' can only take one of the following values: {1, 2, nothing}"))
+        throw(ArgumentError("Argument 'dims' can only take one of the following values: {1, 2, :}"))
     end
 end
 

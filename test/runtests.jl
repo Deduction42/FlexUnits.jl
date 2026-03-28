@@ -1154,6 +1154,8 @@ end
     @test mean(QX, dims=1) isa LinmapQuant
     @test all(mean(QX, dims=1) .≈ mean(X, dims=1).*UX')
     @test all(mean(QX', dims=2) .≈ mean(X', dims=2).*UX)
+    @test mean(abs2, QX, dims=1) isa LinmapQuant
+    @test all(mean(abs2, QX, dims=1) .≈ mean(abs2, X, dims=1).*(UX.^2)')
 
     @test median(QX, dims=1) isa LinmapQuant
     @test all(median(QX, dims=1) .≈ median(X, dims=1).*UX')
@@ -1161,11 +1163,21 @@ end
 
     @test var(QX, dims=1) isa LinmapQuant
     @test all(var(QX, dims=1) .≈ var(X, dims=1).*(UX.^2)')
+    @test all(varm(QX, mean(QX, dims=1), dims=1) .≈ varm(X, mean(X, dims=1), dims=1).*(UX.^2)')
+    @test all(var(QX, mean=mean(QX, dims=1), dims=1) .≈ var(X, mean=mean(X, dims=1), dims=1).*(UX.^2)')
+    
+
+    @test std(QX, dims=1) isa LinmapQuant
+    @test all(std(QX, dims=1) .≈ std(X, dims=1).*UX')
+    @test all(stdm(QX, mean(QX, dims=1), dims=1) .≈ stdm(X, mean(X, dims=1), dims=1).*UX')
+    @test all(std(QX, mean=mean(QX, dims=1), dims=1) .≈ std(X, mean=mean(X, dims=1), dims=1).*UX')
 
     @test cov(QX) isa LinmapQuant
     @test all(cov(QX) .≈ cov(X).*UX.*UX')
     @test cov(QX, QY) isa LinmapQuant
     @test all(cov(QX, QY) .≈ cov(X,Y).*(UX.*UY'))
+    @test all(cov(QX', dims=2) .≈ cov(QX, dims=1))
+    @test_throws ArgumentError cov(QX, dims=3)
 
     @test cor(QX) isa Matrix{<:Real}
     @test all(cor(QX) .≈ cor(X))

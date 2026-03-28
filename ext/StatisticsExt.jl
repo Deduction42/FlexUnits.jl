@@ -2,7 +2,7 @@ module StatisticsExt
     import Statistics 
     import FlexUnits
     import FlexUnits: LinmapQuant, Quantity, dstrip, dimension, ureduce
-    import FlexUnits: DimsMap, uinput, uoutput, ufactor
+    import FlexUnits: AbstractDimsMap, AdjointDmap, DimsMap, uinput, uoutput, ufactor
 
     #===========================================================================================================================================
     Main API extension
@@ -21,10 +21,10 @@ module StatisticsExt
     )
 
     Statistics.std(q::LinmapQuant; corrected=true, mean=nothing, dims=:) = _with_mean_kwarg(Statistics.std, q; corrected=corrected, mean=mean, dims=dims)
-    Statistics.stdm(q::LinmapQuant, mean; corrected=true, dims=:) = _with_mean_arg(Statistics.stdm, q, mean, corrected=corrected, dims=dims)
+    Statistics.stdm(q::LinmapQuant, mean::LinmapQuant; corrected=true, dims=:) = _with_mean_arg(Statistics.stdm, q, mean, corrected=corrected, dims=dims)
 
     Statistics.var(q::LinmapQuant; corrected=true, mean=nothing, dims=:) = _usquared(_with_mean_kwarg(Statistics.var, q; corrected=corrected, mean=mean, dims=dims))
-    Statistics.varm(q::LinmapQuant, mean; corrected=true, dims=:) = _usquared(_with_mean_arg(Statistics.varm, q, mean; corrected=corrected, dims=dims))
+    Statistics.varm(q::LinmapQuant, mean::LinmapQuant; corrected=true, dims=:) = _usquared(_with_mean_arg(Statistics.varm, q, mean; corrected=corrected, dims=dims))
 
     function Statistics.cov(q::LinmapQuant; corrected=true, dims=1)
         d = _dimcov(q, dims=dims)
@@ -64,7 +64,7 @@ module StatisticsExt
     end 
 
     #Covariancce of a DimsMap
-    function _dimcov(d1::DimsMap, d2::DimsMap; dims=1)
+    function _dimcov(d1::AbstractDimsMap, d2::AbstractDimsMap; dims=1)
         if dims == 1
             return d1'*d2 
         elseif dims == 2 
@@ -73,16 +73,17 @@ module StatisticsExt
             throw(ArgumentError("Dimension argument for LinmapQuant can only be 1 or 2"))
         end
     end
-    _dimcov(d::DimsMap; dims=1) = _dimcov(d, d, dims=dims)
+    _dimcov(d::AbstractDimsMap; dims=1) = _dimcov(d, d, dims=dims)
     _dimcov(q1::LinmapQuant, q2::LinmapQuant; dims=1) = _dimcov(dimension(q1), dimension(q2), dims=dims)    
     _dimcov(q::LinmapQuant; dims=1) = _dimcov(dimension(q), dims=dims)
 
     #Produces a DimsMap that contains squared elements
     _usquared(d::DimsMap) = DimsMap(u_fac=abs2(ufactor(d)), u_in=abs2.(uinput(d)), u_out=abs2.(uoutput(d)))
+    _usquared(d::AdjointDmap) = adjoint(_usquared(adjoint(d)))
     _usquared(q::LinmapQuant) = LinmapQuant(dstrip(q), _usquared(dimension(q)))
     
     #Checks dimension of vector to see if it matches the ureduce results
-    function _dstrip(d::DimsMap, v::AbstractMatrix{<:Quantity})
+    function _dstrip(d::AbstractDimsMap, v::AbstractMatrix{<:Quantity})
         size(v) == size(d) || throw(DimensionMismatch("Quantity matrix had size $(size(v)) but dimensions had size $(size(d)), sizes must be the same"))
         return dstrip.(d, v)
     end
