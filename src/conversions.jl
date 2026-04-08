@@ -18,10 +18,10 @@ julia> uconvert(u"K", u"°C")(0)
 """
 function uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) 
     compatible_dims(u_target, u_current) || throw(ConversionError(u_target, u_current))
-    return inv(todims(u_target)) ∘ todims(u_current)
+    return inv(tobase(u_target)) ∘ tobase(u_current)
 end
 uconvert(ft::AbstractUnitTransform, x) = ft(x)
-uconvert(utarget::StaticDims{D}, ucurrent::Units{StaticDims{D}}) where D = ucurrent.todims
+uconvert(utarget::StaticDims{D}, ucurrent::Units{StaticDims{D}}) where D = ucurrent.tobase
 
 #============================================================================================
 uconvert with quantities
@@ -60,7 +60,7 @@ Converts quantity `q` to its raw dimensional equivalent (such as SI units)
 """
 function ubase(q::QuantUnion{<:Any,<:AbstractUnitLike})
     u  = unit(q)
-    ft = todims(u)
+    ft = tobase(u)
     return quantity(ft(ustrip(q)), dimension(u))
 end 
 ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
@@ -103,7 +103,7 @@ ustrip_dimensionless(q::QuantUnion) = ustrip(assert_dimensionless(ubase(q)))
 
 Convert quantity `q` into a unit of the same magnitude
 """
-Units(q::QuantUnion{<:Number, <:AbstractUnitLike}) = Units(dims=dimension(q), todims=todims(unit(q))*ustrip(q), symbol=DEFAULT_USYMBOL)
+Units(q::QuantUnion{<:Number, <:AbstractUnitLike}) = Units(dims=dimension(q), tobase=tobase(unit(q))*ustrip(q), symbol=DEFAULT_USYMBOL)
 Units(u::Units) = u
 
 compatible_dims(d_target::AbstractDimLike, d_current::AbstractDimLike) = (d_target == d_current || isunknown(d_current))
@@ -152,7 +152,7 @@ end
 
 
 # Converting unit types ====================================================
-Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), todims=todims(u), symbol=usymbol(u))
+Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), tobase=tobase(u), symbol=usymbol(u))
 
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = D(dimension(assert_dimension(u)))
 Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)

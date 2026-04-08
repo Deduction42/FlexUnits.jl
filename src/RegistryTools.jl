@@ -3,7 +3,7 @@ module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits,  ..AbstractDimensions, ..AbstractUnitTransform
 import ..Units, ..Dimensions, ..AffineTransform, ..QuantUnion, ..Quantity, ..FixRat32, ..FixRat64
-import ..uscale, ..uoffset, ..todims, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype, ..ustatic
+import ..uscale, ..uoffset, ..tobase, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype, ..ustatic
 
 export AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64 
 export Units, Dimensions, AffineTransform, QuantUnion, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol
@@ -84,7 +84,7 @@ regdimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 
 function _register_unit!(reg::AbstractDict{Symbol,Units{D,T}}, p::Pair{Symbol,<:AbstractUnitLike}) where {D,T<:AbstractUnitTransform}
     (k,v) = p
-    vn = Units(dims=dimension(v), todims=convert(T, todims(v)), symbol=k)
+    vn = Units(dims=dimension(v), tobase=convert(T, tobase(v)), symbol=k)
     return setindex!(reg, vn, k)
 end
 
@@ -96,7 +96,7 @@ function add_prefixes!(reg::AbstractDict{Symbol,<:Units{D}}, u::Symbol, prefixes
     original = reg[u]
     for (name, scale) in pairs(prefixes)
         newname = Symbol(string(name)*string(u))
-        reg[newname] = Units(dims=dimension(original), todims=todims(original)*scale, symbol=newname)
+        reg[newname] = Units(dims=dimension(original), tobase=tobase(original)*scale, symbol=newname)
     end
     return reg
 end
@@ -192,8 +192,8 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
     _register_unit(:Ra => 5/9*reg[:K])
 
     #Strictly affine temperature measurements
-    _register_unit(:°C => Units(dims=K, todims=Trans(offset=(273 + 15//100))))
-    _register_unit(:°F => Units(dims=K, todims=Trans(scale=5//9, offset=(273 + 15//100 - 32*5//9))))
+    _register_unit(:°C => Units(dims=K, tobase=Trans(offset=(273 + 15//100))))
+    _register_unit(:°F => Units(dims=K, tobase=Trans(scale=5//9, offset=(273 + 15//100 - 32*5//9))))
     _register_unit(:degC => reg[:°C])
     _register_unit(:degF => reg[:°F])
 
@@ -294,7 +294,7 @@ lookup_unit_expr(reg::AbstractDict{Symbol,<:AbstractUnitLike}, ex::Any) = ex
 change_symbol(u::AbstractUnitLike, s::String) = change_symbol(u, Symbol(s))
 
 function change_symbol(u::U, s::Symbol) where U<:AbstractUnits
-    return constructorof(U)(dims=dimension(u), todims=todims(u), symbol=s)
+    return constructorof(U)(dims=dimension(u), tobase=tobase(u), symbol=s)
 end
 
 function _unit_preprocessing(str1::AbstractString)

@@ -234,7 +234,7 @@ end
         @test isempty(quantity([0.0, 1.0], u)) == false
         @test isempty(quantity(Float64[], u)) == true
         @test zero(Dimensions{R}) === Dimensions{R}()
-        @test zero(Units{Dimensions{R}, AT}) === Units{Dimensions{R}, AT}(dims=zero(Dimensions{R}), todims=AT())
+        @test zero(Units{Dimensions{R}, AT}) === Units{Dimensions{R}, AT}(dims=zero(Dimensions{R}), tobase=AT())
 
         #Static identity transform tests
         @test zero(1u"m/s") + 2.0u"m/s" == 2.0u"m/s"
@@ -546,16 +546,16 @@ end
     @test xp - cplxb === 0.01 - cplxb
 
     # Constructors
-    kelvin = Units(dims=ud"K", todims=AffineTransform())
+    kelvin = Units(dims=ud"K", tobase=AffineTransform())
     @test 1*kelvin == 1K
 
-    rankine = Units(todims=AffineTransform(scale=5/9, offset=0.0), dims=K)
+    rankine = Units(tobase=AffineTransform(scale=5/9, offset=0.0), dims=K)
     @test 1*rankine == (5/9)K
 
-    fahrenheit = Units(todims=AffineTransform(scale=5/9, offset=(273.15-32*5/9)), dims=K)
+    fahrenheit = Units(tobase=AffineTransform(scale=5/9, offset=(273.15-32*5/9)), dims=K)
     @test 1*fahrenheit ≈ 1°F
 
-    celsius = Units(todims=AffineTransform(offset=273.15), dims=K)
+    celsius = Units(tobase=AffineTransform(offset=273.15), dims=K)
     @test 1*celsius ≈ 1°C
 
     # Round-trip sanity checks
@@ -580,11 +580,11 @@ end
     @test 0°C |> °F ≈ 32°F
     @test (°C |> °F)(0) ≈ 32
 
-    @test Units(dims=ud"Pa", todims=AffineTransform()) == ud"Pa"
-    @test_throws NotDimensionError Units(dims=ud"kPa", todims=AffineTransform())
+    @test Units(dims=ud"Pa", tobase=AffineTransform()) == ud"Pa"
+    @test_throws NotDimensionError Units(dims=ud"kPa", tobase=AffineTransform())
 
     # Test display against errors
-    celsius = Units(todims=AffineTransform(offset=273.15), dims=ud"K")
+    celsius = Units(tobase=AffineTransform(offset=273.15), dims=ud"K")
     psi = Units(6.89476ud"kPa")
     io = IOBuffer()
     @test isnothing(show(io, (dimension(°F), dimension(ud"K"), psi, celsius, fahrenheit)))
@@ -774,7 +774,7 @@ end
     # Test conversion of unit types 
     @test convert(DEFAULT_DIM_TYPE, ud"m") === Dimensions(length=1)
     @test_throws NotDimensionError convert(DEFAULT_DIM_TYPE, ud"mm")
-    @test convert(Units{DEFAULT_DIM_TYPE, AT}, ubase(2ud"m")) == Units(todims=AffineTransform(scale=2.0, offset=0.0), dims=dimension(ud"m"))
+    @test convert(Units{DEFAULT_DIM_TYPE, AT}, ubase(2ud"m")) == Units(tobase=AffineTransform(scale=2.0, offset=0.0), dims=dimension(ud"m"))
     @test_throws ArgumentError convert(Units{DEFAULT_DIM_TYPE, AT}, quantity(2, ud"°C"))
     @test convert(Quantity{Float64, DEFAULT_DIM_TYPE}, 2ud"m") === Quantity{Float64, DEFAULT_DIM_TYPE}(2.0, dimension(ud"m")) 
     @test_throws NotScalarError convert(Quantity{Float64, DEFAULT_DIM_TYPE}, ud"°C") 
@@ -828,7 +828,7 @@ end
     #Generating transforms 
     @test uconvert(u"kg/hr", u"kg/s") == AffineTransform(3600.0, 0.0)
     @test uconvert(u"kg/s" |> u"kg/hr", 1.0) == 3600.0
-    @test uconvert(dimension(u"kg/s"), u"kg/hr") == FlexUnits.todims(u"kg/hr")
+    @test uconvert(dimension(u"kg/s"), u"kg/hr") == FlexUnits.tobase(u"kg/hr")
 
     #dconvert and similar 
     @test dconvert(u"kg/s", 5.0u"kg/hr") == ubase(5.0u"kg/hr")
@@ -1269,11 +1269,11 @@ end
 end
 
 #Register a new affine unit (and verify re-registering)
-register_unit("psig" => Units(todims=AffineTransform(scale=uscale(ud"psi"), offset=101.3ud"kPa"), dims=ud"Pa"))
+register_unit("psig" => Units(tobase=AffineTransform(scale=uscale(ud"psi"), offset=101.3ud"kPa"), dims=ud"Pa"))
 
 @testset "Registration tests" begin
     #Test re-registering and verify that the unit exists
-    register_unit("psig" => Units(todims=AffineTransform(scale=uscale(ud"psi"), offset=101.3ud"kPa"), dims=ud"Pa"))
+    register_unit("psig" => Units(tobase=AffineTransform(scale=uscale(ud"psi"), offset=101.3ud"kPa"), dims=ud"Pa"))
     @test 0*ud"psig" == 101.3ud"kPa"
     @test q"0psig" == 101.3ud"kPa"
 
@@ -1284,8 +1284,8 @@ register_unit("psig" => Units(todims=AffineTransform(scale=uscale(ud"psi"), offs
     IntDimType = Dimensions{Int32}
     reg = RegistryTools.PermanentDict{Symbol, Units{IntDimType, AffineTransform{Float64}}}()
     reg = RegistryTools.registry_defaults!(reg)  
-    @test reg[:m]  === Units(todims=AffineTransform(), dims=IntDimType(length=1), symbol=:m)
-    @test reg[:kg] === Units(todims=AffineTransform(), dims=IntDimType(mass=1), symbol=:kg)    
+    @test reg[:m]  === Units(tobase=AffineTransform(), dims=IntDimType(length=1), symbol=:m)
+    @test reg[:kg] === Units(tobase=AffineTransform(), dims=IntDimType(mass=1), symbol=:kg)    
 end
 
 @testset "Integration tests with Unitful" begin

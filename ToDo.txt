@@ -1,13 +1,9 @@
 Changelog:
+1.  `todims` now refactor as `tobase` to better indicate that the function converts to base units (like `ubase`)
 
 Current Tasks:
 
-1.  Condider refacotring "todims" to "tobase"
-    -   Base units is a ubiquitous technical term
-    -   This is a better description and matches what "ubase" does
-    -   "todims" is not exported, so renaming it isn't technically breaking
-
-2.  Implement logarithmic units
+1.  Implement logarithmic units
     -   See backlog items
     -   Add LogQuant and ExpAffTransform to "types.jl"
         -   Also add logunits functions under ExpAffTransform
@@ -16,10 +12,10 @@ Current Tasks:
     -   Add display logic to "utils.jl"
     -   Add documentation and tests
 
-3.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
+2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
     -   still need to implement vcat
 
-4.  Move factorizations to LinearAlgebra extension
+3.  Move factorizations to LinearAlgebra extension
     -   implement a unitful "cholupdate!" and "choldowndate!"
     -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
     -   Add performance benchmarks

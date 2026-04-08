@@ -240,7 +240,7 @@ end
 
 function LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T 
     (Nr, Nc) = size(m)
-    new_m = todims.(u.u_out./u.u_in', m)
+    new_m = tobase.(u.u_out./u.u_in', m)
     new_u = DimsMap(
         u_fac = zero(dimvaltype(u)), 
         u_in  = dims_sized(u.u_in, Nc), 
@@ -250,7 +250,7 @@ function LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T
 end
 
 function LinmapQuant(m::SMatrix{Nr,Nc,T}, u::UnitMap) where {T, Nr, Nc}
-     new_m = SMatrix{Nr,Nc}(todims.(u.u_out./u.u_in', m))
+     new_m = SMatrix{Nr,Nc}(tobase.(u.u_out./u.u_in', m))
      new_u = DimsMap(
         u_fac = zero(dimvaltype(u)), 
         u_in  = SVector{Nc}(dims_sized(u.u_in, Nc)), 
@@ -309,7 +309,7 @@ struct VectorQuant{T, D<:AbstractDimLike, V<:AbstractVector{T}, U<:AbstractVecto
 end
 
 function VectorQuant(v::AbstractVector{T}, u::AbstractVector{<:AbstractUnits}) where T 
-    new_m = todims.(u, v)
+    new_m = tobase.(u, v)
     new_u = dimension.(u)
     return VectorQuant(new_m, new_u)
 end
@@ -481,8 +481,8 @@ dims_sized(x::AbstractVector{<:AbstractUnitLike}, n::Integer) = length(x) == n ?
 dims_sized(x::AbstractVector{<:AbstractDimLike}, n::Integer) = length(x) == n ? x : throw(ArgumentError("Length of input ($(length(x))) must match the specification ($(n))"))
 dims_sized(x::AbstractUnitLike, n::Integer) = fill(dimension(x), n)
 
-todims(u::AbstractUnits, x) = u.todims(x)
-todims(u::AbstractDimLike, x) = x
+tobase(u::AbstractUnits, x) = u.tobase(x)
+tobase(u::AbstractDimLike, x) = x
 
 function canonical_input!(u_fac::D, u_in::V) where {D<:AbstractDimLike, V<:AbstractVector{<:AbstractDimLike}}
     u0 = u_in[begin]

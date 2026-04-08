@@ -205,33 +205,3 @@ function _pretty_unit_pwr(u::Symbol, p::Real)
         return string(u)*join(chars)
     end
 end
-
-
-#=
-function ushow(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions{<:Union{<:Real,Missing}}
-    return show(io, missing)
-end
-=#
-
-#=
-function ushow(io::IO, u::Units; pretty=PRETTY_DIM_OUTPUT[])
-    if usymbol(u) != DEFAULT_USYMBOL
-        return print(io, usymbol(u))
-    else
-        print(io, "Units(todims=$(todims(u)), dims=")
-        show(io, dimension(u); pretty)
-        return print(io, ")")
-    end
-end
-=#
-
-#=
-function ushow(io::IO, ::Type{MirrorDims{D}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    return print(io, "MirrorDims{$(D)}")
-end
-=#
-#=
-function ushow(io::IO, ::Type{Union{D,MirrorDims{D}}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    return print(io, "MirrorUnion{$(D)}")
-end
-=#
