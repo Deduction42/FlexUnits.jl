@@ -343,3 +343,82 @@ for f in (:iszero, :angle, :signbit, :sign)
     @eval Base.$f(q::QuantUnion) = (assert_scalar(unit(q)); $f(ustrip_base(q)))
 end
 
+
+#================================================================================================================
+Logarithmic Quantities, Units and Transforms
+================================================================================================================#
+"""
+    with_logubase(f, args::LogQuant...)
+
+Converts all arguments to log base units, and applies `f` to values and dimensions
+returns the quanity. Useful for defining new functions for quantities 
+"""
+function with_logubase(fv, fd, args::LogQuant...)
+    baseargs = map(logubase, args)
+    basevals = map(ustrip, baseargs)
+    basedims = map(unit, baseargs)
+    return logquant(fv(basevals...), fd(basedims...))
+end
+
+#Any logarithm will generate a "logquant"
+for f in (:log, :log2, :log10)
+    @eval Base.$f(q::Quantity{T}) where {T} = logquant(log(dstrip(q)), dimension(q))
+end
+
+#Logarithms/Exponentials of transforms 
+Base.log(t::ExpAffTransform) = AffineTransform(scale=uscale(t), offset=uoffset(t))
+Base.exp(t::AffineTransform) = ExpAffTransform(scale=uscale(t), offset=uoffset(t))
+Base.exp(t::NoTransform) = ExpAffTransform(scale=uscale(t), offset=uoffset(t))
+
+#Mutliplication with Unit{D, ExpAffTransform} produces a LogQuant 
+function Base.:*(x::NumUnion, u::Units{<:AbstractDimLike,<:ExpAffTransform})
+    logtrans = log(tobase(u))
+    return logquant(logtrans(x), dimension(u))
+end
+
+#Logarithmic quantity algebra
+Base.:+(q1::LogQuant, q2::LogQuant) = with_logubase(+, *, q1, q2)
+Base.:+(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q) + x, unit(q)))
+Base.:+(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q) + x, unit(q)))
+
+Base.:-(q1::LogQuant, q2::LogQuant) = with_logubase(-, /, q1, q2)
+Base.:-(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(x - ustrip(q), inv(unit(q))))
+Base.:-(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q) - x, unit(q)))
+
+Base.:*(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
+Base.:*(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
+Base.:/(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)/x, unit(q)^inv(x)))
+
+#Generator functiosn for logarithmic units
+"""
+    dB(x::Union{AbstractUnitLike, Quantity})
+
+Generates a Unit type in decibels (having reference of 'x', a base of '10.0' and a scale of '0.1'
+"""
+dB(x::Union{AbstractUnitLike, Quantity}) = logunits(x, logscale=0.1, base=10.0, logsymbol=:dB)
+
+"""
+    dB(x::Union{AbstractUnitLike, Quantity})
+
+Generates a Unit type in Nepers (having reference of 'x', a base of 'e ≈ 2.71828' and a scale of '1.0'
+"""
+Np(x::Union{AbstractUnitLike, Quantity}) = logunits(x, logscale=1.0, base=1.0, logsymbol=:Np)
+
+Base.log(u::AbstractUnitLike) = logunits(x, logscale=1.0, base=1.0, logsymbol=:log)
+Base.log10(u::AbstractUnitLike) = logunits(u, logscale=1.0, base=10, logsymbol=:log10)
+Base.log2(u::AbstractUnitLike) = logunits(u, logscale=1.0, base=2, logsymbol=:log10)
+
+function logunits(reference::Union{AbstractUnitLike, Quantity}; logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL)
+    return Units(
+        dims = dimension(reference),
+        tobase = ExpAffTransform(
+            scale = logscale*log(base), 
+            offset = log(dstrip(1*reference)),
+        ),
+        symbol = (logsymbol==DEFAULT_USYMBOL) ? logsymbol : Symbol(string(logsymbol)*"($(reference))")
+    )
+end
+
+
+
+

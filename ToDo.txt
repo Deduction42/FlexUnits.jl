@@ -5,7 +5,6 @@ Current Tasks:
 
 1.  Implement logarithmic units
     -   See backlog items
-    -   Add logarithmic math to "math.jl"
     -   Add conversions to "conversions.jl"
     -   Add display logic to "utils.jl"
     -   Add documentation and tests

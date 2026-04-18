@@ -187,6 +187,9 @@ end
 ExpAffTransform(scale::T1, offset::T2) where {T1,T2} = ExpAffTransform{promote_type(T1,T2)}(scale, offset)
 (t::ExpAffTransform)(t0::AbstractUnitTransform) = t ∘ t0
 
+uscale(t::ExpAffTransform) = t.scale 
+uoffset(t::ExpAffTransform) = t.offset
+
 (t::ExpAffTransform)(x) = exp(x*t.scale + t.offset)
 Base.inv(t::ExpAffTransform, x) = (log(x) - t.offset)/t.scale
 (t::ExpAffTransform)(x::AbstractArray) = t.(x)
@@ -382,6 +385,18 @@ FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
 FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))
 FlexQuant{T,U}(q::QuantUnion) where {T,U} = FlexQuant{T,U}(ustrip(q), unit(q))
 
+"""
+    ubase(q::QuantUnion)
+
+Converts quantity `q` to its raw dimensional equivalent (such as SI units)
+"""
+function ubase(q::QuantUnion{<:Any,<:AbstractUnitLike})
+    u  = unit(q)
+    ft = tobase(u)
+    return quantity(ft(ustrip(q)), dimension(u))
+end 
+ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
+
 ustrip(q::QuantUnion) = q.value
 unit(q::QuantUnion) = q.unit
 tobase(q::QuantUnion) = tobase(q.unit)
@@ -419,6 +434,9 @@ quant_type(::Type{<:Any}) = FlexQuant
 quant_type(x) = quant_type(typeof(x))
 
 
+#=================================================================================================
+Logarithmic quantities (only supports numeric types)
+=================================================================================================#
 """
     struct LogQuant{T<:Number, U<:AbstractUnitLike} <: Number 
         value :: T 
@@ -432,12 +450,49 @@ struct LogQuant{T<:Number, U<:AbstractUnitLike} <: Number
     value :: T 
     unit  :: U 
 end
-
 LogQuant{T}(x, u::AbstractUnitLike) where T = LogQuant{T, typeof(u)}(x, u)
 LogQuant{T}(q::QuantUnion) where T = LogQuant{T}(ustrip(q), unit(q))
 LogQuant{T,U}(q::QuantUnion) where {T,U} = LogQuant{T,U}(ustrip(q), unit(q))
 
+logquant(x::T, u::AbstractUnitLike) where T = LogQuant{T}(x, u)
+logquant(q::Quantity) = log(ubase(q))
+logquant(lq::LogQuant) = lq 
+quantity(q::LogQuant) = ubase(q)
 
+"""
+    logubase(lq::LogQuant)
+
+Converts log-quantity `lq` to its natural logarithmic scale (Nepers)
+"""
+function logubase(lq::LogQuant{<:Any,<:AbstractUnitLike})
+    u  = unit(lq)
+    ft = tobase(u)
+    return logquant(ft(ustrip(lq)), dimension(u))
+end 
+logubase(lq::LogQuant{<:Any,<:AbstractDimLike}) = lq
+logubase(q::Quantity) = log(ubase(q))
+
+function ubase(q::LogQuant{<:Any,<:AbstractUnitLike})
+    u  = unit(q)
+    ft = exp(tobase(u))
+    return quantity(ft(ustrip(q)), dimension(u))
+end 
+
+ustrip(q::LogQuant) = q.value
+unit(q::LogQuant) = q.unit
+tobase(q::LogQuant) = tobase(q.unit)
+dstrip(q::LogQuant) = tobase(q)(ustrip(q))
+ustrip_base(q::LogQuant) = dstrip(q)
+dimension(q::LogQuant) = dimension(unit(q))
+unittype(::Type{<:LogQuant{T,U}}) where {T,U} = U
+dimtype(::Type{<:LogQuant{T,U}}) where {T,U} = dimtype(U)
+dimvaltype(::Type{<:LogQuant{T,U}}) where {T,U} = dimvaltype(U)
+udynamic(q::LogQuant) = Quantity(ustrip(q), udynamic(unit(q)))
+valtype(::Type{<:LogQuant{T}}) where T = T 
+
+#=============================================================================================
+Constructor utilities
+=============================================================================================#
 """
     constructorof(::Type{T}) where T = Base.typename(T).wrapper
 
@@ -448,13 +503,11 @@ constructorof(::Type{T}) where T = Base.typename(T).wrapper
 constructorof(::Type{<:Dimensions}) = Dimensions
 constructorof(::Type{<:Units}) = Units
 constructorof(::Type{<:Quantity}) = Quantity
-constructorof(::Type{<:FlexQuant}) = FlexQuant
 
 
 #=============================================================================================
 Errors and assertion functions
 =============================================================================================#
-
 """
     DimensionError{D} <: Exception
 

@@ -53,17 +53,6 @@ julia> dconvert(u"km/hr", 25u"km/hr")
 """
 dconvert(u::AbstractUnitLike, q::QuantUnion) = uconvert(dimension(u), q)
 
-"""
-    ubase(q::QuantUnion)
-
-Converts quantity `q` to its raw dimensional equivalent (such as SI units)
-"""
-function ubase(q::QuantUnion{<:Any,<:AbstractUnitLike})
-    u  = unit(q)
-    ft = tobase(u)
-    return quantity(ft(ustrip(q)), dimension(u))
-end 
-ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
 
 """
     |>(u2::Union{AbstractUnitLike, QuantUnion}, u1::AbstractUnitLike)
