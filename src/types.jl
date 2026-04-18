@@ -60,7 +60,6 @@ abstract type AbstractUnits{D, T<:AbstractUnitTransform} <: AbstractUnitLike end
 const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimLike
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
 
-#Base.@assume_effects :consistent static_fieldnames(t::Type) = Base.fieldnames(t)
 static_fieldnames(t::Type) = Base.fieldnames(t)
 Base.eltype(::Type{<:AbstractDimensions{P}}) where P = P
 
@@ -97,7 +96,7 @@ is_scalar(u::AbstractUnitLike) = is_scalar(tobase(u))
 udynamic(u::AbstractDimensions) = u
 
 #=======================================================================================
-Basic SI dimensions and transforms
+Transforms
 =======================================================================================#
 """
 NoTransform object, the default transform returned by tobase(x::AbstractDimensionLike). Calling it results in 
@@ -111,19 +110,94 @@ t("anything")
 struct NoTransform <: AbstractUnitTransform end 
 Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
 (t2::AbstractUnitTransform)(t1::AbstractUnitTransform) = t2 ∘ t1
+
 (t::NoTransform)(x) = x
 (t::NoTransform)(t0::AbstractUnitTransform) = t0
-
 Base.:∘(t1::NoTransform, t2::AbstractUnitTransform) = t2 
 Base.:∘(t1::AbstractUnitTransform, t2::NoTransform) = t1 
 Base.:∘(t1::NoTransform, t2::NoTransform) = t1
 Base.inv(t::NoTransform) = t
+Base.inv(t::NoTransform, x) = x
 uscale(t::NoTransform)  = 1
 uoffset(t::NoTransform) = 0
 tobase(u::AbstractDimLike) = NoTransform()
 is_identity(t::NoTransform) = true
 is_scalar(t::NoTransform) = true
 
+
+"""
+    @kwdef struct AffineTransform{T<:Real} <: AbstractUnitTransform
+        scale  :: T = 1.0
+        offset :: T = 0.0
+    end
+
+A type representing an affine transfomration formula that can be
+used to convert values from one affine unit to another. This object is callable.
+
+# Constructors
+    AffineTransform(scale::Real, offset::Real)
+    AffineTransform(; scale, offset)
+"""
+@kwdef struct AffineTransform{T<:Real} <: AbstractUnitTransform
+    scale  :: T = 1.0
+    offset :: T = 0.0
+end
+AffineTransform(scale::T1, offset::T2) where {T1,T2} = AffineTransform{promote_type(T1,T2)}(scale, offset)
+(t::AffineTransform)(t0::AbstractUnitTransform) = t ∘ t0
+
+(t::AffineTransform)(x) = x*t.scale + t.offset
+Base.inv(t::AffineTransform, x) = (x - t.offset)/t.scale
+(t::AffineTransform)(x::AbstractArray) = t.(x)
+Base.inv(t::AffineTransform, x::AbstractArray) = inv.(t, x)
+(t::AffineTransform)(x::Tuple) = map(t, x)
+Base.inv(t::AffineTransform, x::Tuple) = map(xi->inv(t, xi), x)
+
+function Base.:∘(t2::AffineTransform, t1::AffineTransform)
+    return AffineTransform(
+        scale  = t1.scale*t2.scale,
+        offset = t2.offset + t2.scale*t1.offset 
+    )
+end
+Base.inv(t::AffineTransform) = AffineTransform(scale=inv(t.scale), offset=-t.offset/t.scale)
+
+uscale(t::AffineTransform) = t.scale 
+uoffset(t::AffineTransform) = t.offset
+is_identity(t::AffineTransform) = isone(t.scale) & iszero(t.offset)
+is_scalar(t::AffineTransform) = iszero(t.offset)
+remove_offset(t::AffineTransform) = AffineTransform(scale=t.scale, offset=0)
+
+"""
+    @kwdef struct ExpAffTransform{T<:Real} <: AbstractUnitTransform
+        scale  :: T = 1.0
+        offset :: T = 0.0
+    end
+
+A type representing an affine transfomration formula that applies "exp" at the end;
+this is useful for logarithmic units
+
+# Constructors
+    ExpAffTransform(scale::Real, offset::Real)
+    ExpAffTransform(; scale, offset)
+"""
+
+@kwdef struct ExpAffTransform{T<:Real} <: AbstractUnitTransform
+    scale  :: T = 1.0
+    offset :: T = 0.0
+end
+ExpAffTransform(scale::T1, offset::T2) where {T1,T2} = ExpAffTransform{promote_type(T1,T2)}(scale, offset)
+(t::ExpAffTransform)(t0::AbstractUnitTransform) = t ∘ t0
+
+(t::ExpAffTransform)(x) = exp(x*t.scale + t.offset)
+Base.inv(t::ExpAffTransform, x) = (log(x) - t.offset)/t.scale
+(t::ExpAffTransform)(x::AbstractArray) = t.(x)
+Base.inv(t::ExpAffTransform, x::AbstractArray) = inv.(t, x)
+(t::ExpAffTransform)(x::Tuple) = map(t, x)
+Base.inv(t::ExpAffTransform, x::Tuple) = map(xi->inv(t, xi), x)
+
+
+#=======================================================================================
+Dimensions
+=======================================================================================#
 """
     Dimensions{P}
 
@@ -201,46 +275,10 @@ unit_symbols(::Type{<:NoDims}) = NoDims()
 ustrip(x::NumUnion) = x 
 dstrip(x::NumUnion) = x
 
+
 #=======================================================================================
-Affine Units and Transforms
+Units
 =======================================================================================#
-"""
-    @kwdef struct AffineTransform{T<:Real} <: AbstractUnitTransform
-        scale  :: T = 1.0
-        offset :: T = 0.0
-    end
-
-A type representing an affine transfomration formula that can be
-used to convert values from one affine unit to another. This object is callable.
-
-# Constructors
-    AffineTransform(scale::Real, offset::Real)
-    AffineTransform(; scale, offset)
-"""
-@kwdef struct AffineTransform{T<:Real} <: AbstractUnitTransform
-    scale  :: T = 1.0
-    offset :: T = 0.0
-end
-AffineTransform(scale::T1, offset::T2) where {T1,T2} = AffineTransform{promote_type(T1,T2)}(scale, offset)
-(t::AffineTransform)(x) = muladd(x, t.scale, t.offset)
-(t::AffineTransform)(x::AbstractArray) = t.(x)
-(t::AffineTransform)(x::Tuple) = map(t, x)
-(t::AffineTransform)(t0::AbstractUnitTransform) = t ∘ t0
-
-function Base.:∘(t2::AffineTransform, t1::AffineTransform)
-    return AffineTransform(
-        scale  = t1.scale*t2.scale,
-        offset = t2.offset + t2.scale*t1.offset 
-    )
-end
-Base.inv(t::AffineTransform) = AffineTransform(scale=inv(t.scale), offset=-t.offset/t.scale)
-
-uscale(t::AffineTransform) = t.scale 
-uoffset(t::AffineTransform) = t.offset
-is_identity(t::AffineTransform) = isone(t.scale) & iszero(t.offset)
-is_scalar(t::AffineTransform) = iszero(t.offset)
-remove_offset(t::AffineTransform) = AffineTransform(scale=t.scale, offset=0)
-
 """
     @kwdef struct Units{D<:AbstractDimLike, T<:AbstractUnitTransform} <: AbstractUnits{D, T}
         dims   :: D
@@ -295,7 +333,7 @@ dimval(::Type{<:Units{StaticDims{D}}}) where D = D
 unit(x::NumUnion) = Units(NoDims(), NoTransform(), DEFAULT_USYMBOL)
 
 #=================================================================================================
-Quantity types
+Quantities
 The basic type is Quantity, which belongs to <:Any (hence it has no real hierarchy)
 =================================================================================================#
 """
@@ -331,6 +369,7 @@ Convenience union that allows Number and Non-Number types to be considered toget
 """
 const QuantUnion{T,U} = Union{Quantity{T,U}, FlexQuant{T,U}}
 
+
 Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
 Quantity{T}(q::QuantUnion) where T = Quantity{T}(ustrip(q), unit(q))
 Quantity{T,U}(q::QuantUnion) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
@@ -357,7 +396,6 @@ valtype(q::Any) = valtype(typeof(q))
 valtype(::Type{T}) where T = T
 valtype(::Type{<:QuantUnion{T}}) where T = T 
 
-
 #Translation between AffineTansform and numeric quantities
 AffineTransform(scale::Real, offset::Quantity) = AffineTransform(scale=scale, offset=dstrip(offset))
 
@@ -380,6 +418,24 @@ quant_type(::Type{<:Number}) = Quantity
 quant_type(::Type{<:Any}) = FlexQuant
 quant_type(x) = quant_type(typeof(x))
 
+
+"""
+    struct LogQuant{T<:Number, U<:AbstractUnitLike} <: Number 
+        value :: T 
+        unit  :: U 
+    end
+
+Numeric quantity type (that subtypes to number) representing the lograrithm of a Quantity.
+This changes arithmeic operations (+-*/) according to logarithmic algebra. 
+"""
+struct LogQuant{T<:Number, U<:AbstractUnitLike} <: Number 
+    value :: T 
+    unit  :: U 
+end
+
+LogQuant{T}(x, u::AbstractUnitLike) where T = LogQuant{T, typeof(u)}(x, u)
+LogQuant{T}(q::QuantUnion) where T = LogQuant{T}(ustrip(q), unit(q))
+LogQuant{T,U}(q::QuantUnion) where {T,U} = LogQuant{T,U}(ustrip(q), unit(q))
 
 
 """

@@ -5,8 +5,6 @@ Current Tasks:
 
 1.  Implement logarithmic units
     -   See backlog items
-    -   Add LogQuant and ExpAffTransform to "types.jl"
-        -   Also add logunits functions under ExpAffTransform
     -   Add logarithmic math to "math.jl"
     -   Add conversions to "conversions.jl"
     -   Add display logic to "utils.jl"
