@@ -129,6 +129,7 @@ Units(q::QuantUnion{<:Number, <:AbstractUnitLike}) = Units(dims=dimension(q), to
 Units(u::Units) = u
 
 compatible_dims(d_target::AbstractDimLike, d_current::AbstractDimLike) = (d_target == d_current || isunknown(d_current))
+compatible_dims(d_target::StaticDims{d1}, d_current::StaticDims{d2}) where {d1, d2} = (d1==d2)
 compatible_dims(target, current) = compatible_dims(dimension(target), dimension(current))
 
 #=================================================================================================
