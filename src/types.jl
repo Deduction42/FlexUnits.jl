@@ -455,6 +455,8 @@ LogQuant{T}(x, u::AbstractUnitLike) where T = LogQuant{T, typeof(u)}(x, u)
 LogQuant{T}(q::QuantUnion) where T = LogQuant{T}(ustrip(q), unit(q))
 LogQuant{T,U}(q::QuantUnion) where {T,U} = LogQuant{T,U}(ustrip(q), unit(q))
 
+const LogQuantUnion{T,U} = Union{Quantity{T,U}, FlexQuant{T,U}, LogQuant{T,U}}
+
 logquant(x::T, u::AbstractUnitLike) where T = LogQuant{T}(x, u)
 logquant(q::Quantity) = LogQuant(log(dstrip(q)), dimension(q))
 logquant(lq::LogQuant) = lq 

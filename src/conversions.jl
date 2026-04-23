@@ -63,14 +63,14 @@ end
 
 function uconvert(u::Units{D,<:ExpAffTransform}, q::QuantUnion) where D<:AbstractDimLike
     newval = uconvert(u, unit(q))(ustrip(q))
-    newunit = Units{D}(log(tobase(u)))
+    newunit = Units{D}(D(), log(tobase(u)), usymbol(u))
     return LogQuant{typeof(newval), typeof(newunit)}(newval, newunit)
 end
 
 function uconvert(u::Units{D,<:ExpAffTransform}, lq::LogQuant) where D<:AbstractDimLike
     ft = inv(log(tobase(u))) ∘ tobase(unit(lq)) #This produces an AffineTransform
     newval = ft(ustrip(lq))
-    newunit = Units{D}(log(tobase(u)))
+    newunit = Units{D}(D(), log(tobase(u)), usymbol(u))
     return LogQuant{typeof(newval), typeof(newunit)}(newval, newunit)
 end
 
@@ -91,7 +91,7 @@ dconvert(u::AbstractUnitLike, q::QuantUnion) = uconvert(dimension(u), q)
 
 Using `q |> qout` is an alias for `uconvert(u, q)`.
 """
-Base.:(|>)(q::QuantUnion, u::AbstractUnitLike) = uconvert(u, q)
+Base.:(|>)(q::LogQuantUnion, u::AbstractUnitLike) = uconvert(u, q)
 Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
 
 
