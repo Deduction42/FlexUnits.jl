@@ -622,7 +622,7 @@ end
     testio = IOBuffer()
 
     showerror(testio, ConversionError(ud"m/s", ud"m"))
-    @test String(take!(testio)) == "ConversionError: Cannot convert unit 'm' to target unit 'm/s'. Consider multiplying 'm/s' by 's' or similar."
+    @test String(take!(testio)) == "ConversionError: Cannot convert unit 'm' to target unit 'm/s' due to a dimension mismatch of 's'"
 
     showerror(testio, DimensionError(dimension(ud"m/s")))
     @test String(take!(testio)) == "DimensionError: m/s is not dimensionless"
@@ -761,7 +761,7 @@ end
     #Static unit type conversions 
     @test convert(Quantity{Int64, typeof(u"m/s")}, 1u"m/s") isa Quantity{Int64, typeof(u"m/s")}
     @test convert(Quantity{Int64, typeof(dimension(u"m/s"))}, 1u"m/s") isa Quantity{Int64, typeof(dimension(u"m/s"))}
-    @test_throws DimensionError convert(Quantity{Float64, U"m/s"}, 1u"kg/hr")
+    @test_throws ConversionError convert(Quantity{Float64, U"m/s"}, 1u"kg/hr")
     @test_throws ConversionError convert(Quantity{Int64, D"m/s"}, 1u"kg/hr")
 
     # Test that regular type promotion applies:
@@ -794,10 +794,10 @@ end
     @test convert(U"m/s", dimension(ud"km/hr")) == u"m/s"
     @test convert(Units{Dimensions{FixRat32}, AffineTransform{Float64}}, u"km/hr") == ud"km/hr"
 
-    @test_throws DimensionError convert(U"kg/s", u"m/s")
-    @test_throws DimensionError convert(D"m/s", u"kg/s")
-    @test_throws DimensionError convert(U"kg/s", ud"m/s")
-    @test_throws DimensionError convert(D"m/s", ud"kg/s")
+    @test_throws ConversionError convert(U"kg/s", u"m/s")
+    @test_throws ConversionError convert(D"m/s", u"kg/s")
+    @test_throws ConversionError convert(U"kg/s", ud"m/s")
+    @test_throws ConversionError convert(D"m/s", ud"kg/s")
     @test_throws NotDimensionError convert(D"m/s", u"km/hr")
     @test_throws NotDimensionError convert(Dimensions{FixRat32}, u"km/hr")
     

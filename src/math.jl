@@ -360,13 +360,12 @@ function with_logubase(fv, fd, args::LogQuant...)
     return logquant(fv(basevals...), fd(basedims...))
 end
 
-#Any logarithm will generate a "logquant"
-for f in (:log, :log2, :log10)
-    @eval Base.$f(q::Quantity{T}) where {T} = logquant(log(dstrip(q)), dimension(q))
-end
 
 #Logarithms/Exponentials of transforms 
+Base.log(q::Quantity) = logquant(q)
 Base.log(t::ExpAffTransform) = AffineTransform(scale=uscale(t), offset=uoffset(t))
+
+Base.exp(q::LogQuant) = quantity(q)
 Base.exp(t::AffineTransform) = ExpAffTransform(scale=uscale(t), offset=uoffset(t))
 Base.exp(t::NoTransform) = ExpAffTransform(scale=uscale(t), offset=uoffset(t))
 
@@ -380,14 +379,22 @@ end
 Base.:+(q1::LogQuant, q2::LogQuant) = with_logubase(+, *, q1, q2)
 Base.:+(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q) + x, unit(q)))
 Base.:+(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q) + x, unit(q)))
+Base.:+(q1::Quantity, q2::LogQuant) = throw(LogLinearError(+, q1, q2))
+Base.:+(q1::LogQuant, q2::Quantity) = throw(LogLinearError(+, q1, q2))
 
 Base.:-(q1::LogQuant, q2::LogQuant) = with_logubase(-, /, q1, q2)
 Base.:-(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(x - ustrip(q), inv(unit(q))))
 Base.:-(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q) - x, unit(q)))
+Base.:-(q1::Quantity, q2::LogQuant) = throw(LogLinearError(-, q1, q2))
+Base.:-(q1::LogQuant, q2::Quantity) = throw(LogLinearError(-, q1, q2))
 
 Base.:*(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:*(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:/(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)/x, unit(q)^inv(x)))
+Base.:*(q1::Quantity, q2::LogQuant) = throw(LogLinearError(*, q1, q2))
+Base.:*(q1::LogQuant, q2::Quantity) = throw(LogLinearError(*, q1, q2))
+Base.:/(q1::Quantity, q2::LogQuant) = throw(LogLinearError(/, q1, q2))
+Base.:/(q1::LogQuant, q2::Quantity) = throw(LogLinearError(/, q1, q2))
 
 #Generator functiosn for logarithmic units
 """
@@ -395,16 +402,16 @@ Base.:/(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)/x, unit(q
 
 Generates a Unit type in decibels (having reference of 'x', a base of '10.0' and a scale of '0.1'
 """
-dB(x::Union{AbstractUnitLike, Quantity}) = logunits(x, logscale=0.1, base=10.0, logsymbol=:dB)
+dB(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=0.1, base=10.0, logsymbol=:dB)
 
 """
-    dB(x::Union{AbstractUnitLike, Quantity})
+    Np(x::Union{AbstractUnitLike, Quantity})
 
 Generates a Unit type in Nepers (having reference of 'x', a base of 'e ≈ 2.71828' and a scale of '1.0'
 """
-Np(x::Union{AbstractUnitLike, Quantity}) = logunits(x, logscale=1.0, base=1.0, logsymbol=:Np)
+Np(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=1.0, base=exp(1), logsymbol=:Np)
 
-Base.log(u::AbstractUnitLike) = logunits(x, logscale=1.0, base=1.0, logsymbol=:log)
+Base.log(u::AbstractUnitLike) = logunits(u, logscale=1.0, base=exp(1), logsymbol=:log)
 Base.log10(u::AbstractUnitLike) = logunits(u, logscale=1.0, base=10, logsymbol=:log10)
 Base.log2(u::AbstractUnitLike) = logunits(u, logscale=1.0, base=2, logsymbol=:log10)
 

@@ -197,6 +197,7 @@ Base.inv(t::ExpAffTransform, x::AbstractArray) = inv.(t, x)
 (t::ExpAffTransform)(x::Tuple) = map(t, x)
 Base.inv(t::ExpAffTransform, x::Tuple) = map(xi->inv(t, xi), x)
 
+Base.inv(t::ExpAffTransform) = Base.Fix1(inv, t)
 
 #=======================================================================================
 Dimensions
@@ -455,7 +456,7 @@ LogQuant{T}(q::QuantUnion) where T = LogQuant{T}(ustrip(q), unit(q))
 LogQuant{T,U}(q::QuantUnion) where {T,U} = LogQuant{T,U}(ustrip(q), unit(q))
 
 logquant(x::T, u::AbstractUnitLike) where T = LogQuant{T}(x, u)
-logquant(q::Quantity) = log(ubase(q))
+logquant(q::Quantity) = LogQuant(log(dstrip(q)), dimension(q))
 logquant(lq::LogQuant) = lq 
 quantity(q::LogQuant) = ubase(q)
 
@@ -536,7 +537,7 @@ function Base.showerror(io::IO, e::ConversionError{<:AbstractUnitLike, <:Abstrac
     pretty_str(x) = (ushow(io_tmp, x, pretty=true); String(take!(io_tmp)))
 
     uΔ = dimension(e.u0)/dimension(e.u)
-    return print(io, "ConversionError: Cannot convert unit '", pretty_str(e.u0), "' to target unit '", pretty_str(e.u), "'. Consider multiplying '", pretty_str(e.u), "' by '", pretty_str(uΔ), "' or similar.")
+    return print(io, "ConversionError: Cannot convert unit '",pretty_str(e.u0),"' to target unit '",pretty_str(e.u),"' due to a dimension mismatch of '",pretty_str(uΔ),"'")
 end
 
 """
@@ -560,8 +561,22 @@ struct NotDimensionError{D} <: Exception
     dim::D
     NotDimensionError(dim) = new{typeof(dim)}(dim)
 end
-Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim, " cannot be treated as dimension, operation only valid for dimension units")
+Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim," cannot be treated as dimension, operation only valid for dimension units")
 
+"""
+    LogLinearError{F} <: Exception
+
+Error thrown for function {F} when applied to a mixture of linear and logaritmic units
+"""
+struct LogLinearError{F, Q1, Q2} <: Exception
+    f :: F
+    q1 :: Q1 
+    q2 :: Q2 
+end
+Base.showerror(io::IO, e::LogLinearError{F,Q1,Q2}) where {F,Q1,Q2} = print(io, 
+    "LogLinearError: Cannot apply function '",e.f,"' to argument types ",Q1," and ",Q2,
+    "'. Perhaps you meant to convert one of the arguments to linear units using 'ubase(x::LoqQuant)'"
+)
 
 assert_scalar(u::AbstractDimLike) = u
 assert_scalar(u::AbstractUnits) = is_scalar(u) ? u : throw(NotScalarError(u))

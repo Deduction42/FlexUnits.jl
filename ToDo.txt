@@ -5,11 +5,7 @@ Current Tasks:
 
 1.  Implement logarithmic units
     -   See backlog items
-    -   Add conversions to "conversions.jl"
-        -    math should have informative errors on failed operations like *(::Quantity, ::LogQuant)
-        -    conversion errors should be improved for things like convert(::Quantity{T,StaticDims{d1}}, x::Quantity{T, StaticDims{d2}})
     -   Add display logic to "utils.jl"
-    -   Add and test string macros like u"dB(V)" which should "just work"
     -   Add documentation and tests
 
 2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
