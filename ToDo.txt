@@ -5,7 +5,9 @@ Current Tasks:
 
 1.  Implement logarithmic units
     -   See backlog items
-    -   Add display logic to "utils.jl"
+    -   Extend RegistryTools to work with AbstractDict{Symbol, Union{Units...}}
+        -   Usually means letting the dict type do the convert 
+        -   Creating a "Union" convert methods inside the registry
     -   Add documentation and tests
 
 2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""

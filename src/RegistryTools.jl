@@ -2,11 +2,11 @@
 module RegistryTools
 
 import ..AbstractUnitLike, ..AbstractUnits,  ..AbstractDimensions, ..AbstractUnitTransform
-import ..Units, ..Dimensions, ..AffineTransform, ..QuantUnion, ..Quantity, ..FixRat32, ..FixRat64
+import ..Units, ..Dimensions, ..AffineTransform, ..ExpAffTransform, ..NoTransform, ..QuantUnion, ..Quantity, ..FixRat32, ..FixRat64
 import ..uscale, ..uoffset, ..tobase, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype, ..ustatic
 
 export AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64 
-export Units, Dimensions, AffineTransform, QuantUnion, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol
+export Units, Dimensions, AffineTransform, ExpAffTransform, NoTransform, QuantUnion, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol
 export PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, suparse_expr, dimtype
 
 const UnitOrQuantity = Union{AbstractUnitLike, QuantUnion}
@@ -41,11 +41,12 @@ Base.showerror(io::IO, e::PermanentDictError) = print(io, "PermanentDictError: "
 
 Base.get(d::PermanentDict, k, v) = get(d.data, k, v)
 Base.getindex(d::PermanentDict, k) = d.data[k]
-function Base.setindex!(d::PermanentDict, v, k)
+function Base.setindex!(d::PermanentDict{<:Any, T}, v, k) where T
+    vt = convert(T, v)
     if haskey(d.data, k)
-        d.data[k] == v || throw(PermanentDictError("Key $(k) already exists. Cannot assign a different value."))
+        d.data[k] == vt || throw(PermanentDictError("Key $(k) already exists. Cannot assign a different value."))
     else 
-        d.data[k] = v 
+        d.data[k] = vt 
     end
     return d
 end
@@ -84,8 +85,7 @@ regdimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 
 function _register_unit!(reg::AbstractDict{Symbol,Units{D,T}}, p::Pair{Symbol,<:AbstractUnitLike}) where {D,T<:AbstractUnitTransform}
     (k,v) = p
-    vn = Units(dims=dimension(v), tobase=convert(T, tobase(v)), symbol=k)
-    return setindex!(reg, vn, k)
+    return setindex!(reg, v, k)
 end
 
 function _register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{Symbol, <:QuantUnion})
@@ -102,7 +102,7 @@ function add_prefixes!(reg::AbstractDict{Symbol,<:Units{D}}, u::Symbol, prefixes
 end
 
 
-function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where {Dims<:AbstractDimensions, Trans<:AbstractUnitTransform}
+function registry_defaults!(reg::AbstractDict{Symbol, <:Units{Dims}}) where {Dims<:AbstractDimensions}
     #reg = PermanentDict{Symbol, Units{DEFAULT_DIMENSONS}}()
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
     
@@ -192,8 +192,8 @@ function registry_defaults!(reg::AbstractDict{Symbol, Units{Dims,Trans}}) where 
     _register_unit(:Ra => 5/9*reg[:K])
 
     #Strictly affine temperature measurements
-    _register_unit(:°C => Units(dims=K, tobase=Trans(offset=(273 + 15//100))))
-    _register_unit(:°F => Units(dims=K, tobase=Trans(scale=5//9, offset=(273 + 15//100 - 32*5//9))))
+    _register_unit(:°C => Units(dims=K, tobase=AffineTransform(offset=(273 + 15//100))))
+    _register_unit(:°F => Units(dims=K, tobase=AffineTransform(scale=5//9, offset=(273 + 15//100 - 32*5//9))))
     _register_unit(:degC => reg[:°C])
     _register_unit(:degF => reg[:°F])
 

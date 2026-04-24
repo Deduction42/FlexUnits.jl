@@ -1284,8 +1284,8 @@ register_unit("psig" => Units(tobase=AffineTransform(scale=uscale(ud"psi"), offs
     IntDimType = Dimensions{Int32}
     reg = RegistryTools.PermanentDict{Symbol, Units{IntDimType, AffineTransform{Float64}}}()
     reg = RegistryTools.registry_defaults!(reg)  
-    @test reg[:m]  === Units(tobase=AffineTransform(), dims=IntDimType(length=1), symbol=:m)
-    @test reg[:kg] === Units(tobase=AffineTransform(), dims=IntDimType(mass=1), symbol=:kg)    
+    @test reg[:m]  == Units(tobase=AffineTransform{Float64}(), dims=IntDimType(length=1), symbol=:m)
+    @test reg[:kg] == Units(tobase=AffineTransform{Float64}(), dims=IntDimType(mass=1), symbol=:kg)    
 end
 
 @testset "Integration tests with Unitful" begin
