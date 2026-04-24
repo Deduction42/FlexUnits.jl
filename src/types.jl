@@ -32,9 +32,9 @@ utrans(0.0)
 abstract type AbstractUnitTransform end
 
 """
-    AbstractUnitLike
+    AbstractDimLike
 
-A broad class representing anything that can be interpreted as a unit
+A broad class representing anything that can be interpreted as a dimension
 """
 abstract type AbstractDimLike <: AbstractUnitLike end
 
