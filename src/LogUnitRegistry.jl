@@ -7,12 +7,13 @@ import ..RegistryTools.dimtype
 import ..RegistryTools.unittype
 
 const UNIT_LOCK = ReentrantLock()
-const AffLogUnits{D} = Union{Units{D,AffineTransform{Float64}}, Units{D,ExpAffTransform{Float64}}}
-const UNITS = PermanentDict{Symbol, AffLogUnits{Dimensions{FixRat32}}}()
+const AffLogUnits = Union{Units{Dimensions{FixRat32}, AffineTransform{Float64}}, Units{Dimensions{FixRat32},ExpAffTransform{Float64}}}
+const UNITS = PermanentDict{Symbol, AffLogUnits}()
 
 #Additional conversion functions
-#Base.convert(::Type{AffLogUnits{D}}, t::Union{AffineTransform, NoTransform}) where D = convert(AffineTransform{D}, t)
-#Base.convert(::Type{AffLogUnits{D}}, t::ExpAffTransform) = convert(ExpAffTransform{Float64}, t)
+Base.convert(::Type{AffLogUnits}, u::AbstractUnitLike) = convert(Units{Dimensions{FixRat32}, AffineTransform{Float64}}, u)
+Base.convert(::Type{AffLogUnits}, u::Units{<:Any, <:ExpAffTransform}) = convert(Units{Dimensions{FixRat32}, ExpAffTransform{Float64}}, u)
+Base.convert(::Type{AffLogUnits}, u::QuantUnion) = convert(Units{Dimensions{FixRat32}, AffineTransform{Float64}}, u)
 
 #Fill the UNITS registry with default values
 registry_defaults!(UNITS)
@@ -50,8 +51,8 @@ macro D_str(str)
 end
 
 #Add these functions to facilitate knowing types ahead of time, DO NOT EXPORT IF MULTIPLE REGISTRIES ARE USED
-unittype() = RegistryTools.regunittype(UNITS)
-dimtype()  = RegistryTools.regdimtype(UNITS)
+utype() = RegistryTools.regunittype(UNITS)
+dtype() = RegistryTools.regdimtype(UNITS)
 
 #Registry is exported but these functions/macros are not (in case user wants their own verison)
 #You can import these by invoking `using .Registry`

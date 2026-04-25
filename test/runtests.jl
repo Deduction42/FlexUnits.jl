@@ -32,8 +32,8 @@ const AT = AffineTransform{Float64}
 
 @testset "Basic utilities" begin
     #Basic Type operations
-    @test UnitRegistry.unittype() === DEFAULT_UNIT_TYPE
-    @test UnitRegistry.dimtype() === DEFAULT_DIM_TYPE
+    @test UnitRegistry.utype() === DEFAULT_UNIT_TYPE
+    @test UnitRegistry.dtype() === DEFAULT_DIM_TYPE
 
     d = Dimensions(length=2, mass=1, time=-2)
     D = typeof(d)
@@ -1296,7 +1296,7 @@ end
     @test uconvert(Unitful.unit(q1), uconvert(ud"m/s", q1)) == q1
     @test Quantity(q1) == 5.0*ud"km/hr"
     @test Quantity{Float64}(q1) == 5.0*ud"km/hr"
-    @test convert(Quantity{Float64, UnitRegistry.unittype()}, q1) == 5.0*ud"km/hr"
+    @test convert(Quantity{Float64, UnitRegistry.utype()}, q1) == 5.0*ud"km/hr"
     @test_throws DimensionError uconvert(ud"kPa", q1)
     @test Unitful.ustrip(uconvert(Unitful.u"K", q2)) == ustrip(uconvert(ud"K", q2))
     @test Unitful.ustrip(Unitful.uconvert(Unitful.u"cd/mol", q3)) == ustrip(uconvert(ud"cd/mol", q3))

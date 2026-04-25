@@ -83,16 +83,16 @@ Returns the dimension type of a registry
 """
 regdimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 
-function _register_unit!(reg::AbstractDict{Symbol,Units{D,T}}, p::Pair{Symbol,<:AbstractUnitLike}) where {D,T<:AbstractUnitTransform}
+function _register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair{Symbol,<:AbstractUnitLike})
     (k,v) = p
     return setindex!(reg, v, k)
 end
 
-function _register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{Symbol, <:QuantUnion})
+function _register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair{Symbol, <:QuantUnion})
     return _register_unit!(reg, p[1]=>Units(p[2]))
 end
 
-function add_prefixes!(reg::AbstractDict{Symbol,<:Units{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
+function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
     original = reg[u]
     for (name, scale) in pairs(prefixes)
         newname = Symbol(string(name)*string(u))
@@ -102,8 +102,9 @@ function add_prefixes!(reg::AbstractDict{Symbol,<:Units{D}}, u::Symbol, prefixes
 end
 
 
-function registry_defaults!(reg::AbstractDict{Symbol, <:Units{Dims}}) where {Dims<:AbstractDimensions}
+function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnits
     #reg = PermanentDict{Symbol, Units{DEFAULT_DIMENSONS}}()
+    Dims = dimtype(U)
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
     
     _register_unit(p::Pair) = _register_unit!(reg, p)

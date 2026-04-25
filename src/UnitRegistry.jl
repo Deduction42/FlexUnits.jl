@@ -45,8 +45,8 @@ macro D_str(str)
 end
 
 #Add these functions to facilitate knowing types ahead of time, DO NOT EXPORT IF MULTIPLE REGISTRIES ARE USED
-unittype() = RegistryTools.regunittype(UNITS)
-dimtype()  = RegistryTools.regdimtype(UNITS)
+utype() = RegistryTools.regunittype(UNITS)
+dtype() = RegistryTools.regdimtype(UNITS)
 
 #Registry is exported but these functions/macros are not (in case user wants their own verison)
 #You can import these by invoking `using .Registry`

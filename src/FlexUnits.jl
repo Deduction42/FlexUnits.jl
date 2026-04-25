@@ -10,7 +10,7 @@ include("math.jl")
 include("linear_algebra.jl")
 include("RegistryTools.jl")
 include("UnitRegistry.jl")
-#include("LogUnitRegistry.jl")
+include("LogUnitRegistry.jl")
 
 export AbstractUnitLike, AbstractDimLike, AbstractDimensions, AbstractUnits, AbstractUnitTransform
 export ConversionError, DimensionError, NotScalarError, NotDimensionError, FixRat32

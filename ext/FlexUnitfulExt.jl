@@ -18,7 +18,7 @@ end
 
 function FlexUnits.Quantity(q::Unitful.Quantity)
     validate_upreferred()
-    flex_dim   = convert(UnitRegistry.dimtype(), Unitful.dimension(q))
+    flex_dim   = convert(UnitRegistry.dtype(), Unitful.dimension(q))
     base_scale = Unitful.ustrip(Unitful.upreferred(q))
     return FlexUnits.Quantity(base_scale, flex_dim)
 end
