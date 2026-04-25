@@ -484,7 +484,7 @@ end
 ustrip(q::LogQuant) = q.value
 unit(q::LogQuant) = q.unit
 tobase(q::LogQuant) = tobase(q.unit)
-dstrip(q::LogQuant) = tobase(q)(ustrip(q))
+dstrip(q::LogQuant) = exp(tobase(q)(ustrip(q)))
 ustrip_base(q::LogQuant) = dstrip(q)
 dimension(q::LogQuant) = dimension(unit(q))
 unittype(::Type{<:LogQuant{T,U}}) where {T,U} = U

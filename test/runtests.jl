@@ -17,7 +17,7 @@ using TestItems: @testitem
 using TestItemRunner
 using Test
 using BenchmarkTools
-using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64
+using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64, dB, Np
 using Aqua
 using LinearAlgebra
 using Statistics
@@ -1199,6 +1199,47 @@ end
     @test all(sum(MQ', dims=2) .≈ sum(X', dims=2).*UX)
 end
 
+@testset "Logarithmic Units" begin 
+    q1 = 5u"kg"
+    q2 = 2u"s"
+
+    lq1 = log(q1)
+    lq2 = log(q2)
+
+    #Logarithmic identities
+    @test lq1 + lq2 ≈ log(q1*q2)
+    @test lq1 + log(5) ≈ log(q1*5)
+    @test log(5) + lq1 ≈ log(5*q1)
+
+    @test lq1 - lq2 ≈ log(q1/q2)
+    @test lq1 - log(5) ≈ log(q1/5)
+    @test log(5) - lq1 ≈ log(5/q1)
+
+    @test lq1*2 ≈ log(q1^2)
+    @test 2*lq1 ≈ log(q1^2)
+    @test lq1/2 ≈ log(sqrt(q1))
+
+    @test exp(lq1) ≈ q1
+
+    @test_throws LogLinearError lq1 + q2
+    @test_throws LogLinearError q1 + lq2 
+    @test_throws LogLinearError lq1 - q2
+    @test_throws LogLinearError q1 - lq2
+    @test_throws LogLinearError lq1 * q2
+    @test_throws LogLinearError q1 * lq2
+    @test_throws LogLinearError lq1 / q2
+    @test_throws LogLinearError q1 / lq2 
+
+    @test ubase(lq1)*q2 ≈ q1*q2
+    @test logubase(q1) + lq2 ≈ lq1 + lq2
+    @test 0*Np(5u"kg") == log(5u"kg")
+    @test 20dB(u"m") == log(100u"m")
+
+    @test 5u"kPa" |> dB(u"Pa") ≈ log(5000u"Pa")
+    @test dstrip(20dB(u"J")) ≈ 100
+
+
+end
 
 @testset "Additional tests of FixedRational" begin
     #Tests were basically copied from DynamicQuantities, since FixedRational isn't its own package

@@ -360,6 +360,20 @@ function with_logubase(fv, fd, args::LogQuant...)
     return logquant(fv(basevals...), fd(basedims...))
 end
 
+function Base.:(==)(q1::LogQuant, q2::LogQuant)
+    qb1 = logubase(q1)
+    qb2 = logubase(q2)
+    return (ustrip(qb1) == ustrip(qb2)) && (unit(qb1) == unit(qb2))
+end
+
+function Base.:(≈)(q1::LogQuant, q2::LogQuant)
+    qb1 = logubase(q1)
+    qb2 = logubase(q2)
+    return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
+end
+
+Base.:(≈)(q1::Missing, q2::LogQuant) = missing 
+Base.:(≈)(q2::LogQuant, q1::Missing) = missing 
 
 #Logarithms/Exponentials of transforms 
 Base.log(q::Quantity) = logquant(q)
@@ -410,10 +424,6 @@ dB(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=0.1, base=10.0, 
 Generates a Unit type in Nepers (having reference of 'x', a base of 'e ≈ 2.71828' and a scale of '1.0'
 """
 Np(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=1.0, base=exp(1), logsymbol=:Np)
-
-Base.log(u::AbstractUnitLike) = logunits(u, logscale=1.0, base=exp(1), logsymbol=:log)
-Base.log10(u::AbstractUnitLike) = logunits(u, logscale=1.0, base=10, logsymbol=:log10)
-Base.log2(u::AbstractUnitLike) = logunits(u, logscale=1.0, base=2, logsymbol=:log10)
 
 function logunits(reference::Union{AbstractUnitLike, Quantity}; logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL)
     return Units(
