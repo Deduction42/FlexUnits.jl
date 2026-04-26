@@ -373,18 +373,23 @@ Convenience union that allows Number and Non-Number types to be considered toget
 """
 const QuantUnion{T,U} = Union{Quantity{T,U}, FlexQuant{T,U}}
 
+Quantity{T,U}(q::QuantUnion) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
+Quantity{T,D}(q::QuantUnion) where {T,D<:StaticDims} = Quantity{T,D}(ustrip(D(), q), D())
+Quantity{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
+
+Quantity{T,U}(x::NumUnion) where {T,U} = Quantity{T,U}(x*dimtype(U)())
+Quantity{T,D}(x::NumUnion) where {T,D<:StaticDims} = Quantity{T,D}(convert(T,x), assert_dimensionless(D()))
+Quantity{T,D}(x::NumUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D())
 
 Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
 Quantity{T}(q::QuantUnion) where T = Quantity{T}(ustrip(q), unit(q))
-Quantity{T,U}(q::QuantUnion) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
-Quantity{T,StaticDims{d}}(q::QuantUnion) where {T,d} = Quantity{T,StaticDims{d}}(ustrip(d, q), StaticDims{d}())
-Quantity{T,StaticDims{d}}(x::Number) where {T,d} = Quantity{T, StaticDims{d}}(convert(T,x), StaticDims{d}())
-Quantity{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
-Quantity{T,D}(x::Number) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D())
+
+FlexQuant{T,U}(q::QuantUnion) where {T,U} = FlexQuant{T,U}(ustrip(q), unit(q))
+FlexQuant{T,D}(q::QuantUnion) where {T,D<:StaticDims} = FlexQuant{T,D}(ustrip(D(), q), D())
+FlexQuant{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
 
 FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
 FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))
-FlexQuant{T,U}(q::QuantUnion) where {T,U} = FlexQuant{T,U}(ustrip(q), unit(q))
 
 """
     ubase(q::QuantUnion)
@@ -452,8 +457,11 @@ struct LogQuant{T<:Number, U<:AbstractUnitLike} <: Number
     unit  :: U 
 end
 LogQuant{T}(x, u::AbstractUnitLike) where T = LogQuant{T, typeof(u)}(x, u)
-LogQuant{T}(q::QuantUnion) where T = LogQuant{T}(ustrip(q), unit(q))
-LogQuant{T,U}(q::QuantUnion) where {T,U} = LogQuant{T,U}(ustrip(q), unit(q))
+LogQuant{T}(q::QuantUnion) where T = LogQuant{T}(log(dstrip(q)), dimension(q))
+LogQuant{T,U}(q::QuantUnion) where {T,U} = LogQuant{T,U}(log(dstrip(q)), dimension(q))
+
+Quantity{T,U}(lq::LogQuant) where {T,U} = Quantity{T,U}(ubase(lq))
+FlexQuant{T,U}(lq::LogQuant) where {T,U} = FlexQuant{T,U}(ubase(lq))
 
 const LogQuantUnion{T,U} = Union{Quantity{T,U}, FlexQuant{T,U}, LogQuant{T,U}}
 

@@ -154,35 +154,18 @@ Base.convert(::Type{ExpAffTransform{T}}, t::ExpAffTransform) where T = ExpAffTra
 Base.convert(::Type{NoTransform}, t::AffineTransform) = is_identity(t) ? NoTransform() : throw(ArgumentError("Cannot convert non-identity AffineTransform to a NoTransform"))
 Base.convert(::Type{NoTransform}, t::ExpAffTransform) = throw(ArgumentError("Cannot convert an ExpAffTransform to a NoTransform"))
 
-#Converting dynamic Quantity types ====================================================
-Base.convert(::Type{Quantity{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
-Base.convert(::Type{Quantity{T,U}}, q::QuantUnion) where {T,U<:Units} = Quantity{T,U}(ustrip(q), unit(q))
-Base.convert(::Type{Quantity{T,D}}, q::LogQuant) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
-Base.convert(::Type{Quantity{T,U}}, q::LogQuant) where {T,U<:Units} = Quantity{T,U}(dstrip(q), dimension(q))
-Base.convert(::Type{Quantity{T,D}}, x::MathUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D(0))
-Base.convert(::Type{Quantity{T,U}}, x::MathUnion) where {T,U<:Units} = Quantity{T,U}(x, dimtype(U)(0))
+Base.convert(::Type{Quantity{T,U}}, q::LogQuantUnion) where {T,U} = Quantity{T,U}(q)
+Base.convert(::Type{FlexQuant{T,U}}, q::LogQuantUnion) where {T,U} = FlexQuant{T,U}(q)
+Base.convert(::Type{LogQuant{T,U}}, q::LogQuantUnion) where {T,U} = LogQuant{T,U}(q)
 
-#Converting static Quantity types =====================================================
-Base.convert(::Type{Quantity{T,D}}, q::QuantUnion) where {T, D<:StaticDims} = Quantity{T,D}(ustrip(D(), q), D())
-Base.convert(::Type{Quantity{T,D}}, q::LogQuant) where {T, D<:StaticDims} = Quantity{T,D}(ustrip(D(), q), D())
 function Base.convert(::Type{Quantity{T,D}}, u::AbstractUnitLike) where {T,D<:AbstractDimensions}
     assert_scalar(u)
-    return Q(uscale(u), dimension(u))
+    return Quantity(uscale(u), dimension(u))
 end
 
-#Converting dynamic FlexQuant types ====================================================
-Base.convert(::Type{FlexQuant{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(dstrip(q), dimension(q))
-Base.convert(::Type{FlexQuant{T,U}}, q::QuantUnion) where {T,U<:Units} = FlexQuant{T,U}(ustrip(q), unit(q))
-Base.convert(::Type{FlexQuant{T,D}}, q::LogQuant) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(dstrip(q), dimension(q))
-Base.convert(::Type{FlexQuant{T,U}}, q::LogQuant) where {T,U<:Units} = FlexQuant{T,U}(dstrip(q), dimension(q))
-Base.convert(::Type{FlexQuant{T,D}}, x::MathUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(x, D(0))
-Base.convert(::Type{FlexQuant{T,U}}, x::MathUnion) where {T,U<:Units} = FlexQuant{T,U}(x, dimtype(U)(0))
-
-#Converting static FlexQuant types =====================================================
-Base.convert(::Type{FlexQuant{T,D}}, q::QuantUnion) where {T, D<:StaticDims} = FlexQuant{T,D}(ustrip(D(), q), D())
 function Base.convert(::Type{FlexQuant{T,D}}, u::AbstractUnitLike) where {T,D<:AbstractDimensions}
     assert_scalar(u)
-    return Q(uscale(u), dimension(u))
+    return FlexQuant(uscale(u), dimension(u))
 end
 
 
@@ -220,7 +203,7 @@ Base.promote_rule(::Type{T1}, ::Type{T2}) where {T1<:NoTransform, T2<:AbstractUn
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimvaltype(D2))
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimvaltype(D1), dimvaltype(D2))
 Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:AbstractDimensions = D
-Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:StaticDims = D
+Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:StaticDims = dimvaltype(D)
 
 
 #Unit promotion
