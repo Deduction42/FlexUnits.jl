@@ -185,6 +185,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:lb => 0.453592*kg); lb = reg[:lb]
     _register_unit(:oz => (1/16)*lb)
     _register_unit(:psi => 6.89476*reg[:kPa])
+    _register_unit(:hp => 745.699871*reg[:W])
     _register_unit(:lbf => 4.44822*N)
     _register_unit(:fl_oz => 29.5735*reg[:mL])
     _register_unit(:cup => 8*reg[:fl_oz])
