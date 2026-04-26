@@ -17,7 +17,7 @@ using TestItems: @testitem
 using TestItemRunner
 using Test
 using BenchmarkTools
-using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64
+using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64, dB, Np, NoDims
 using Aqua
 using LinearAlgebra
 using Statistics
@@ -32,8 +32,8 @@ const AT = AffineTransform{Float64}
 
 @testset "Basic utilities" begin
     #Basic Type operations
-    @test UnitRegistry.unittype() === DEFAULT_UNIT_TYPE
-    @test UnitRegistry.dimtype() === DEFAULT_DIM_TYPE
+    @test UnitRegistry.utype() === DEFAULT_UNIT_TYPE
+    @test UnitRegistry.dtype() === DEFAULT_DIM_TYPE
 
     d = Dimensions(length=2, mass=1, time=-2)
     D = typeof(d)
@@ -234,7 +234,7 @@ end
         @test isempty(quantity([0.0, 1.0], u)) == false
         @test isempty(quantity(Float64[], u)) == true
         @test zero(Dimensions{R}) === Dimensions{R}()
-        @test zero(Units{Dimensions{R}, AT}) === Units{Dimensions{R}, AT}(dims=zero(Dimensions{R}), todims=AT())
+        @test zero(Units{Dimensions{R}, AT}) === Units{Dimensions{R}, AT}(dims=zero(Dimensions{R}), tobase=AT())
 
         #Static identity transform tests
         @test zero(1u"m/s") + 2.0u"m/s" == 2.0u"m/s"
@@ -546,16 +546,16 @@ end
     @test xp - cplxb === 0.01 - cplxb
 
     # Constructors
-    kelvin = Units(dims=ud"K", todims=AffineTransform())
+    kelvin = Units(dims=ud"K", tobase=AffineTransform())
     @test 1*kelvin == 1K
 
-    rankine = Units(todims=AffineTransform(scale=5/9, offset=0.0), dims=K)
+    rankine = Units(tobase=AffineTransform(scale=5/9, offset=0.0), dims=K)
     @test 1*rankine == (5/9)K
 
-    fahrenheit = Units(todims=AffineTransform(scale=5/9, offset=(273.15-32*5/9)), dims=K)
+    fahrenheit = Units(tobase=AffineTransform(scale=5/9, offset=(273.15-32*5/9)), dims=K)
     @test 1*fahrenheit ≈ 1°F
 
-    celsius = Units(todims=AffineTransform(offset=273.15), dims=K)
+    celsius = Units(tobase=AffineTransform(offset=273.15), dims=K)
     @test 1*celsius ≈ 1°C
 
     # Round-trip sanity checks
@@ -580,11 +580,11 @@ end
     @test 0°C |> °F ≈ 32°F
     @test (°C |> °F)(0) ≈ 32
 
-    @test Units(dims=ud"Pa", todims=AffineTransform()) == ud"Pa"
-    @test_throws NotDimensionError Units(dims=ud"kPa", todims=AffineTransform())
+    @test Units(dims=ud"Pa", tobase=AffineTransform()) == ud"Pa"
+    @test_throws NotDimensionError Units(dims=ud"kPa", tobase=AffineTransform())
 
     # Test display against errors
-    celsius = Units(todims=AffineTransform(offset=273.15), dims=ud"K")
+    celsius = Units(tobase=AffineTransform(offset=273.15), dims=ud"K")
     psi = Units(6.89476ud"kPa")
     io = IOBuffer()
     @test isnothing(show(io, (dimension(°F), dimension(ud"K"), psi, celsius, fahrenheit)))
@@ -622,7 +622,7 @@ end
     testio = IOBuffer()
 
     showerror(testio, ConversionError(ud"m/s", ud"m"))
-    @test String(take!(testio)) == "ConversionError: Cannot convert unit 'm' to target unit 'm/s'. Consider multiplying 'm/s' by 's' or similar."
+    @test String(take!(testio)) == "ConversionError: Cannot convert unit 'm' to target unit 'm/s' due to a dimension mismatch of 's'"
 
     showerror(testio, DimensionError(dimension(ud"m/s")))
     @test String(take!(testio)) == "DimensionError: m/s is not dimensionless"
@@ -761,7 +761,7 @@ end
     #Static unit type conversions 
     @test convert(Quantity{Int64, typeof(u"m/s")}, 1u"m/s") isa Quantity{Int64, typeof(u"m/s")}
     @test convert(Quantity{Int64, typeof(dimension(u"m/s"))}, 1u"m/s") isa Quantity{Int64, typeof(dimension(u"m/s"))}
-    @test_throws DimensionError convert(Quantity{Float64, U"m/s"}, 1u"kg/hr")
+    @test_throws ConversionError convert(Quantity{Float64, U"m/s"}, 1u"kg/hr")
     @test_throws ConversionError convert(Quantity{Int64, D"m/s"}, 1u"kg/hr")
 
     # Test that regular type promotion applies:
@@ -774,7 +774,7 @@ end
     # Test conversion of unit types 
     @test convert(DEFAULT_DIM_TYPE, ud"m") === Dimensions(length=1)
     @test_throws NotDimensionError convert(DEFAULT_DIM_TYPE, ud"mm")
-    @test convert(Units{DEFAULT_DIM_TYPE, AT}, ubase(2ud"m")) == Units(todims=AffineTransform(scale=2.0, offset=0.0), dims=dimension(ud"m"))
+    @test convert(Units{DEFAULT_DIM_TYPE, AT}, ubase(2ud"m")) == Units(tobase=AffineTransform(scale=2.0, offset=0.0), dims=dimension(ud"m"))
     @test_throws ArgumentError convert(Units{DEFAULT_DIM_TYPE, AT}, quantity(2, ud"°C"))
     @test convert(Quantity{Float64, DEFAULT_DIM_TYPE}, 2ud"m") === Quantity{Float64, DEFAULT_DIM_TYPE}(2.0, dimension(ud"m")) 
     @test_throws NotScalarError convert(Quantity{Float64, DEFAULT_DIM_TYPE}, ud"°C") 
@@ -782,6 +782,13 @@ end
     @test promote_type(Quantity{Float64, typeof(ud"m/s")}, Float64) == Quantity{Float64, typeof(dimension(ud"m/s"))}
     @test promote_type(Quantity{Float32, typeof(ud"m/s")}, Float64) == Quantity{Float64, typeof(dimension(ud"m/s"))}
     @test promote_type(FlexQuant{Matrix{Float32}, typeof(ud"m/s")}, Matrix{Float64}) == FlexQuant{Matrix{Float64}, typeof(dimension(ud"m/s"))}
+
+    #Conversions of transform types 
+    @test convert(AffineTransform{Float64}, NoTransform()) == AffineTransform{Float64}(scale=1, offset=0)
+    @test convert(NoTransform, FlexUnits.tobase(u"s")) == NoTransform()
+    @test_throws ArgumentError convert(NoTransform, FlexUnits.tobase(u"km"))
+    @test convert(ExpAffTransform{Int64}, FlexUnits.tobase(Np(u"kg"))) == ExpAffTransform{Int64}(scale=1, offset=0)
+    @test_throws ArgumentError convert(NoTransform, FlexUnits.tobase(Np(u"kg")))
 
     # Test that adding different dimension subtypes still works
     @test 1*Dimensions{Int64}(length=1) + 1ud"m" == 2ud"m"
@@ -794,13 +801,18 @@ end
     @test convert(U"m/s", dimension(ud"km/hr")) == u"m/s"
     @test convert(Units{Dimensions{FixRat32}, AffineTransform{Float64}}, u"km/hr") == ud"km/hr"
 
-    @test_throws DimensionError convert(U"kg/s", u"m/s")
-    @test_throws DimensionError convert(D"m/s", u"kg/s")
-    @test_throws DimensionError convert(U"kg/s", ud"m/s")
-    @test_throws DimensionError convert(D"m/s", ud"kg/s")
+    @test_throws ConversionError convert(U"kg/s", u"m/s")
+    @test_throws ConversionError convert(D"m/s", u"kg/s")
+    @test_throws ConversionError convert(U"kg/s", ud"m/s")
+    @test_throws ConversionError convert(D"m/s", ud"kg/s")
     @test_throws NotDimensionError convert(D"m/s", u"km/hr")
     @test_throws NotDimensionError convert(Dimensions{FixRat32}, u"km/hr")
     
+    #Promotions 
+    @test typeof(promote(Quantity(5, ud"kg/s"), Quantity(6.0, ud"km/hr"))) <: NTuple{2, Quantity{Float64, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}}
+    @test promote(D"kg/s"(), NoDims()) isa Tuple{Dimensions{FixRat32}, Dimensions{FixRat32}}
+    @test promote(Dimensions{FixRat32}(), NoDims()) isa Tuple{Dimensions{FixRat32}, Dimensions{FixRat32}}
+
     # Automatic conversions via constructor:
     for T in [Float16, Float32, Float64, BigFloat], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
         D = Dimensions{R}
@@ -828,7 +840,7 @@ end
     #Generating transforms 
     @test uconvert(u"kg/hr", u"kg/s") == AffineTransform(3600.0, 0.0)
     @test uconvert(u"kg/s" |> u"kg/hr", 1.0) == 3600.0
-    @test uconvert(dimension(u"kg/s"), u"kg/hr") == FlexUnits.todims(u"kg/hr")
+    @test uconvert(dimension(u"kg/s"), u"kg/hr") == FlexUnits.tobase(u"kg/hr")
 
     #dconvert and similar 
     @test dconvert(u"kg/s", 5.0u"kg/hr") == ubase(5.0u"kg/hr")
@@ -854,6 +866,12 @@ end
     x2 = x .|> ud"g"
     @test typeof(x2) <: Vector{<:Quantity{Float64,<:Units{<:Any}}}
     @test x2[2] ≈ (2000ud"g")
+
+    #Dimension validation 
+    @test ustrip(5u"kJ" |> D"kJ") ≈ 5000
+    @test 5u"kJ" |> D"kJ" isa Quantity{Float64, D"J"}
+
+
 end
 
 @testset "Linear Algebra" begin
@@ -1199,6 +1217,73 @@ end
     @test all(sum(MQ', dims=2) .≈ sum(X', dims=2).*UX)
 end
 
+@testset "Logarithmic Units" begin 
+    q1 = 5u"kg"
+    q2 = 2u"s"
+
+    lq1 = log(q1)
+    lq2 = log(q2)
+
+    #Logarithmic identities
+    @test lq1 + lq2 ≈ log(q1*q2)
+    @test lq1 + log(5) ≈ log(q1*5)
+    @test log(5) + lq1 ≈ log(5*q1)
+
+    @test lq1 - lq2 ≈ log(q1/q2)
+    @test lq1 - log(5) ≈ log(q1/5)
+    @test log(5) - lq1 ≈ log(5/q1)
+
+    @test lq1*2 ≈ log(q1^2)
+    @test 2*lq1 ≈ log(q1^2)
+    @test lq1/2 ≈ log(sqrt(q1))
+
+    @test exp(lq1) ≈ q1
+
+    #Unit Conversions 
+    @test ustrip(20dB(u"J") |> u"J") ≈ 100
+    @test ustrip(20dB(u"J") |> D"kJ") ≈ 100
+    @test ustrip(100u"J" |> dB(u"J")) ≈ 20
+    @test ustrip(20dB(u"J") |> dB(u"kJ")) ≈ -10
+    @test (20dB(u"J") |> D"kJ") isa Quantity{<:Real, D"J"}
+    @test (20dB(u"J") |> u"J") isa Quantity
+    @test (100u"J" |> dB(u"J")) isa LogQuant
+    @test (20dB(u"J") |> dB(u"kJ")) isa LogQuant
+
+    #Type conversions 
+    @test convert(Quantity{Float64, Units{D"kg/hr", AffineTransform{Float64}}}, 1u"kg/hr") isa Quantity{Float64, <:Units}
+    @test convert(Quantity{Float64, Units{D"kg/hr", AffineTransform{Float64}}}, 1dB(u"kg/hr")) isa Quantity{Float64, <:Units}
+    @test convert(Quantity{Float64, D"kg/hr"}, 1dB(u"kg/s")) isa Quantity{Float64, D"kg/hr"}
+    @test convert(LogQuant{Float64, D"kg/hr"}, 1u"kg/s") isa LogQuant{Float64, D"kg/hr"}
+    @test convert(Quantity{Float64, D"kg/hr"}, 1dB(u"kg/s")) == ubase(1dB(u"kg/s"))
+    @test convert(LogQuant{Float64, D"kg/hr"}, 1u"kg/s") == logubase(1u"kg/s")
+    @test convert(FlexQuant{Float64, D"kg/hr"}, 1dB(u"kg/s")) == ubase(1dB(u"kg/s"))
+    @test LogQuant{Float64}(10u"kg") ≈ 10dB(u"kg")
+    @test FlexQuant{Float64, D"kg"}(10dB(u"kg")) ≈ 10u"kg"
+    @test quantity(10dB(u"kg")) ≈ 10u"kg"
+    @test logquant(10u"kg") ≈ 10dB(u"kg")
+    @test logquant(10dB(u"s")) ≈ log(10u"s")
+
+    #Informative errors thrown for incompatible operations (mixed log-linear types)
+    @test_throws LogLinearError lq1 + q2
+    @test_throws LogLinearError q1 + lq2 
+    @test_throws LogLinearError lq1 - q2
+    @test_throws LogLinearError q1 - lq2
+    @test_throws LogLinearError lq1 * q2
+    @test_throws LogLinearError q1 * lq2
+    @test_throws LogLinearError lq1 / q2
+    @test_throws LogLinearError q1 / lq2 
+
+    #Miscillaneous tests
+    @test ubase(lq1)*q2 ≈ q1*q2
+    @test logubase(q1) + lq2 ≈ lq1 + lq2
+    @test 0*Np(5u"kg") == log(5u"kg")
+    @test 20dB(u"m") == log(100u"m")
+
+    @test 5u"kPa" |> dB(u"Pa") ≈ log(5000u"Pa")
+    @test dstrip(20dB(u"J")) ≈ 100
+
+
+end
 
 @testset "Additional tests of FixedRational" begin
     #Tests were basically copied from DynamicQuantities, since FixedRational isn't its own package
@@ -1269,11 +1354,13 @@ end
 end
 
 #Register a new affine unit (and verify re-registering)
-register_unit("psig" => Units(todims=AffineTransform(scale=uscale(ud"psi"), offset=101.3ud"kPa"), dims=ud"Pa"))
+register_unit("psig" => Units(tobase=AffineTransform(scale=uscale(ud"psi"), offset=101.3ud"kPa"), dims=ud"Pa"))
+
+LogUnitRegistry.register_unit("dB_V" => dB(u"V"))
 
 @testset "Registration tests" begin
     #Test re-registering and verify that the unit exists
-    register_unit("psig" => Units(todims=AffineTransform(scale=uscale(ud"psi"), offset=101.3ud"kPa"), dims=ud"Pa"))
+    register_unit("psig" => Units(tobase=AffineTransform(scale=uscale(ud"psi"), offset=101.3ud"kPa"), dims=ud"Pa"))
     @test 0*ud"psig" == 101.3ud"kPa"
     @test q"0psig" == 101.3ud"kPa"
 
@@ -1284,8 +1371,21 @@ register_unit("psig" => Units(todims=AffineTransform(scale=uscale(ud"psi"), offs
     IntDimType = Dimensions{Int32}
     reg = RegistryTools.PermanentDict{Symbol, Units{IntDimType, AffineTransform{Float64}}}()
     reg = RegistryTools.registry_defaults!(reg)  
-    @test reg[:m]  === Units(todims=AffineTransform(), dims=IntDimType(length=1), symbol=:m)
-    @test reg[:kg] === Units(todims=AffineTransform(), dims=IntDimType(mass=1), symbol=:kg)    
+    @test reg[:m]  == Units(tobase=AffineTransform{Float64}(), dims=IntDimType(length=1), symbol=:m)
+    @test reg[:kg] == Units(tobase=AffineTransform{Float64}(), dims=IntDimType(mass=1), symbol=:kg)    
+
+    #Test reregistration of a unit
+    @test LogUnitRegistry.register_unit("db_V" => dB(u"V")) isa AbstractDict
+    @test LogUnitRegistry.u"dB_V" == dB(u"V")
+    @test LogUnitRegistry.register_unit("dB_J" => dB(u"J")) isa AbstractDict
+    @test LogUnitRegistry.register_unit("Rg" => 8.314u"J/mol/K") isa AbstractDict
+
+    #Validate appropriate types are returned from expressions
+    @test 5*LogUnitRegistry.u"dB_V" isa LogQuant
+    @test 5*LogUnitRegistry.u"V" isa Quantity
+    @test 5*LogUnitRegistry.u"V" |> LogUnitRegistry.u"dB_V" isa LogQuant
+    @test 5*LogUnitRegistry.ud"dB_V" isa LogQuant
+    @test 5*LogUnitRegistry.ud"V" isa Quantity
 end
 
 @testset "Integration tests with Unitful" begin
@@ -1296,7 +1396,7 @@ end
     @test uconvert(Unitful.unit(q1), uconvert(ud"m/s", q1)) == q1
     @test Quantity(q1) == 5.0*ud"km/hr"
     @test Quantity{Float64}(q1) == 5.0*ud"km/hr"
-    @test convert(Quantity{Float64, UnitRegistry.unittype()}, q1) == 5.0*ud"km/hr"
+    @test convert(Quantity{Float64, UnitRegistry.utype()}, q1) == 5.0*ud"km/hr"
     @test_throws DimensionError uconvert(ud"kPa", q1)
     @test Unitful.ustrip(uconvert(Unitful.u"K", q2)) == ustrip(uconvert(ud"K", q2))
     @test Unitful.ustrip(Unitful.uconvert(Unitful.u"cd/mol", q3)) == ustrip(uconvert(ud"cd/mol", q3))

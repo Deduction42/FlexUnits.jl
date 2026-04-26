@@ -17,19 +17,33 @@ julia> uconvert(u"K", u"°C")(0)
 ```
 """
 function uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) 
-    compatible_dims(u_target, u_current) || throw(ConversionError(u_target, u_current))
-    return inv(todims(u_target)) ∘ todims(u_current)
+    assert_convertable(u_target, u_current)
+    return inv(tobase(u_target)) ∘ tobase(u_current)
+end
+function uconvert(u_target::AbstractUnitLike, u_current::AbstractDimLike)
+    assert_convertable(u_target, u_current)
+    return Base.Fix1(inv, tobase(u_target))
+end
+function uconvert(u_target::AbstractDimLike, u_current::AbstractUnitLike)
+    assert_convertable(u_target, u_current)
+    return tobase(u_current)
+end
+function uconvert(u_target::AbstractDimLike, u_current::AbstractDimLike)
+    assert_convertable(u_target, u_current)
+    return NoTransform()
 end
 uconvert(ft::AbstractUnitTransform, x) = ft(x)
-uconvert(utarget::StaticDims{D}, ucurrent::Units{StaticDims{D}}) where D = ucurrent.todims
+uconvert(u_target::StaticDims{D}, u_current::Units{StaticDims{D}}) where D = tobase(u_current)
+
+assert_convertable(u_target::AbstractUnitLike, u_current::AbstractUnitLike) = compatible_dims(u_target, u_current) ? u_target : throw(ConversionError(u_target, u_current))
 
 #============================================================================================
 uconvert with quantities
 ============================================================================================#
 """
-    uconvert(u::AbstractUnitLike, q::QuantUnion)
+    uconvert(u::AbstractUnitLike, q::Union{LogQuant, QuantUnion})
 
-Converts quantity `q` to the equivalent quantity having units `u`
+Converts quantity `q` to the equivalent quantity having units `u`. If unit is a logarithmic unit, a LogQuant is returned
 
 ```julia
 julia> uconvert(u"K", 25u"°C")
@@ -37,10 +51,32 @@ julia> uconvert(u"K", 25u"°C")
 ```
 """
 function uconvert(u::AbstractUnitLike, q::QuantUnion)
-    ft = uconvert(u, unit(q))
-    newval = ft(ustrip(q))
+    newval = uconvert(u, unit(q))(ustrip(q))
     return Quantity{typeof(newval), typeof(u)}(newval, u)
 end
+
+function uconvert(u::AbstractUnitLike, lq::LogQuant)
+    ft = inv(tobase(u)) ∘ exp(tobase(unit(lq))) #This produces an affine transform of an ExpAffineTransform
+    newval = ft(ustrip(lq))
+    return Quantity{typeof(newval), typeof(u)}(newval, u)
+end
+
+function uconvert(u::Units{D,<:ExpAffTransform}, q::QuantUnion) where D<:AbstractDimLike
+    newval = uconvert(u, unit(q))(ustrip(q))
+    newunit = Units{D}(dimension(u), log(tobase(u)), usymbol(u))
+    return LogQuant{typeof(newval), typeof(newunit)}(newval, newunit)
+end
+
+function uconvert(u::Units{D,<:ExpAffTransform}, lq::LogQuant) where D<:AbstractDimLike
+    ft = inv(log(tobase(u))) ∘ tobase(unit(lq)) #This produces an AffineTransform
+    newval = ft(ustrip(lq))
+    newunit = Units{D}(dimension(u), log(tobase(u)), usymbol(u))
+    return LogQuant{typeof(newval), typeof(newunit)}(newval, newunit)
+end
+
+uconvert(::Type{D}, q::QuantUnion) where D <: StaticDims = uconvert(D(), q)
+uconvert(::Type{D}, q::LogQuant) where D <: StaticDims = uconvert(D(), q)
+
 
 """
     dconvert(u::AbstractUnitLike, q::QuantUnion)
@@ -53,26 +89,16 @@ julia> dconvert(u"km/hr", 25u"km/hr")
 """
 dconvert(u::AbstractUnitLike, q::QuantUnion) = uconvert(dimension(u), q)
 
-"""
-    ubase(q::QuantUnion)
-
-Converts quantity `q` to its raw dimensional equivalent (such as SI units)
-"""
-function ubase(q::QuantUnion{<:Any,<:AbstractUnitLike})
-    u  = unit(q)
-    ft = todims(u)
-    return quantity(ft(ustrip(q)), dimension(u))
-end 
-ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
 
 """
     |>(u2::Union{AbstractUnitLike, QuantUnion}, u1::AbstractUnitLike)
 
 Using `q |> qout` is an alias for `uconvert(u, q)`.
 """
-Base.:(|>)(q::QuantUnion, u::AbstractUnitLike) = uconvert(u, q)
+Base.:(|>)(q::LogQuantUnion, u::AbstractUnitLike) = uconvert(u, q)
+Base.:(|>)(q::LogQuantUnion, ::Type{T}) where T <: StaticDims = uconvert(T(), q)
 Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
-
+Base.:(|>)(u0::AbstractUnitLike, ::Type{T}) where T <: StaticDims = uconvert(T(), u0)
 
 """
     ustrip(u::AbstractUnitLike, q::QuantUnion)
@@ -80,6 +106,7 @@ Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
 Converts quantity `q` to units `u` equivalent and removes units
 """
 ustrip(u::AbstractUnitLike, q::QuantUnion) = uconvert(u, unit(q))(ustrip(q))
+ustrip(u::AbstractUnitLike, q::LogQuant) = uconvert(u, dimension(q))(dstrip(q))
 ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
 
 """
@@ -88,7 +115,7 @@ ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
 Converts quantity `q` to its raw dimensional equivalent and verifies if its dimensions are consistent with `u`
 Leaving out the unit argument `u` skips the dimensioonal verification process
 """
-dstrip(u::AbstractUnitLike, q::QuantUnion) = ustrip(dimension(u), q)
+dstrip(u::AbstractUnitLike, q::Union{QuantUnion,LogQuant}) = ustrip(dimension(u), q)
 
 """
     ustrip_dimensionless(q::QuantUnion)
@@ -103,10 +130,11 @@ ustrip_dimensionless(q::QuantUnion) = ustrip(assert_dimensionless(ubase(q)))
 
 Convert quantity `q` into a unit of the same magnitude
 """
-Units(q::QuantUnion{<:Number, <:AbstractUnitLike}) = Units(dims=dimension(q), todims=todims(unit(q))*ustrip(q), symbol=DEFAULT_USYMBOL)
+Units(q::QuantUnion{<:Number, <:AbstractUnitLike}) = Units(dims=dimension(q), tobase=tobase(unit(q))*ustrip(q), symbol=DEFAULT_USYMBOL)
 Units(u::Units) = u
 
 compatible_dims(d_target::AbstractDimLike, d_current::AbstractDimLike) = (d_target == d_current || isunknown(d_current))
+compatible_dims(d_target::StaticDims{d1}, d_current::StaticDims{d2}) where {d1, d2} = (d1==d2)
 compatible_dims(target, current) = compatible_dims(dimension(target), dimension(current))
 
 #=================================================================================================
@@ -122,49 +150,39 @@ this can yield potentially unintuitive results like 2°C/1°C = 1.00364763815429
 =================================================================================================#
 Base.convert(::Type{AffineTransform{T}}, t::AffineTransform) where T = AffineTransform{T}(t.scale, t.offset)
 Base.convert(::Type{AffineTransform{T}}, t::NoTransform) where T = AffineTransform{T}(1,0)
-Base.convert(::Type{NoTransform}, t::AffineTransform) = is_identity(t) ? NoTransform() : throw(ArgumentError("Cannot convert non-identity AffineTransform to NoTransform"))
+Base.convert(::Type{ExpAffTransform{T}}, t::ExpAffTransform) where T = ExpAffTransform{T}(t.scale, t.offset)
+Base.convert(::Type{NoTransform}, t::AffineTransform) = is_identity(t) ? NoTransform() : throw(ArgumentError("Cannot convert non-identity AffineTransform to a NoTransform"))
+Base.convert(::Type{NoTransform}, t::ExpAffTransform) = throw(ArgumentError("Cannot convert an ExpAffTransform to a NoTransform"))
 
-#Converting dynamic Quantity types ====================================================
-Base.convert(::Type{Quantity{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
-Base.convert(::Type{Quantity{T,U}}, q::QuantUnion) where {T,U<:Units} = Quantity{T,U}(ustrip(q), unit(q))
-Base.convert(::Type{Quantity{T,D}}, x::MathUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D(0))
-Base.convert(::Type{Quantity{T,U}}, x::MathUnion) where {T,U<:Units} = Quantity{T,U}(x, dimtype(U)(0))
+Base.convert(::Type{Quantity{T,U}}, q::LogQuantUnion) where {T,U} = Quantity{T,U}(q)
+Base.convert(::Type{FlexQuant{T,U}}, q::LogQuantUnion) where {T,U} = FlexQuant{T,U}(q)
+Base.convert(::Type{LogQuant{T,U}}, q::LogQuantUnion) where {T,U} = LogQuant{T,U}(q)
 
-#Converting static Quantity types ====================================================
-Base.convert(::Type{Quantity{T,D}}, q::QuantUnion) where {T, D<:StaticDims} = Quantity{T,D}(ustrip(D(), q), D())
 function Base.convert(::Type{Quantity{T,D}}, u::AbstractUnitLike) where {T,D<:AbstractDimensions}
     assert_scalar(u)
-    return Q(uscale(u), dimension(u))
+    return Quantity(uscale(u), dimension(u))
 end
 
-#Converting dynamic FlexQuant types ====================================================
-Base.convert(::Type{FlexQuant{T,D}}, q::QuantUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(dstrip(q), dimension(q))
-Base.convert(::Type{FlexQuant{T,U}}, q::QuantUnion) where {T,U<:Units} = FlexQuant{T,U}(ustrip(q), unit(q))
-Base.convert(::Type{FlexQuant{T,D}}, x::MathUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(x, D(0))
-Base.convert(::Type{FlexQuant{T,U}}, x::MathUnion) where {T,U<:Units} = FlexQuant{T,U}(x, dimtype(U)(0))
-
-#Converting static FlexQuant types ====================================================
-Base.convert(::Type{FlexQuant{T,D}}, q::QuantUnion) where {T, D<:StaticDims} = FlexQuant{T,D}(ustrip(D(), q), D())
 function Base.convert(::Type{FlexQuant{T,D}}, u::AbstractUnitLike) where {T,D<:AbstractDimensions}
     assert_scalar(u)
-    return Q(uscale(u), dimension(u))
+    return FlexQuant(uscale(u), dimension(u))
 end
 
 
 # Converting unit types ====================================================
-Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), todims=todims(u), symbol=usymbol(u))
+Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), tobase=tobase(u), symbol=usymbol(u))
 
 Base.convert(::Type{D}, u::AbstractUnitLike) where D<:AbstractDimensions = D(dimension(assert_dimension(u)))
 Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)
 Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D, dimval(d))
 
 Base.convert(::Type{D}, u::AbstractUnitLike) where {D<:StaticDims} = convert(D, dimension(assert_dimension(u)))
-Base.convert(::Type{D}, d::AbstractDimensions) where {D<:StaticDims} = equaldims(D(), d)
-Base.convert(::Type{D}, d::StaticDims) where {D<:StaticDims} = equaldims(D(), d)
+Base.convert(::Type{D}, d::AbstractDimensions) where {D<:StaticDims} = assert_convertable(D(), d)
+Base.convert(::Type{D}, d::StaticDims) where {D<:StaticDims} = assert_convertable(D(), d)
 Base.convert(::Type{D}, d::NoDims) where {D<:StaticDims} = assert_dimensionless(D())
 
 # Converting transform types ===============================================
-Base.convert(::Type{T}, t::NoTransform) where T <: AbstractUnitTransform = T()
+Base.convert(::Type{T}, t::NoTransform) where T <: Union{<:AffineTransform, <:NoTransform} = T()
 
 # Converting between units and quantities ====================================================
 Base.convert(::Type{U}, q::QuantUnion) where U<:Units = Units(q)
@@ -185,7 +203,7 @@ Base.promote_rule(::Type{T1}, ::Type{T2}) where {T1<:NoTransform, T2<:AbstractUn
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimvaltype(D2))
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimvaltype(D1), dimvaltype(D2))
 Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:AbstractDimensions = D
-Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:StaticDims = D
+Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:StaticDims = dimvaltype(D)
 
 
 #Unit promotion

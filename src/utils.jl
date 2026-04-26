@@ -44,30 +44,34 @@ function pretty_print_units(x::Bool)
 end
 
 #Dispatching show methods
-Base.show(io::IO, q::QuantUnion) = qshow(io, q, pretty=PRETTY_DIM_OUTPUT[])
-Base.string(q::QuantUnion) = qstring(q, pretty=PRETTY_DIM_OUTPUT[])
+Base.show(io::IO, q::LogQuantUnion) = qshow(io, q, pretty=PRETTY_DIM_OUTPUT[])
+Base.string(q::LogQuantUnion) = qstring(q, pretty=PRETTY_DIM_OUTPUT[])
 Base.show(io::IO, u::AbstractUnitLike) = ushow(io, u, pretty=PRETTY_DIM_OUTPUT[])
 Base.string(u::AbstractUnitLike) = ustring(u, pretty=PRETTY_DIM_OUTPUT[])
 
 #=============================================================================================
 Displaying quantities
 =============================================================================================#
-function qstring(x::QuantUnion; pretty=PRETTY_DIM_OUTPUT[])
+function qstring(x::LogQuantUnion; pretty=PRETTY_DIM_OUTPUT[])
     tmp_io = IOBuffer()
     qshow(tmp_io, x, pretty=pretty)
     return String(take!(tmp_io))
 end
 
 #Generic fallback for showing any uncaught quantity type
-qshow(io::IO, q::QuantUnion; pretty=PRETTY_DIM_OUTPUT[]) = Base.show_default(io, q)
+qshow(io::IO, q::LogQuantUnion; pretty=PRETTY_DIM_OUTPUT[]) = Base.show_default(io, q)
 
-function qshow(io::IO, q::QuantUnion{<:Any, <:AbstractUnits}; pretty=PRETTY_DIM_OUTPUT[])
+function qshow(io::IO, q::LogQuantUnion{<:Any, <:AbstractUnits}; pretty=PRETTY_DIM_OUTPUT[])
     if usymbol(unit(q)) != DEFAULT_USYMBOL #Print the unit symbol if it exists (not default)
         if pretty
             return qshow_pretty(io, q)
         else
             return qshow_parsable(io, q)
         end 
+
+    elseif q isa LogQuant
+        return qshow(io, logubase(q), pretty=pretty)
+
     else
         return qshow(io, ubase(q), pretty=pretty) #Print SI version (emphesizes that units are treated as SI quantities)
     end
@@ -81,12 +85,18 @@ function qshow(io::IO, q::QuantUnion{<:Any, <:AbstractDimLike}; pretty=PRETTY_DI
     end
 end
 
-function qshow_parsable(io::IO, q::QuantUnion)
+function qshow(io::IO, q::LogQuant{<:Any, <:AbstractDimLike}; pretty=PRETTY_DIM_OUTPUT[])
+    print(io, "log(")
+    qshow(io, ubase(q), pretty=pretty)
+    return print(io, ")")
+end
+
+function qshow_parsable(io::IO, q::LogQuantUnion)
     print(io, "(", ustrip(q), ")")
     return ushow(io, unit(q), pretty=false)
 end
 
-function qshow_pretty(io::IO, q::QuantUnion)
+function qshow_pretty(io::IO, q::LogQuantUnion)
     print(io, ustrip(q), " ")
     return ushow(io, unit(q), pretty=true)
 end
@@ -205,33 +215,3 @@ function _pretty_unit_pwr(u::Symbol, p::Real)
         return string(u)*join(chars)
     end
 end
-
-
-#=
-function ushow(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions{<:Union{<:Real,Missing}}
-    return show(io, missing)
-end
-=#
-
-#=
-function ushow(io::IO, u::Units; pretty=PRETTY_DIM_OUTPUT[])
-    if usymbol(u) != DEFAULT_USYMBOL
-        return print(io, usymbol(u))
-    else
-        print(io, "Units(todims=$(todims(u)), dims=")
-        show(io, dimension(u); pretty)
-        return print(io, ")")
-    end
-end
-=#
-
-#=
-function ushow(io::IO, ::Type{MirrorDims{D}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    return print(io, "MirrorDims{$(D)}")
-end
-=#
-#=
-function ushow(io::IO, ::Type{Union{D,MirrorDims{D}}}; pretty=PRETTY_DIM_OUTPUT[]) where {D<:AbstractDimensions}
-    return print(io, "MirrorUnion{$(D)}")
-end
-=#

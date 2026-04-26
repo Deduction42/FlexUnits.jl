@@ -110,6 +110,53 @@ julia> M\X'
      2.54502 kg/s²       0.397339 kg/s²      -1.65875 kg/s²       3.10623 kg/s²          -0.58694 kg/s²       2.04295 kg/s²       4.18943 kg/s²
 ```
 
+### Logarithmic Quantities and Units
+Taking a logarithm of a `Quantity` will produce a `LogQuant` which has different algebraic rules than a regular quantity; the algebraic rules around a `LogQuant` are centered around logarithmic identities.
+```julia
+julia> log(4u"m") + log(4u"s") # log(x) + log(y) = log(x*y)
+log(15.999999999999998 (m s))
+
+julia> log(4u"m") - log(4u"s") # log(x) - log(y) = log(x/y)
+log(1.0 m/s)
+
+julia> 2log(4u"m") # nlog(x) = log(x^n)
+log(15.999999999999998 m²)
+```
+While their logarithms are displayed (to emphasize this algebra), the actual numerical value stored is the logarithmic form
+```julia
+julia> ustrip(log(4u"m"))
+1.3862943611198906
+```
+Logarithmic quantities can be converted back to regular quantities using `quantity`, `ubase`, or even `exp`
+```julia
+julia> (ubase(log(4u"m")), quantity(log(4u"m")), exp(log(4u"m")))
+(4.0 m, 4.0 m, 4.0 m)
+```
+
+FlexUnits also contains support for logarithmic units such as decibels `dB` and Nepers `Np`. There aren't exported by default as they could be fairly common symbols. To use them, simply call them as a function on units.
+```julia
+julia> dB(u"V")
+dB(V)
+```
+This essentially produces a logarithmic unit type `Units{<:AbstractDimLike, <:ExpAffTransform}`. Multiply a number by such a unit (i.e. containing an exponential affine transform) will produce a logarithmic quantity.
+```julia
+julia> 5dB(u"V")
+log(3.1622776601683795 (m² kg)/(s³ A))
+```
+Converting to a logarithmic unit will also result in a logarithmic quantity
+```julia
+julia> 5u"hp" |> dB(u"kW")
+5.715340722972715 dB(kW)
+
+julia> exp(5u"hp" |> dB(u"kW")) 
+3728.4993550000027 (m² kg)/s³
+```
+Converting algebraic expressions back to decibels requires knowledge of the resulting dimension, but numerical results work as expected
+```julia
+julia> 5dB(u"m") - 0.1dB(u"s") |> dB(u"m/s")
+4.9 dB(m/s)
+```
+
 ### Registering new units
 The default unit registry exports a function `register_unit` (and by following the template, user-defined registries can do the same). With this function, you can register units using other units or quantities as follows:
 ```julia
@@ -127,6 +174,21 @@ julia> register_unit("bbl" => 22.5*u"m^3")
 ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
 ```
 
+### Registering logarithmic units
+The default unit registry can only register affine units. If you wish to register logarithmic units as well, the LogUnitRegistry can be used instead. This can hold both affine and logarithmic units, but is a bit slower for `uparse` because the output is a `Union`.
+```julia
+using FlexUnits, .LogUnitRegistry
+import FlexUnits.dB
+
+register_unit("dB_V" => dB(u"V"))
+
+julia> 10uparse("dB_V")
+log(10.000000000000002 (m² kg)/(s³ A))
+
+julia> 10u"dB_V"
+log(10.000000000000002 (m² kg)/(s³ A))
+```
+Generally using the `dB` or `Np` function with the default unit registry should be enough, unless you need to process strings that may potentially include logarithmic units.
 
 ## Benchmarks
 ### Static vs dynamic units
