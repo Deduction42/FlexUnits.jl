@@ -417,6 +417,7 @@ Base.:/(q1::LogQuant, q2::Quantity) = throw(LogLinearError(/, q1, q2))
 Generates a Unit type in decibels (having reference of 'x', a base of '10.0' and a scale of '0.1'
 """
 dB(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=0.1, base=10.0, logsymbol=:dB)
+dB() = dB(NoDims())
 
 """
     Np(x::Union{AbstractUnitLike, Quantity})
@@ -424,7 +425,17 @@ dB(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=0.1, base=10.0, 
 Generates a Unit type in Nepers (having reference of 'x', a base of 'e ≈ 2.71828' and a scale of '1.0'
 """
 Np(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=1.0, base=exp(1), logsymbol=:Np)
+Np() = Np(NoDims())
 
+"""
+    logunits(reference::Union{AbstractUnitLike, Quantity}; logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL)
+
+Use this function to generate your own logarithmic unit. For example, decibels was defined in this package as
+
+```julia
+dB(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=0.1, base=10.0, logsymbol=:dB)
+````
+"""
 function logunits(reference::Union{AbstractUnitLike, Quantity}; logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL)
     return Units(
         dims = dimension(reference),
@@ -436,6 +447,7 @@ function logunits(reference::Union{AbstractUnitLike, Quantity}; logscale=1, base
     )
 end
 
+logunits(; logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL) = logunits(NoDims(); logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL)
 
 
 
