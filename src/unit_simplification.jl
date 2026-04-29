@@ -49,11 +49,11 @@ function simplify(dref::D; unit_set=UPREFERRED) where D<:AbstractDimensions
 end
 
 #Number of dimes dimensioon "dx" fits cleanly into dref
-function clean_fit_div(dref::AbstractDimensions, d::AbstractDimensions) 
+function clean_fit_div(remainder::AbstractDimensions, d::AbstractDimensions) 
     ii == 0
     while ii < 1000
-        if (complexity(dref) - complexity(dref/d)) < complexity(d)
-            return (ii, dref/d) 
+        if (complexity(remainder) - complexity(remainder/d)) < complexity(d)
+            return (ii, remainder/d) 
         else
             ii += 1
             d = d*d 
@@ -62,7 +62,7 @@ function clean_fit_div(dref::AbstractDimensions, d::AbstractDimensions)
     error("Number of iterations exceeded 1000")
 end
 
-complexity_sort!(v::AbstractVector::Units) = sort(v, by=complexity, rev=true)
+complexity_sort!(v::AbstractVector::Units) = sort!(v, by=complexity, rev=true)
 
 function complexity(d::D) where D <: AbstractDimensions
     return sum(fn-> abs(getproperty(d, fn)), fieldnames(D))
