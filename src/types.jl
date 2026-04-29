@@ -466,6 +466,7 @@ FlexQuant{T,U}(lq::LogQuant) where {T,U} = FlexQuant{T,U}(ubase(lq))
 const LogQuantUnion{T,U} = Union{Quantity{T,U}, FlexQuant{T,U}, LogQuant{T,U}}
 
 logquant(x::T, u::AbstractUnitLike) where T = LogQuant{T}(x, u)
+logquant(x::T, u::Units{<:AbstractDimLike, <:ExpAffTransform}) where {T} = logquant(x, Units(dimension(u), log(tobase(u)), usymbol(u)))
 logquant(q::Quantity) = LogQuant(log(dstrip(q)), dimension(q))
 logquant(lq::LogQuant) = lq 
 quantity(q::LogQuant) = ubase(q)
