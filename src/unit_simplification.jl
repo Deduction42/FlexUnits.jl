@@ -85,7 +85,6 @@ function clean_fit_div(remainder::AbstractDimensions, d::AbstractDimensions)
         else
             ii += 1
             remainder = remainder/d
-            d = d*d 
         end
     end
     error("Number of iterations exceeded 1000")
@@ -105,4 +104,4 @@ for u in [u"Ω", u"V", u"W", u"J", u"Pa", u"N", u"C"]
     set_preferred_unit(u)
 end
 
-(numerator, denominator) = simplify(5u"J/(mol K)")
+(numerator, denominator) = simplify(5u"W^2")
