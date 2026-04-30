@@ -1,8 +1,12 @@
+using Revise 
+using FlexUnits, .UnitRegistry
+import FlexUnits: _pretty_unit_pwr, usymbol, uscale, dimtype
+
 const UPREFERRED = Units{Dimensions{FixRat32}, AffineTransform{Float64}}[]
 
 set_preferred_unit(u::Units; warn_failure=true) = set_preferred_unit!(UPREFERRED, u, warn_failure=warn_failure)
 
-function set_preferred_unit!(unitset::AbstractVector{<:Units}, u::Units; warn_failure=false)
+function set_preferred_unit!(unitset::AbstractVector{<:Units}, u::Units; warn_failure=true)
     du = dimension(assert_scalar(u))
 
     function abs_dims_match(x::Units)
@@ -24,7 +28,10 @@ function set_preferred_unit!(unitset::AbstractVector{<:Units}, u::Units; warn_fa
     return u 
 end
 
-simplify(q::Quantity) = simplify(dimension(q))
+function simplify(q::Quantity)
+    u = convert(Units{dimtype(q), AffineTransform{Float64}}, simplify(dimension(q)))
+    return uconvert(u, q)
+end
 
 simplify(dref::StaticDims{d}; unit_set=UPREFERRED) where d = simplify(d)
 
@@ -46,7 +53,6 @@ function simplify(d::D; unit_set=UPREFERRED) where D<:AbstractDimensions
         end
     end
 
-    #return compound_unit(numerator, denominator, remainder)
     return compound_unit(numerator, denominator, remainder) #Test this for now, and build compound_unit later
 end
 
@@ -64,12 +70,24 @@ function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::V
         end
     end
 
-    _pretty_unit_pwr(p::Pair{<:Units, <:Real}) = _pretty_unit_pwr(usymbol(p[1]), p[2])
+    numstr = if isempty(numerator)
+        "1"
+    else
+        numstr_cat = join((_pretty_unit_pwr(p) for p in numerator), ' ')
+        length(numerator) == 1 ? numstr_cat : "("*numstr_cat*")"
+    end
 
-    num_symb = Symbol(join((_pretty_unit_pwr(p) for p in numerator), ' '))
-    den_symb = Symbol(join((_pretty_unit_pwr(p) for p in denominator), ' '))
+    denstr = if isempty(denominator)
+        "" 
+    else
+        denstr_cat = join((_pretty_unit_pwr(p) for p in denominator), ' ')
+        "/"*(length(denominator) == 1 ? denstr_cat : "("*denstr_cat*")")
+    end
 
-    return (numerator, denominator)
+    scale = prod(p->uscale(p[1]^p[2]), numerator, init=1.0) / prod(p->uscale(p[1]^p[2]), denominator, init=1.0)
+    dims  = prod(p->dimension(p[1]^p[2]), numerator, init=ud"") / prod(p->dimension(p[1]^p[2]), denominator, init=ud"")
+
+    return Units(dims, AffineTransform(scale=scale), Symbol(numstr*denstr))
 end
 
 
@@ -100,8 +118,16 @@ complexity(d::StaticDims{D}) where D = complexity(D)
 complexity(q::QuantUnion) = complexity(dimension(q))
 complexity(u::Units) = complexity(dimension(u))
 
-for u in [u"Ω", u"V", u"W", u"J", u"Pa", u"N", u"C"]
+_pretty_unit_pwr(p::Pair{<:Units, <:Real}) = _pretty_unit_pwr(usymbol(p[1]), p[2])
+
+#================================================================================================================
+# Test Code
+================================================================================================================#
+
+for u in [u"Ω", u"V", u"W", u"J", u"Pa", u"N", u"C", u"(m/s)"]
     set_preferred_unit(u)
 end
 
-(numerator, denominator) = simplify(5u"W^2")
+q = simplify(1u"kg/L"*9.81u"m/s^2"*20u"cm")
+q = simplify(5u"A^2"*0.01u"ohm")
+q = simplify(5u"W"*sqrt(2u"V"))
