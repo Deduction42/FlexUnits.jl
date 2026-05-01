@@ -1282,6 +1282,7 @@ end
     @test 5u"kPa" |> dB(u"Pa") ≈ log(5000u"Pa")
     @test dstrip(20dB(u"J")) ≈ 100
 
+    @test (logquant(10, dB(u"V")) + 1) ≈ log(quantity(10, dB(u"V"))) + 1
 
 end
 
