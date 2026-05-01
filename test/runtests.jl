@@ -13,11 +13,11 @@ julia --startup-file=no --depwarn=yes --threads=auto --project=. test/invalidati
 
 using Revise
 using FlexUnits, .UnitRegistry
+using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64, dB, Np, NoDims
 using TestItems: @testitem
 using TestItemRunner
 using Test
 using BenchmarkTools
-using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64, dB, Np, NoDims
 using Aqua
 using LinearAlgebra
 using Statistics

@@ -56,6 +56,7 @@ function uconvert(u::AbstractUnitLike, q::QuantUnion)
 end
 
 function uconvert(u::AbstractUnitLike, lq::LogQuant)
+    assert_convertable(u, unit(lq))
     ft = inv(tobase(u)) ∘ exp(tobase(unit(lq))) #This produces an affine transform of an ExpAffineTransform
     newval = ft(ustrip(lq))
     return Quantity{typeof(newval), typeof(u)}(newval, u)
@@ -68,6 +69,7 @@ function uconvert(u::Units{D,<:ExpAffTransform}, q::QuantUnion) where D<:Abstrac
 end
 
 function uconvert(u::Units{D,<:ExpAffTransform}, lq::LogQuant) where D<:AbstractDimLike
+    assert_convertable(u, unit(lq))
     ft = inv(log(tobase(u))) ∘ tobase(unit(lq)) #This produces an AffineTransform
     newval = ft(ustrip(lq))
     newunit = Units{D}(dimension(u), log(tobase(u)), usymbol(u))
