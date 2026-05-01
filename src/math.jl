@@ -410,6 +410,15 @@ Base.:*(q1::LogQuant, q2::Quantity) = throw(LogLinearError(*, q1, q2))
 Base.:/(q1::Quantity, q2::LogQuant) = throw(LogLinearError(/, q1, q2))
 Base.:/(q1::LogQuant, q2::Quantity) = throw(LogLinearError(/, q1, q2))
 
+⊕(q1::LogQuant, q2::LogQuant) = log(ubase(q1) + ubase(q2))
+⊕(q1::NumUnion, q2::LogQuant) = log(exp(q1) + ubase(q2))
+⊕(q1::LogQuant, q2::NumUnion) = log(ubase(q1) + exp(q2))
+
+⊖(q1::LogQuant, q2::LogQuant) = log(ubase(q1) - ubase(q2))
+⊖(q1::NumUnion, q2::LogQuant) = log(exp(q1) - ubase(q2))
+⊖(q1::LogQuant, q2::NumUnion) = log(ubase(q1) - exp(q2))
+
+#=
 #Generator functiosn for logarithmic units
 """
     dB(x::Union{AbstractUnitLike, Quantity})
@@ -448,6 +457,5 @@ function logunits(reference::Union{AbstractUnitLike, Quantity}; logscale=1, base
 end
 
 logunits(; logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL) = logunits(NoDims(); logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL)
-
-
+=#
 

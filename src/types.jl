@@ -470,6 +470,8 @@ logquant(x::T, u::Units{<:AbstractDimLike, <:ExpAffTransform}) where {T} = logqu
 logquant(q::Quantity) = LogQuant(log(dstrip(q)), dimension(q))
 logquant(lq::LogQuant) = lq 
 quantity(q::LogQuant) = ubase(q)
+linquant(q::Quantity) = q
+linquant(q::LogQuant) = ubase(q)
 
 """
     logubase(lq::LogQuant)
@@ -501,6 +503,54 @@ dimtype(::Type{<:LogQuant{T,U}}) where {T,U} = dimtype(U)
 dimvaltype(::Type{<:LogQuant{T,U}}) where {T,U} = dimvaltype(U)
 udynamic(q::LogQuant) = Quantity(ustrip(q), udynamic(unit(q)))
 valtype(::Type{<:LogQuant{T}}) where T = T 
+
+#=================================================================================================
+Logarithmic scale objects used to scale LogQuant
+=================================================================================================#
+"""
+    struct LogScale{T<:Real}
+        scale :: T
+        base :: T
+        symbol :: Symbol
+    end
+
+A callable object used to apply a scale to a logarithmic unit. For example,
+```julia
+dB = LogScale(scale=0.1, base=10, symbol=:dB)
+```
+After defining it, this object can also be called on a LogQuant to change the logarithmic scale
+```julia
+julia> dB(log(10u"kPa"))
+40.0 dB(kg/(m s²))
+```
+It can also be used to create logarithmic units that you can convert to
+julia> 10u"kPa" |> dB(u"Pa")
+39.99999999999999 dB(Pa)
+"""
+@kwdef struct LogScale{T<:Real}
+    scale :: T
+    base :: T
+    symbol :: Symbol
+end
+LogScale(scale::T1, base::T2, symbol) where {T1,T2} = LogScale{promote_type(T1, T2)}(scale, base, symbol)
+
+function (s::LogScale)(reference::Union{AbstractUnitLike, Quantity})
+    return Units(
+        dims = dimension(reference),
+        tobase = ExpAffTransform(
+            scale = s.scale*log(s.base), 
+            offset = log(dstrip(1*reference)),
+        ),
+        symbol = (s.symbol==DEFAULT_USYMBOL) ? s.symbol : Symbol(string(s.symbol)*"($(reference))")
+    )
+end
+
+(s::LogScale)(q::LogQuant) = uconvert(s(dimension(q)), q)
+(s::LogScale)() = s(NoDims())
+
+dB = LogScale(scale=0.1, base=10, symbol=:dB)
+Np = LogScale(scale=1, base=exp(1), symbol=:Np)
+
 
 #=============================================================================================
 Constructor utilities
