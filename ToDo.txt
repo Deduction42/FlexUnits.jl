@@ -6,17 +6,12 @@ Changelog:
 
 
 Current Tasks:
+1.  Unit Simplification should refer to PREFERRED_UNITS inside Registry modules.
 
-1.  Merge simplified display, add options for logarithmic scales
-
-2.  Change "ustrip(q)" to "rawval(q)" internally
-    -   Attempt to use regex for this
-    -   Export only ustrip(u, q)
-    -   ustrip(q) is dangerous now that we have simplified units
 
 Backlog:
 1.  Add interactive unit functionality
-    -   UPREFERRED is a vector of units sorted by absolute value (highest first)
+    -   PREFERRED_UNITS is a vector of units sorted by absolute value (highest first)
             -   Define abs(d::Dimensions) = sum(abs, d)
         -   Lives outside the unit registry, and can be updated using set_preferred_units(u::AffineUnit)
             -   Initialized by SI units for dimensions by default (N, J, W, V, Ohms) from the UnitRegistry
@@ -27,10 +22,10 @@ Backlog:
                 -   Don't use a dict, updates are infrequent, vector is not long, and order matters
             -   Replaces if exact match is found, does nothing inverse dimension already exists ('Hz' won't be added if 's' exists)
             -   This is because greedy search includes inverses of units, if both units and inverse exist, results are not unique
-    -   simplify(UPREFERRED, q::Quantity{T,AbstractDimLike})
-        -   simplify(q::Quantity{T,AbstractDimLike}) uses UPREFERRED implicitly
+    -   simplify(PREFERRED_UNITS, q::Quantity{T,AbstractDimLike})
+        -   simplify(q::Quantity{T,AbstractDimLike}) uses PREFERRED_UNITS implicitly
         -   Only works if all unit powers are integers
-        -   Iterates through UPREFERRED, performs a greedy search to make units as terse as possible
+        -   Iterates through PREFERRED_UNITS, performs a greedy search to make units as terse as possible
             -   e.g. simplify(1.0u"(m^2*kg)/s^3") = 1 kW
             -   (numerator, denominator) = (Vector{Units}, Vector{Units})
             -   For query unit (u), use the "fits into" criterion for selection 

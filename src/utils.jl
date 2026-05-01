@@ -38,7 +38,8 @@ Displaying output
 #This value to "false" makes output parsable by default
 const PRETTY_DIM_OUTPUT = Ref(true)
 const DISPLAY_SIMPLIFIED = Ref(false)
-const UPREFERRED = Units{Dimensions{FixRat32}, AffineTransform{Float64}}[]
+const PREFERRED_UNITS = Units{Dimensions{FixRat32}, AffineTransform{Float64}}[]
+const PREFERRED_LOGSCALE = Ref(dB)
 
 function pretty_print_units(x::Bool) 
     PRETTY_DIM_OUTPUT[] = x 
@@ -89,10 +90,14 @@ function qshow(io::IO, q::QuantUnion{<:Any, <:AbstractDimLike}; pretty=PRETTY_DI
     end
 end
 
-function qshow(io::IO, q::LogQuant{<:Any, <:AbstractDimLike}; pretty=PRETTY_DIM_OUTPUT[])
-    print(io, "log(")
-    qshow(io, ubase(q), pretty=pretty)
-    return print(io, ")")
+function qshow(io::IO, q::LogQuant{<:Any, <:AbstractDimLike}; pretty=PRETTY_DIM_OUTPUT[], simplified=DISPLAY_SIMPLIFIED[])
+    if simplified 
+        return qshow(io, simplify(q))
+    else
+        print(io, "log(")
+        qshow(io, ubase(q), pretty=pretty)
+        return print(io, ")")
+    end
 end
 
 function qshow_parsable(io::IO, q::LogQuantUnion)
@@ -181,7 +186,12 @@ end
 #=============================================================================================
 Unit Simplification
 =============================================================================================#
-set_preferred_unit(u::Units; warn_failure=true) = set_preferred_unit!(UPREFERRED, u, warn_failure=warn_failure)
+set_preferred_unit(u::Units; warn_failure=true) = set_preferred_unit!(PREFERRED_UNITS, u, warn_failure=warn_failure)
+
+function set_preferred_logscale(ls::LogScale)
+    PREFERRED_LOGSCALE[] = ls 
+    return ls 
+end
 
 function display_simplified_units(mode::Bool) 
     DISPLAY_SIMPLIFIED[] = mode 
@@ -215,9 +225,14 @@ function simplify(q::Quantity)
     return uconvert(u, q)
 end
 
-simplify(dref::StaticDims{d}; unit_set=UPREFERRED) where d = simplify(d)
+function simplify(q::LogQuant)
+    u = convert(Units{dimtype(q), AffineTransform{Float64}}, simplify(dimension(q)))
+    return uconvert(PREFERRED_LOGSCALE[](u), q)
+end
 
-function simplify(d::D; unit_set=UPREFERRED) where D<:AbstractDimensions
+simplify(dref::StaticDims{d}; unit_set=PREFERRED_UNITS) where d = simplify(d)
+
+function simplify(d::D; unit_set=PREFERRED_UNITS) where D<:AbstractDimensions
     numerator = Pair{eltype(unit_set), Int64}[]
     denominator = Pair{eltype(unit_set), Int64}[]
     remainder = d
