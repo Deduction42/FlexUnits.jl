@@ -1248,6 +1248,7 @@ end
     @test (20dB(u"J") |> u"J") isa Quantity
     @test (100u"J" |> dB(u"J")) isa LogQuant
     @test (20dB(u"J") |> dB(u"kJ")) isa LogQuant
+    @test_throws ConversionError 20dB(u"m^2") |> dB(u"m")
 
     #Type conversions 
     @test convert(Quantity{Float64, Units{D"kg/hr", AffineTransform{Float64}}}, 1u"kg/hr") isa Quantity{Float64, <:Units}

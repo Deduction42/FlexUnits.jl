@@ -10,15 +10,9 @@ Current Tasks:
 1.  Change "ustrip" to "rawval" internally
     -   Export only ustrip(u, q)
 
-2.  Fix this bug:
-    julia> 20dB(u"m^2") |> dB(u"m") # Eqn B
-    20.0 dB(m) #This should produce an error
-
-3.  Create a callable "LogScale" object that "dB" and "Np" fall into
+2.  Create a callable "LogScale" object that "dB" and "Np" fall into
     Improved type-stability over functions
     Can be used as an option for simplified display
-
-4.  Create "linquant" function
 
 Backlog:
 1.  Add interactive unit functionality
