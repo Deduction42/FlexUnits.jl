@@ -18,7 +18,7 @@ export Dimensions, Units, StaticDims, Quantity, FlexQuant, LogQuant, QuantUnion,
 export RegistryTools, UnitRegistry, LogUnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units
 export assert_scalar, assert_dimension, assert_dimensionless
-export with_ubase, ustrip, dstrip, ustrip_base, unit, quantity, logquant
+export with_ubase, ustrip, dstrip, ustrip_base, unit, quantity, logquant, linquant
 export ubase, uconvert, dconvert, ustrip_dimensionless, udynamic, ustatic, logubase
 export LinmapQuant, VectorQuant, FactorQuant, FunctionQuant, UnitMap, DimsMap
 export uinput, uoutput, ufactor

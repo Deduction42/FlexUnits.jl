@@ -1220,9 +1220,11 @@ end
 @testset "Logarithmic Units" begin 
     q1 = 5u"kg"
     q2 = 2u"s"
+    q3 = 5u""
 
     lq1 = log(q1)
     lq2 = log(q2)
+    lq3 = log(q3)
 
     #Logarithmic identities
     @test lq1 + lq2 ≈ log(q1*q2)
@@ -1238,6 +1240,19 @@ end
     @test lq1/2 ≈ log(sqrt(q1))
 
     @test exp(lq1) ≈ q1
+
+    #Linear addition/subtraction of logarithmic units
+    @test lq1 ⊕ lq1 ≈ log(exp(lq1) + exp(lq1))
+    @test 5 ⊕ lq3 ≈ log(exp(5) + exp(lq3))
+    @test lq3 ⊕ 5 ≈  log(exp(lq3) + exp(5))
+    @test_throws DimensionError lq1 ⊕ lq2
+
+    @test lq1 ⊖ lq1 ≈ log(exp(lq1) - exp(lq1))
+    @test 5 ⊖ lq3 ≈ log(exp(5) - exp(lq3))
+    @test lq3 ⊖ 1 ≈ log(exp(lq3) - exp(1))
+    @test_throws DimensionError lq1 ⊖ lq2
+    @test_throws DomainError lq3 ⊖ 5
+    @test_throws DomainError lq3 ⊖ log(10u"")
 
     #Unit Conversions 
     @test ustrip(20dB(u"J") |> u"J") ≈ 100

@@ -127,13 +127,13 @@ While their logarithms are displayed (to emphasize this algebra), the actual num
 julia> ustrip(log(4u"m"))
 1.3862943611198906
 ```
-Logarithmic quantities can be converted back to regular quantities using `quantity`, `ubase`, or even `exp`
+Logarithmic quantities can be converted back to regular quantities using `quantity`, `linquant`, or `exp`
 ```julia
-julia> (ubase(log(4u"m")), quantity(log(4u"m")), exp(log(4u"m")))
+julia> (linquant(log(4u"m")), quantity(log(4u"m")), exp(log(4u"m")))
 (4.0 m, 4.0 m, 4.0 m)
 ```
 
-FlexUnits also contains support for logarithmic units such as decibels `dB` and Nepers `Np`. There aren't exported by default as they could be fairly common symbols. To use them, simply call them as a function on units.
+FlexUnits also contains support for logarithmic units such as decibels `dB` and Nepers `Np` which are callable `LogScale` objects. There aren't exported by default as they could be fairly common symbols. To use them, simply call them as a function on units.
 ```julia
 julia> dB(u"V")
 dB(V)
@@ -148,7 +148,7 @@ Converting to a logarithmic unit will also result in a logarithmic quantity
 julia> 5u"hp" |> dB(u"kW")
 5.715340722972715 dB(kW)
 
-julia> exp(5u"hp" |> dB(u"kW")) 
+julia> linquant(5u"hp" |> dB(u"kW")) 
 3728.4993550000027 (m² kg)/s³
 ```
 Converting algebraic expressions back to decibels requires knowledge of the resulting dimension, but numerical results work as expected
@@ -156,7 +156,26 @@ Converting algebraic expressions back to decibels requires knowledge of the resu
 julia> 5dB(u"m") - 0.1dB(u"s") |> dB(u"m/s")
 4.9 dB(m/s)
 ```
+You can also apply a `LogScale` like `dB` to `LogQuant` which will apply the scale against the SI base
+```julia
+julia> 15dB(u"km") - 5dB(u"hr") 
+log(2.777777777777777 m/s)
 
+julia> 15dB(u"km") - 5dB(u"hr") |> dB
+4.436974992327125 dB(m/s)
+```
+
+In some cases, it's desirable to add/subtract linear versions of logarithmic quantities and convert back to logarithms. You can import the "\oplus" and "\ominus" symbols to shortcut this operation. They are not exported by default in order to prevent definition conflicts.
+
+```julia
+import FlexUnits: ⊕, ⊖
+
+julia> 60dB(u"μPa")
+log(1.0000000000000036 kg/(m s²))
+
+julia> 60dB(u"μPa") ⊕ 60dB(u"μPa")
+log(2.000000000000007 kg/(m s²))
+```
 ### Registering new units
 The default unit registry exports a function `register_unit` (and by following the template, user-defined registries can do the same). With this function, you can register units using other units or quantities as follows:
 ```julia

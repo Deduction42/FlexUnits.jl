@@ -2,17 +2,17 @@ Changelog:
 1.  `todims` now refactor as `tobase` to better indicate that the function converts to base units (like `ubase`)
 2.  New LogQuant type supported with its own algebra rules (based on logarithmic identities)
 3.  log(q<:Quantity) now produces a LogQuant instead of an error
-4.  Logarithmic unit functions like `dB` and `Np` are available (but not exported by default to prevent namespace pollution)
+4.  Callable LogScale objects like `dB` and `Np` are available (but not exported by default to prevent namespace pollution)
 
 
 Current Tasks:
 
-1.  Change "ustrip" to "rawval" internally
-    -   Export only ustrip(u, q)
+1.  Merge simplified display, add options for logarithmic scales
 
-2.  Create a callable "LogScale" object that "dB" and "Np" fall into
-    Improved type-stability over functions
-    Can be used as an option for simplified display
+2.  Change "ustrip(q)" to "rawval(q)" internally
+    -   Attempt to use regex for this
+    -   Export only ustrip(u, q)
+    -   ustrip(q) is dangerous now that we have simplified units
 
 Backlog:
 1.  Add interactive unit functionality
