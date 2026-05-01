@@ -4,22 +4,21 @@ Changelog:
 3.  log(q<:Quantity) now produces a LogQuant instead of an error
 4.  Logarithmic unit functions like `dB` and `Np` are available (but not exported by default to prevent namespace pollution)
 
+
 Current Tasks:
 
-1.  Implement logarithmic units
-    -   See backlog items
-    -   Extend RegistryTools to work with AbstractDict{Symbol, Union{Units...}}
-        -   Usually means letting the dict type do the convert 
-        -   Creating a "Union" convert methods inside the registry
-    -   Add documentation and tests
+1.  Change "ustrip" to "rawval" internally
+    -   Export only ustrip(u, q)
 
-2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
-    -   still need to implement vcat
+2.  Fix this bug:
+    julia> 20dB(u"m^2") |> dB(u"m") # Eqn B
+    20.0 dB(m) #This should produce an error
 
-3.  Move factorizations to LinearAlgebra extension
-    -   implement a unitful "cholupdate!" and "choldowndate!"
-    -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
-    -   Add performance benchmarks
+3.  Create a callable "LogScale" object that "dB" and "Np" fall into
+    Improved type-stability over functions
+    Can be used as an option for simplified display
+
+4.  Create "linquant" function
 
 Backlog:
 1.  Add interactive unit functionality
@@ -56,7 +55,16 @@ Backlog:
             -   The final result is a unit of prod(numerator)/prod(denominator)
     -   Can add a global option switch for "display" to turn simplification on (it's off by default)
 
-2.  Add plot recipes
+2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
+    -   still need to implement vcat
+
+3.  Move factorizations to LinearAlgebra extension
+    -   implement a unitful "cholupdate!" and "choldowndate!"
+    -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
+    -   Add performance benchmarks
+
+
+4.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
 
 
