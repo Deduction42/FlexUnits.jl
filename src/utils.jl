@@ -253,7 +253,7 @@ function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::V
     end
 
     numstr = if isempty(numerator)
-        "1"
+        ""
     else
         numstr_cat = join((_pretty_unit_pwr(p) for p in numerator), ' ')
         length(numerator) == 1 ? numstr_cat : "("*numstr_cat*")"
@@ -263,7 +263,8 @@ function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::V
         "" 
     else
         denstr_cat = join((_pretty_unit_pwr(p) for p in denominator), ' ')
-        "/"*(length(denominator) == 1 ? denstr_cat : "("*denstr_cat*")")
+        prefix = isempty(numerator) ? "1/" : "/"
+        prefix*(length(denominator) == 1 ? denstr_cat : "("*denstr_cat*")")
     end
 
     scale = prod(p->uscale(p[1]^p[2]), numerator, init=1.0) / prod(p->uscale(p[1]^p[2]), denominator, init=1.0)
