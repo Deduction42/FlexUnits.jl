@@ -13,7 +13,7 @@ include("UnitRegistry.jl")
 include("LogUnitRegistry.jl")
 
 # Set default units for Simplification
-for ustr in ["F", "S", "H", "T", "Ω", "V", "W", "J", "Pa", "N", "C", "L", "(m/s)"]
+for ustr in ["F", "H", "T", "Ω", "V", "W", "J", "Pa", "N", "C", "L", "(m/s)"]
     set_preferred_unit(UnitRegistry.uparse(ustr))
 end
 
