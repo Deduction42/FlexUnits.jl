@@ -186,7 +186,14 @@ end
 #=============================================================================================
 Unit Simplification
 =============================================================================================#
-set_preferred_unit(u::Units; warn_failure=true) = set_preferred_unit!(PREFERRED_UNITS, u, warn_failure=warn_failure)
+
+#Main dispatch unit to select preferred units, just in case dimensions are incompatible with PREFERRED_UNITS
+preferred_units(::Type{<:Any}) = PREFERRED_UNITS
+
+#Main methods exposed to the user
+simplify(q::LogQuantUnion) = simplify(q, preferred_units(dimvaltype(q)))
+
+set_preferred_unit(u::Units; warn_failure=true) = set_preferred_unit!(preferred_units(dimvaltype(u)), u, warn_failure=warn_failure)
 
 function set_preferred_logscale(ls::LogScale)
     PREFERRED_LOGSCALE[] = ls 
@@ -220,39 +227,44 @@ function set_preferred_unit!(unitset::AbstractVector{<:Units}, u::Units; warn_fa
     return u 
 end
 
-function simplify(q::Quantity)
-    u = convert(Units{dimtype(q), AffineTransform{Float64}}, simplify(dimension(q)))
+#Helper methods methods exposed to the user
+function simplify(q::QuantUnion, unit_set::AbstractVector)
+    u = simplify(dimension(q), unit_set)
     return uconvert(u, q)
 end
 
-function simplify(q::LogQuant)
-    u = convert(Units{dimtype(q), AffineTransform{Float64}}, simplify(dimension(q)))
-    return uconvert(PREFERRED_LOGSCALE[](u), q)
+function simplify(q::LogQuant, unit_set::AbstractVector)
+    u = PREFERRED_LOGSCALE[](simplify(dimension(q), unit_set))
+    return uconvert(u, q)
 end
 
-simplify(dref::StaticDims{d}; unit_set=PREFERRED_UNITS) where d = simplify(d)
+function simplify(dref::StaticDims{d}, unit_set::AbstractVector) where d 
+    u = simplify(d, unit_set)
+    return Units{StaticDims{d}}(dimension(u), tobase(u), usymbol(u))
+end
 
-function simplify(d::D; unit_set=PREFERRED_UNITS) where D<:AbstractDimensions
+function simplify(d::AbstractDimensions, unit_set::AbstractVector)
     numerator = Pair{eltype(unit_set), Int64}[]
     denominator = Pair{eltype(unit_set), Int64}[]
     remainder = d
 
     for u in unit_set
-        (n, remainder) = clean_fit_div(remainder, dimension(u))
+        (n, remainder) = _clean_fit_div(remainder, dimension(u))
         if (n > 0) 
             push!(numerator, u=>n)
             continue
         end
 
-        (n, remainder) = clean_fit_div(remainder, inv(dimension(u)))
+        (n, remainder) = _clean_fit_div(remainder, inv(dimension(u)))
         if (n > 0)
             push!(denominator, u=>n)
         end
     end
 
-    return compound_unit(numerator, denominator, remainder) #Test this for now, and build compound_unit later
+    return compound_unit(numerator, denominator, remainder)
 end
 
+#Potentially useful to the user, not exported by default
 function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::Vector{<:Pair{<:Units,<:Real}}, remainder::D) where D<:AbstractDimensions
 
     #Collect the remainder into numerator and denominator
@@ -288,9 +300,17 @@ function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::V
     return Units(dims, AffineTransform(scale=scale), Symbol(numstr*denstr))
 end
 
+#Measure the complexity of a dimension
+function complexity(d::D) where D <: AbstractDimensions
+    return sum(fn-> abs(getproperty(d, fn)), fieldnames(D))
+end
+
+complexity(d::StaticDims{D}) where D = complexity(D)
+complexity(q::QuantUnion) = complexity(dimension(q))
+complexity(u::Units) = complexity(dimension(u))
 
 #Number of dimes dimensioon "dx" fits cleanly into dref
-function clean_fit_div(remainder::AbstractDimensions, d::AbstractDimensions) 
+function _clean_fit_div(remainder::AbstractDimensions, d::AbstractDimensions) 
     ii = 0
     while ii < 1000
         Δcomplexity = complexity(remainder) - complexity(remainder/d)
@@ -307,14 +327,6 @@ function clean_fit_div(remainder::AbstractDimensions, d::AbstractDimensions)
 end
 
 complexity_sort!(v::AbstractVector{<:Units}) = sort!(v, by=complexity, rev=true)
-
-function complexity(d::D) where D <: AbstractDimensions
-    return sum(fn-> abs(getproperty(d, fn)), fieldnames(D))
-end
-
-complexity(d::StaticDims{D}) where D = complexity(D)
-complexity(q::QuantUnion) = complexity(dimension(q))
-complexity(u::Units) = complexity(dimension(u))
 
 _pretty_unit_pwr(p::Pair{<:Units, <:Real}) = _pretty_unit_pwr(usymbol(p[1]), p[2])
 

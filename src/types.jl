@@ -319,7 +319,7 @@ julia> (ustrip(5ud"°C") + ustrip(2ud"°C"))*u"°C" #Strips, adds raw quantity v
     tobase :: T
     symbol :: Symbol = DEFAULT_USYMBOL
 end
-Units{D}(units, tobase::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} = Units{D,T}(units, tobase, symbol)
+Units{D}(dims, tobase::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} = Units{D,T}(dims, tobase, symbol)
 Units(dims::D, tobase::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimLike = Units(dims, tobase, symbol)
 Units(units::U, tobase::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where U<:AbstractUnits = Units(dimension(assert_dimension(units)), tobase, symbol)
 

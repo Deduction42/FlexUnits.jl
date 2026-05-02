@@ -6,20 +6,12 @@ Changelog:
 
 
 Current Tasks:
-1.  Simplification cleanup
-    -   PREFERRED_UNITS should inside Registry modules
-    -   Registry modules should export "set_preferred_units" (which depends on set_preferred_units!)
-    -   Define defaults with clear dependencies on UnitRegistry
-        -   Every "simplify" should have "unit_set" as an explicit argument except the final default
-            -   simplify(q::LogQuantUnion{T,D}) where {T, D<:AbstractDimLike} = simplify(q, preferred_units(D))
-            -   preferred_units(::Type{<:Dimensions}) = UnitRegistry.PREFERRED_UNITS #Users redefine this
-            -   preferred_units(::Type{<:StaticDims{d}}) where d = preferred_units(typeof(d)) #Users don't redefine this
-        -   Users can insert different registries into "D" based on defining "preferred_units(::Type{D})"
-2.  Documentation
+1.  Documentation
     -   Add simplification to the readme
     -   Add new types to the documentation
     -   Biuld out detailed documentation for logarithmic units and Simplification
-        -   In particular, how to make simplification work with 
+        -   In particular, how to overload preferred_units(::Type{T}) to select different preferred unit constants
+        -   Useful if you are defining new dimensions (like ones with angles)
 
 Backlog:
 1.  Add interactive unit functionality
