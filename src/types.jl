@@ -391,17 +391,22 @@ FlexQuant{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(ds
 FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
 FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))
 
+
+"""
+    ubase(v::Any, u::AbstractUnitLike)
+
+Produces a quantity in base units of (u) (such as SI base units)
+"""
+ubase(v::Any, u::AbstractUnitLike) = quantity(tobase(u)(v), dimension(u))
+
 """
     ubase(q::QuantUnion)
 
-Converts quantity `q` to its raw dimensional equivalent (such as SI units)
+Converts quantity `q` to its raw dimensional equivalent (such as SI base units)
 """
-function ubase(q::QuantUnion{<:Any,<:AbstractUnitLike})
-    u  = unit(q)
-    ft = tobase(u)
-    return quantity(ft(ustrip(q)), dimension(u))
-end 
+ubase(q::QuantUnion{<:Any,<:AbstractUnitLike}) = ubase(ustrip(q), unit(q))
 ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
+
 
 ustrip(q::QuantUnion) = q.value
 unit(q::QuantUnion) = q.unit
@@ -474,6 +479,15 @@ linquant(q::Quantity) = q
 linquant(q::LogQuant) = ubase(q)
 
 """
+    logubase(v::Any, u::AbstractUnitLike)
+
+Produces a base-unit log quantity (Nepers with a reference value of base SI units)
+"""
+logubase(v::Any, u::AbstractUnitLike) = logquant(log(tobase(u)(v)), dimension(u))
+logubase(v::Any, u::Units{<:AbstractDimLike, <:ExpAffTransform}) = logquant(log(tobase(u))(v), dimension(u))
+
+
+"""
     logubase(lq::LogQuant)
 
 Converts log-quantity `lq` to its natural logarithmic scale (Nepers)
@@ -490,7 +504,7 @@ function ubase(q::LogQuant{<:Any,<:AbstractUnitLike})
     u  = unit(q)
     ft = exp(tobase(u))
     return quantity(ft(ustrip(q)), dimension(u))
-end 
+end
 
 ustrip(q::LogQuant) = q.value
 unit(q::LogQuant) = q.unit

@@ -8,45 +8,20 @@ Changelog:
 Current Tasks:
 1.  Documentation
     -   Add simplification to the readme
-    -   Add new types to the documentation
-    -   Biuld out detailed documentation for logarithmic units and Simplification
+        -   Mention that it's not on by default because it LIES (ustrip won't work)
+    -   Add new types to the Types documentation section
+        -   LogQuant, LogScale
+    -   Add Logarithmic units section to the documentation, and modify the readme
+        -   Start with the two schools of thought 
+            -   1. 1dB represents a logarithmic quantity: 1dB + 1dB = 2dB 
+            -   2. 1dB is a log scale representation of a quantity: 1dB + 1dB = 4.0103dB
+            -   FlexUnits takes the first position, which requires LogQuant to rigorously work
+    -   Build out readme and detailed units or Simplification
         -   In particular, how to overload preferred_units(::Type{T}) to select different preferred unit constants
         -   Useful if you are defining new dimensions (like ones with angles)
 
 Backlog:
-1.  Add interactive unit functionality
-    -   PREFERRED_UNITS is a vector of units sorted by absolute value (highest first)
-            -   Define abs(d::Dimensions) = sum(abs, d)
-        -   Lives outside the unit registry, and can be updated using set_preferred_units(u::AffineUnit)
-            -   Initialized by SI units for dimensions by default (N, J, W, V, Ohms) from the UnitRegistry
-            -   Units cannot have an offset
-            -   May need brackets around compound dimensiosn like velocity = Symbol("(m/s)")
-        -   Can be updated with "set_preferred_units(u::AffineUnit)"
-            -   Update searches for existing dimensions or inverse
-                -   Don't use a dict, updates are infrequent, vector is not long, and order matters
-            -   Replaces if exact match is found, does nothing inverse dimension already exists ('Hz' won't be added if 's' exists)
-            -   This is because greedy search includes inverses of units, if both units and inverse exist, results are not unique
-    -   simplify(PREFERRED_UNITS, q::Quantity{T,AbstractDimLike})
-        -   simplify(q::Quantity{T,AbstractDimLike}) uses PREFERRED_UNITS implicitly
-        -   Only works if all unit powers are integers
-        -   Iterates through PREFERRED_UNITS, performs a greedy search to make units as terse as possible
-            -   e.g. simplify(1.0u"(m^2*kg)/s^3") = 1 kW
-            -   (numerator, denominator) = (Vector{Units}, Vector{Units})
-            -   For query unit (u), use the "fits into" criterion for selection 
-            -   If dividing by the unit reduces its absolute value by the same absolute value as (u), it fits cleanly
-                -   Both the unit and the inverse are tested
-                        upwr = if (abs(dimension(q))) - abs(dimension(q)/dimension(u)) == abs(u)
-                            upower(u, 1)
-                        elseif (abs(dimension(q))) - abs(dimension(q)*dimension(u)) == abs(u)
-                            upower(u, -1)
-                        else
-                            upower(u, 0)
-                        end
-                -   If upower is (0) move on, but if it's 1 or -1, experiemnt with raising powers until it no longer fits
-                -   The final result upower(u, n) produces a unit (raised to the power) and a symbol to reflect that 
-                    -   if n is positive, push!(numerator, build_unit(upwr)), if negative, push!(denominator, build_unit(pwr))
-            -   The final result is a unit of prod(numerator)/prod(denominator)
-    -   Can add a global option switch for "display" to turn simplification on (it's off by default)
+1.  
 
 2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
     -   still need to implement vcat

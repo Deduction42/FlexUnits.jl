@@ -168,8 +168,8 @@ function Base.:^(t::AffineTransform{T}, p::Real) where T
 end
 Base.:^(t1::NoTransform, p::Real) = t1
 
-Base.:*(x::MathUnion, u::AbstractUnitLike) = ubase(quantity(x, u))
-Base.:/(x::MathUnion, u::AbstractUnitLike) = ubase(quantity(x, inv(u)))
+Base.:*(x::MathUnion, u::AbstractUnitLike) = ubase(x, u)
+Base.:/(x::MathUnion, u::AbstractUnitLike) = ubase(x, inv(u))
 Base.:*(x::Missing, u::AbstractUnitLike) = x
 Base.:/(x::Missing, u::AbstractUnitLike) = x
 
@@ -410,6 +410,7 @@ Base.:*(q1::LogQuant, q2::Quantity) = throw(LogLinearError(*, q1, q2))
 Base.:/(q1::Quantity, q2::LogQuant) = throw(LogLinearError(/, q1, q2))
 Base.:/(q1::LogQuant, q2::Quantity) = throw(LogLinearError(/, q1, q2))
 
+#Addition/subtraction for linear transformations
 ⊕(q1::LogQuant, q2::LogQuant) = log(ubase(q1) + ubase(q2))
 ⊕(q1::NumUnion, q2::LogQuant) = log(exp(q1) + ubase(q2))
 ⊕(q1::LogQuant, q2::NumUnion) = log(ubase(q1) + exp(q2))
@@ -417,45 +418,4 @@ Base.:/(q1::LogQuant, q2::Quantity) = throw(LogLinearError(/, q1, q2))
 ⊖(q1::LogQuant, q2::LogQuant) = log(ubase(q1) - ubase(q2))
 ⊖(q1::NumUnion, q2::LogQuant) = log(exp(q1) - ubase(q2))
 ⊖(q1::LogQuant, q2::NumUnion) = log(ubase(q1) - exp(q2))
-
-#=
-#Generator functiosn for logarithmic units
-"""
-    dB(x::Union{AbstractUnitLike, Quantity})
-
-Generates a Unit type in decibels (having reference of 'x', a base of '10.0' and a scale of '0.1'
-"""
-dB(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=0.1, base=10.0, logsymbol=:dB)
-dB() = dB(NoDims())
-
-"""
-    Np(x::Union{AbstractUnitLike, Quantity})
-
-Generates a Unit type in Nepers (having reference of 'x', a base of 'e ≈ 2.71828' and a scale of '1.0'
-"""
-Np(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=1.0, base=exp(1), logsymbol=:Np)
-Np() = Np(NoDims())
-
-"""
-    logunits(reference::Union{AbstractUnitLike, Quantity}; logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL)
-
-Use this function to generate your own logarithmic unit. For example, decibels was defined in this package as
-
-```julia
-dB(u::Union{AbstractUnitLike, Quantity}) = logunits(u, logscale=0.1, base=10.0, logsymbol=:dB)
-````
-"""
-function logunits(reference::Union{AbstractUnitLike, Quantity}; logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL)
-    return Units(
-        dims = dimension(reference),
-        tobase = ExpAffTransform(
-            scale = logscale*log(base), 
-            offset = log(dstrip(1*reference)),
-        ),
-        symbol = (logsymbol==DEFAULT_USYMBOL) ? logsymbol : Symbol(string(logsymbol)*"($(reference))")
-    )
-end
-
-logunits(; logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL) = logunits(NoDims(); logscale=1, base=exp(1), logsymbol=DEFAULT_USYMBOL)
-=#
 

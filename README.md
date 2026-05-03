@@ -111,7 +111,32 @@ julia> M\X'
 ```
 
 ### Logarithmic Quantities and Units
-Taking a logarithm of a `Quantity` will produce a `LogQuant` which has different algebraic rules than a regular quantity; the algebraic rules around a `LogQuant` are centered around logarithmic identities.
+Handling logarithmic units such as decibels comes with some level of controversy. The question is whether a quantity such as `1 dB` is a logarithm of a quantity or merely the *logarithmic representation* of a linear quantity.
+1. If `1 dB` is a logarithmic representation: `1 dB + 1 dB = 4.0103 dB`  
+2. If `1 dB` is a logarithmic quantity: `1 dB + 1 dB = 2 dB`
+
+FlexUnits adopts the philosophy of the second camp, where a decibel represents the *logarithm of a quantity* and supplies algebraic tools to manipulate logarithms of quantities (referred to as a `LogQuant`). 
+
+#### Producing Logarithmic Quantities
+One way to produce a `LogQuant` is by taking a log of a quantity.
+```julia
+julia> q = log(2u"W")
+log(2.0 (m² kg)/s³)
+```
+Another way is to multiply a number by a logarithmic unit. For example, `dB` is a `LogScale` object that can be imported to construct a logarithmic unit
+```julia
+import FlexUnits.dB
+julia> q = 30dB(u"W")
+log(1000.0000000000016 (m² kg)/s³)
+```
+As you can see here, `30 dB(W)` is equivalent to `1000 W` but it displayed as its logarithm. This helps reinforce how operations are performed based on logarithmic identities. While their logarithms are displayed (to emphasize this algebra), the actual numerical value stored is the logarithmic form
+```julia
+julia> ustrip(log(2u"W"))
+0.6931471805599453
+```
+
+#### Operations on Logarithmic quantities
+The algebraic rules `LogQuant` are centered around logarithmic identities.
 ```julia
 julia> log(4u"m") + log(4u"s") # log(x) + log(y) = log(x*y)
 log(15.999999999999998 (m s))
@@ -122,10 +147,14 @@ log(1.0 m/s)
 julia> 2log(4u"m") # nlog(x) = log(x^n)
 log(15.999999999999998 m²)
 ```
-While their logarithms are displayed (to emphasize this algebra), the actual numerical value stored is the logarithmic form
+We also make use of the ⊕ and ⊖ operators that, in this context, commonly refers to adding/subtracting linearized values and transforming back to log space. It's not exported by default as this symbol could be used by other packages to mean something else.
 ```julia
-julia> ustrip(log(4u"m"))
-1.3862943611198906
+import FlexUnits: ⊕, ⊖
+julia> log(8u"m") ⊕ log(4u"m") #Observe that the linear addition happened
+log(12.0 m)
+
+julia> log(8u"m") ⊖ log(4u"m") #Observe that linear subtraction happened
+log(3.9999999999999982 m)
 ```
 Logarithmic quantities can be converted back to regular quantities using `quantity`, `linquant`, or `exp`
 ```julia
@@ -138,44 +167,31 @@ FlexUnits also contains support for logarithmic units such as decibels `dB` and 
 julia> dB(u"V")
 dB(V)
 ```
-This essentially produces a logarithmic unit type `Units{<:AbstractDimLike, <:ExpAffTransform}`. Multiply a number by such a unit (i.e. containing an exponential affine transform) will produce a logarithmic quantity.
+This operation produces a logarithmic unit type `Units{<:AbstractDimLike, <:ExpAffTransform}`. Multiply a number by such a unit (i.e. containing an exponential affine transform) it will produce a logarithmic quantity.
 ```julia
-julia> 5dB(u"V")
-log(3.1622776601683795 (m² kg)/(s³ A))
+julia> 5dB(u"kW")
+log(3162.2776601683804 (m² kg)/s³)
+```
+One might want to see these `LogQuants` in decibels, which can be done by calling `dB` on it (piping will also work), which uses SI bases units as reference. 
+```
+julia> 5dB(u"kW") |> dB
+34.99999999999999 dB((m² kg)/s³)
+```
+Constructing the quantity with `logquant` retains the original reference.
+julia> logquant(5, dB(u"kW"))
+5 dB(kW)
 ```
 Converting to a logarithmic unit will also result in a logarithmic quantity
 ```julia
 julia> 5u"hp" |> dB(u"kW")
 5.715340722972715 dB(kW)
-
-julia> linquant(5u"hp" |> dB(u"kW")) 
-3728.4993550000027 (m² kg)/s³
 ```
-Converting algebraic expressions back to decibels requires knowledge of the resulting dimension, but numerical results work as expected
-```julia
-julia> 5dB(u"m") - 0.1dB(u"s") |> dB(u"m/s")
-4.9 dB(m/s)
+Simplification will convert log quantities to `dB` with SI reference values by default
 ```
-You can also apply a `LogScale` like `dB` to `LogQuant` which will apply the scale against the SI base
-```julia
-julia> 15dB(u"km") - 5dB(u"hr") 
-log(2.777777777777777 m/s)
-
-julia> 15dB(u"km") - 5dB(u"hr") |> dB
-4.436974992327125 dB(m/s)
+julia> 5dB(u"kJ") - 0.1dB(u"s") |> simplify
+34.9 dB(W)
 ```
 
-In some cases, it's desirable to add/subtract linear versions of logarithmic quantities and convert back to logarithms. You can import the "\oplus" and "\ominus" symbols to shortcut this operation. They are not exported by default in order to prevent definition conflicts.
-
-```julia
-import FlexUnits: ⊕, ⊖
-
-julia> 60dB(u"μPa")
-log(1.0000000000000036 kg/(m s²))
-
-julia> 60dB(u"μPa") ⊕ 60dB(u"μPa")
-log(2.000000000000007 kg/(m s²))
-```
 ### Registering new units
 The default unit registry exports a function `register_unit` (and by following the template, user-defined registries can do the same). With this function, you can register units using other units or quantities as follows:
 ```julia
@@ -194,7 +210,7 @@ ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different val
 ```
 
 ### Registering logarithmic units
-The default unit registry can only register affine units. If you wish to register logarithmic units as well, the LogUnitRegistry can be used instead. This can hold both affine and logarithmic units, but is a bit slower for `uparse` because the output is a `Union`.
+The default unit registry can only register affine units, which is sufficient for logarithmic units *unless you need to parse strings to produce logarithmic units*. In such cases, you will need to register logarithmic units with the `LogUnitRegistry` instead. This registry can hold both affine and logarithmic units, but `uparse` can introduce performance issues because the output is a `Union`. ***WARNING, because multiplying `uparse` outputs can produce a Quantity or a LogQuant, based on the string value, it's recommended that you use explicit constructors like `quantity` or `ubase` to always produce linear quantities, or `logquant` or `logubase` always produce logarithmic units.***
 ```julia
 using FlexUnits, .LogUnitRegistry
 import FlexUnits.dB
@@ -204,10 +220,19 @@ register_unit("dB_V" => dB(u"V"))
 julia> 10uparse("dB_V")
 log(10.000000000000002 (m² kg)/(s³ A))
 
+julia> 10uparse("V")
+10.0 (m² kg)/(s³ A)
+
+julia> ubase(10, uparse("dB_V"))
+10.000000000000002 (m² kg)/(s³ A)
+
+julia> logubase(10, uparse("V"))
+log(10.000000000000002 (m² kg)/(s³ A))
+
 julia> 10u"dB_V"
 log(10.000000000000002 (m² kg)/(s³ A))
 ```
-Generally using the `dB` or `Np` function with the default unit registry should be enough, unless you need to process strings that may potentially include logarithmic units.
+
 
 ## Benchmarks
 ### Static vs dynamic units
