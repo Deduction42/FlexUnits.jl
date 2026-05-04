@@ -20,6 +20,10 @@ Current Tasks:
         -   In particular, how to overload preferred_units(::Type{T}) to select different preferred unit constants
         -   Useful if you are defining new dimensions (like ones with angles)
 
+2.  Enable more Units constructors to build units on the fly
+    -   Units(Pair{String, <:Units}), Units(Pair{String, <:Quantity})
+    -   Useful for unit registry and setting preferred units
+
 Backlog:
 1.  
 
