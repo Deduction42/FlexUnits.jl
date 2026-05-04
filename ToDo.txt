@@ -6,31 +6,38 @@ Changelog:
 
 
 Current Tasks:
-1.  Documentation
-    -   Add simplification to the readme
-        -   Mention that it's not on by default because it LIES (ustrip won't work)
-    -   Add new types to the Types documentation section
-        -   LogQuant, LogScale
-    -   Add Logarithmic units section to the documentation, and modify the readme
-        -   Start with the two schools of thought 
-            -   1. 1dB represents a logarithmic quantity: 1dB + 1dB = 2dB 
-            -   2. 1dB is a log scale representation of a quantity: 1dB + 1dB = 4.0103dB
-            -   FlexUnits takes the first position, which requires LogQuant to rigorously work
-    -   Build out readme and detailed units or Simplification
-        -   In particular, how to overload preferred_units(::Type{T}) to select different preferred unit constants
-        -   Useful if you are defining new dimensions (like ones with angles)
+1.  Allow replacement of existing preferred nits with an inverse, warn about the replacement
 
-2.  Enable more Units constructors to build units on the fly
+2.  Build more tests 
+    -   Test simplification
+    -   Better logarithmic units coverage
+
+3.  Documentation
+    -   Add Logarithmic units section to the documentation, and modify the readme
+        -   Remove "Logarithmic Units" section in hte readme (put in docs instead)
+        -   Add a "convert to dB" blurb under "producing logarityhmic units"
+    -   Add docs details about how to overload preferred_units(::Type{T}) to select different list of preferred units
+        -   Useful if you are simplifying custom dimensions (like ones with angles)
+
+4.  Enable more Units constructors to build units on the fly
     -   Units(Pair{String, <:Units}), Units(Pair{String, <:Quantity})
     -   Useful for unit registry and setting preferred units
 
-Backlog:
-1.  
+5.  Greedy search algorithm needs a preliminary search run before applying "perfect fit" algorithm
+    -   Cycle through all the units and identify the power that maximizes the complexity reduction, 
+        -   Record results as {unit, power, improvement}
+            -   improvement = complexity_change - 1e-6*complexity(unit)*power^2 (slight preference to simpler units if they tie)
+        -   Select the {unit, power, improvement} with the best improvement
+    -   Perform the "perfect fit" algorithm afterwards if residual is greater than 0
 
-2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
+6.  Improve simplified units display
+    -   Detect spaces, "*/", and numbers (lower and upper case) in the units and wrap with brackets in the symbol generator
+
+Backlog:
+1.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
     -   still need to implement vcat
 
-3.  Move factorizations to LinearAlgebra extension
+2.  Move factorizations to LinearAlgebra extension
     -   implement a unitful "cholupdate!" and "choldowndate!"
     -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
     -   Add performance benchmarks

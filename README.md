@@ -97,11 +97,6 @@ using Unitful
 julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" #Hydraulic pressure
 9.18 ft kg m L^-1 s^-2
 ```
-The greedy nature of this algorithm however, cannot guarantee optimal results all the time
-```julia
-julia> 5u"V" * 5u"V" |> simplify #I wanted V²
-25.0 J/F 
-```
 
 ### Switching simplification units
 FlexUnits simplification works by attempting to fit a predefined set of units (prioritizing high complexity) to a dimensional value. You can easily change the units in this set to display the units you like.
@@ -121,7 +116,7 @@ display_simplified_units(true) #Show simplified results
 julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" #This is convenient
 2798.0640000000003 Pa
 ```
-This begs the question: *Why is this not enabled by default?*. The main reason is ***because it lies***; it displays results *as though they were simplified*, but does not simplify the results. This can mess up `ustrip`.
+This begs the question: *Why is this not enabled by default?*. The main reason is ***because it lies***; it displays results *as though they were simplified*, but does not actually simplify the results. This can mess up `ustrip` ***Ye be warned***
 ```julia
 display_simplified_units(true)
 set_preferred_unit(u"psi")
@@ -132,7 +127,6 @@ julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" #This is convenient
 julia> ustrip(p) #I have been deceived
 2798.0640000000003
 ```
-***Ye be warned***
 
 ## Mixed-unit linear algebra
 Linear algebra is accelerated through `LinmapQuant` objects that define a linear mapping from input units to output units. To attach these units, simply multiply a matrix times a `UnitMap` constructor that specifies an example of the input and output units expected by a multiplication.

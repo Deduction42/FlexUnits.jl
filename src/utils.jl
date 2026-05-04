@@ -279,6 +279,7 @@ function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::V
         end
     end
 
+    #Numerator as a string
     numstr = if isempty(numerator)
         ""
     else
@@ -286,6 +287,7 @@ function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::V
         length(numerator) == 1 ? numstr_cat : "("*numstr_cat*")"
     end
 
+    #Denominator as a string
     denstr = if isempty(denominator)
         "" 
     else
@@ -294,6 +296,7 @@ function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::V
         prefix*(length(denominator) == 1 ? denstr_cat : "("*denstr_cat*")")
     end
 
+    #Calculate the scale and dimension of the total unit
     scale = prod(p->uscale(p[1]^p[2]), numerator, init=1.0) / prod(p->uscale(p[1]^p[2]), denominator, init=1.0)
     dims  = prod(p->dimension(p[1]^p[2]), numerator, init=D()) / prod(p->dimension(p[1]^p[2]), denominator, init=D())
 
@@ -308,6 +311,18 @@ end
 complexity(d::StaticDims{D}) where D = complexity(D)
 complexity(q::QuantUnion) = complexity(dimension(q))
 complexity(u::Units) = complexity(dimension(u))
+
+#Create the "ith" dimensional unit
+function dimensional_unit(::Type{D}, di::Integer) where D <: AbstractDimensions
+    f(ii) = ifelse(ii==di, true, false)
+    n = length(fieldnames(D))
+
+    if di > n
+        throw(ArgumentError("Index argument '$(di)' is greather than the number of dimensions in $(D)"))
+    else
+        return D( ntuple(f, Val(n))... )
+    end
+end
 
 #Number of dimes dimensioon "dx" fits cleanly into dref
 function _clean_fit_div(remainder::AbstractDimensions, d::AbstractDimensions) 

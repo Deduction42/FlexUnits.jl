@@ -24,6 +24,13 @@ AbstractUnits
 Units
 ```
 
+## Logarithmic Quantities and Units
+Logarithmic quantities have different algebraic rules around units. Multiplication raises units to a power, addition multiplies units, and new operators ⊕ and ⊖ verify units (much like addition and subtraction for linear quantities). The `LogScale` is a multi-purpose callable object that can create logarithmic units (when called on linear units), and can change the logarithmic scale of a `LogQuant` (when called on a LogQuant). For example `dB(q::LogQuant)` will convert `q` to decibels.
+```@docs
+LogQuant
+LogScale
+```
+
 ## Unit Transforms
 One unique feature to the FlexUnits design is the `AbstractUnitTransform` object. This is a callable object that contains a conversion formula to convert the unit into its dimensional form. The default transforms are `NoTransform` (a property of all dimensions) and `AffineTransform` which can deal with all common linear units. This design could potentially support other transforms like `LogTransform` for logarithmic units like `dB` and `pH` in the future.
 ```@docs

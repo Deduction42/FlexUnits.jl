@@ -538,8 +538,10 @@ julia> dB(log(10u"kPa"))
 40.0 dB(kg/(m s²))
 ```
 It can also be used to create logarithmic units that you can convert to
+```julia
 julia> 10u"kPa" |> dB(u"Pa")
 39.99999999999999 dB(Pa)
+```
 """
 @kwdef struct LogScale{T<:Real}
     scale :: T

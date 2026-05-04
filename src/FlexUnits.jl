@@ -19,7 +19,7 @@ end
 
 export AbstractUnitLike, AbstractDimLike, AbstractDimensions, AbstractUnits, AbstractUnitTransform
 export ConversionError, DimensionError, NotScalarError, NotDimensionError, LogLinearError, FixRat32
-export Dimensions, Units, StaticDims, Quantity, FlexQuant, LogQuant, QuantUnion, AffineTransform, NoTransform, ExpAffTransform
+export Dimensions, Units, StaticDims, LogScale, Quantity, FlexQuant, LogQuant, QuantUnion, AffineTransform, NoTransform, ExpAffTransform
 export RegistryTools, UnitRegistry, LogUnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units
 export simplify, set_preferred_unit, set_preferred_logscale, display_simplified_units
