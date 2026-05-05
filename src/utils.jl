@@ -220,8 +220,9 @@ function set_preferred_unit!(unitset::AbstractVector{<:Units}, u::Units; warn_fa
         complexity_sort!(unitset)
     elseif dimension(unitset[ii]) == dimension(u)
         unitset[ii] = u  
-    elseif warn_failure 
-        @warn "Cannot set preferred unit $(u), inverse already exists"
+    else 
+        warn_failure && @warn "Replacing $(unitset[ii]) with an inverse unit $(u)"
+        unitset[ii] = u
     end
 
     return u 

@@ -6,17 +6,13 @@ Changelog:
 
 
 Current Tasks:
-1.  Allow replacement of existing preferred nits with an inverse, warn about the replacement
-
-2.  Build more tests 
+1.  Build more tests 
     -   Test simplification
     -   Better logarithmic units coverage
 
-3.  Documentation
-    -   Add Logarithmic units section to the documentation, and modify the readme
-        -   Remove "Logarithmic Units" section in hte readme (put in docs instead)
-        -   Add a "convert to dB" blurb under "producing logarityhmic units"
-    -   Add docs details about how to overload preferred_units(::Type{T}) to select different list of preferred units
+2.  Documentation
+    -   Add simplification to the docs
+        -   Add docs details about how to overload preferred_units(::Type{T}) to select different list of preferred units
         -   Useful if you are simplifying custom dimensions (like ones with angles)
 
 4.  Enable more Units constructors to build units on the fly

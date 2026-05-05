@@ -214,31 +214,9 @@ julia> (linquant(log(4u"m")), quantity(log(4u"m")), exp(log(4u"m")))
 (4.0 m, 4.0 m, 4.0 m)
 ```
 
-### Logarithmic units
-FlexUnits also contains support for logarithmic units such as decibels `dB` and Nepers `Np` which are callable `LogScale` objects. There aren't exported by default as they could be fairly common symbols. To use them, simply call them as a function on units.
-```julia
-julia> dB(u"V")
-dB(V)
-```
-This operation produces a logarithmic unit type `Units{<:AbstractDimLike, <:ExpAffTransform}`. Multiply a number by such a unit will produce a logarithmic quantity.
-```julia
-julia> 5dB(u"kW")
-log(3162.2776601683804 (m² kg)/s³)
-```
-Calling `dB` on a logarithmic quantity (piping will also work) will convert it to decibels with SI base units as reference. 
-```
-julia> 5dB(u"kW") |> dB
-34.99999999999999 dB((m² kg)/s³)
-```
-Converting to a quantity to a logarithmic unit will also result in a logarithmic quantity
-```julia
-julia> 5u"hp" |> dB(u"kW")
-5.715340722972715 dB(kW)
-```
-
 ## Registering new units
 
-### Basic units
+### Registering basic units
 The default unit registry exports a function `register_unit` (and by following the template, user-defined registries can do the same). With this function, you can register units using other units or quantities as follows:
 ```julia
 using FlexUnits, .UnitRegistry
@@ -255,7 +233,7 @@ julia> register_unit("bbl" => 22.5*u"m^3")
 ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
 ```
 
-### Logarithmic units
+### Registering logarithmic units
 The default unit registry can only register affine units, which is sufficient for logarithmic units *unless you need to parse strings to produce logarithmic units*. In such cases, you will need to register logarithmic units with the `LogUnitRegistry` instead. This registry can hold both affine and logarithmic units, but `uparse` can introduce performance issues because the output is a `Union`. ***WARNING, because multiplying `uparse` outputs can produce a Quantity or a LogQuant, based on the string value, it's recommended that you use explicit constructors like `quantity` or `ubase` to always produce linear quantities, or `logquant` or `logubase` always produce logarithmic units.***
 ```julia
 using FlexUnits, .LogUnitRegistry
