@@ -186,6 +186,17 @@ end
 #=============================================================================================
 Unit Simplification
 =============================================================================================#
+struct UnitFitResult{U<:Units}
+    unit :: U
+    power :: Int64 
+    improvement :: Float64 
+end
+UnitFitResult(u::U, power::Integer, improvment::Real) where U<:Units = UnitFitResult{U}(u, power, improvment)
+
+function UnitFitResult(d::D, power::Integer, improvment::Real) where D<:AbstractDimLike 
+    u = Units(d, AffineTransform{Float64}(), Symbol(string(u)))
+    return UnitFitResult(u, power, improvment)
+end
 
 #Main dispatch unit to select preferred units, just in case dimensions are incompatible with PREFERRED_UNITS
 preferred_units(::Type{<:Any}) = PREFERRED_UNITS
@@ -245,38 +256,29 @@ function simplify(dref::StaticDims{d}, unit_set::AbstractVector) where d
 end
 
 function simplify(d::AbstractDimensions, unit_set::AbstractVector)
-    numerator = Pair{eltype(unit_set), Int64}[]
-    denominator = Pair{eltype(unit_set), Int64}[]
+    U = eltype(unit_set)
+    numerator = UnitFitResult{U}[]
+    denominator = UnitFitResult{U}[]
     remainder = d
 
-    for u in unit_set
-        (n, remainder) = _clean_fit_div(remainder, dimension(u))
-        if (n > 0) 
-            push!(numerator, u=>n)
-            continue
-        end
-
-        (n, remainder) = _clean_fit_div(remainder, inv(dimension(u)))
-        if (n > 0)
-            push!(denominator, u=>n)
-        end
-    end
+    remainder = _unit_power_simplify!(numerator, denominator, remainder, unit_set)
+    remainder = _clean_fit_simplify!(numerator, denominator, remainder, unit_set)
 
     return compound_unit(numerator, denominator, remainder)
 end
 
 #Potentially useful to the user, not exported by default
-function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::Vector{<:Pair{<:Units,<:Real}}, remainder::D) where D<:AbstractDimensions
+function compound_unit(numerator::Vector{<:UnitFitResult}, denominator::Vector{<:UnitFitResult}, remainder::D) where D<:AbstractDimensions
 
     #Collect the remainder into numerator and denominator
     for fn in fieldnames(D)
         p = getproperty(remainder, fn)
+        d = D(; (fn => abs(p),)...)
+        u = Units(d, AffineTransform(), Symbol(string(d)))
         if p > 0
-            d = D(; (fn => p,)...)
-            push!(numerator, Units(d, AffineTransform(), Symbol(string(d))) => 1)
+            push!(numerator, UnitFitResult(u, 1, Float64(p)))
         elseif p < 0
-            d = D(; (fn => -p,)...)
-            push!(denominator, Units(d, AffineTransform(), Symbol(string(d))) => 1)
+            push!(denominator, UnitFitResult(u, 1, Float64(p)))
         end
     end
 
@@ -298,8 +300,8 @@ function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::V
     end
 
     #Calculate the scale and dimension of the total unit
-    scale = prod(p->uscale(p[1]^p[2]), numerator, init=1.0) / prod(p->uscale(p[1]^p[2]), denominator, init=1.0)
-    dims  = prod(p->dimension(p[1]^p[2]), numerator, init=D()) / prod(p->dimension(p[1]^p[2]), denominator, init=D())
+    scale = prod(p->uscale(p.unit^p.power), numerator, init=1.0) / prod(p->uscale(p.unit^p.power), denominator, init=1.0)
+    dims  = prod(p->dimension(p.unit^p.power), numerator, init=D()) / prod(p->dimension(p.unit^p.power), denominator, init=D())
 
     return Units(dims, AffineTransform(scale=scale), Symbol(numstr*denstr))
 end
@@ -325,6 +327,82 @@ function dimensional_unit(::Type{D}, di::Integer) where D <: AbstractDimensions
     end
 end
 
+function _unit_power_simplify!(numerator::AbstractVector{<:UnitFitResult}, denominator::AbstractVector{<:UnitFitResult}, d::AbstractDimensions, unit_set::AbstractVector)
+    D = typeof(d)
+
+    #Initial fit results 
+    fit_results = map(u->_optimal_unit_fit(d, u), unit_set)
+
+    #Add dimensional results
+    for ii in 1:length(fieldnames(D))
+        di = dimensional_unit(D, ii)
+        u = Units(di, AffineTransform{Float64}(), Symbol(string(di)))
+        push!(fit_results, _optimal_unit_fit(d, u))
+    end
+
+    #Find the fit_result with the best improvment
+    (imp, ind) = findmax(x->x.improvement, fit_results)
+    ufit = fit_results[ind]
+
+    #Apply the best improvement to the dimension
+    if ufit.power > 0
+        push!(numerator, ufit)
+    elseif ufit.power < 0 
+        push!(denominator, ufit)
+    end 
+
+    return d/dimension(ufit.unit)^ufit.power
+end
+
+function _optimal_unit_fit(d::AbstractDimensions, u::AbstractUnitLike; maxiter=1000)
+    function fit_improvement(p::Integer) 
+        duᵖ = dimension(u)^p
+        return UnitFitResult(u, p, complexity(d) - complexity(d/duᵖ) - 1e-6*complexity(duᵖ)*p)
+    end
+
+    initial = (fit_improvement(-1), UnitFitResult(u, 0, 0.0), fit_improvement(1))
+    (improvement, ind) = findmax(x->x.improvement, initial)
+
+    if ind == 3
+        p_space = 2:maxiter #Select positive powers
+    elseif ind == 1
+        p_space = -(2:maxiter) #Select negative powers
+    else
+        return initial[2]
+    end
+
+    results = initial[ind]
+
+    for p in p_space #Set the maximum number of iterations
+        fit = fit_improvement(p)
+        if fit.improvement > results.improvement
+            results = fit 
+        else
+            return results
+        end
+    end
+
+    error("Could not find an optimal fit after $(maxiter) iterations")
+end
+
+
+function _clean_fit_simplify!(numerator::AbstractVector{<:UnitFitResult}, denominator::AbstractVector{<:UnitFitResult}, remainder::AbstractDimensions, unit_set::AbstractVector)
+    for u in unit_set
+        (n, remainder) = _clean_fit_div(remainder, dimension(u))
+        if (n > 0) 
+            push!(numerator, UnitFitResult(u, n, complexity(u)))
+            continue
+        end
+
+        (n, remainder) = _clean_fit_div(remainder, inv(dimension(u)))
+        if (n > 0)
+            push!(denominator, UnitFitResult(u, n, complexity(u)))
+        end
+    end
+
+    return remainder
+end
+
 #Number of dimes dimensioon "dx" fits cleanly into dref
 function _clean_fit_div(remainder::AbstractDimensions, d::AbstractDimensions) 
     ii = 0
@@ -344,7 +422,7 @@ end
 
 complexity_sort!(v::AbstractVector{<:Units}) = sort!(v, by=complexity, rev=true)
 
-_pretty_unit_pwr(p::Pair{<:Units, <:Real}) = _pretty_unit_pwr(usymbol(p[1]), p[2])
+_pretty_unit_pwr(p::UnitFitResult) = _pretty_unit_pwr(usymbol(p.unit), p.power)
 
 
 #=============================================================================================
