@@ -278,9 +278,9 @@ function compound_unit(numervec::Vector{<:UnitFitResult}, denomvec::Vector{<:Uni
         d = D(; (fn => abs(p),)...)
         u = Units(d, AffineTransform(), Symbol(string(d)))
         if p > 0
-            push!(numervec, UnitFitResult(u, 1, Float64(p)))
+            push!(numervec, UnitFitResult(u, 1, p))
         elseif p < 0
-            push!(denomvec, UnitFitResult(u, 1, Float64(p)))
+            push!(denomvec, UnitFitResult(u, 1, p))
         end
     end
 

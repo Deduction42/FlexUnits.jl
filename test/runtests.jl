@@ -890,7 +890,11 @@ end
     display_simplified_units(true)
     @test string(1u"kg/L"*9.81u"m/s^2"*100u"cm") == "9.81 kPa"
 
+    set_preferred_unit(u"km")
+    @test string(1u"m") == "0.001 km"
+    
     set_preferred_unit(u"Pa")
+    set_preferred_unit(u"m")
     display_simplified_units(false)
 end
 
