@@ -874,6 +874,27 @@ end
 
 end
 
+@testset "Unit Simplification" begin 
+    @test (q = 1u"kg/L"*9.81u"m/s^2"*100u"cm" |> simplify; ustrip(q) ≈ 9810.0 && unit(q).symbol == :Pa)
+    @test (q = 5u"W"*1u"Ω" |> simplify; ustrip(q) ≈ 5.0 && unit(q).symbol == :V²)
+    @test (q = 10u"Pa"/1u"s"|> simplify; ustrip(q) ≈ 10.0 && unit(q).symbol == Symbol("Pa/s"))
+    @test (q = 10u"Pa"*1u"s"|> simplify; ustrip(q) ≈ 10.0 && unit(q).symbol == Symbol("(Pa s)"))
+    @test (q = 10u"V^2"/1u"kg"|> simplify; ustrip(q) ≈ 10.0 && unit(q).symbol == Symbol("V²/kg"))
+    @test (q = 10u"V^2"/1u"N" |> simplify; ustrip(q) ≈ 10.0 && unit(q).symbol == Symbol("m/F"))
+    @test (q = 5u"J/(mol*K)"*1u"cd" |> simplify; ustrip(q) ≈ 5.0 && unit(q).symbol == Symbol("(J cd)/(K mol)"))
+    @test (q = log(100u"W") |> simplify; ustrip(q) ≈ 20.0 && unit(q).symbol == Symbol("dB(W)"))
+
+    set_preferred_unit(u"kPa")
+    @test (q = 1u"kg/L"*9.81u"m/s^2"*100u"cm" |> simplify; ustrip(q) ≈ 9.810 && unit(q).symbol == :kPa)
+
+    display_simplified_units(true)
+    @test string(1u"kg/L"*9.81u"m/s^2"*100u"cm") == "9.81 kPa"
+
+    set_preferred_unit(u"Pa")
+    display_simplified_units(false)
+end
+
+
 @testset "Linear Algebra" begin
 
     #Nonlinear map
@@ -1302,6 +1323,8 @@ end
 
 end
 
+
+
 @testset "Additional tests of FixedRational" begin
     #Tests were basically copied from DynamicQuantities, since FixedRational isn't its own package
     @test convert(Int64, FixedRational{1000,Int64}(2 // 1)) == 2
@@ -1425,19 +1448,3 @@ end
 
 nothing
 
-#=
-#Benchmark testing
-R = Ref(8.314 * u"J/(mol*K)")
-@benchmark let R=R[]
-    v_satp = R * (25u"°C") / (101.3u"kPa")
-end
-=#
-
-#Profiling diagnostic if benchmarks are off 
-#=
-v = randn(100000).*u""
-v2 = deepcopy(v)
-@profview for ii in 1:1000
-    v2 .= v.*(1.1*u"m/s")
-end
-=#
