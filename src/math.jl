@@ -390,12 +390,14 @@ function Base.:*(x::NumUnion, u::Units{<:AbstractDimLike,<:ExpAffTransform})
 end
 
 #Logarithmic quantity algebra
+Base.:+(q::LogQuant) = with_logubase(+, *, q)
 Base.:+(q1::LogQuant, q2::LogQuant) = with_logubase(+, *, q1, q2)
 Base.:+(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q) + x, unit(q)))
 Base.:+(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q) + x, unit(q)))
 Base.:+(q1::Quantity, q2::LogQuant) = throw(LogLinearError(+, q1, q2))
 Base.:+(q1::LogQuant, q2::Quantity) = throw(LogLinearError(+, q1, q2))
 
+Base.:-(q::LogQuant) = with_logubase(-, inv, q)
 Base.:-(q1::LogQuant, q2::LogQuant) = with_logubase(-, /, q1, q2)
 Base.:-(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(x - ustrip(q), inv(unit(q))))
 Base.:-(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q) - x, unit(q)))
