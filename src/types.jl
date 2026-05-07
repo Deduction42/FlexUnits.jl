@@ -32,9 +32,9 @@ utrans(0.0)
 abstract type AbstractUnitTransform end
 
 """
-    AbstractUnitLike
+    AbstractDimLike
 
-A broad class representing anything that can be interpreted as a unit
+A broad class representing anything that can be interpreted as a dimension
 """
 abstract type AbstractDimLike <: AbstractUnitLike end
 
@@ -60,7 +60,6 @@ abstract type AbstractUnits{D, T<:AbstractUnitTransform} <: AbstractUnitLike end
 const UnitOrDims{D} = Union{D, AbstractUnits{D}} where D<:AbstractDimLike
 const ScalarOrVec{T} = Union{T, AbstractVector{T}} where T
 
-#Base.@assume_effects :consistent static_fieldnames(t::Type) = Base.fieldnames(t)
 static_fieldnames(t::Type) = Base.fieldnames(t)
 Base.eltype(::Type{<:AbstractDimensions{P}}) where P = P
 
@@ -81,8 +80,8 @@ end
 dimension(u::AbstractDimLike) = u
 dimval(u::AbstractDimensions) = u
 usymbol(u::AbstractDimLike) = DEFAULT_USYMBOL
-uscale(u::AbstractUnitLike) = uscale(todims(u))
-uoffset(u::AbstractUnitLike) = uoffset(todims(u))
+uscale(u::AbstractUnitLike) = uscale(tobase(u))
+uoffset(u::AbstractUnitLike) = uoffset(tobase(u))
 dimtype(x::Any) = dimtype(typeof(x))
 dimtype(::Type{T}) where T = error("dimtype not yet implemented for type $(T)")
 dimtype(::Type{D}) where D<:AbstractDimLike = D
@@ -92,15 +91,15 @@ dimvaltype(::Type{T}) where T = dimtype(T)
 dimpowtype(::Type{D}) where {P, D<:AbstractDimensions{P}} = P
 Base.getindex(d::AbstractDimensions, k::Symbol) = getproperty(d, k)
 dimpowtype(::Type{U}) where {U<:AbstractUnitLike} = dimpowtype(dimtype(U))
-is_dimension(u::AbstractUnitLike) = is_identity(todims(u))
-is_scalar(u::AbstractUnitLike) = is_scalar(todims(u))
+is_dimension(u::AbstractUnitLike) = is_identity(tobase(u))
+is_scalar(u::AbstractUnitLike) = is_scalar(tobase(u))
 udynamic(u::AbstractDimensions) = u
 
 #=======================================================================================
-Basic SI dimensions and transforms
+Transforms
 =======================================================================================#
 """
-NoTransform object, the default transform returned by todims(x::AbstractDimensionLike). Calling it results in 
+NoTransform object, the default transform returned by tobase(x::AbstractDimensionLike). Calling it results in 
 an identity.
 ```julia
 t = NoTransform()
@@ -111,19 +110,98 @@ t("anything")
 struct NoTransform <: AbstractUnitTransform end 
 Base.broadcastable(utrans::AbstractUnitTransform) = Ref(utrans)
 (t2::AbstractUnitTransform)(t1::AbstractUnitTransform) = t2 ∘ t1
+
 (t::NoTransform)(x) = x
 (t::NoTransform)(t0::AbstractUnitTransform) = t0
-
 Base.:∘(t1::NoTransform, t2::AbstractUnitTransform) = t2 
 Base.:∘(t1::AbstractUnitTransform, t2::NoTransform) = t1 
 Base.:∘(t1::NoTransform, t2::NoTransform) = t1
 Base.inv(t::NoTransform) = t
+Base.inv(t::NoTransform, x) = x
 uscale(t::NoTransform)  = 1
 uoffset(t::NoTransform) = 0
-todims(u::AbstractDimLike) = NoTransform()
+tobase(u::AbstractDimLike) = NoTransform()
 is_identity(t::NoTransform) = true
 is_scalar(t::NoTransform) = true
 
+
+"""
+    @kwdef struct AffineTransform{T<:Real} <: AbstractUnitTransform
+        scale  :: T = 1.0
+        offset :: T = 0.0
+    end
+
+A type representing an affine transfomration formula that can be
+used to convert values from one affine unit to another. This object is callable.
+
+# Constructors
+    AffineTransform(scale::Real, offset::Real)
+    AffineTransform(; scale, offset)
+"""
+@kwdef struct AffineTransform{T<:Real} <: AbstractUnitTransform
+    scale  :: T = 1.0
+    offset :: T = 0.0
+end
+AffineTransform(scale::T1, offset::T2) where {T1,T2} = AffineTransform{promote_type(T1,T2)}(scale, offset)
+(t::AffineTransform)(t0::AbstractUnitTransform) = t ∘ t0
+
+(t::AffineTransform)(x) = x*t.scale + t.offset
+Base.inv(t::AffineTransform, x) = (x - t.offset)/t.scale
+(t::AffineTransform)(x::AbstractArray) = t.(x)
+Base.inv(t::AffineTransform, x::AbstractArray) = inv.(t, x)
+(t::AffineTransform)(x::Tuple) = map(t, x)
+Base.inv(t::AffineTransform, x::Tuple) = map(xi->inv(t, xi), x)
+
+function Base.:∘(t2::AffineTransform, t1::AffineTransform)
+    return AffineTransform(
+        scale  = t1.scale*t2.scale,
+        offset = t2.offset + t2.scale*t1.offset 
+    )
+end
+Base.inv(t::AffineTransform) = AffineTransform(scale=inv(t.scale), offset=-t.offset/t.scale)
+
+uscale(t::AffineTransform) = t.scale 
+uoffset(t::AffineTransform) = t.offset
+is_identity(t::AffineTransform) = isone(t.scale) & iszero(t.offset)
+is_scalar(t::AffineTransform) = iszero(t.offset)
+remove_offset(t::AffineTransform) = AffineTransform(scale=t.scale, offset=0)
+
+"""
+    @kwdef struct ExpAffTransform{T<:Real} <: AbstractUnitTransform
+        scale  :: T = 1.0
+        offset :: T = 0.0
+    end
+
+A type representing an affine transfomration formula that applies "exp" at the end;
+this is useful for logarithmic units
+
+# Constructors
+    ExpAffTransform(scale::Real, offset::Real)
+    ExpAffTransform(; scale, offset)
+"""
+
+@kwdef struct ExpAffTransform{T<:Real} <: AbstractUnitTransform
+    scale  :: T = 1.0
+    offset :: T = 0.0
+end
+ExpAffTransform(scale::T1, offset::T2) where {T1,T2} = ExpAffTransform{promote_type(T1,T2)}(scale, offset)
+(t::ExpAffTransform)(t0::AbstractUnitTransform) = t ∘ t0
+
+uscale(t::ExpAffTransform) = t.scale 
+uoffset(t::ExpAffTransform) = t.offset
+
+(t::ExpAffTransform)(x) = exp(x*t.scale + t.offset)
+Base.inv(t::ExpAffTransform, x) = (log(x) - t.offset)/t.scale
+(t::ExpAffTransform)(x::AbstractArray) = t.(x)
+Base.inv(t::ExpAffTransform, x::AbstractArray) = inv.(t, x)
+(t::ExpAffTransform)(x::Tuple) = map(t, x)
+Base.inv(t::ExpAffTransform, x::Tuple) = map(xi->inv(t, xi), x)
+
+Base.inv(t::ExpAffTransform) = Base.Fix1(inv, t)
+
+#=======================================================================================
+Dimensions
+=======================================================================================#
 """
     Dimensions{P}
 
@@ -201,62 +279,26 @@ unit_symbols(::Type{<:NoDims}) = NoDims()
 ustrip(x::NumUnion) = x 
 dstrip(x::NumUnion) = x
 
+
 #=======================================================================================
-Affine Units and Transforms
+Units
 =======================================================================================#
-"""
-    @kwdef struct AffineTransform{T<:Real} <: AbstractUnitTransform
-        scale  :: T = 1.0
-        offset :: T = 0.0
-    end
-
-A type representing an affine transfomration formula that can be
-used to convert values from one affine unit to another. This object is callable.
-
-# Constructors
-    AffineTransform(scale::Real, offset::Real)
-    AffineTransform(; scale, offset)
-"""
-@kwdef struct AffineTransform{T<:Real} <: AbstractUnitTransform
-    scale  :: T = 1.0
-    offset :: T = 0.0
-end
-AffineTransform(scale::T1, offset::T2) where {T1,T2} = AffineTransform{promote_type(T1,T2)}(scale, offset)
-(t::AffineTransform)(x) = muladd(x, t.scale, t.offset)
-(t::AffineTransform)(x::AbstractArray) = t.(x)
-(t::AffineTransform)(x::Tuple) = map(t, x)
-(t::AffineTransform)(t0::AbstractUnitTransform) = t ∘ t0
-
-function Base.:∘(t2::AffineTransform, t1::AffineTransform)
-    return AffineTransform(
-        scale  = t1.scale*t2.scale,
-        offset = t2.offset + t2.scale*t1.offset 
-    )
-end
-Base.inv(t::AffineTransform) = AffineTransform(scale=inv(t.scale), offset=-t.offset/t.scale)
-
-uscale(t::AffineTransform) = t.scale 
-uoffset(t::AffineTransform) = t.offset
-is_identity(t::AffineTransform) = isone(t.scale) & iszero(t.offset)
-is_scalar(t::AffineTransform) = iszero(t.offset)
-remove_offset(t::AffineTransform) = AffineTransform(scale=t.scale, offset=0)
-
 """
     @kwdef struct Units{D<:AbstractDimLike, T<:AbstractUnitTransform} <: AbstractUnits{D, T}
         dims   :: D
-        todims :: T
+        tobase :: T
         symbol :: Symbol = DEFAULT_USYMBOL
     end
 
-A dynamic unit object that contains dimensions (dims) and its conversion formula to said dimensions (todims). The conversion 
+A dynamic unit object that contains dimensions (dims) and its conversion formula to said dimensions (tobase). The conversion 
 formula determines what kind of unit is referred to. An AffineTransform implies affine units, a NoTransform implies dimensions.
 Units with dynamic dimensions can generated through the `@ud_str` macro, while units with static dimensions can be generated
 throiugh the `@u_str` macro.
 
 # Constructors
-    Units{D}(units, todims::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} 
-    Units(dims::D, todims::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimensions 
-    Units(units::D, todims::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where D<:AbstractUnits
+    Units{D}(units, tobase::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} 
+    Units(dims::D, tobase::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimensions 
+    Units(units::D, tobase::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where D<:AbstractUnits
 
 ```julia
 julia> 1*(5ud"°C") #Operations on units eagerly convert to dimensions
@@ -274,20 +316,20 @@ julia> (ustrip(5ud"°C") + ustrip(2ud"°C"))*u"°C" #Strips, adds raw quantity v
 """
 @kwdef struct Units{D<:AbstractDimLike, T<:AbstractUnitTransform} <: AbstractUnits{D, T}
     dims   :: D
-    todims :: T
+    tobase :: T
     symbol :: Symbol = DEFAULT_USYMBOL
 end
-Units{D}(units, todims::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} = Units{D,T}(units, todims, symbol)
-Units(dims::D, todims::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimLike = Units(dims, todims, symbol)
-Units(units::U, todims::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where U<:AbstractUnits = Units(dimension(assert_dimension(units)), todims, symbol)
+Units{D}(dims, tobase::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} = Units{D,T}(dims, tobase, symbol)
+Units(dims::D, tobase::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimLike = Units(dims, tobase, symbol)
+Units(units::U, tobase::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where U<:AbstractUnits = Units(dimension(assert_dimension(units)), tobase, symbol)
 
-todims(u::Units) = u.todims
+tobase(u::Units) = u.tobase
 dimension(u::Units) = u.dims 
 usymbol(u::Units) = u.symbol
-remove_offset(u::U) where U<:AbstractUnits = constructorof(U)(dimension(u), remove_offset(u.todims))
-is_scalar(u::AbstractUnits) = is_scalar(todims(u))
-udynamic(u::Units) = Units(udynamic(dimension(u)), todims(u), usymbol(u))
-ustatic(u::Units) = Units(ustatic(dimension(u)), todims(u), usymbol(u))
+remove_offset(u::U) where U<:AbstractUnits = constructorof(U)(dimension(u), remove_offset(u.tobase))
+is_scalar(u::AbstractUnits) = is_scalar(tobase(u))
+udynamic(u::Units) = Units(udynamic(dimension(u)), tobase(u), usymbol(u))
+ustatic(u::Units) = Units(ustatic(dimension(u)), tobase(u), usymbol(u))
 dimtype(::Type{U}) where {D,U<:Units{D}} = dimtype(D)
 dimvaltype(::Type{U}) where {D,U<:Units{D}} = dimvaltype(D)
 dimval(u::Units) = dimval(dimension(u))
@@ -295,7 +337,7 @@ dimval(::Type{<:Units{StaticDims{D}}}) where D = D
 unit(x::NumUnion) = Units(NoDims(), NoTransform(), DEFAULT_USYMBOL)
 
 #=================================================================================================
-Quantity types
+Quantities
 The basic type is Quantity, which belongs to <:Any (hence it has no real hierarchy)
 =================================================================================================#
 """
@@ -331,22 +373,45 @@ Convenience union that allows Number and Non-Number types to be considered toget
 """
 const QuantUnion{T,U} = Union{Quantity{T,U}, FlexQuant{T,U}}
 
+Quantity{T,U}(q::QuantUnion) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
+Quantity{T,D}(q::QuantUnion) where {T,D<:StaticDims} = Quantity{T,D}(ustrip(D(), q), D())
+Quantity{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
+
+Quantity{T,U}(x::NumUnion) where {T,U} = Quantity{T,U}(x*dimtype(U)())
+Quantity{T,D}(x::NumUnion) where {T,D<:StaticDims} = Quantity{T,D}(convert(T,x), assert_dimensionless(D()))
+Quantity{T,D}(x::NumUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D())
+
 Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
 Quantity{T}(q::QuantUnion) where T = Quantity{T}(ustrip(q), unit(q))
-Quantity{T,U}(q::QuantUnion) where {T,U} = Quantity{T,U}(ustrip(q), unit(q))
-Quantity{T,StaticDims{d}}(q::QuantUnion) where {T,d} = Quantity{T,StaticDims{d}}(ustrip(d, q), StaticDims{d}())
-Quantity{T,StaticDims{d}}(x::Number) where {T,d} = Quantity{T, StaticDims{d}}(convert(T,x), StaticDims{d}())
-Quantity{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
-Quantity{T,D}(x::Number) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D())
+
+FlexQuant{T,U}(q::QuantUnion) where {T,U} = FlexQuant{T,U}(ustrip(q), unit(q))
+FlexQuant{T,D}(q::QuantUnion) where {T,D<:StaticDims} = FlexQuant{T,D}(ustrip(D(), q), D())
+FlexQuant{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
 
 FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
 FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))
-FlexQuant{T,U}(q::QuantUnion) where {T,U} = FlexQuant{T,U}(ustrip(q), unit(q))
+
+
+"""
+    ubase(v::Any, u::AbstractUnitLike)
+
+Produces a quantity in base units of (u) (such as SI base units)
+"""
+ubase(v::Any, u::AbstractUnitLike) = quantity(tobase(u)(v), dimension(u))
+
+"""
+    ubase(q::QuantUnion)
+
+Converts quantity `q` to its raw dimensional equivalent (such as SI base units)
+"""
+ubase(q::QuantUnion{<:Any,<:AbstractUnitLike}) = ubase(ustrip(q), unit(q))
+ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
+
 
 ustrip(q::QuantUnion) = q.value
 unit(q::QuantUnion) = q.unit
-todims(q::QuantUnion) = todims(q.unit)
-dstrip(q::QuantUnion) = todims(q)(ustrip(q))
+tobase(q::QuantUnion) = tobase(q.unit)
+dstrip(q::QuantUnion) = tobase(q)(ustrip(q))
 ustrip_base(q::QuantUnion) = dstrip(q)
 dimension(q::QuantUnion) = dimension(unit(q))
 unittype(::Type{<:QuantUnion{T,U}}) where {T,U} = U
@@ -356,7 +421,6 @@ udynamic(q::QuantUnion) = Quantity(ustrip(q), udynamic(unit(q)))
 valtype(q::Any) = valtype(typeof(q))
 valtype(::Type{T}) where T = T
 valtype(::Type{<:QuantUnion{T}}) where T = T 
-
 
 #Translation between AffineTansform and numeric quantities
 AffineTransform(scale::Real, offset::Quantity) = AffineTransform(scale=scale, offset=dstrip(offset))
@@ -381,7 +445,132 @@ quant_type(::Type{<:Any}) = FlexQuant
 quant_type(x) = quant_type(typeof(x))
 
 
+#=================================================================================================
+Logarithmic quantities (only supports numeric types)
+=================================================================================================#
+"""
+    struct LogQuant{T<:Number, U<:AbstractUnitLike} <: Number 
+        value :: T 
+        unit  :: U 
+    end
 
+Numeric quantity type (that subtypes to number) representing the lograrithm of a Quantity.
+This changes arithmeic operations (+-*/) according to logarithmic algebra. 
+"""
+struct LogQuant{T<:Number, U<:AbstractUnitLike} <: Number 
+    value :: T 
+    unit  :: U 
+end
+LogQuant{T}(x, u::AbstractUnitLike) where T = LogQuant{T, typeof(u)}(x, u)
+LogQuant{T}(q::QuantUnion) where T = LogQuant{T}(log(dstrip(q)), dimension(q))
+LogQuant{T,U}(q::QuantUnion) where {T,U} = LogQuant{T,U}(log(dstrip(q)), dimension(q))
+
+Quantity{T,U}(lq::LogQuant) where {T,U} = Quantity{T,U}(ubase(lq))
+FlexQuant{T,U}(lq::LogQuant) where {T,U} = FlexQuant{T,U}(ubase(lq))
+
+const LogQuantUnion{T,U} = Union{Quantity{T,U}, FlexQuant{T,U}, LogQuant{T,U}}
+
+logquant(x::T, u::AbstractUnitLike) where T = LogQuant{T}(x, u)
+logquant(x::T, u::Units{<:AbstractDimLike, <:ExpAffTransform}) where {T} = logquant(x, Units(dimension(u), log(tobase(u)), usymbol(u)))
+logquant(q::Quantity) = LogQuant(log(dstrip(q)), dimension(q))
+logquant(lq::LogQuant) = lq 
+quantity(q::LogQuant) = ubase(q)
+linquant(q::Quantity) = q
+linquant(q::LogQuant) = ubase(q)
+
+"""
+    logubase(v::Any, u::AbstractUnitLike)
+
+Produces a base-unit log quantity (Nepers with a reference value of base SI units)
+"""
+logubase(v::Any, u::AbstractUnitLike) = logquant(log(tobase(u)(v)), dimension(u))
+logubase(v::Any, u::Units{<:AbstractDimLike, <:ExpAffTransform}) = logquant(log(tobase(u))(v), dimension(u))
+
+
+"""
+    logubase(lq::LogQuant)
+
+Converts log-quantity `lq` to its natural logarithmic scale (Nepers)
+"""
+function logubase(lq::LogQuant{<:Any,<:AbstractUnitLike})
+    u  = unit(lq)
+    ft = tobase(u)
+    return logquant(ft(ustrip(lq)), dimension(u))
+end 
+logubase(lq::LogQuant{<:Any,<:AbstractDimLike}) = lq
+logubase(q::Quantity) = log(ubase(q))
+
+function ubase(q::LogQuant{<:Any,<:AbstractUnitLike})
+    u  = unit(q)
+    ft = exp(tobase(u))
+    return quantity(ft(ustrip(q)), dimension(u))
+end
+
+ustrip(q::LogQuant) = q.value
+unit(q::LogQuant) = q.unit
+tobase(q::LogQuant) = tobase(q.unit)
+dstrip(q::LogQuant) = exp(tobase(q)(ustrip(q)))
+ustrip_base(q::LogQuant) = dstrip(q)
+dimension(q::LogQuant) = dimension(unit(q))
+unittype(::Type{<:LogQuant{T,U}}) where {T,U} = U
+dimtype(::Type{<:LogQuant{T,U}}) where {T,U} = dimtype(U)
+dimvaltype(::Type{<:LogQuant{T,U}}) where {T,U} = dimvaltype(U)
+udynamic(q::LogQuant) = Quantity(ustrip(q), udynamic(unit(q)))
+valtype(::Type{<:LogQuant{T}}) where T = T 
+
+#=================================================================================================
+Logarithmic scale objects used to scale LogQuant
+=================================================================================================#
+"""
+    struct LogScale{T<:Real}
+        scale :: T
+        base :: T
+        symbol :: Symbol
+    end
+
+A callable object used to apply a scale to a logarithmic unit. For example,
+```julia
+dB = LogScale(scale=0.1, base=10, symbol=:dB)
+```
+After defining it, this object can also be called on a LogQuant to change the logarithmic scale
+```julia
+julia> dB(log(10u"kPa"))
+40.0 dB(kg/(m s²))
+```
+It can also be used to create logarithmic units that you can convert to
+```julia
+julia> 10u"kPa" |> dB(u"Pa")
+39.99999999999999 dB(Pa)
+```
+"""
+@kwdef struct LogScale{T<:Real}
+    scale :: T
+    base :: T
+    symbol :: Symbol
+end
+LogScale(scale::T1, base::T2, symbol) where {T1,T2} = LogScale{promote_type(T1, T2)}(scale, base, symbol)
+
+function (s::LogScale)(reference::Union{AbstractUnitLike, Quantity})
+    return Units(
+        dims = dimension(reference),
+        tobase = ExpAffTransform(
+            scale = s.scale*log(s.base), 
+            offset = log(dstrip(1*reference)),
+        ),
+        symbol = (s.symbol==DEFAULT_USYMBOL) ? s.symbol : Symbol(string(s.symbol)*"($(reference))")
+    )
+end
+
+(s::LogScale)(q::LogQuant) = uconvert(s(dimension(q)), q)
+(s::LogScale)() = s(NoDims())
+
+dB = LogScale(scale=0.1, base=10, symbol=:dB)
+Np = LogScale(scale=1, base=exp(1), symbol=:Np)
+
+
+#=============================================================================================
+Constructor utilities
+=============================================================================================#
 """
     constructorof(::Type{T}) where T = Base.typename(T).wrapper
 
@@ -392,13 +581,11 @@ constructorof(::Type{T}) where T = Base.typename(T).wrapper
 constructorof(::Type{<:Dimensions}) = Dimensions
 constructorof(::Type{<:Units}) = Units
 constructorof(::Type{<:Quantity}) = Quantity
-constructorof(::Type{<:FlexQuant}) = FlexQuant
 
 
 #=============================================================================================
 Errors and assertion functions
 =============================================================================================#
-
 """
     DimensionError{D} <: Exception
 
@@ -427,7 +614,7 @@ function Base.showerror(io::IO, e::ConversionError{<:AbstractUnitLike, <:Abstrac
     pretty_str(x) = (ushow(io_tmp, x, pretty=true); String(take!(io_tmp)))
 
     uΔ = dimension(e.u0)/dimension(e.u)
-    return print(io, "ConversionError: Cannot convert unit '", pretty_str(e.u0), "' to target unit '", pretty_str(e.u), "'. Consider multiplying '", pretty_str(e.u), "' by '", pretty_str(uΔ), "' or similar.")
+    return print(io, "ConversionError: Cannot convert unit '",pretty_str(e.u0),"' to target unit '",pretty_str(e.u),"' due to a dimension mismatch of '",pretty_str(uΔ),"'")
 end
 
 """
@@ -451,8 +638,22 @@ struct NotDimensionError{D} <: Exception
     dim::D
     NotDimensionError(dim) = new{typeof(dim)}(dim)
 end
-Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim, " cannot be treated as dimension, operation only valid for dimension units")
+Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim," cannot be treated as dimension, operation only valid for dimension units")
 
+"""
+    LogLinearError{F} <: Exception
+
+Error thrown for function {F} when applied to a mixture of linear and logaritmic units
+"""
+struct LogLinearError{F, Q1, Q2} <: Exception
+    f :: F
+    q1 :: Q1 
+    q2 :: Q2 
+end
+Base.showerror(io::IO, e::LogLinearError{F,Q1,Q2}) where {F,Q1,Q2} = print(io, 
+    "LogLinearError: Cannot apply function '",e.f,"' to argument types ",Q1," and ",Q2,
+    "'. Perhaps you meant to convert one of the arguments to linear units using 'ubase(x::LoqQuant)'"
+)
 
 assert_scalar(u::AbstractDimLike) = u
 assert_scalar(u::AbstractUnits) = is_scalar(u) ? u : throw(NotScalarError(u))

@@ -1,5 +1,5 @@
 
-module UnitRegistry
+module LogUnitRegistry
 
 #RegistryTools contains all you need to build a registry in one simple import
 using ..RegistryTools
@@ -7,7 +7,13 @@ import ..RegistryTools.dimtype
 import ..RegistryTools.unittype
 
 const UNIT_LOCK = ReentrantLock()
-const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}()
+const AffLogUnits = Union{Units{Dimensions{FixRat32}, AffineTransform{Float64}}, Units{Dimensions{FixRat32},ExpAffTransform{Float64}}}
+const UNITS = PermanentDict{Symbol, AffLogUnits}()
+
+#Additional conversion functions
+Base.convert(::Type{AffLogUnits}, u::AbstractUnitLike) = convert(Units{Dimensions{FixRat32}, AffineTransform{Float64}}, u)
+Base.convert(::Type{AffLogUnits}, u::Units{<:Any, <:ExpAffTransform}) = convert(Units{Dimensions{FixRat32}, ExpAffTransform{Float64}}, u)
+Base.convert(::Type{AffLogUnits}, u::QuantUnion) = convert(Units{Dimensions{FixRat32}, AffineTransform{Float64}}, u)
 
 #Fill the UNITS registry with default values
 registry_defaults!(UNITS)

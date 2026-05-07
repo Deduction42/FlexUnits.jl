@@ -36,10 +36,9 @@ In addition to these design changes, there are a number of other notable differe
     - ```(5u"°C" - 2u"°C") == 3u"K"```
 5. FlexUnits registries are somewhat simpler than Unitful. A FlexUnits registry is a dictionary of units living inside a module that exports string macros and dynamic parsing functions. String macros can produce static units while string parsing functions produce dynamic units (as the code cannot infer such static units at parse time).
 6. Much like Unitful, `Quantity` subtypes to number, but an additional type `FlexQuant` can support any value type (such as a Distribution or Array). The function `quantity(q, u)` selects the appropriate output type based on the arguments.
+7. FlexUnits uses the concept of a `LogQuant` to allow taking the `log` of a `Quantity`, and handling logarithmic units like decibels
 
-## General Use
-
-### Basic Usage
+## Basic Usage
 Much like other unit packages, you can use string macros to build units and quantities. Unlike other packages, you must manually "use" the default registry `UnitRegistry`, this is done so as to not be overly opinionated as to what registry to use (allowing users to easily create and use their own registries instead).
 ```julia
 julia> using FlexUnits, .UnitRegistry
@@ -76,7 +75,60 @@ julia> 9u"μm/(m*K)" |> u"μm/(m*Ra)"
 5.0 μm/(m*Ra)
 ```
 
-### Mixed-unit linear algebra
+## Unit Simplification
+While operations always convert to SI units, FlexUnits contains a `simplify` function which applies a greedy algorithm to reduce the number of symbols. 
+
+```julia
+julia> r = 5u"V" / 10u"mA" #Electrical resistance is opaque
+500.0 (m² kg)/(s³ A²)
+
+julia> r = 5u"V" / 10u"mA" |> simplify #This is much better
+500.0 Ω
+```
+
+This simplification can have much better success than Unitful for long operations that yield common dimensional quantities.
+```julia
+julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" |> simplify  #Hydraulic pressure
+2798.0640000000003 Pa
+```
+This is easier to understand than the result you would get from Unitful
+```julia
+using Unitful
+julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" #Hydraulic pressure
+9.18 ft kg m L^-1 s^-2
+```
+
+### Switching simplification units
+FlexUnits simplification works by attempting to fit a predefined set of units (prioritizing high complexity) to a dimensional value. You can easily change the units in this set to display the units you like.
+
+```julia
+set_preferred_unit(u"psi") #Pressures are now in PSI
+
+julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" |> simplify  #Hydraulic pressure
+0.4058247132605051 psi
+```
+
+### Simplified view by default
+It may be cumbersome to constantly use `|> simplify` after every interactive operation. FlexUnits has a configuration function that allows you to view results as though `simplify` was applied to them.
+```julia
+display_simplified_units(true) #Show simplified results
+
+julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" #This is convenient
+2798.0640000000003 Pa
+```
+This begs the question: *Why is this not enabled by default?*. The main reason is ***because it lies***; it displays results *as though they were simplified*, but does not actually simplify the results. This can mess up `ustrip` ***Ye be warned***
+```julia
+display_simplified_units(true)
+set_preferred_unit(u"psi")
+
+julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" #This is convenient
+0.4058247132605051 psi
+
+julia> ustrip(p) #I have been deceived
+2798.0640000000003
+```
+
+## Mixed-unit linear algebra
 Linear algebra is accelerated through `LinmapQuant` objects that define a linear mapping from input units to output units. To attach these units, simply multiply a matrix times a `UnitMap` constructor that specifies an example of the input and output units expected by a multiplication.
 ```julia
 u = [u"kg/s", u"kW", u"rad/s", u"N/m"]
@@ -110,7 +162,61 @@ julia> M\X'
      2.54502 kg/s²       0.397339 kg/s²      -1.65875 kg/s²       3.10623 kg/s²          -0.58694 kg/s²       2.04295 kg/s²       4.18943 kg/s²
 ```
 
-### Registering new units
+## Logarithmic Quantities and Units
+Handling logarithmic units such as decibels comes with some level of controversy. The question is whether a quantity such as `1 dB` is a logarithm of a quantity or merely the *logarithmic representation* of a linear quantity.
+1. If `1 dB` is a logarithmic representation: `1 dB + 1 dB = 4.0103 dB`  
+2. If `1 dB` is a logarithmic quantity: `1 dB + 1 dB = 2 dB`
+
+FlexUnits adopts the philosophy of the second camp, where a decibel represents the *logarithm of a quantity* and supplies algebraic tools to manipulate logarithms of quantities (referred to as a `LogQuant`). 
+
+### Producing logarithmic quantities
+One way to produce a `LogQuant` is by taking a log of a quantity.
+```julia
+julia> q = log(2u"W")
+log(2.0 (m² kg)/s³)
+```
+Another way is to multiply a number by a logarithmic unit. For example, `dB` is a `LogScale` object that can be imported to construct a logarithmic unit
+```julia
+import FlexUnits.dB
+julia> q = 30dB(u"W")
+log(1000.0000000000016 (m² kg)/s³)
+```
+As you can see here, `30 dB(W)` is equivalent to `1000 W` but it displayed as its logarithm. This helps reinforce how operations are performed based on logarithmic identities. While their logarithms are displayed (to emphasize this algebra), the actual numerical value stored is the logarithmic form
+```julia
+julia> ustrip(log(2u"W"))
+0.6931471805599453
+```
+
+### Operations on logarithmic quantities
+The algebraic rules `LogQuant` are centered around logarithmic identities.
+```julia
+julia> log(4u"m") + log(4u"s") # log(x) + log(y) = log(x*y)
+log(15.999999999999998 (m s))
+
+julia> log(4u"m") - log(4u"s") # log(x) - log(y) = log(x/y)
+log(1.0 m/s)
+
+julia> 2log(4u"m") # nlog(x) = log(x^n)
+log(15.999999999999998 m²)
+```
+We also make use of the ⊕ and ⊖ operators that, in this context, commonly refers to adding/subtracting linearized values and transforming back to log space. It's not exported by default as this symbol could be used by other packages to mean something else.
+```julia
+import FlexUnits: ⊕, ⊖
+julia> log(8u"m") ⊕ log(4u"m") #Observe that the linear addition happened
+log(12.0 m)
+
+julia> log(8u"m") ⊖ log(4u"m") #Observe that linear subtraction happened
+log(3.9999999999999982 m)
+```
+Logarithmic quantities can be converted back to regular quantities using `quantity`, `linquant`, or `exp`
+```julia
+julia> (linquant(log(4u"m")), quantity(log(4u"m")), exp(log(4u"m")))
+(4.0 m, 4.0 m, 4.0 m)
+```
+
+## Registering new units
+
+### Registering basic units
 The default unit registry exports a function `register_unit` (and by following the template, user-defined registries can do the same). With this function, you can register units using other units or quantities as follows:
 ```julia
 using FlexUnits, .UnitRegistry
@@ -125,6 +231,30 @@ FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRation
 
 julia> register_unit("bbl" => 22.5*u"m^3")
 ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
+```
+
+### Registering logarithmic units
+The default unit registry can only register affine units, which is sufficient for logarithmic units *unless you need to parse strings to produce logarithmic units*. In such cases, you will need to register logarithmic units with the `LogUnitRegistry` instead. This registry can hold both affine and logarithmic units, but `uparse` can introduce performance issues because the output is a `Union`. ***WARNING, because multiplying `uparse` outputs can produce a Quantity or a LogQuant, based on the string value, it's recommended that you use explicit constructors like `quantity` or `ubase` to always produce linear quantities, or `logquant` or `logubase` always produce logarithmic units.***
+```julia
+using FlexUnits, .LogUnitRegistry
+import FlexUnits.dB
+
+register_unit("dB_V" => dB(u"V"))
+
+julia> 10uparse("dB_V")
+log(10.000000000000002 (m² kg)/(s³ A))
+
+julia> 10uparse("V")
+10.0 (m² kg)/(s³ A)
+
+julia> ubase(10, uparse("dB_V"))
+10.000000000000002 (m² kg)/(s³ A)
+
+julia> logubase(10, uparse("V"))
+log(10.000000000000002 (m² kg)/(s³ A))
+
+julia> 10u"dB_V"
+log(10.000000000000002 (m² kg)/(s³ A))
 ```
 
 

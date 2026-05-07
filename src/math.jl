@@ -168,8 +168,8 @@ function Base.:^(t::AffineTransform{T}, p::Real) where T
 end
 Base.:^(t1::NoTransform, p::Real) = t1
 
-Base.:*(x::MathUnion, u::AbstractUnitLike) = ubase(quantity(x, u))
-Base.:/(x::MathUnion, u::AbstractUnitLike) = ubase(quantity(x, inv(u)))
+Base.:*(x::MathUnion, u::AbstractUnitLike) = ubase(x, u)
+Base.:/(x::MathUnion, u::AbstractUnitLike) = ubase(x, inv(u))
 Base.:*(x::Missing, u::AbstractUnitLike) = x
 Base.:/(x::Missing, u::AbstractUnitLike) = x
 
@@ -181,19 +181,19 @@ Base.:*(m::AbstractArray{<:QuantUnion}, u::AbstractUnitLike) = broadcast(*, m, u
 Base.:*(u::AbstractUnitLike, m::AbstractArray{<:QuantUnion}) = broadcast(*, m, u)
 
 function Base.:*(u1::U, u2::U) where U <: AbstractUnits
-    return constructorof(U)(scalar_dimension(u1)*scalar_dimension(u2), todims(u1)*todims(u2))
+    return constructorof(U)(scalar_dimension(u1)*scalar_dimension(u2), tobase(u1)*tobase(u2))
 end
 
 function Base.:/(u1::U, u2::U) where U <: AbstractUnits
-    return constructorof(U)(scalar_dimension(u1)/scalar_dimension(u2), todims(u1)/todims(u2))
+    return constructorof(U)(scalar_dimension(u1)/scalar_dimension(u2), tobase(u1)/tobase(u2))
 end
 
 function Base.:inv(u::U) where U <: AbstractUnits
-    return constructorof(U)(inv(scalar_dimension(u)), inv(todims(u)))
+    return constructorof(U)(inv(scalar_dimension(u)), inv(tobase(u)))
 end
 
 function Base.:^(u::U, p::Real) where U <:AbstractUnits
-    return constructorof(U)(scalar_dimension(u)^p, todims(u)^p)
+    return constructorof(U)(scalar_dimension(u)^p, tobase(u)^p)
 end
 
 Base.:*(u1::AbstractUnitLike, u2::AbstractUnitLike) = *(promote(u1,u2)...)
@@ -204,7 +204,7 @@ Base.cbrt(u::AbstractUnits) = u^inv(3)
 Base.adjoint(u::AbstractUnits) = u
 
 #Equality does not compare symbols
-Base.:(==)(u1::AbstractUnits, u2::AbstractUnits) = (todims(u1) == todims(u2)) & (dimension(u1) == dimension(u2))
+Base.:(==)(u1::AbstractUnits, u2::AbstractUnits) = (tobase(u1) == tobase(u2)) & (dimension(u1) == dimension(u2))
 
 
 #=============================================================================================
@@ -289,7 +289,7 @@ Base.abs2(q::QuantUnion) = with_ubase(abs2, q)
 Base.max(q1::QuantUnion, q2::QuantUnion) = with_ubase(max, q1, q2)
 Base.min(q1::QuantUnion, q2::QuantUnion) = with_ubase(min, q1, q2)
 Base.zero(::Type{D}) where D<:AbstractDimensions = D()
-Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), todims=T())
+Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), tobase=T())
 
 #Common functions for initializers
 Base.one(::Type{<:QuantUnion{T}}) where T = one(T) #unitless
@@ -342,4 +342,82 @@ end
 for f in (:iszero, :angle, :signbit, :sign)
     @eval Base.$f(q::QuantUnion) = (assert_scalar(unit(q)); $f(ustrip_base(q)))
 end
+
+
+#================================================================================================================
+Logarithmic Quantities, Units and Transforms
+================================================================================================================#
+"""
+    with_logubase(f, args::LogQuant...)
+
+Converts all arguments to log base units, and applies `f` to values and dimensions
+returns the quanity. Useful for defining new functions for quantities 
+"""
+function with_logubase(fv, fd, args::LogQuant...)
+    baseargs = map(logubase, args)
+    basevals = map(ustrip, baseargs)
+    basedims = map(unit, baseargs)
+    return logquant(fv(basevals...), fd(basedims...))
+end
+
+function Base.:(==)(q1::LogQuant, q2::LogQuant)
+    qb1 = logubase(q1)
+    qb2 = logubase(q2)
+    return (ustrip(qb1) == ustrip(qb2)) && (unit(qb1) == unit(qb2))
+end
+
+function Base.:(≈)(q1::LogQuant, q2::LogQuant)
+    qb1 = logubase(q1)
+    qb2 = logubase(q2)
+    return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
+end
+
+Base.:(≈)(q1::Missing, q2::LogQuant) = missing 
+Base.:(≈)(q2::LogQuant, q1::Missing) = missing 
+
+#Logarithms/Exponentials of transforms 
+Base.log(q::Quantity) = logquant(q)
+Base.log(t::ExpAffTransform) = AffineTransform(scale=uscale(t), offset=uoffset(t))
+
+Base.exp(q::LogQuant) = quantity(q)
+Base.exp(t::AffineTransform) = ExpAffTransform(scale=uscale(t), offset=uoffset(t))
+Base.exp(t::NoTransform) = ExpAffTransform(scale=uscale(t), offset=uoffset(t))
+
+#Mutliplication with Unit{D, ExpAffTransform} produces a LogQuant 
+function Base.:*(x::NumUnion, u::Units{<:AbstractDimLike,<:ExpAffTransform})
+    logtrans = log(tobase(u))
+    return logquant(logtrans(x), dimension(u))
+end
+
+#Logarithmic quantity algebra
+Base.:+(q::LogQuant) = with_logubase(+, *, q)
+Base.:+(q1::LogQuant, q2::LogQuant) = with_logubase(+, *, q1, q2)
+Base.:+(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q) + x, unit(q)))
+Base.:+(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q) + x, unit(q)))
+Base.:+(q1::Quantity, q2::LogQuant) = throw(LogLinearError(+, q1, q2))
+Base.:+(q1::LogQuant, q2::Quantity) = throw(LogLinearError(+, q1, q2))
+
+Base.:-(q::LogQuant) = with_logubase(-, inv, q)
+Base.:-(q1::LogQuant, q2::LogQuant) = with_logubase(-, /, q1, q2)
+Base.:-(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(x - ustrip(q), inv(unit(q))))
+Base.:-(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q) - x, unit(q)))
+Base.:-(q1::Quantity, q2::LogQuant) = throw(LogLinearError(-, q1, q2))
+Base.:-(q1::LogQuant, q2::Quantity) = throw(LogLinearError(-, q1, q2))
+
+Base.:*(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
+Base.:*(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
+Base.:/(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)/x, unit(q)^inv(x)))
+Base.:*(q1::Quantity, q2::LogQuant) = throw(LogLinearError(*, q1, q2))
+Base.:*(q1::LogQuant, q2::Quantity) = throw(LogLinearError(*, q1, q2))
+Base.:/(q1::Quantity, q2::LogQuant) = throw(LogLinearError(/, q1, q2))
+Base.:/(q1::LogQuant, q2::Quantity) = throw(LogLinearError(/, q1, q2))
+
+#Addition/subtraction for linear transformations
+⊕(q1::LogQuant, q2::LogQuant) = log(ubase(q1) + ubase(q2))
+⊕(q1::NumUnion, q2::LogQuant) = log(exp(q1) + ubase(q2))
+⊕(q1::LogQuant, q2::NumUnion) = log(ubase(q1) + exp(q2))
+
+⊖(q1::LogQuant, q2::LogQuant) = log(ubase(q1) - ubase(q2))
+⊖(q1::NumUnion, q2::LogQuant) = log(exp(q1) - ubase(q2))
+⊖(q1::LogQuant, q2::NumUnion) = log(ubase(q1) - exp(q2))
 
