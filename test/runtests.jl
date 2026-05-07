@@ -884,6 +884,13 @@ end
     @test (q = 5u"J/(mol*K)"*1u"cd" |> simplify; ustrip(q) ≈ 5.0 && unit(q).symbol == Symbol("(J cd)/(K mol)"))
     @test (q = log(100u"W") |> simplify; ustrip(q) ≈ 20.0 && unit(q).symbol == Symbol("dB(W)"))
 
+    @test unit(simplify((5u"m/s")^2, [ud"(km/hr)"])).symbol == Symbol("(km/hr)²")
+    @test unit(simplify((5u"m/s")^2, [ud"km/hr"])).symbol == Symbol("(km/hr)²")
+    @test unit(simplify((5u"m s")^2, [ud"km hr"])).symbol == Symbol("(km hr)²")
+    @test unit(simplify((5u"m*s")^2, [ud"km*hr"])).symbol == Symbol("(km*hr)²")
+    @test unit(simplify((5u"m")^2, [ud"km "])).symbol == Symbol("(km )²")
+    @test unit(simplify((5u"m^2")^2, [ud"km^2"])).symbol == Symbol("(km^2)²")
+
     set_preferred_unit(u"kPa")
     @test (q = 1u"kg/L"*9.81u"m/s^2"*100u"cm" |> simplify; ustrip(q) ≈ 9.810 && unit(q).symbol == :kPa)
 

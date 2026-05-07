@@ -424,7 +424,12 @@ end
 
 complexity_sort!(v::AbstractVector{<:Units}) = sort!(v, by=complexity, rev=true)
 
-_pretty_unit_pwr(p::UnitFitResult) = _pretty_unit_pwr(usymbol(p.unit), p.power)
+function _pretty_unit_pwr(p::UnitFitResult) 
+    unit_str = String(usymbol(p.unit))
+    is_compound = occursin(r"[\/\*\^\s]", unit_str) &! occursin(r"^\s*\(.*\)\s*$", unit_str)
+    unit_str_wrapped = is_compound ? "("*unit_str*")" : unit_str 
+    return _pretty_unit_pwr(Symbol(unit_str_wrapped), p.power)
+end
 
 
 #=============================================================================================

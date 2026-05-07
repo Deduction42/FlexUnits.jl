@@ -84,6 +84,89 @@ julia> u"kJ"/(u"K"*u"mol")  #Math operations on units delete symbol information 
 Units{Dimensions{FixRat32}, AffineTransform{Float64}}((m² kg)/(s² K mol), AffineTransform{Float64}(1000.0, 0.0), :_)
 ```
 
+## Unit Simplification
+Unitful.jl tracks units when performing operations, applying only very simple unit cancellations. While not ideal, this usually works well enough, but for long expressions, the results can be painful to look at (which is why Unitful has `upreferred`).
+```julia
+using Unitful
+
+julia> r = 5u"V"/2u"A" #Ohms is better but this will do
+2.5 V A^-1
+
+julia> p = (1.0u"kg/m^3" * 9.81u"m/s^2" * 25u"cm") #This is ghastly
+245.25 kg cm m^-2 s^-2
+```
+
+FlexUnits foregoes attempts to track units entirely by converting everything to dimensional quantities. This is because these operations can incur significant performance penalties when dimensions are unknown at runtime. While advantageous over long expressions, it can be difficult to interpret results, especially if they're in electrical units, which can have opaque dimensional expressions.
+```julia
+using FlexUnits, .UnitRegistry
+
+julia> r = 5u"V"/2u"A" #Now this is ghastly
+2.5 (m² kg)/(s³ A²)
+
+julia> p = (1.0u"kg/m^3" * 9.81u"m/s^2" * 25u"cm") #This is a bit better
+2.4525 kg/(m s²)
+```
+
+Because of this, FlexUnits includes a `simplify` function that applies a greedy algorithm over a set of common units to express the dimensions with fewer symbols.
+```julia
+julia> r = 5u"V"/2u"A" |> simplify #Exactly what I wanted
+2.5 Ω
+
+julia> p = (1.0u"kg/m^3" * 9.81u"m/s^2" * 25u"cm") |> simplify #And so is this
+2.4525 Pa
+```
+
+It also converts logarithmic quantities to decibels
+```julia
+import FlexUnits: dB
+julia> log_power = 20dB(u"W")
+log(100.00000000000004 (m² kg)/s³)
+
+julia> log_power = 20dB(u"W") |> simplify
+20.0 dB(W)
+```
+
+Typing out "simplify" all the time can be annoying, so FlexUnits provides a `display_simplified_units` function to set the setting.
+```julia
+display_simplified_units(true)
+
+julia> r = 5u"V"/2u"A"
+2.5 Ω
+
+julia> p = (1.0u"kg/m^3" * 9.81u"m/s^2" * 25u"cm")
+2.4525 Pa
+```
+
+You can also change the units that the algorithm tries to simplify things into with `set_preferred_unit`. For example, to resolve pressure in PSI, simply use
+```julia
+set_preferred_unit(u"psi") 
+julia> p = (1.0u"kg/m^3" * 9.81u"m/s^2" * 25u"cm")
+0.000355704912136173 psi
+```
+
+This might beg the question, "***Why isn't simplified unit desplay turned on by default?***". There are a few reasons:
+
+#### Reason 1: It lies. 
+It only displays results _as if_ they were simplified. It does mpt simplify them. This can mess up `ustrip` if you are using units that don't convert directly to dimensional units.
+```julia
+julia> p = (1.0u"kg/m^3" * 9.81u"m/s^2" * 25u"cm")
+0.000355704912136173 psi
+
+julia> ustrip(p) #Results are not im PSI
+2.4525
+```
+
+#### Reason 2: It is somewhat expensive.
+While snappy for exploration, if you're displaying a lot of intermediate results, this may impact performance.
+
+#### Reason 3: It may not work out-of-the box for all cases.
+The preferred units are all of a certain type:
+```
+Units{Dimensions{FixRat32}, AffineTransform{Float64}}
+```
+which is the same as the default unit registry. If you create a new registry that has different dimensions (say SI dimensiosn but with angles too), you will need to point `simplify` to another set of units (sorted in order of descending complexity).
+
+## Promotion Rules
 Promotion rules will convert static dimensional quantities to dynamic ones if the dimensions are different
 ```julia
 julia> [1u"m/s", 2u"m/s", 3u"km/hr"]  #Same static dimensions produces an array with static units

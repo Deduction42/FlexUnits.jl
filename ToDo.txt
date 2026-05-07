@@ -6,9 +6,6 @@ Changelog:
 
 
 Current Tasks:
-1.  Build more tests 
-    -   Better logarithmic units coverage
-
 2.  Documentation
     -   Add simplification to the docs
         -   Add docs details about how to overload preferred_units(::Type{T}) to select different list of preferred units
