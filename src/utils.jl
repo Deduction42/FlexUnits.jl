@@ -186,6 +186,19 @@ end
 #=============================================================================================
 Unit Simplification
 =============================================================================================#
+struct UnitFitResult{U<:Units}
+    unit :: U
+    power :: Int64 
+    improvement :: Float64 
+end
+UnitFitResult(u::U, power::Integer, improvment::Real) where U<:Units = UnitFitResult{U}(u, power, improvment)
+
+function UnitFitResult(d::D, power::Integer, improvment::Real) where D<:AbstractDimLike 
+    u = Units(d, AffineTransform{Float64}(), Symbol(string(u)))
+    return UnitFitResult(u, power, improvment)
+end
+
+Base.inv(ufit::UnitFitResult) = UnitFitResult(ufit.unit, -ufit.power, ufit.improvement)
 
 #Main dispatch unit to select preferred units, just in case dimensions are incompatible with PREFERRED_UNITS
 preferred_units(::Type{<:Any}) = PREFERRED_UNITS
@@ -244,62 +257,53 @@ function simplify(dref::StaticDims{d}, unit_set::AbstractVector) where d
     return Units{StaticDims{d}}(dimension(u), tobase(u), usymbol(u))
 end
 
-function simplify(d::AbstractDimensions, unit_set::AbstractVector)
-    numerator = Pair{eltype(unit_set), Int64}[]
-    denominator = Pair{eltype(unit_set), Int64}[]
-    remainder = d
+function simplify(dref::AbstractDimensions, unit_set::AbstractVector)
+    U = eltype(unit_set)
+    numervec = UnitFitResult{U}[]
+    denomvec = UnitFitResult{U}[]
+    remainder = dref
 
-    for u in unit_set
-        (n, remainder) = _clean_fit_div(remainder, dimension(u))
-        if (n > 0) 
-            push!(numerator, u=>n)
-            continue
-        end
+    remainder = _unit_power_simplify!(numervec, denomvec, remainder, unit_set)
+    remainder = _clean_fit_simplify!(numervec, denomvec, remainder, unit_set)
 
-        (n, remainder) = _clean_fit_div(remainder, inv(dimension(u)))
-        if (n > 0)
-            push!(denominator, u=>n)
-        end
-    end
-
-    return compound_unit(numerator, denominator, remainder)
+    return compound_unit(numervec, denomvec, remainder)
 end
 
 #Potentially useful to the user, not exported by default
-function compound_unit(numerator::Vector{<:Pair{<:Units,<:Real}}, denominator::Vector{<:Pair{<:Units,<:Real}}, remainder::D) where D<:AbstractDimensions
+function compound_unit(numervec::Vector{<:UnitFitResult}, denomvec::Vector{<:UnitFitResult}, remainder::D) where D<:AbstractDimensions
 
-    #Collect the remainder into numerator and denominator
+    #Collect the remainder into numervec and denomvec
     for fn in fieldnames(D)
         p = getproperty(remainder, fn)
+        d = D(; (fn => abs(p),)...)
+        u = Units(d, AffineTransform(), Symbol(string(d)))
         if p > 0
-            d = D(; (fn => p,)...)
-            push!(numerator, Units(d, AffineTransform(), Symbol(string(d))) => 1)
+            push!(numervec, UnitFitResult(u, 1, p))
         elseif p < 0
-            d = D(; (fn => -p,)...)
-            push!(denominator, Units(d, AffineTransform(), Symbol(string(d))) => 1)
+            push!(denomvec, UnitFitResult(u, 1, p))
         end
     end
 
     #Numerator as a string
-    numstr = if isempty(numerator)
+    numstr = if isempty(numervec)
         ""
     else
-        numstr_cat = join((_pretty_unit_pwr(p) for p in numerator), ' ')
-        length(numerator) == 1 ? numstr_cat : "("*numstr_cat*")"
+        numstr_cat = join((_pretty_unit_pwr(p) for p in numervec), ' ')
+        length(numervec) == 1 ? numstr_cat : "("*numstr_cat*")"
     end
 
     #Denominator as a string
-    denstr = if isempty(denominator)
+    denstr = if isempty(denomvec)
         "" 
     else
-        denstr_cat = join((_pretty_unit_pwr(p) for p in denominator), ' ')
-        prefix = isempty(numerator) ? "1/" : "/"
-        prefix*(length(denominator) == 1 ? denstr_cat : "("*denstr_cat*")")
+        denstr_cat = join((_pretty_unit_pwr(p) for p in denomvec), ' ')
+        prefix = isempty(numervec) ? "1/" : "/"
+        prefix*(length(denomvec) == 1 ? denstr_cat : "("*denstr_cat*")")
     end
 
     #Calculate the scale and dimension of the total unit
-    scale = prod(p->uscale(p[1]^p[2]), numerator, init=1.0) / prod(p->uscale(p[1]^p[2]), denominator, init=1.0)
-    dims  = prod(p->dimension(p[1]^p[2]), numerator, init=D()) / prod(p->dimension(p[1]^p[2]), denominator, init=D())
+    scale = prod(p->uscale(p.unit^p.power), numervec, init=1.0) / prod(p->uscale(p.unit^p.power), denomvec, init=1.0)
+    dims  = prod(p->dimension(p.unit^p.power), numervec, init=D()) / prod(p->dimension(p.unit^p.power), denomvec, init=D())
 
     return Units(dims, AffineTransform(scale=scale), Symbol(numstr*denstr))
 end
@@ -325,6 +329,82 @@ function dimensional_unit(::Type{D}, di::Integer) where D <: AbstractDimensions
     end
 end
 
+function _unit_power_simplify!(numervec::AbstractVector{<:UnitFitResult}, denomvec::AbstractVector{<:UnitFitResult}, dref::AbstractDimensions, unit_set::AbstractVector)
+    D = typeof(dref)
+
+    #Initial fit results 
+    fit_results = map(u->_optimal_unit_fit(dref, u), unit_set)
+
+    #Add dimensional results
+    for ii in 1:length(fieldnames(D))
+        di = dimensional_unit(D, ii)
+        u = Units(di, AffineTransform{Float64}(), Symbol(string(di)))
+        push!(fit_results, _optimal_unit_fit(dref, u))
+    end
+
+    #Find the fit_result with the best improvment
+    (imp, ind) = findmax(x->x.improvement, fit_results)
+    ufit = fit_results[ind]
+
+    #Apply the best improvement to the dimension
+    if ufit.power > 0
+        push!(numervec, ufit)
+    elseif ufit.power < 0 
+        push!(denomvec, inv(ufit))
+    end 
+
+    return dref/dimension(ufit.unit)^ufit.power
+end
+
+function _optimal_unit_fit(d::AbstractDimensions, u::AbstractUnitLike; maxiter=1000)
+    function fit_improvement(p::Integer) 
+        duᵖ = dimension(u)^p
+        return UnitFitResult(u, p, complexity(d) - complexity(d/duᵖ) - 1e-6*complexity(duᵖ)*p)
+    end
+
+    initial = (fit_improvement(-1), UnitFitResult(u, 0, 0.0), fit_improvement(1))
+    (improvement, ind) = findmax(x->x.improvement, initial)
+
+    if ind == 3
+        p_space = 2:maxiter #Select positive powers
+    elseif ind == 1
+        p_space = -(2:maxiter) #Select negative powers
+    else
+        return initial[2]
+    end
+
+    results = initial[ind]
+
+    for p in p_space #Set the maximum number of iterations
+        fit = fit_improvement(p)
+        if fit.improvement > results.improvement
+            results = fit 
+        else
+            return results
+        end
+    end
+
+    error("Could not find an optimal fit after $(maxiter) iterations")
+end
+
+
+function _clean_fit_simplify!(numervec::AbstractVector{<:UnitFitResult}, denomvec::AbstractVector{<:UnitFitResult}, remainder::AbstractDimensions, unit_set::AbstractVector)
+    for u in unit_set
+        (n, remainder) = _clean_fit_div(remainder, dimension(u))
+        if (n > 0) 
+            push!(numervec, UnitFitResult(u, n, complexity(u)))
+            continue
+        end
+
+        (n, remainder) = _clean_fit_div(remainder, inv(dimension(u)))
+        if (n > 0)
+            push!(denomvec, UnitFitResult(u, n, complexity(u)))
+        end
+    end
+
+    return remainder
+end
+
 #Number of dimes dimensioon "dx" fits cleanly into dref
 function _clean_fit_div(remainder::AbstractDimensions, d::AbstractDimensions) 
     ii = 0
@@ -344,7 +424,7 @@ end
 
 complexity_sort!(v::AbstractVector{<:Units}) = sort!(v, by=complexity, rev=true)
 
-_pretty_unit_pwr(p::Pair{<:Units, <:Real}) = _pretty_unit_pwr(usymbol(p[1]), p[2])
+_pretty_unit_pwr(p::UnitFitResult) = _pretty_unit_pwr(usymbol(p.unit), p.power)
 
 
 #=============================================================================================
