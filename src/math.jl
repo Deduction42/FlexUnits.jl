@@ -103,6 +103,10 @@ Base.adjoint(d::AbstractDimensions) = d
 @inline equaldims(d1::NoDims, a2::AbstractDimensions) = assert_dimensionless(d2)
 @inline equaldims(d1::NoDims, d2::NoDims) = d1
 
+Base.:(==)(d1::NoDims, d2::AbstractDimLike) = isdimensionless(d2)
+Base.:(==)(d1::AbstractDimLike, d2::NoDims) = isdimensionless(d1)
+Base.:(==)(d1::NoDims, d2::NoDims) = true
+
 Base.:*(d1::AbstractDimensions, d2::NoDims) = d1
 Base.:*(d1::NoDims, d2::AbstractDimensions) = d2
 Base.:*(d1::NoDims, d2::NoDims) = d1
@@ -122,8 +126,9 @@ Static dimension ops
 ============================================================================================================================#
 Base.:(==)(d1::AbstractDimensions, d2::StaticDims) = (d1 == dimval(d2))
 Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
-Base.:(==)(d1::NoDims, d2::AbstractDimLike) = isdimensionless(d2)
-Base.:(==)(d1::AbstractDimLike, d2::NoDims) = isdimensionless(d1)
+Base.:(==)(d1::NoDims, d2::StaticDims) = (d1 == dimval(d2))
+Base.:(==)(d1::StaticDims, d2::NoDims) = (dimval(d1) == d2)
+
 
 equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) || isunknown(arg2) ? arg1 : throw(DimensionError(arg1,arg2))
 equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (arg1 == dimval(arg2)) || isunknown(arg1) ? arg2 : throw(DimensionError(arg1,arg2))
