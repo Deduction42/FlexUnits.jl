@@ -257,6 +257,11 @@ function simplify(dref::StaticDims{d}, unit_set::AbstractVector) where d
     return Units{StaticDims{d}}(dimension(u), tobase(u), usymbol(u))
 end
 
+function simplify(dref::NoDims, unit_set::AbstractVector)
+    U = eltype(unit_set)
+    return U(dref, NoTransform(), Symbol(""))
+end
+
 function simplify(dref::AbstractDimensions, unit_set::AbstractVector)
     U = eltype(unit_set)
     numervec = UnitFitResult{U}[]
