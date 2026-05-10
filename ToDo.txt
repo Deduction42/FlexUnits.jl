@@ -4,6 +4,12 @@ Current Tasks:
 1   Fix display issues when dimensions are NoDims
     -   1dB() |> simplify
 
+2.  Add "Dispatch Patterns" section to the docs
+    -   Quantity{T, D""} for known dimensions such as "Pressure"
+    -   Quantity{T, Dimensions{FixRat32}} for unknown dimensions
+    -   Quantity{T, Units{D"", AffineTransform{Float64}}} for known dimensiosn without conversion to SI 
+    -   Quantity{T, Units{Dimensions{FixRat32}, AffineTransform{Float64}}} for any regular unit, and no conversion to SI
+
 Backlog:
 1.  Enable more Units constructors to build units on the fly
     -   Units(Pair{String, <:Units}), Units(Pair{String, <:Quantity})
