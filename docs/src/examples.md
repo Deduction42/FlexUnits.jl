@@ -8,8 +8,18 @@ It is currently possible to solve systems of differential equations using Unitfu
 
 With FlexUnits, arrays with heterogeneous units are supported and linear algebra operations are efficient. Moreover, with a bit of extra work, it is now possible to use units with implicit solvers like `Rodas5P`. Integration with DifferentialEquations.jl is still in its early stages, but so far, FlexUnits support for mixed-unit linear algebra has already proven to make integration relatively easy.
 
-### The ODE problem (falling object)
-This example will model a falling object with the drag force equation.
+### Restricting Units to Equations
+While this package can demonstrate that we can pass units *through* many differential equations solvers, this is often unnecessary. These solvers already produce correct results as long as the units inside the differential equations are coherent. Base SI units are a coherent system (that is, no conversion factors are necessary for SI base units) so we can define our objects as dimensional quantities and pass pure numeric values to the solver for simplicity and speed. A clever way to do this is to define a new object type where `getindex` returns a dimensionless scalar and `getproperty` produces a quantity with units.
+
+#### The problem definition
+Let us consider an application where we are using the drag force equation to model a falling object with velocity `v` and position `h`. This equation also requires us to consider the following parameters:
+1. `Cd` the drag force coefficient
+2. `A` the reference area
+3. `ρ` the density of the fluid the object is falling through
+4. `m` the mass of the object
+5. `g` gravitational acceleration
+
+First, we import necessary packages and define our new `QuantFieldVector` that returns scalars with `getindex`
 ```julia
 using FlexUnits, .UnitRegistry
 using OrdinaryDiffEq
@@ -18,122 +28,87 @@ using Plots
 using BenchmarkTools
 using LinearAlgebra
 
-#Use named vectors for readability
-@kwdef struct FallingObjectState{T} <: FieldVector{2,T}
-    v  :: T
-    h  :: T
+#Make "getindex" return a unitless version of the value
+abstract type QuantFieldVector{N,T} <: FieldVector{N,T} end
+Base.@propagate_inbounds Base.getindex(a::QuantFieldVector, i::Int) = dstrip(getfield(a, i))
+```
+We can then define the state values with static dimensions attached to them. The `@D_str` macro makes easy work of assigning static dimensions in an intuitive manner.
+
+```julia
+@kwdef struct FallingObjectState{T} <: QuantFieldVector{2,T}
+    v  :: Quantity{T, D"m/s"}
+    h  :: Quantity{T, D"m"}
 end
 
-@kwdef struct FallingObjectProps{T} <: FieldVector{5,T}
-    Cd :: T
-    A  :: T
-    ρ  :: T
-    m  :: T
-    g  :: T
-end
+@kwdef struct FallingObjectProps{T} <: QuantFieldVector{5,T}
+    Cd :: Quantity{T, D""}
+    A  :: Quantity{T, D"m^2"}
+    ρ  :: Quantity{T, D"kg/m^3"}
+    m  :: Quantity{T, D"kg"}
+    g  :: Quantity{T, D"m/s^2"}
+end 
+```
 
-#Convert dynamic units to static units for performance
-function ustatic(state::FallingObjectState{<:Quantity})
-    return (
-        v = dconvert(u"m/s", state.v),
-        h = dconvert(u"m", state.h)
-    )
-end
+We can write out the equations as we would normally express them; when returning the value, we have to multiply by seconds because this is in differential form. This will validate that the output is in the correct units.
+```julia
+function acceleration_raw(u0::AbstractVector, p::FallingObjectProps, t)
+    u = FallingObjectState(u0)
 
-function ustatic(props::FallingObjectProps{<:Quantity})
-    return (
-        Cd = dconvert(u"", props.Cd),
-        A  = dconvert(u"m^2", props.A),
-        ρ  = dconvert(u"kg/m^3", props.ρ),
-        m  = dconvert(u"kg", props.m),
-        g  = dconvert(u"m/s^2", props.g)
-    )
-end
-
-#Main differential equation (unit-agnostic)
-function acceleration_raw(u, p, t)
     fd = -sign(u.v)*0.5*p.ρ*u.v^2*p.Cd*p.A
     dv = fd/p.m - p.g
     dh = u.v
-    return FallingObjectState(v=dv, h=dh)
-end
 
-#Main differential equation with a static unit wrapper (for performance)
-function acceleration_ustatic(u::AbstractVector{<:Quantity}, p::AbstractVector{<:Quantity}, t)
-    du = acceleration_raw(ustatic(FallingObjectState(u)), ustatic(FallingObjectProps(p)), t)
-    return FallingObjectState(du)
+    #Need to multiply by seconds to match state units (the ODE solver will be unitless)
+    return FallingObjectState(v=dv*(1u"s"), h=dh*(1u"s"))
 end
 ```
 
-### Solving with an explicit solver (Tsit5)
-Solving this differential equation with an explicit solver like `Tsit5` is relatively straightforward.
+The trick with defining the system this way is that calling `FallingObjectState()` on a unitless vector will apply units to it, and getting indices from it will give you a unitless scale. 
 ```julia
-u0 = FallingObjectState(v=0.0u"m/s", h=100u"m")
-p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
+julia> fos = FallingObjectState([1.0,1.0])
+2-element FallingObjectState{Float64} with indices SOneTo(2):
+ 1
+ 1
 
-tspan = (0.0u"s", 10.0u"s")
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_ustatic, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
+julia> fos.v
+1.0 m/s
+
+julia> SVector(fos)
+2-element SVector{2, Float64} with indices SOneTo(2):
+ 1.0
+ 1.0
+```
+
+#### Solving the problem
+Defining the problem in this manner will give you internal unit verification of your equations (where you need it most) at *zero runtime cost* regardless as to whether or not you're using an implicit or explicit solver. You can simply solve the system the way you would normally do it
+
+```julia
+# =============================================================================================================
+println("\nExplicit Solution")
+# =============================================================================================================
+u0 = FallingObjectState{Float64}(v=0.0u"m/s", h=100u"m")
+p  = FallingObjectProps{Float64}(Cd=1.0, A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
+
+tspan = (0.0, 10.0)
+prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_raw, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 sol = solve(prob, Tsit5())
-plt = plot(ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="Tsit5")
-```
+plt = plot(sol.t, [u[1] for u in sol.u], label="explicit")
 
-### Solving with an implicit solver (Rodas5P)
-Unfortunately, implicit ODE solvers are a bit more complicated. The first major challenge is the fact that implicit solvers require differentiation. Automatic differentiation can differentiate *through* quantities, but it can't differentiate *with respect to* quantities. This means that the automatic differentiator needs to differentiate through the function *without units*, and the return a final Jacobian *with units* as shown in the `wrapped_jacboan` function definition below.
+# =============================================================================================================
+println("\nImplicit Solution")
+# =============================================================================================================
+u0 = FallingObjectState{Float64}(v=0.0u"m/s", h=100u"m")
+p  = FallingObjectProps{Float64}(Cd=1.0, A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
 
-``` julia
-using ForwardDiff
-function wrapped_jacobian(f, x, p, t)
-    u_in  = dimension.(x)
-    u_out = dimension.(f(x,p,t))
-
-    function f_unitless(xn)
-        return dstrip.(f(xn.*u_in, p, t))
-    end
-
-    return ForwardDiff.jacobian(f_unitless, dstrip.(x)) * DimsMap(u_in=u_in, u_out=u_out)
-end
-
-static_jac(u,p,t) = wrapped_jacobian(acceleration_ustatic, u, p, t)
-```
-
-In addition, we need to define some other parameters to make `Rodas5P` work. The first is the `tgrad` parameter which differentiates the function with respect to time. Because this set of equations does not explicitly use time, the `tgrad` can simply be set to zero with units of `dx/s`, otherwise, we would need to use another wrapped gradient.
-```julia
-static_tgrad(u,p,t) = [0.0u"m/s^3", 0.0u"m/s^2"]
-```
-
-Finally, in order to properly make use of these customized gradient/Jacobian functions, we need to construct an `ODEFunction` object. In order to make it properly function however, we need to overwrite the default mass matrix
-```julia
-mass_matrix = I*1ud""
-```
-
-This is different from the default identity matrix `I` because it is unit-agnostic on the off-diagonals, where the default `I` assumes dimensionless values for all elements and causes unit validation failures when elements of `v` have different unit-dimensions. Using unit-agnostic elements ensures that `mass_matrix*v` always returns `v` regardless of its unit-dimensions. One can check this by verifying that off diagonals produce `?/?`.
-```julia
-julia> mass_matrix[1,2]
-0.0 ?/?
-```
-
-With this completed, we can now create an appropriate `ODEFunction` object and use the typical steps to solve.
-```julia
-f_static = ODEFunction{false, OrdinaryDiffEq.SciMLBase.FullSpecialize}(acceleration_ustatic,
-    jac = static_jac,
-    tgrad = static_tgrad,
-    mass_matrix = mass_matrix
-)
-
-u0 = FallingObjectState(v=0.0u"m/s", h=100u"m")
-p  = FallingObjectProps(Cd=1.0u"", A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
-
-tspan = (0.0u"s", 10.0u"s")
-prob = ODEProblem(f_static, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
-
+tspan = (0.0, 10.0)
+prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_raw, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
 sol = solve(prob, Rodas5P())
-plt = plot!(plt, ustrip.(sol.t), [ustrip(u.v) for u in sol.u], label="Rodas5P")
+plt = plot!(plt, sol.t, [u[1] for u in sol.u], label="implicit")
 ```
 
-While moving from `Tsit5` to `Rodas5P` is significantly more effort with quantities than raw numbers, FlexUnits is the only package known to be capable of this functionality. Moreover, these steps, which are already baked into defaults for regular number, could be potentially baked into defaults through an extension on the future.
 
 ## Exact conversions with Rational
-This package defaults to using Float64 conversion factors to accomplish conversions. This often results in small but visually annoying roundoff errors.
+This package defaults to using Float64 conversion factors to accomplish conversions. This often results in small but visually annoying round-off errors.
 ```julia
 using FlexUnits, .UnitRegistry
 julia> uconvert(u"°C", 32u"°F")

@@ -378,8 +378,8 @@ Quantity{T,D}(q::QuantUnion) where {T,D<:StaticDims} = Quantity{T,D}(ustrip(D(),
 Quantity{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
 
 Quantity{T,U}(x::NumUnion) where {T,U} = Quantity{T,U}(x*dimtype(U)())
-Quantity{T,D}(x::NumUnion) where {T,D<:StaticDims} = Quantity{T,D}(convert(T,x), assert_dimensionless(D()))
 Quantity{T,D}(x::NumUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(x, D())
+Quantity{T,D}(x::NumUnion) where {T,D<:StaticDims} = Quantity{T,D}(x, D()) #Static dimensions assume number is in that dimension
 
 Quantity{T}(x, u::AbstractUnitLike) where T = Quantity{T, typeof(u)}(x, u)
 Quantity{T}(q::QuantUnion) where T = Quantity{T}(ustrip(q), unit(q))
