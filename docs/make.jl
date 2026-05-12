@@ -12,6 +12,7 @@ makedocs(
         "Performance" => "performance.md",
         "Unit Manipulation" => "manipulation.md",
         "Linear Algebra" => "linearalgebra.md",
+        "Dispatch Examples" => "dispatch.md",
         "Advanced Examples" => "examples.md",
         "Types" => "types.md"
     ]

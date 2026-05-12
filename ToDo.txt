@@ -1,28 +1,26 @@
 Changelog:
-1.  `todims` now refactor as `tobase` to better indicate that the function converts to base units (like `ubase`)
-2.  New LogQuant type supported with its own algebra rules (based on logarithmic identities)
-3.  log(q<:Quantity) now produces a LogQuant instead of an error
-4.  Callable LogScale objects like `dB` and `Np` are available (but not exported by default to prevent namespace pollution)
-
 
 Current Tasks:
-2.  Documentation
-    -   Add simplification to the docs
-        -   Add docs details about how to overload preferred_units(::Type{T}) to select different list of preferred units
-        -   Useful if you are simplifying custom dimensions (like ones with angles)
+1   Fix display issues when dimensions are NoDims
+    -   1dB() |> simplify
 
-4.  Enable more Units constructors to build units on the fly
+2.  Add "Dispatch Patterns" section to the docs
+    -   Quantity{T, D""} for known dimensions such as "Pressure"
+    -   Quantity{T, Dimensions{FixRat32}} for unknown dimensions
+    -   Quantity{T, Units{D"", AffineTransform{Float64}}} for known dimensiosn without conversion to SI 
+    -   Quantity{T, Units{Dimensions{FixRat32}, AffineTransform{Float64}}} for any regular unit, and no conversion to SI
+
+3.  Improved documentation on differential equation solvers (with new dispatch pattern)
+
+Backlog:
+1.  Enable more Units constructors to build units on the fly
     -   Units(Pair{String, <:Units}), Units(Pair{String, <:Quantity})
     -   Useful for unit registry and setting preferred units
 
-5.  Improve simplified units display
-    -   Detect spaces, "*/", and numbers (lower and upper case) in the units and wrap with brackets in the symbol generator
-
-Backlog:
-1.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
+2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
     -   still need to implement vcat
 
-2.  Move factorizations to LinearAlgebra extension
+3.  Move factorizations to LinearAlgebra extension
     -   implement a unitful "cholupdate!" and "choldowndate!"
     -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
     -   Add performance benchmarks

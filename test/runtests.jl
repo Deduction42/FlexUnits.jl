@@ -890,6 +890,7 @@ end
     @test unit(simplify((5u"m*s")^2, [ud"km*hr"])).symbol == Symbol("(km*hr)²")
     @test unit(simplify((5u"m")^2, [ud"km "])).symbol == Symbol("(km )²")
     @test unit(simplify((5u"m^2")^2, [ud"km^2"])).symbol == Symbol("(km^2)²")
+    @test unit(simplify(1dB())).symbol == Symbol("dB()")
 
     set_preferred_unit(u"kPa")
     @test (q = 1u"kg/L"*9.81u"m/s^2"*100u"cm" |> simplify; ustrip(q) ≈ 9.810 && unit(q).symbol == :kPa)
