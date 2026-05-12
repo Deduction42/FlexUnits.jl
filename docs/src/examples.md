@@ -63,13 +63,16 @@ We can write out the equations as we would normally express them; when returning
 ```julia
 function acceleration_raw(u0::AbstractVector, p::FallingObjectProps, t)
     u = FallingObjectState(u0)
+    dt = D"s"() #Time dimension
 
+    #Drag force
     fd = -sign(u.v)*0.5*p.ρ*u.v^2*p.Cd*p.A
-    dv = fd/p.m - p.g
-    dh = u.v
+    
+    #Drag force effect on state (multiply by dt to make units work)
+    dv = (fd/p.m - p.g)*dt
+    dh = u.v*dt
 
-    #Need to multiply by seconds to match state units (the ODE solver will be unitless)
-    return FallingObjectState(v=dv*(1u"s"), h=dh*(1u"s"))
+    return FallingObjectState(v=dv, h=dh)
 end
 ```
 
