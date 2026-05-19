@@ -1,24 +1,18 @@
 Changelog:
 
 Current Tasks:
-1   Fix display issues when dimensions are NoDims
-    -   1dB() |> simplify
-
-2.  Add "Dispatch Patterns" section to the docs
-    -   Quantity{T, D""} for known dimensions such as "Pressure"
-    -   Quantity{T, Dimensions{FixRat32}} for unknown dimensions
-    -   Quantity{T, Units{D"", AffineTransform{Float64}}} for known dimensiosn without conversion to SI 
-    -   Quantity{T, Units{Dimensions{FixRat32}, AffineTransform{Float64}}} for any regular unit, and no conversion to SI
-
-3.  Improved documentation on differential equation solvers (with new dispatch pattern)
+1.  Improved Differential Equation solver example 
+2.  Better concatenation support
 
 Backlog:
-1.  Enable more Units constructors to build units on the fly
+1.  Allow constructing LinmapQuant with multiple Vector{Quantity{T, StaticDims}} objects
+    -   This produces u"" for output units
+    -   Also build shortcut for concatenating LinmapQuant, AbstractVectorOrMat{Quantity{T, D<:StaticDims}}
+        -   Simply check that all units are equal to u"" in one dimension, and concatenate
+
+2.  Enable more Units constructors to build units on the fly
     -   Units(Pair{String, <:Units}), Units(Pair{String, <:Quantity})
     -   Useful for unit registry and setting preferred units
-
-2.  hcat(v::AbstractVector{StaticDims}...) should produce a LinmapQuant with u_out = u""
-    -   still need to implement vcat
 
 3.  Move factorizations to LinearAlgebra extension
     -   implement a unitful "cholupdate!" and "choldowndate!"
