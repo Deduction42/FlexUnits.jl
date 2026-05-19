@@ -1,15 +1,25 @@
 # Advanced Examples
 
 ## Solving Differential Equations
-It is currently possible to solve systems of differential equations using Unitful.jl, but it has some drawbacks:
-1. It requires [sectioning arrays with RecursiveArrayTools](https://docs.sciml.ai/DiffEqDocs/stable/features/diffeq_arrays/#Example:-Dynamics-Equations)
-2. It only works with explicit ODE solvers
-3. Linear algebra operations are less efficient
+There has been some attempts at passing units through differential equations solvers, and while FlexUnits can do this it comes with certain drawbacks:
+1. Passing units through ODE solvers does take a performance hit (often 2x the time)
+2. Passing units through ODE solvers isn't rigorously tested by their developers and regressions can happen
+3. If done improperly, it's difficult to troubleshoot errors
 
-With FlexUnits, arrays with heterogeneous units are supported and linear algebra operations are efficient. Moreover, with a bit of extra work, it is now possible to use units with implicit solvers like `Rodas5P`. Integration with DifferentialEquations.jl is still in its early stages, but so far, FlexUnits support for mixed-unit linear algebra has already proven to make integration relatively easy.
+It also turns out that passing units through an ODE solver is often unnecessary. These solvers already produce correct results as long as the *units are coherent* (that is, they don't require scaling between dimensions). Unit/dimension errors often show up in setting up the ODE equations/functions, so it makes sense to restrict unit validation activity to this space.
 
-### Restricting Units to Equations
-While this package can demonstrate that we can pass units *through* many differential equations solvers, this is often unnecessary. These solvers already produce correct results as long as the units inside the differential equations are coherent. Base SI units are a coherent system (that is, no conversion factors are necessary for SI base units) so we can define our objects as dimensional quantities and pass pure numeric values to the solver for simplicity and speed. A clever way to do this is to define a new object type where `getindex` returns a dimensionless scalar and `getproperty` produces a quantity with units.
+In the section below, we introduce a strategy that can validate units inside differential equations, the benefits of this approach include:
+1. It solves the system at *essentially zero added cost* 
+2. It introduces no added complexity, using the ODE solvers as the developers intended (and test for )
+3. It validates units in a way that is easy to interpret
+
+This strategy involves defining new objects that behave like a user-defined object with units inside the differential equation system, but behave like numerical vectors inside the differential equation solver. This can be done with the following steps
+
+1. Define a modified `FieldVector` object (from StaticArrays) called `QuantFieldVector` that stores values with static dimensions
+2. Override `getindex` so that it that produces raw numbers in base SI units when indexed like a vector (but still produces quantities with field access)
+3. Define new objects with clear dimensional representations and subtype it to `QuantFieldVector`
+
+Note that in the near future, FlexUnits may define its own `QuantFieldVector` object, simplifying this process.
 
 #### The problem definition
 Let us consider an application where we are using the drag force equation to model a falling object with velocity `v` and position `h`. This equation also requires us to consider the following parameters:
@@ -30,6 +40,7 @@ using LinearAlgebra
 
 #Make "getindex" return a unitless version of the value
 abstract type QuantFieldVector{N,T} <: FieldVector{N,T} end
+
 Base.@propagate_inbounds Base.getindex(a::QuantFieldVector, i::Int) = dstrip(getfield(a, i))
 ```
 We can then define the state values with static dimensions attached to them. The `@D_str` macro makes easy work of assigning static dimensions in an intuitive manner.
@@ -53,17 +64,20 @@ We can write out the equations as we would normally express them; when returning
 ```julia
 function acceleration_raw(u0::AbstractVector, p::FallingObjectProps, t)
     u = FallingObjectState(u0)
+    dt = D"s"() #Time dimension
 
+    #Drag force
     fd = -sign(u.v)*0.5*p.ρ*u.v^2*p.Cd*p.A
-    dv = fd/p.m - p.g
-    dh = u.v
+    
+    #Drag force effect on state (multiply by dt to make units work)
+    dv = (fd/p.m - p.g)*dt
+    dh = u.v*dt
 
-    #Need to multiply by seconds to match state units (the ODE solver will be unitless)
-    return FallingObjectState(v=dv*(1u"s"), h=dh*(1u"s"))
+    return FallingObjectState(v=dv, h=dh)
 end
 ```
 
-The trick with defining the system this way is that calling `FallingObjectState()` on a unitless vector will apply units to it, and getting indices from it will give you a unitless scale. 
+The trick with defining the system this way is that calling `FallingObjectState()` on a unitless vector will apply units to it, and getting indices from it will give you a unitless scalar in SI base units. 
 ```julia
 julia> fos = FallingObjectState([1.0,1.0])
 2-element FallingObjectState{Float64} with indices SOneTo(2):
@@ -88,11 +102,13 @@ println("\nExplicit Solution")
 # =============================================================================================================
 u0 = FallingObjectState{Float64}(v=0.0u"m/s", h=100u"m")
 p  = FallingObjectProps{Float64}(Cd=1.0, A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
+abstol = FallingObjectState{Float64}(v=1e-6u"m/s", h=1e-6u"m")
+reltol = SA[1e-6, 1e-6]
 
-tspan = (0.0, 10.0)
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_raw, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
+tspan = dstrip.((0.0u"min", 0.25u"min")) #Time span must be in seconds, dstrip takes care of this
+prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_raw, u0, tspan, p, abstol=abstol, reltol=reltol)
 sol = solve(prob, Tsit5())
-plt = plot(sol.t, [u[1] for u in sol.u], label="explicit")
+plt = plot(sol.t, [dstrip(u.v) for u in sol.u], label="explicit") #Each element in sol.u is a QuantFieldVector
 
 # =============================================================================================================
 println("\nImplicit Solution")
@@ -100,10 +116,10 @@ println("\nImplicit Solution")
 u0 = FallingObjectState{Float64}(v=0.0u"m/s", h=100u"m")
 p  = FallingObjectProps{Float64}(Cd=1.0, A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
 
-tspan = (0.0, 10.0)
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_raw, u0, tspan, p, abstol=[1e-6, 1e-6], reltol=[1e-6, 1e-6])
+tspan = dstrip.((0.0u"min", 0.25u"min"))
+prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_raw, u0, tspan, p, abstol=abstol, reltol=reltol)
 sol = solve(prob, Rodas5P())
-plt = plot!(plt, sol.t, [u[1] for u in sol.u], label="implicit")
+plt = plot!(plt, sol.t, [dstrip(u.v) for u in sol.u], label="implicit") #Each element in sol.u is a QuantFieldVector
 ```
 
 

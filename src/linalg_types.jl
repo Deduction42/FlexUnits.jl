@@ -248,6 +248,7 @@ function LinmapQuant(m::AbstractMatrix{T}, u::UnitMap) where T
     )
     return LinmapQuant(new_m, new_u)
 end
+LinmapQuant(v::AbstractVector, u::UnitMap) = LinmapQuant(reshape(v, :, 1), u)
 
 function LinmapQuant(m::SMatrix{Nr,Nc,T}, u::UnitMap) where {T, Nr, Nc}
      new_m = SMatrix{Nr,Nc}(tobase.(u.u_out./u.u_in', m))
@@ -258,6 +259,7 @@ function LinmapQuant(m::SMatrix{Nr,Nc,T}, u::UnitMap) where {T, Nr, Nc}
     )
     return LinmapQuant(new_m, new_u)
 end
+LinmapQuant(v::SVector{Nr, T}, u::UnitMap) where {T, Nr} = LinmapQuant(SMatrix{Nr,1,T}(v), u)
 
 
 LinmapQuant(m::QuantArrayVals, d::QuantArrayDims) = LinmapQuant(dstrip.(m.array), DimsMap(d))
@@ -285,7 +287,8 @@ Base.getindex(q::LinmapQuant, vi::VecInd, vj::VecInd) = LinmapQuant(q.values[vi,
 Base.setindex!(q::LinmapQuant, x, ii::IntInd, jj::IntInd) = setindex!(q.values, ustrip(q.dims[ii,jj], x), ii, jj)
 
 #Convenience constructors through "*"
-Base.:*(m::AbstractMatrix{<:NumUnion}, d::AbstractUnitMap) = LinmapQuant(m, d)
+Base.:*(m::AbstractMatrix{<:NumUnion}, u::AbstractUnitMap) = LinmapQuant(m, u)
+Base.:*(m::AbstractVector{<:NumUnion}, u::AbstractUnitMap) = LinmapQuant(m, u)
 
 """
     struct VectorQuant{T, D<:AbstractDimensions, V<:AbstractVector{T}, U<:AbstractVector{D}} <: AbstractVector{Quantity{T,D}}

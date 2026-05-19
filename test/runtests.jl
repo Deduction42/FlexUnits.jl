@@ -1091,6 +1091,57 @@ end
     @test ustrip(qR) == dstrip(qR)
     @test unit(qR) == dimension(qR)
 
+    #Concatenation 
+    A = SA[1.0 0.0; 1.0 1.0]*UnitMap(u_in=SA[u"m/s", u"m"], u_out=SA[u"m/s^2", u"m/s"])
+    B = SA[0.2; 0]*UnitMap(u_in=SA[u"W"], u_out=SA[u"m/s^2", u"m/s"])
+    C = SA[2.5 0.0; 0.0 1.0]*UnitMap(u_in=SA[u"m/s", u"m"], u_out=SA[u"N", u"m"])
+    D = SA[0.0; 0.0]*UnitMap(u_in=SA[u"W"], u_out=SA[u"N", u"m"])
+
+    MAB = [Matrix(A) Matrix(B)]
+    AB = [A B]
+    @test AB isa LinmapQuant
+    @test AB ≈ MAB
+
+    AB = [A Matrix(B)]
+    @test AB isa LinmapQuant
+    @test AB ≈ MAB
+
+    AB = [A B[:]]
+    @test AB isa LinmapQuant
+    @test AB ≈ MAB
+
+    BA = [B[:] A]
+    @test BA isa LinmapQuant 
+    @test BA ≈ [Matrix(B) Matrix(A)]
+
+
+    MAC = [Matrix(A); Matrix(C)]
+    AC = [A;C]
+    @test AC isa LinmapQuant 
+    @test AC ≈ MAC
+
+    AC = [A;Matrix(C)]
+    @test AC isa LinmapQuant
+    @test AC ≈ MAC
+    
+    AC = [Matrix(A);C]
+    @test AC isa LinmapQuant
+    @test AC ≈ MAC
+
+    MBB = [Matrix(B); Matrix(B)] 
+    BB = [B; B[:]]
+    @test BB isa LinmapQuant 
+    @test BB ≈ MBB 
+
+    BB = [B[:]; B]
+    @test BB isa LinmapQuant 
+    @test BB ≈ MBB 
+
+    ABCD = [[A;C] [B;D]]
+    @test ABCD isa LinmapQuant 
+    @test [Matrix(A) Matrix(B); Matrix(C) Matrix(D)] ≈ ABCD
+
+
     #Matrix attributes
     @test adjoint(adjoint(qR)) == qR
     @test transpose(transpose(qR)) == qR
