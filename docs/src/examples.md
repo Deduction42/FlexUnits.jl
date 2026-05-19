@@ -3,14 +3,14 @@
 ## Solving Differential Equations
 There has been some attempts at passing units through differential equations solvers, and while FlexUnits can do this it comes with certain drawbacks:
 1. Passing units through ODE solvers does take a performance hit (often 2x the time)
-2. Passing units through PDE solvers isn't rigorously tested by their developers and regressions can happen
+2. Passing units through ODE solvers isn't rigorously tested by their developers and regressions can happen
 3. If done improperly, it's difficult to troubleshoot errors
 
 It also turns out that passing units through an ODE solver is often unnecessary. These solvers already produce correct results as long as the *units are coherent* (that is, they don't require scaling between dimensions). Unit/dimension errors often show up in setting up the ODE equations/functions, so it makes sense to restrict unit validation activity to this space.
 
 In the section below, we introduce a strategy that can validate units inside differential equations, the benefits of this approach include:
 1. It solves the system at *essentially zero added cost* 
-2. It introduces no added complexity, using the ODE solvers as the developers intend and test for 
+2. It introduces no added complexity, using the ODE solvers as the developers intended (and test for )
 3. It validates units in a way that is easy to interpret
 
 This strategy involves defining new objects that behave like a user-defined object with units inside the differential equation system, but behave like numerical vectors inside the differential equation solver. This can be done with the following steps
@@ -40,6 +40,7 @@ using LinearAlgebra
 
 #Make "getindex" return a unitless version of the value
 abstract type QuantFieldVector{N,T} <: FieldVector{N,T} end
+
 Base.@propagate_inbounds Base.getindex(a::QuantFieldVector, i::Int) = dstrip(getfield(a, i))
 ```
 We can then define the state values with static dimensions attached to them. The `@D_str` macro makes easy work of assigning static dimensions in an intuitive manner.
