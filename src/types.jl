@@ -147,8 +147,8 @@ AffineTransform(scale::T1, offset::T2) where {T1,T2} = AffineTransform{promote_t
 
 (t::AffineTransform)(x) = x*t.scale + t.offset
 Base.inv(t::AffineTransform, x) = (x - t.offset)/t.scale
-(t::AffineTransform)(x::AbstractArray) = t.(x)
-Base.inv(t::AffineTransform, x::AbstractArray) = inv.(t, x)
+(t::AffineTransform)(x::AbstractArray) = x.*t.scale .+ t.offset
+Base.inv(t::AffineTransform, x::AbstractArray) = (x .- t.offset)./t.scale
 (t::AffineTransform)(x::Tuple) = map(t, x)
 Base.inv(t::AffineTransform, x::Tuple) = map(xi->inv(t, xi), x)
 
@@ -464,6 +464,11 @@ end
 LogQuant{T}(x, u::AbstractUnitLike) where T = LogQuant{T, typeof(u)}(x, u)
 LogQuant{T}(q::QuantUnion) where T = LogQuant{T}(log(dstrip(q)), dimension(q))
 LogQuant{T,U}(q::QuantUnion) where {T,U} = LogQuant{T,U}(log(dstrip(q)), dimension(q))
+
+LogQuant{T,U}(x::NumUnion) where {T,U} = LogQuant{T,U}(x*dimtype(U)())
+LogQuant{T,D}(x::NumUnion) where {T,D<:AbstractDimensions} = LogQuant{T,D}(x, D())
+LogQuant{T,D}(x::NumUnion) where {T,D<:StaticDims} = LogQuant{T,D}(x, D())
+
 
 Quantity{T,U}(lq::LogQuant) where {T,U} = Quantity{T,U}(ubase(lq))
 FlexQuant{T,U}(lq::LogQuant) where {T,U} = FlexQuant{T,U}(ubase(lq))

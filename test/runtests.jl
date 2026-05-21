@@ -311,7 +311,18 @@ end
     @test sum(qm) ≈ 10u"m/s"
     @test qm[1] == 1u"m/s"
 
-    #Other math on mirror dimensions
+    #Math on ranges 
+    @test 5u"m":9u"m" isa AbstractRange
+    @test range(5u"m", 9u"m", 4) isa AbstractRange
+    @test (5:9)*u"m" isa FlexQuant{<:AbstractRange}
+    @test (5:9).*1u"m" isa AbstractRange
+    @test (5:9).*u"m" isa AbstractVector
+    @test (5:9).*dB(u"m") isa AbstractVector
+    @test (0:10)*dB(u"m") isa FlexQuant{<:AbstractVector}
+    @test range(2dB(u"m"), 5dB(u"m"), step=1dB(u"")) isa AbstractRange
+    @test 2dB(u"m"):5dB(u"m") isa AbstractRange
+
+    #Other math on unknown dimensions
     u_unk = FlexUnits.unknown(FlexUnits.dimtype(ud""))
     @test +(zero(typeof(1ud""))) == zero(typeof(1ud""))
     @test zero(typeof(1ud""))^2 == zero(typeof(1ud""))

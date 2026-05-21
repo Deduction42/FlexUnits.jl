@@ -85,6 +85,7 @@ Base.inv(d::AbstractDimensions) = isknown(d) ? raw_inv(d) : d
 @inline Base.:-(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
 Base.min(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
 Base.max(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
+Base.rem(arg1::AbstractDimLike, arg2::AbstractDimLike) = equaldims(arg1, arg2)
 Base.sqrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 2))
 Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
 Base.abs2(d::AbstractDimensions) = d^2
@@ -295,6 +296,7 @@ Base.cbrt(q::QuantUnion) = with_ubase(cbrt, q)
 Base.abs2(q::QuantUnion) = with_ubase(abs2, q)
 Base.max(q1::QuantUnion, q2::QuantUnion) = with_ubase(max, q1, q2)
 Base.min(q1::QuantUnion, q2::QuantUnion) = with_ubase(min, q1, q2)
+Base.rem(q1::QuantUnion, q2::QuantUnion) = with_ubase(rem, q1, q2)
 Base.zero(::Type{D}) where D<:AbstractDimensions = D()
 Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), tobase=T())
 
@@ -428,3 +430,19 @@ Base.:/(q1::LogQuant, q2::Quantity) = throw(LogLinearError(/, q1, q2))
 ⊖(q1::NumUnion, q2::LogQuant) = log(exp(q1) - ubase(q2))
 ⊖(q1::LogQuant, q2::NumUnion) = log(ubase(q1) - exp(q2))
 
+#Comparison functions (returns a bool)
+for f in (:<, :<=, :isless)
+    @eval function Base.$f(q1::LogQuant, q2::LogQuant)
+        (b1, b2) = (logubase(q1), logubase(q2))
+        equaldims(unit(b1), unit(b2))
+        return $f(ustrip(b1), ustrip(b2))
+    end
+end
+
+#Unitless remainders 
+function Base.rem(lq1::LogQuant{<:Number,D1}, lq2::LogQuant{<:Number,D2}) where {D1<:AbstractDimLike, D2<:AbstractDimLike}
+    d = equaldims(dimension(lq1), dimension(lq2))
+    isdimensionless(d) || error("Operation only supported for dimensionless LogQuant")
+    return LogQuant(rem(dstrip(lq1), dstrip(lq2)), d)
+end
+Base.rem(lq1::LogQuant, lq2::LogQuant) = rem(logubase(lq1), logubase(lq2))

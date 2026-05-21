@@ -180,8 +180,10 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
 
     #Common imperial units
     _register_unit(:inch => 2.54*reg[:cm]); inch = reg[:inch]
+    _register_unit(:in => inch)
     _register_unit(:ft => 12*inch); ft = reg[:ft]
     _register_unit(:mi => 5280*ft)
+    _register_unit(:mile => 5280*ft)
     _register_unit(:lb => 0.453592*kg); lb = reg[:lb]
     _register_unit(:oz => (1/16)*lb)
     _register_unit(:psi => 6.89476*reg[:kPa])
@@ -191,6 +193,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:cup => 8*reg[:fl_oz])
     _register_unit(:pint => 2*reg[:cup])
     _register_unit(:quart => 2*reg[:pint])
+    _register_unit(:gal => 4*reg[:quart])
     _register_unit(:Ra => 5/9*reg[:K])
 
     #Strictly affine temperature measurements
