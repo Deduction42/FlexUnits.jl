@@ -1,14 +1,12 @@
-Changelog:
 
-Current Tasks:
-1.  Improved Differential Equation solver example 
-2.  Better concatenation support
 
 Backlog:
-1.  Allow constructing LinmapQuant with multiple Vector{Quantity{T, StaticDims}} objects
-    -   This produces u"" for output units
-    -   Also build shortcut for concatenating LinmapQuant, AbstractVectorOrMat{Quantity{T, D<:StaticDims}}
-        -   Simply check that all units are equal to u"" in one dimension, and concatenate
+1.  Specialized concatenation (hcat, vcat, but not hvcat) operations to produce LinmapQuant:
+    -   Matrices with uniform static dimensions are guaranteed to be compatible with LinmapQuant
+            [m1.*u"m", v1.*u"kg", ...]
+    -   FlexQuant{<:AbstractVectorOrMat} are also guaranteed to be compaibible with LinmapQuant
+            [m1*u"m", v1*u"kg", ...] 
+    -   Both vcat and hcat should work, but hvcat might not
 
 2.  Enable more Units constructors to build units on the fly
     -   Units(Pair{String, <:Units}), Units(Pair{String, <:Quantity})
