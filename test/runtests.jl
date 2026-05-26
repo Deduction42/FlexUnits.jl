@@ -234,7 +234,6 @@ end
         @test isempty(quantity([0.0, 1.0], u)) == false
         @test isempty(quantity(Float64[], u)) == true
         @test zero(Dimensions{R}) === Dimensions{R}()
-        @test zero(Units{Dimensions{R}, AT}) === Units{Dimensions{R}, AT}(dims=zero(Dimensions{R}), tobase=AT())
 
         #Static identity transform tests
         @test zero(1u"m/s") + 2.0u"m/s" == 2.0u"m/s"

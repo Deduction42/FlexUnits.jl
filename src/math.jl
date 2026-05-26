@@ -91,7 +91,8 @@ Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
 Base.abs2(d::AbstractDimensions) = d^2
 Base.adjoint(d::AbstractDimensions) = d
 
-@inline Base.literal_pow(::typeof(^), d::D, ::Val{0}) where {D <: AbstractDimensions} = D()
+@inline zero_pow(d::D) where D<:AbstractDimensions = D()
+@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{0}) = zero_pow(d)
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{1}) = d 
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{2}) = isknown(d) ? raw_mul(d, d) : d
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{3}) = isknown(d) ? raw_mul(d, raw_mul(d, d)) : d
@@ -144,7 +145,8 @@ Base.cbrt(d::StaticDims{D}) where D = StaticDims{cbrt(D)}()
 Base.abs2(d::StaticDims{D}) where D = StaticDims{abs2(D)}()
 Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 
-@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = StaticDims{dimvaltype(d)()}()
+@inline zero_pow(d::StaticDims{D}) where D = StaticDims{zero_pow(D)}()
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = zero_pow(d)
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{1}) = d 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{2}) = d*d 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{3}) = d*d*d
@@ -307,7 +309,7 @@ Base.rtoldefault(::Type{<:QuantUnion{T}}) where T = Base.rtoldefault(T)
 for f in (:zero, :typemin, :typemax, :oneunit, :eps)
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractDimensions} = quantity($f(T), unknown(D))
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:StaticDims} = quantity($f(T), D())
-    @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractUnits} = throw(ArgumentError("This operation only supports dimensional quantities"))
+    @eval Base.$f(::Type{<:QuantUnion{T, U}}) where {T, U<:AbstractUnits} = throw(ArgumentError("This operation only supports dimensional quantities"))
 end
 
 #Comparison functions (returns a bool)
