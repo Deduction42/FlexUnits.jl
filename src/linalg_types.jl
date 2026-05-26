@@ -127,7 +127,7 @@ struct DimsMap{D<:AbstractDimLike, TI<:AbstractDimVector, TO<:AbstractDimVector}
         return new{D, typeof(u_in), typeof(u_out)}(u_fac, u_in, u_out)
     end
     function DimsMap(u_fac::AbstractDimLike, u_in::AbstractDimVector, u_out::AbstractDimVector)
-        D = promote_type(typeof(u_fac), eltype(u_in), eltype(u_out))
+        D = typeof(u_fac*u_out[begin]/u_in[begin])
         return DimsMap{D}(u_fac, u_in, u_out)
     end
 end

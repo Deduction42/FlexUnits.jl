@@ -205,8 +205,10 @@ Base.promote_rule(::Type{T1}, ::Type{T2}) where {T1<:NoTransform, T2<:AbstractUn
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimvaltype(D2))
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:StaticDims, D2<:StaticDims} = promote_type(dimvaltype(D1), dimvaltype(D2))
 Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:AbstractDimensions = D
-Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:StaticDims = dimvaltype(D)
-
+Base.promote_rule(::Type{NoDims}, ::Type{D}) where D<:AbstractDimensions = D
+Base.promote_rule(::Type{D}, ::Type{NoDims}) where D<:StaticDims = isdimensionless(D) ? D : dimvaltype(D)
+Base.promote_rule(::Type{NoDims}, ::Type{D}) where D<:StaticDims = isdimensionless(D) ? D : dimvaltype(D)
+Base.promote_rule(::Type{NoDims}, ::Type{NoDims}) = NoDims 
 
 #Unit promotion
 function Base.promote_rule(::Type{D1}, ::Type{Units{D2,T2}}) where {D1<:AbstractDimLike, D2<:AbstractDimLike, T2<:AbstractUnitTransform}

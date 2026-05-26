@@ -255,7 +255,7 @@ struct StaticDims{D} <: AbstractDimLike
 end 
 StaticDims(D::AbstractDimensions) = StaticDims{D}()
 StaticDims(D::StaticDims) = D
-StaticDims{D}(d::AbstractDimensions) where D = (D == d) ? StaticDims{D} : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
+StaticDims{D}(d::AbstractDimLike) where D = (D == d) ? StaticDims{D}() : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
 (::Type{D})(d::StaticDims) where {D<:AbstractDimensions} = D(dimval(d))
 
 dimval(::Type{<:StaticDims{D}}) where D = D

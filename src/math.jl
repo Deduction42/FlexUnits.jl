@@ -131,7 +131,6 @@ Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
 Base.:(==)(d1::NoDims, d2::StaticDims) = (d1 == dimval(d2))
 Base.:(==)(d1::StaticDims, d2::NoDims) = (dimval(d1) == d2)
 
-
 equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) || isunknown(arg2) ? arg1 : throw(DimensionError(arg1,arg2))
 equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (arg1 == dimval(arg2)) || isunknown(arg1) ? arg2 : throw(DimensionError(arg1,arg2))
 equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2)) ? arg1 : throw(DimensionError(arg1,arg2))
@@ -152,6 +151,12 @@ Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{3}) = d*d*d
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-1}) = inv(d) 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-2}) = inv(d*d)
+
+#Shortcuts to avoid generic fallbacks/promotion
+Base.:*(d1::StaticDims, d2::NoDims) = d1
+Base.:*(d1::NoDims, d2::StaticDims) = d2
+Base.:/(d1::StaticDims, d2::NoDims) = d1
+Base.:/(d1::NoDims, d2::StaticDims) = inv(d2)
 
 #=============================================================================================
  Mathematical operations on abstract units and transforms (mostly for parsing)
