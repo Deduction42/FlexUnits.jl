@@ -52,7 +52,7 @@ Base.size(m::QuantArrayDims) = size(m.array)
 Base.axes(m::QuantArrayDims) = axes(m.array)
 ArrayInterface.can_setindex(::Type{<:QuantArrayDims}) = false
 dimension(m::AbstractArray{<:QuantUnion}) = QuantArrayDims(m)
-
+dimension(m::StaticArray) = dimension.(m)
 
 """
     QuantArrayVals{D<:AbstractDimensions, A<:AbstractArray} <: AbstractArray{D}
@@ -132,9 +132,13 @@ struct DimsMap{D<:AbstractDimLike, TI<:AbstractDimVector, TO<:AbstractDimVector}
     end
 end
 
-DimsMap{D}(; u_fac=NoDims(), u_in, u_out) where D<:AbstractDimLike = DimsMap{D}(u_fac, u_in, u_out)
+DimsMap{D}(; u_fac=NoDims(), u_in, u_out) where D = DimsMap{D}(u_fac, u_in, u_out)
 DimsMap(; u_fac=NoDims(), u_in, u_out) = DimsMap(u_fac, u_in, u_out)
-DimsMap(d::AbstractDimsMap) = d
+
+DimsMap{D}(d::AbstractDimsMap) where D = DimsMap{D}(u_fac=ufactor(d), u_in=uinput(d), u_out=uoutput(d))
+DimsMap(d::AbstractDimsMap) = DimsMap(u_fac=ufactor(d), u_in=uinput(d), u_out=uoutput(d))
+DimsMap(d::DimsMap) = d
+
 
 function DimsMap(u_fac::U, u_in::TI, u_out::TO) where {U<:AbstractUnitLike, TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
     is_dimension(u_fac) || throw(ArgumentError("'u_fac' argument must directly map to dimensions $(dimension(u_fac)) without scaling"))
@@ -180,17 +184,19 @@ function DimsMap(mq::AbstractVector{D}) where D<:StaticDims
     return DimsMap{D}(u_fac=D(), u_in=SVector{1}(d0), u_out=map(x->d0, mq))
 end
 
-DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(dimension(mq))
+DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
+DimsMap(mq::AbstractVector{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
 
-
-function DimsMap(mq::FlexQuant{<:AbstractMatrix, D}) where D<:AbstractDimLike
+function DimsMap(mq::FlexQuant{<:AbstractMatrix, U}) where U<:AbstractUnitLike
     d0 = NoDims()
-    return DimsMap{D}(u_fac=dimension(mq), u_in=map(x->d0, @view mq.value[begin,:]), u_out=map(x->d0, @view mq.value[:,begin]))
+    df = dimension(mq)
+    return DimsMap{typeof(df)}(u_fac=df, u_in=map(x->d0, @view mq.value[begin,:]), u_out=map(x->d0, @view mq.value[:,begin]))
 end
 
-function DimsMap(mq::FlexQuant{<:AbstractVector, D}) where D<:AbstractDimLike
+function DimsMap(mq::FlexQuant{<:AbstractVector, U}) where U<:AbstractUnitLike
     d0 = NoDims()
-    return DimsMap{D}(u_fac=dimension(mq), u_in=SVector{1}(NoDims()), u_out=map(x->NoDims(), mq.value))
+    df = dimension(mq)
+    return DimsMap{typeof(df)}(u_fac=df, u_in=SVector{1}(d0), u_out=map(x->d0, mq.value))
 end
 
 Base.axes(m::DimsMap) = (axes(m.u_out)[1], axes(m.u_in)[1])
@@ -204,7 +210,6 @@ Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = dimtype(m)(m.u_out[ii]/m.u
 Base.getindex(m::DimsMap, ii::Integer, vj::Any) = (m.u_fac*m.u_out[ii]) ./ m.u_in[vj]
 Base.getindex(m::DimsMap, vi::Any, jj::Integer) = (m.u_fac/m.u_in[jj]) .* m.u_out[vi]
 Base.getindex(m::DimsMap, vi::Any, vj::Any) = DimsMap(u_fac=m.u_fac, u_out=m.u_out[vi], u_in=m.u_in[vj])
-
 
 """
     struct AdjointDmap{D, M<:AbstractDimsMap{D}} <: AbstractDimsMap{D}
@@ -287,6 +292,7 @@ LinmapQuant(v::SVector{Nr, T}, u::UnitMap) where {T, Nr} = LinmapQuant(SMatrix{N
 
 LinmapQuant(m::QuantArrayVals, d::QuantArrayDims) = LinmapQuant(dstrip.(m.array), DimsMap(d))
 LinmapQuant(m::AbstractMatrix{<:Quantity}) = LinmapQuant(dstrip.(m), DimsMap(dimension(m)))
+LinmapQuant(m::FlexQuant{<:VecOrMat}) = LinmapQuant(dstrip(m), DimsMap(m))
 LinmapQuant(m::LinmapQuant) = m
 
 
@@ -294,6 +300,7 @@ ustrip(lq::LinmapQuant) = lq.values
 dstrip(lq::LinmapQuant) = lq.values
 unit(lq::LinmapQuant) = lq.dims
 dimension(lq::LinmapQuant) = lq.dims
+DimsMap(lq::LinmapQuant) = DimsMap(lq.dims)
 ubase(lq::LinmapQuant) = lq
 
 const VecInd = Union{Colon, AbstractVector}
@@ -350,6 +357,7 @@ dstrip(lq::VectorQuant) = lq.values
 unit(lq::VectorQuant) = lq.dims
 dimension(lq::VectorQuant) = lq.dims
 ubase(lq::VectorQuant) = lq
+DimsMap(lq::VectorQuant) = DimsMap(lq.dims)
 
 Base.IndexStyle(::Type{<:VectorQuant{<:Any, <:Any, V}}) where {V} = IndexStyle(V)
 Base.getindex(q::VectorQuant, ii::Integer) = q.values[ii] * q.dims[ii]

@@ -73,25 +73,34 @@ end
 
 
 #Concatenation of DimsMap
-function Base.hcat(d1::AbstractDimsMap, d2::AbstractDimsMap)
-    uoutput(d1) == uoutput(d2) || throw(ArgumentError("Arguments have incompatible dimensions"))
-    u_in = vcat(uinput(d1), (ufactor(d1)/ufactor(d2)).*uinput(d2))
-    return DimsMap(u_fac = ufactor(d1), u_in = u_in, u_out = uoutput(d1))
-end
-Base.hcat(d1::MatrixOfDims, d2::AbstractDimsMap) = hcat(DimsMap(d1), d2)
-Base.hcat(d1::AbstractDimsMap, d2::MatrixOfDims) = hcat(d1, DimsMap(d2))
-Base.hcat(d1::AbstractDimsMap, d2::VectorOfDims) = hcat(d1, DimsMap(d2))
-Base.hcat(d1::VectorOfDims, d2::AbstractDimsMap) = hcat(DimsMap(d1), d2)
+dm_hcat(d::AbstractDimsMap) = d
+function dm_hcat(d1::AbstractDimsMap, dN::AbstractDimsMap...)
+    u_out = uoutput(d1)
+    for d in dN
+        u_out == uoutput(d) || throw(ArgumentError("Arguments have incompatible output dimensions: $((u_out, uoutput(d))))"))
+    end
+    u_fac = ufactor(d1)
+    u_in  = vcat(uinput(d1), map(d-> (u_fac/ufactor(d)).*uinput(d), dN)...)
 
-function Base.vcat(d1::AbstractDimsMap, d2::AbstractDimsMap)
-    uinput(d1) == uinput(d2) || throw(ArgumentError("Arguments have incompatible dimensions"))
-    u_out = vcat(uoutput(d1), (ufactor(d2)/ufactor(d1)).*uoutput(d2))
-    return DimsMap(u_fac = ufactor(d1), u_in = uinput(d1), u_out = u_out)
+    return DimsMap(u_fac=u_fac, u_in=u_in, u_out=u_out)
 end
-Base.vcat(d1::MatrixOfDims, d2::AbstractDimsMap) = vcat(DimsMap(d1), d2)
-Base.vcat(d1::AbstractDimsMap, d2::MatrixOfDims) = vcat(d1, DimsMap(d2))
-Base.vcat(d1::AbstractDimsMap, d2::VectorOfDims) = vcat(d1, DimsMap(d2))
-Base.vcat(d1::VectorOfDims, d2::AbstractDimsMap) = vcat(DimsMap(d1), d2)
+Base.hcat(d1::AbstractDimsMap, dN::AbstractDimsMap...) = dm_hcat(d1, dN...)
+dm_hcat(dN...) = dm_hcat(map(DimsMap, (d1, dM...))...)
+
+
+dm_vcat(d::AbstractDimsMap) = d
+function dm_vcat(d1::AbstractDimsMap, dN::AbstractDimsMap...)
+    u_in = uinput(d1)
+    for d in dN
+        u_in == uinput(d) || throw(ArgumentError("Arguments have incompatible output dimensions: $((u_in, uinput(d))))"))
+    end
+    u_fac = ufactor(d1)
+    u_out = vcat(uoutput(d1), map(d-> (ufactor(d)/u_fac).*uoutput(d), dN)...)
+
+    return DimsMap(u_fac=u_fac, u_in=u_in, u_out=u_out)
+end
+Base.vcat(d1::AbstractDimsMap, dN::AbstractDimsMap...) = dm_vcat(d1, dN...)
+dm_vcat(dN...) = dm_vcat(map(DimsMap, (d1, dM...))...)
 
 
 #Asserts all values are equal and returns the results
@@ -157,8 +166,8 @@ qlog(m::AbstractMatrix) = LinmapQuant(log(dstrip(m)), log(DimsMap(dimension(m)))
 qadjoint(m::AbstractMatrix) = adjoint(LinmapQuant(m))
 qtranspose(m::AbstractMatrix) = transpose(LinmapQuant(m))
 qisapprox(m1::AbstractMatrix, m2::AbstractMatrix) = dstrip(m1) ≈ dstrip(m2) && dimension(m1) == dimension(m2)
-qhcat(m1::AbstractArray, m2::AbstractArray) = LinmapQuant(hcat(dstrip(m1), dstrip(m2)), hcat(dimension(m1), dimension(m2)))
-qvcat(m1::AbstractArray, m2::AbstractArray) = LinmapQuant(vcat(dstrip(m1), dstrip(m2)), vcat(dimension(m1), dimension(m2)))
+qhcat(ms...) = LinmapQuant(hcat(map(dstrip, ms)...), dm_hcat(map(DimsMap, ms)...))
+qvcat(ms...) = LinmapQuant(vcat(map(dstrip, ms)...), dm_vcat(map(DimsMap, ms)...))
 
 #Vectors
 qadd(v1::AbstractVector, v2::AbstractVector) = VectorQuant(dstrip(v1) + dstrip(v2), dimension(v1) + dimension(v2))
@@ -211,14 +220,16 @@ for op in (:+, :-, :*, :/, :\, :exp, :log)
     end
 end
 
-
-Base.hcat(m1::LinmapQuant, m2::LinmapQuant) = qhcat(m1, m2)
-Base.hcat(v::VectorQuant, m::LinmapQuant) = qhcat(v, m)
-Base.hcat(m::LinmapQuant, v::VectorQuant) = qhcat(m, v)
-Base.vcat(m1::LinmapQuant, m2::LinmapQuant) = qvcat(m1, m2)
-Base.vcat(v::VectorQuant, m::LinmapQuant) = qvcat(v, m)
-Base.vcat(m::LinmapQuant, v::VectorQuant) = qvcat(m, v)
-
+for M1 in [LinmapQuant, VectorQuant, FlexQuant{<:VecOrMat}]
+    @eval Base.hcat(m::$M1) = m
+    @eval Base.vcat(m::$M1) = m
+    for M2 in [LinmapQuant, VectorQuant, FlexQuant{<:VecOrMat}]
+        @eval Base.hcat(m1::$M1, mN::$M2) = qhcat(m1, mN)
+        @eval Base.vcat(m1::$M1, mN::$M2) = qvcat(m1, mN)
+        @eval Base.hcat(m1::$M1, mN::$M2...) = qhcat(m1, mN...)
+        @eval Base.vcat(m1::$M1, mN::$M2...) = qvcat(m1, mN...)
+    end
+end
 
 #May need to be explicit due to the fact that you can't initialize these in the same way
 for op in (:sum, :maximum, :minimum)
