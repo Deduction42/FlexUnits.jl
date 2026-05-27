@@ -1151,6 +1151,21 @@ end
     @test ABCD isa LinmapQuant 
     @test [Matrix(A) Matrix(B); Matrix(C) Matrix(D)] ≈ ABCD
 
+    #Concatenationg FlexQuant matrices/vectors 
+    A = randn(3,3)
+    B = randn(3)
+
+    ABh = [A*u"m" B*u"kg"] 
+    @test ABh isa LinmapQuant
+    @test ABh ≈ [A.*u"m" B.*u"kg"]
+
+    AAv = [A*u"m"; A*u"kg"]
+    @test AAv isa LinmapQuant 
+    @test AAv ≈ [A.*u"m"; B.*u"kg"]
+
+    BBh = [B*u"m" B*u"kg"] 
+    @test BBh isa LinmapQuant 
+    @test BBh ≈ [B.*u"m" B.*u"kg"]
 
     #Matrix attributes
     @test adjoint(adjoint(qR)) == qR
