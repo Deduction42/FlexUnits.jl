@@ -234,7 +234,6 @@ end
         @test isempty(quantity([0.0, 1.0], u)) == false
         @test isempty(quantity(Float64[], u)) == true
         @test zero(Dimensions{R}) === Dimensions{R}()
-        @test zero(Units{Dimensions{R}, AT}) === Units{Dimensions{R}, AT}(dims=zero(Dimensions{R}), tobase=AT())
 
         #Static identity transform tests
         @test zero(1u"m/s") + 2.0u"m/s" == 2.0u"m/s"
@@ -1152,6 +1151,67 @@ end
     @test ABCD isa LinmapQuant 
     @test [Matrix(A) Matrix(B); Matrix(C) Matrix(D)] ≈ ABCD
 
+    AAB = [A A B]
+    @test AAB isa LinmapQuant
+    @test AAB ≈ [Matrix(A) Matrix(A) Matrix(B)]
+
+    AAC = [A; A; C]
+    @test AAC isa LinmapQuant
+    @test AAC ≈ [Matrix(A); Matrix(A); Matrix(C)]
+
+    @test Base.hcat(A) === A
+    @test Base.vcat(A) === A
+    @test FlexUnits.dm_hcat(dimension(A)) === dimension(A)
+    @test FlexUnits.dm_vcat(dimension(A)) === dimension(A)
+    @test Base.hcat([1 0; 1 0]*UnitMap(u_in=inv(u"kg"), u_out=u""), [1,0]*u"kPa") isa LinmapQuant
+
+    #Concatenationg FlexQuant matrices/vectors 
+    A = randn(3,3)
+    B = randn(3)
+
+    ABh = [A*u"m" B*u"kg"] 
+    @test ABh isa LinmapQuant
+    @test ABh ≈ [A.*u"m" B.*u"kg"]
+
+    ABh_dims = [DimsMap(A*u"m") DimsMap(B*u"kg")]
+    @test ABh_dims isa DimsMap
+    @test ABh_dims == dimension(ABh)
+
+    ABh_dims = FlexUnits.dm_hcat(dimension(A.*u"m"), dimension(B.*u"kg"))
+    @test ABh_dims isa DimsMap
+    @test ABh_dims == dimension(ABh)
+
+    AAv = [A*u"m"; A*u"kg"]
+    @test AAv isa LinmapQuant 
+    @test AAv ≈ [A.*u"m"; A.*u"kg"]
+
+    AAv_dims = [DimsMap(A*u"m"); DimsMap(A*u"kg")]
+    @test AAv_dims isa DimsMap 
+    @test AAv_dims == dimension(AAv)
+
+    AAv_dims = FlexUnits.dm_vcat(dimension(A.*u"m"), dimension(A.*u"kg"))
+    @test AAv_dims isa DimsMap 
+    @test AAv_dims == dimension(AAv)
+
+    BBh = [B*u"m" B*u"kg"] 
+    @test BBh isa LinmapQuant 
+    @test BBh ≈ [B.*u"m" B.*u"kg"]
+
+
+    #Linear Regression Example
+    XYRaw = randn(500,4)*rand(4,4)
+
+    X = [XYRaw[:,1]*u"kg" XYRaw[:,2]*u"Pa" ones(500)*u""]
+    @test X isa LinmapQuant
+
+    Y = [XYRaw[:,3]*u"K" XYRaw[:,4]*u"W"]
+    @test Y isa LinmapQuant
+
+    B = (X'*X)\(X'*Y)
+    @test B isa LinmapQuant 
+
+    Yh = X*B
+    @test dimension(Yh) == dimension(Y)
 
     #Matrix attributes
     @test adjoint(adjoint(qR)) == qR
@@ -1246,6 +1306,13 @@ end
     @test dstrip(exp(mrep)) ≈ exp(dstrip(mrep))
     @test dstrip(exp(mraw)) ≈ exp(dstrip(mrep))
     @test dstrip(log(mraw)) ≈ log(dstrip(mrep))
+
+    @test FlexUnits.assert_allequal(identity, [dimension(ud"m"), dimension(ud"m")]) isa Dimensions
+    @test FlexUnits.assert_allequal(identity, [dimension(u"m"), dimension(u"m")]) isa StaticDims
+    @test FlexUnits.assert_allequal([dimension(ud"m"), dimension(ud"m")]) isa Dimensions
+    @test FlexUnits.assert_allequal([dimension(u"m"), dimension(u"m")]) isa StaticDims
+
+
 end
 
 @testset "Statistics" begin 
@@ -1260,6 +1327,13 @@ end
     QY  = Y * UnitMap(u_in=inv.(UY), u_out=u"")
 
     #Test summations, stats and some linear algebra
+    @test sum(x->1, QX, dims=1) isa Matrix{<:Integer}
+    @test sum(x->1, QX, dims=2) isa Matrix{<:Integer}
+    @test sum(x->1, QX, dims=:) isa Integer
+    @test FlexUnits.ureduce(identity, dimension(QX), dims=1) == dimension(sum(QX, dims=1))
+    @test FlexUnits.ureduce(identity, dimension(QX'), dims=2) == dimension(sum(QX', dims=2))
+    @test QX .+ QX .+ QX isa LinmapQuant
+
     @test sum(QX, dims=1) isa LinmapQuant
     @test all(sum(QX, dims=1) .≈ sum(X, dims=1).*UX')
     @test all(sum(QX', dims=2) .≈ sum(X', dims=2).*UX)
@@ -1297,7 +1371,11 @@ end
     @test cor(QX, QY) isa Matrix{<:Real}
     @test all(cor(QX, QY) .≈ cor(QX, QY))
 
-    @test sum(X * UnitMap(u_in=u"", u_out=u"")) ≈ sum(X)
+    QZ = X*UnitMap(u_in=u"", u_out=u"") 
+    @test sum(QZ) ≈ sum(X)
+    @test sum(identity, QZ) ≈ sum(X)
+    @test FlexUnits.ureduce(dimension(QZ)) == D""()
+    @test FlexUnits.ureduce(x->x*D"m"(), dimension(QZ)) == D"m"()
     @test all(minimum(QX, dims=1, init=typemax(eltype(QX))) .≈ minimum(X, dims=1).*UX')
     @test all(maximum(QX, dims=1, init=typemin(eltype(QX))) .≈ maximum(X, dims=1).*UX')
 

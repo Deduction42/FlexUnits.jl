@@ -254,7 +254,8 @@ struct StaticDims{D} <: AbstractDimLike
     end
 end 
 StaticDims(D::AbstractDimensions) = StaticDims{D}()
-StaticDims{D}(d::AbstractDimensions) where D = (D == d) ? StaticDims{D} : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
+StaticDims(D::StaticDims) = D
+StaticDims{D}(d::AbstractDimLike) where D = (D == d) ? StaticDims{D}() : throw(ArgumentError("Dimesion $(d) must be equal to $(D)"))
 (::Type{D})(d::StaticDims) where {D<:AbstractDimensions} = D(dimval(d))
 
 dimval(::Type{<:StaticDims{D}}) where D = D
@@ -386,7 +387,7 @@ Quantity{T}(q::QuantUnion) where T = Quantity{T}(ustrip(q), unit(q))
 
 FlexQuant{T,U}(q::QuantUnion) where {T,U} = FlexQuant{T,U}(ustrip(q), unit(q))
 FlexQuant{T,D}(q::QuantUnion) where {T,D<:StaticDims} = FlexQuant{T,D}(ustrip(D(), q), D())
-FlexQuant{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = Quantity{T,D}(dstrip(q), dimension(q))
+FlexQuant{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(dstrip(q), dimension(q))
 
 FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
 FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))

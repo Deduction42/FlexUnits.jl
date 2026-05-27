@@ -42,7 +42,7 @@ Wraps a quantity matrix A so that getting its index returns the dimensiosn of th
 struct QuantArrayDims{D<:AbstractDimLike, N, A<:AbstractArray} <: AbstractArray{D,N}
     array :: A
     function QuantArrayDims(a::AbstractArray{<:Any,N}) where N
-        D = dimvaltype(eltype(a))
+        D = dimtype(eltype(a))
         return new{D,N,typeof(a)}(a)
     end
 end
@@ -51,9 +51,8 @@ Base.getindex(m::QuantArrayDims, args...) = broadcast(dimension, getindex(m.arra
 Base.size(m::QuantArrayDims) = size(m.array)
 Base.axes(m::QuantArrayDims) = axes(m.array)
 ArrayInterface.can_setindex(::Type{<:QuantArrayDims}) = false
-dimension(m::AbstractArray) = QuantArrayDims(m)
-dimension(m::SArray) = dimension.(m)
-
+dimension(m::AbstractArray{<:QuantUnion}) = QuantArrayDims(m)
+dimension(m::StaticArray) = dimension.(m)
 
 """
     QuantArrayVals{D<:AbstractDimensions, A<:AbstractArray} <: AbstractArray{D}
@@ -72,8 +71,7 @@ Base.getindex(m::QuantArrayVals, args...) = broadcast(dstrip, getindex(m.array, 
 Base.size(m::QuantArrayVals) = size(m.array)
 Base.axes(m::QuantArrayVals) = axes(m.array)
 ArrayInterface.can_setindex(::Type{<:QuantArrayVals}) = false
-dstrip(m::AbstractArray) = QuantArrayVals(m)
-dstrip(m::SArray) = dstrip.(m)
+dstrip(m::AbstractArray{<:QuantUnion}) = QuantArrayVals(m)
 
 """
     struct UnitMap{UI, UO, TI<:ScalarOrVec{UI}, TO<:ScalarOrVec{UO}} <: AbstractUnitMap{UI,UO}
@@ -119,8 +117,8 @@ that u_in and u_out have dimensionless values in their first element.
     DimsMap(mq::AbstractMatrix{<:QuantUnion})
     DimsMap(d::AbstractDimsMap)
 """
-@kwdef struct DimsMap{D<:AbstractDimLike, TI<:AbstractDimVector, TO<:AbstractDimVector} <: AbstractDimsMap{D}
-    u_fac :: D = nothing
+struct DimsMap{D<:AbstractDimLike, TI<:AbstractDimVector, TO<:AbstractDimVector} <: AbstractDimsMap{D}
+    u_fac :: D
     u_in  :: TI
     u_out :: TO
     function DimsMap{D}(u_fac, u_in_raw::AbstractDimVector, u_out_raw::AbstractDimVector) where {D<:AbstractDimLike}
@@ -129,10 +127,18 @@ that u_in and u_out have dimensionless values in their first element.
         return new{D, typeof(u_in), typeof(u_out)}(u_fac, u_in, u_out)
     end
     function DimsMap(u_fac::AbstractDimLike, u_in::AbstractDimVector, u_out::AbstractDimVector)
-        D = promote_type(typeof(u_fac), eltype(u_in), eltype(u_out))
+        D = typeof(u_fac*u_out[begin]/u_in[begin])
         return DimsMap{D}(u_fac, u_in, u_out)
     end
 end
+
+DimsMap{D}(; u_fac=NoDims(), u_in, u_out) where D = DimsMap{D}(u_fac, u_in, u_out)
+DimsMap(; u_fac=NoDims(), u_in, u_out) = DimsMap(u_fac, u_in, u_out)
+
+DimsMap{D}(d::AbstractDimsMap) where D = DimsMap{D}(u_fac=ufactor(d), u_in=uinput(d), u_out=uoutput(d))
+DimsMap(d::AbstractDimsMap) = DimsMap(u_fac=ufactor(d), u_in=uinput(d), u_out=uoutput(d))
+DimsMap(d::DimsMap) = d
+
 
 function DimsMap(u_fac::U, u_in::TI, u_out::TO) where {U<:AbstractUnitLike, TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
     is_dimension(u_fac) || throw(ArgumentError("'u_fac' argument must directly map to dimensions $(dimension(u_fac)) without scaling"))
@@ -141,10 +147,12 @@ function DimsMap(u_fac::U, u_in::TI, u_out::TO) where {U<:AbstractUnitLike, TI<:
     return DimsMap(u_fac=dimension(u_fac), u_in=dimension.(u_in), u_out=dimension.(u_out))
 end
 
+#=
 function DimsMap(u_fac::Nothing, u_in::TI, u_out::TO) where {TI<:AbstractVector{<:AbstractUnitLike}, TO<:AbstractVector{<:AbstractUnitLike}}
     D = promote_type(dimtype(eltype(TI)), dimtype(eltype(TO)))
     return DimsMap(D(), u_in, u_out)
 end
+=#
 
 function DimsMap(md::AbstractMatrix{<:AbstractDimLike})
     u_fac = udynamic(md[begin,begin])
@@ -166,8 +174,30 @@ function DimsMap(v::AbstractVector{D}) where D<:AbstractDimLike
     return DimsMap(u_fac=u_fac, u_out=u_out, u_in=u_in)
 end
 
-DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(dimension(mq))
-DimsMap(d::AbstractDimsMap) = d
+function DimsMap(mq::AbstractMatrix{D}) where D<:StaticDims
+    d0 = zero_pow(D())
+    return DimsMap{D}(u_fac=D(), u_in=map(x->d0, @view mq[begin, :]), u_out=map(x->d0, @view mq[:, begin]))
+end
+
+function DimsMap(mq::AbstractVector{D}) where D<:StaticDims
+    d0 = zero_pow(D())
+    return DimsMap{D}(u_fac=D(), u_in=SVector{1}(d0), u_out=map(x->d0, mq))
+end
+
+DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
+DimsMap(mq::AbstractVector{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
+
+function DimsMap(mq::FlexQuant{<:AbstractMatrix, U}) where U<:AbstractUnitLike
+    d0 = StaticDims(zero(dimvaltype(mq)))
+    df = dimension(mq)
+    return DimsMap{typeof(df)}(u_fac=df, u_in=map(x->d0, @view mq.value[begin,:]), u_out=map(x->d0, @view mq.value[:,begin]))
+end
+
+function DimsMap(mq::FlexQuant{<:AbstractVector, U}) where U<:AbstractUnitLike
+    d0 = StaticDims(zero(dimvaltype(mq)))
+    df = dimension(mq)
+    return DimsMap{typeof(df)}(u_fac=df, u_in=SVector{1}(d0), u_out=map(x->d0, mq.value))
+end
 
 Base.axes(m::DimsMap) = (axes(m.u_out)[1], axes(m.u_in)[1])
 Base.size(m::DimsMap) = (length(m.u_out), length(m.u_in))
@@ -175,12 +205,11 @@ Base.inv(m::DimsMap) = DimsMap(u_fac=inv(m.u_fac), u_out=m.u_in, u_in=m.u_out)
 uoutput(m::DimsMap) = m.u_out
 uinput(m::DimsMap) = m.u_in
 ufactor(m::DimsMap) = m.u_fac
-Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = m.u_out[ii]/m.u_in[jj]*m.u_fac
+dimtype(m::DimsMap{D}) where D = D
+Base.getindex(m::DimsMap, ii::Integer, jj::Integer) = dimtype(m)(m.u_out[ii]/m.u_in[jj]*m.u_fac)
 Base.getindex(m::DimsMap, ii::Integer, vj::Any) = (m.u_fac*m.u_out[ii]) ./ m.u_in[vj]
 Base.getindex(m::DimsMap, vi::Any, jj::Integer) = (m.u_fac/m.u_in[jj]) .* m.u_out[vi]
 Base.getindex(m::DimsMap, vi::Any, vj::Any) = DimsMap(u_fac=m.u_fac, u_out=m.u_out[vi], u_in=m.u_in[vj])
-
-
 
 """
     struct AdjointDmap{D, M<:AbstractDimsMap{D}} <: AbstractDimsMap{D}
@@ -261,15 +290,17 @@ function LinmapQuant(m::SMatrix{Nr,Nc,T}, u::UnitMap) where {T, Nr, Nc}
 end
 LinmapQuant(v::SVector{Nr, T}, u::UnitMap) where {T, Nr} = LinmapQuant(SMatrix{Nr,1,T}(v), u)
 
-
 LinmapQuant(m::QuantArrayVals, d::QuantArrayDims) = LinmapQuant(dstrip.(m.array), DimsMap(d))
-LinmapQuant(m::AbstractMatrix) = LinmapQuant(dstrip.(m), DimsMap(dimension(m)))
+LinmapQuant(m::AbstractMatrix{<:Quantity}) = LinmapQuant(dstrip.(m), DimsMap(dimension(m)))
+LinmapQuant(m::FlexQuant{<:VecOrMat}) = LinmapQuant(dstrip(m), DimsMap(m))
 LinmapQuant(m::LinmapQuant) = m
+
 
 ustrip(lq::LinmapQuant) = lq.values
 dstrip(lq::LinmapQuant) = lq.values
 unit(lq::LinmapQuant) = lq.dims
 dimension(lq::LinmapQuant) = lq.dims
+DimsMap(lq::LinmapQuant) = DimsMap(lq.dims)
 ubase(lq::LinmapQuant) = lq
 
 const VecInd = Union{Colon, AbstractVector}
@@ -326,6 +357,7 @@ dstrip(lq::VectorQuant) = lq.values
 unit(lq::VectorQuant) = lq.dims
 dimension(lq::VectorQuant) = lq.dims
 ubase(lq::VectorQuant) = lq
+DimsMap(lq::VectorQuant) = DimsMap(lq.dims)
 
 Base.IndexStyle(::Type{<:VectorQuant{<:Any, <:Any, V}}) where {V} = IndexStyle(V)
 Base.getindex(q::VectorQuant, ii::Integer) = q.values[ii] * q.dims[ii]
