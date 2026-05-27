@@ -132,34 +132,35 @@ julia> ustrip(p) #I have been deceived
 Linear algebra is accelerated through `LinmapQuant` objects that define a linear mapping from input units to output units. To attach these units, simply multiply a matrix times a `UnitMap` constructor that specifies an example of the input and output units expected by a multiplication.
 ```julia
 u = [u"kg/s", u"kW", u"rad/s", u"N/m"]
+
 julia> M = randn(4,4) * UnitMap(u_in = u, u_out=u)
 4×4 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
-      0.503317        8.70546e-6 s²/m²        -0.793573 kg     0.202484 s
- -822.909 m²/s²            -0.0408469   1006.26 (m² kg)/s²  -920.258 m²/s
-  0.964538 1/kg  0.00108277 s²/(m² kg)          -0.637226   0.507414 s/kg
-  -0.168001 1/s      -0.000630687 s/m²     1.90672e-5 kg/s     -0.183613
+     -0.723157        0.000463328 s²/m²        0.0841925 kg     0.641013 s
+ -29.6711 m²/s²             -0.0910066   -308.33 (m² kg)/s²  -354.274 m²/s
+  0.190549 1/kg  0.000153441 s²/(m² kg)            0.91125   -1.04493 s/kg
+  -0.940626 1/s         0.00182779 s/m²       0.472231 kg/s     -0.226755 
 ```
 
-One common pattern is to produce a matrix where each column has similar units. This can be achieved with a unit map having output units of `u""` and input units being the *inverse* of the desired units
+One common pattern is to produce a matrix where each column has similar units. This can be achieved the same way as above or by horizontally concatenating vectors multiplied by units (do NOT broadcast the multiplication, that will create a regular matrix)
 ```julia
-u = [u"kg/s", u"kW", u"rad/s", u"N/m"]
-julia> X = randn(300, 4) * UnitMap(u_in = inv.(u), u_out = u"")
-300×4 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
-  -0.527674 kg/s   224.616 (m² kg)/s³   0.693502 1/s   -1.79476 kg/s²
-   -1.23491 kg/s    452.61 (m² kg)/s³   -0.77325 1/s   0.683541 kg/s²
-   -1.05964 kg/s   1391.06 (m² kg)/s³   -0.64679 1/s   0.828654 kg/s²
-               ⋮
+N = 300
+
+julia> X = [randn(N)*u"kg/s" randn(N)*u"kW" randn(N)*u"rad/s" rand(N)*u"N/m"]
+300×4 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, StaticArraysCore.SVector{4, Dimensions{FixRat32}}, Vector{StaticDims{}}}}:
+  -1.06923 kg/s  -1551.15 (m² kg)/s³    0.37945 1/s   0.39719 kg/s²
+ -0.277549 kg/s  -705.525 (m² kg)/s³   0.337886 1/s  0.655497 kg/s²
+   1.04352 kg/s  -604.187 (m² kg)/s³   -1.35279 1/s  0.981266 kg/s²
+              ⋮    
 ```
-This constructor is more efficient that producing a matrix of quantities, because it is *lazy*. Only a single scalar and two vectors of dimensions are stored. Quantities are only materialized by indexing.
 
 These matrices can be multiplied and divided through typical linear algebra syntax
 ```julia
 julia> M\X'
-4×300 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}}:
-     -7.39372 kg/s         5.00905 kg/s        6.09836 kg/s       -5.85272 kg/s  …         15.8498 kg/s        -10.082 kg/s       -4.99927 kg/s
- 4074.2 (m² kg)/s³  -2533.63 (m² kg)/s³  -2455.3 (m² kg)/s³  1216.91 (m² kg)/s³     -4952.89 (m² kg)/s³  2032.26 (m² kg)/s³  1296.76 (m² kg)/s³
-       -3.3304 1/s          4.80668 1/s         4.75294 1/s        -2.29171 1/s              12.253 1/s        -5.75445 1/s        -1.69429 1/s
-     2.54502 kg/s²       0.397339 kg/s²      -1.65875 kg/s²       3.10623 kg/s²          -0.58694 kg/s²       2.04295 kg/s²       4.18943 kg/s²
+4×300 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{StaticDims{}}, Vector{Dimensions{FixRat32}}}}:
+       5.36796 kg/s        2.10869 kg/s       0.482899 kg/s      0.0537144 kg/s  …        3.73209 kg/s        5.55815 kg/s        3.39604 kg/s       1.10409 kg/s
+ 2925.74 (m² kg)/s³  1373.05 (m² kg)/s³  984.784 (m² kg)/s³  522.156 (m² kg)/s³     2727.62 (m² kg)/s³  3370.72 (m² kg)/s³  2145.29 (m² kg)/s³  1529.4 (m² kg)/s³
+        1.22354 1/s        0.688339 1/s      -0.0661644 1/s         -1.5527 1/s           -1.10673 1/s       -0.709414 1/s        0.142878 1/s       -1.29612 1/s
+      2.11238 kg/s²      0.863076 kg/s²       1.46959 kg/s²      -1.03138 kg/s²          1.94117 kg/s²       1.02301 kg/s²       1.68966 kg/s²     0.699505 kg/s²
 ```
 
 ## Logarithmic Quantities and Units

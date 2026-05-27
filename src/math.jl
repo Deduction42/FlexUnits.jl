@@ -91,7 +91,8 @@ Base.cbrt(d::AbstractDimensions{R}) where R = d^inv(convert(R, 3))
 Base.abs2(d::AbstractDimensions) = d^2
 Base.adjoint(d::AbstractDimensions) = d
 
-@inline Base.literal_pow(::typeof(^), d::D, ::Val{0}) where {D <: AbstractDimensions} = D()
+@inline zero_pow(d::D) where D<:AbstractDimensions = D()
+@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{0}) = zero_pow(d)
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{1}) = d 
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{2}) = isknown(d) ? raw_mul(d, d) : d
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{3}) = isknown(d) ? raw_mul(d, raw_mul(d, d)) : d
@@ -130,7 +131,6 @@ Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
 Base.:(==)(d1::NoDims, d2::StaticDims) = (d1 == dimval(d2))
 Base.:(==)(d1::StaticDims, d2::NoDims) = (dimval(d1) == d2)
 
-
 equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) || isunknown(arg2) ? arg1 : throw(DimensionError(arg1,arg2))
 equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (arg1 == dimval(arg2)) || isunknown(arg1) ? arg2 : throw(DimensionError(arg1,arg2))
 equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2)) ? arg1 : throw(DimensionError(arg1,arg2))
@@ -144,12 +144,19 @@ Base.cbrt(d::StaticDims{D}) where D = StaticDims{cbrt(D)}()
 Base.abs2(d::StaticDims{D}) where D = StaticDims{abs2(D)}()
 Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 
-@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = StaticDims{dimvaltype(d)()}()
+@inline zero_pow(d::StaticDims{D}) where D = StaticDims{zero_pow(D)}()
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = zero_pow(d)
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{1}) = d 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{2}) = d*d 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{3}) = d*d*d
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-1}) = inv(d) 
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-2}) = inv(d*d)
+
+#Shortcuts to avoid generic fallbacks/promotion
+Base.:*(d1::StaticDims, d2::NoDims) = d1
+Base.:*(d1::NoDims, d2::StaticDims) = d2
+Base.:/(d1::StaticDims, d2::NoDims) = d1
+Base.:/(d1::NoDims, d2::StaticDims) = inv(d2)
 
 #=============================================================================================
  Mathematical operations on abstract units and transforms (mostly for parsing)
@@ -307,7 +314,7 @@ Base.rtoldefault(::Type{<:QuantUnion{T}}) where T = Base.rtoldefault(T)
 for f in (:zero, :typemin, :typemax, :oneunit, :eps)
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractDimensions} = quantity($f(T), unknown(D))
     @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:StaticDims} = quantity($f(T), D())
-    @eval Base.$f(::Type{<:QuantUnion{T, D}}) where {T, D<:AbstractUnits} = throw(ArgumentError("This operation only supports dimensional quantities"))
+    @eval Base.$f(::Type{<:QuantUnion{T, U}}) where {T, U<:AbstractUnits} = throw(ArgumentError("This operation only supports dimensional quantities"))
 end
 
 #Comparison functions (returns a bool)
