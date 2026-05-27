@@ -110,13 +110,13 @@ The easiest way to construct a `LinmapQuant` is to construct a `UnitMap` and mul
 ```julia
 X = randn(20, 5)*rand(5,5)
 
-#Make sure to invert u_in if you want to assign units directly
-julia> X * UnitMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_out=fill(u"", size(X,1)))
+#You can concatenate columns by multipling each column by the desired units
+julia> [X[:,1]*u"K"  X[:,2]*u"km"  X[:,3]*u"mol"  X[:,4]*u"kg"  X[:,5]u"A"]
 20×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}:
   0.423785 K   1446.68 m   1.43043 mol   0.271962 kg    2.35996 A
  -0.601045 K   150.874 m  0.608505 mol  -0.146254 kg   0.509313 A
 
-#Scalar arguments are repeated along the dimension for convenience
+#You can assign inverted units to a UnitMap input and a single empty dimensional output
 julia> X * UnitMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_out=u"")
 20×5 LinmapQuant{Float64, Dimensions{FixRat32}, Matrix{Float64}, DimsMap{Dimensions{FixRat32}, Vector{Dimensions{FixRat32}}, Vector{Dimensions{FixRat32}}}:
   0.423785 K   1446.68 m   1.43043 mol   0.271962 kg    2.35996 A

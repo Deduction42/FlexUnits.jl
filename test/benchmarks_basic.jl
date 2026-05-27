@@ -160,19 +160,19 @@ print("FlexUnits:\t")
 @btime Xfq*Mfq
 
 # ========== S4.1. upreferred ==========
-println("\nS4.1) upreferred\n")
+println("\nS4.1) static upreferred\n")
 
 base_array = rand(Ns)
 l_uni = base_array .* Unitful.u"cm"
 l_dyn = base_array .* DynamicQuantities.us"cm"
-l_flex = base_array .* UnitRegistry.u"cm"
+l_flex = quantity.(base_array, UnitRegistry.u"cm")
 
 print("Unitful:\t")
 @btime Unitful.upreferred.($l_uni);
 print("DynamicQ:\t")
-@btime uexpand.($l_dyn);
+@btime DynamicQuantities.uexpand.($l_dyn);
 print("FlexU:  \t")
-@btime ubase.($l_flex);
+@btime FlexUnits.ubase.($l_flex);
 
 # ========== S4.2. ustrip ==========
 println("\nS4.2) ustrip\n")

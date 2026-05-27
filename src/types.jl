@@ -145,7 +145,7 @@ end
 AffineTransform(scale::T1, offset::T2) where {T1,T2} = AffineTransform{promote_type(T1,T2)}(scale, offset)
 (t::AffineTransform)(t0::AbstractUnitTransform) = t ∘ t0
 
-(t::AffineTransform)(x) = x*t.scale + t.offset
+(t::AffineTransform)(x) = muladd(x, t.scale, t.offset)
 Base.inv(t::AffineTransform, x) = (x - t.offset)/t.scale
 (t::AffineTransform)(x::AbstractArray) = x.*t.scale .+ t.offset
 Base.inv(t::AffineTransform, x::AbstractArray) = (x .- t.offset)./t.scale
