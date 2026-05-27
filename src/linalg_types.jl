@@ -175,12 +175,12 @@ function DimsMap(v::AbstractVector{D}) where D<:AbstractDimLike
 end
 
 function DimsMap(mq::AbstractMatrix{D}) where D<:StaticDims
-    d0 = NoDims()
+    d0 = zero_pow(D())
     return DimsMap{D}(u_fac=D(), u_in=map(x->d0, @view mq[begin, :]), u_out=map(x->d0, @view mq[:, begin]))
 end
 
 function DimsMap(mq::AbstractVector{D}) where D<:StaticDims
-    d0 = NoDims()
+    d0 = zero_pow(D())
     return DimsMap{D}(u_fac=D(), u_in=SVector{1}(d0), u_out=map(x->d0, mq))
 end
 
@@ -188,13 +188,13 @@ DimsMap(mq::AbstractMatrix{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
 DimsMap(mq::AbstractVector{<:QuantUnion}) = DimsMap(QuantArrayDims(mq))
 
 function DimsMap(mq::FlexQuant{<:AbstractMatrix, U}) where U<:AbstractUnitLike
-    d0 = NoDims()
+    d0 = StaticDims(zero(dimvaltype(mq)))
     df = dimension(mq)
     return DimsMap{typeof(df)}(u_fac=df, u_in=map(x->d0, @view mq.value[begin,:]), u_out=map(x->d0, @view mq.value[:,begin]))
 end
 
 function DimsMap(mq::FlexQuant{<:AbstractVector, U}) where U<:AbstractUnitLike
-    d0 = NoDims()
+    d0 = StaticDims(zero(dimvaltype(mq)))
     df = dimension(mq)
     return DimsMap{typeof(df)}(u_fac=df, u_in=SVector{1}(d0), u_out=map(x->d0, mq.value))
 end

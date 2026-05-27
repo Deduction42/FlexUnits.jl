@@ -85,7 +85,7 @@ function dm_hcat(d1::AbstractDimsMap, dN::AbstractDimsMap...)
     return DimsMap(u_fac=u_fac, u_in=u_in, u_out=u_out)
 end
 Base.hcat(d1::AbstractDimsMap, dN::AbstractDimsMap...) = dm_hcat(d1, dN...)
-dm_hcat(dN...) = dm_hcat(map(DimsMap, (d1, dM...))...)
+dm_hcat(dN...) = dm_hcat(map(DimsMap, dN)...)
 
 
 dm_vcat(d::AbstractDimsMap) = d
@@ -100,7 +100,7 @@ function dm_vcat(d1::AbstractDimsMap, dN::AbstractDimsMap...)
     return DimsMap(u_fac=u_fac, u_in=u_in, u_out=u_out)
 end
 Base.vcat(d1::AbstractDimsMap, dN::AbstractDimsMap...) = dm_vcat(d1, dN...)
-dm_vcat(dN...) = dm_vcat(map(DimsMap, (d1, dM...))...)
+dm_vcat(dN...) = dm_vcat(map(DimsMap, dN)...)
 
 
 #Asserts all values are equal and returns the results
