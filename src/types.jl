@@ -489,7 +489,7 @@ linquant(q::LogQuant) = ubase(q)
 
 Produces a base-unit log quantity (Nepers with a reference value of base SI units)
 """
-logubase(v::Any, u::AbstractUnitLike) = logquant(log(tobase(u)(v)), dimension(u))
+logubase(v::Any, u::AbstractUnitLike) = logquant(tobase(u)(v), dimension(u))
 logubase(v::Any, u::Units{<:AbstractDimLike, <:ExpAffTransform}) = logquant(log(tobase(u))(v), dimension(u))
 
 
