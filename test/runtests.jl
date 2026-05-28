@@ -1472,6 +1472,10 @@ end
     @test dstrip(20dB(u"J")) ≈ 100
 
     @test (logquant(10, dB(u"V")) + 1) ≈ log(quantity(10, dB(u"V"))) + 1
+    @test ustrip(u"", logubase(10, dB(u""))) ≈ 10
+    @test ustrip(u"", logubase(log(10), u"")) ≈ 10
+    @test ustrip(u"", logubase(100, u"%")) ≈ exp(1)
+    @test ustrip(u"", logubase(1, D""())) ≈ exp(1)
 
 end
 

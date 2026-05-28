@@ -394,20 +394,12 @@ FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))
 
 
 """
-    ubase(v::Any, u::AbstractUnitLike)
-
-Produces a quantity in base units of (u) (such as SI base units)
-"""
-ubase(v::Any, u::AbstractUnitLike) = quantity(tobase(u)(v), dimension(u))
-
-"""
     ubase(q::QuantUnion)
 
 Converts quantity `q` to its raw dimensional equivalent (such as SI base units)
 """
-ubase(q::QuantUnion{<:Any,<:AbstractUnitLike}) = ubase(ustrip(q), unit(q))
+ubase(q::QuantUnion{<:Any,<:AbstractUnitLike}) = quantity(dstrip(q), dimension(q))
 ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
-
 
 ustrip(q::QuantUnion) = q.value
 unit(q::QuantUnion) = q.unit
@@ -434,6 +426,14 @@ Constructs a quantity with arguments `x` and `u`, and selects the appropriate ty
 (if x is a number, `Quantity<:Number` is used, otherwise `FlexQuant<:Any` is used)
 """
 quantity(x, u::AbstractUnitLike) = quant_type(x)(x, u)
+
+"""
+    ubase(x, u::AbstractUnitLike)
+
+Constructs a dimensional quantity with arguments `x` and `u`, and selects the appropriate type to use based on the arguments
+(shorthand equivalent to ubase(quantity(x, u)))
+"""
+ubase(x::Any, u::AbstractUnitLike) = quantity(tobase(u)(x), dimension(u))
 
 """
     quant_type(::Type{T})
@@ -489,7 +489,7 @@ linquant(q::LogQuant) = ubase(q)
 
 Produces a base-unit log quantity (Nepers with a reference value of base SI units)
 """
-logubase(v::Any, u::AbstractUnitLike) = logquant(log(tobase(u)(v)), dimension(u))
+logubase(v::Any, u::AbstractUnitLike) = logquant(tobase(u)(v), dimension(u))
 logubase(v::Any, u::Units{<:AbstractDimLike, <:ExpAffTransform}) = logquant(log(tobase(u))(v), dimension(u))
 
 
