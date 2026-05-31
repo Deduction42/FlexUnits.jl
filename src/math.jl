@@ -261,13 +261,13 @@ Base.:(≈)(q1::T, q2::QuantUnion) where T<:NumUnion = (convert(T, q2) ≈ q1)
 Base.:(≈)(q1::Missing, q2::QuantUnion) = missing 
 Base.:(≈)(q2::QuantUnion, q1::Missing) = missing 
 
-Base.:+(q::QuantUnion, x::NumUnion) = dimensionless(q) + x 
-Base.:+(x::NumUnion, q::QuantUnion) = dimensionless(q) + x
+Base.:+(q::QuantUnion, x::NumUnion) = scalar(q) + x 
+Base.:+(x::NumUnion, q::QuantUnion) = scalar(q) + x
 Base.:+(q1::QuantUnion, q2::QuantUnion) = with_ubase(+, q1, q2)
 Base.:+(q1::QuantUnion, qN::QuantUnion...) = with_ubase(+, q1, qN...)
 
-Base.:-(q::QuantUnion, x::NumUnion) = dimensionless(q) - x 
-Base.:-(x::NumUnion, q::QuantUnion) = x - dimensionless(q)
+Base.:-(q::QuantUnion, x::NumUnion) = scalar(q) - x 
+Base.:-(x::NumUnion, q::QuantUnion) = x - scalar(q)
 Base.:-(q1::QuantUnion, q2::QuantUnion) = with_ubase(-, q1, q2)
 Base.:-(q1::QuantUnion) = with_ubase(-, q1)
 

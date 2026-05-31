@@ -119,13 +119,6 @@ Leaving out the unit argument `u` skips the dimensioonal verification process
 """
 dstrip(u::AbstractUnitLike, q::Union{QuantUnion,LogQuant}) = ustrip(dimension(u), q)
 
-"""
-    ustrip_dimensionless(q::QuantUnion)
-
-Converts quantity `q` to its raw dimensional equivalent, asserts 
-a dimensionless result, and then removes units
-"""
-ustrip_dimensionless(q::QuantUnion) = ustrip(assert_dimensionless(ubase(q)))
 
 """
     Units(q::QuantUnion{<:Number})

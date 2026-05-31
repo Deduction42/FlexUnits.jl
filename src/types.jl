@@ -401,6 +401,15 @@ Converts quantity `q` to its raw dimensional equivalent (such as SI base units)
 ubase(q::QuantUnion{<:Any,<:AbstractUnitLike}) = quantity(dstrip(q), dimension(q))
 ubase(q::QuantUnion{<:Any,<:AbstractDimLike}) = q
 
+"""
+    scalar(q::QuantUnion)
+
+Converts quantity `q` to its raw dimensional equivalent, asserts 
+a dimensionless result, and then removes units
+"""
+scalar(q::QuantUnion) = ustrip(assert_dimensionless(ubase(q)))
+
+
 ustrip(q::QuantUnion) = q.value
 unit(q::QuantUnion) = q.unit
 tobase(q::QuantUnion) = tobase(q.unit)
@@ -511,6 +520,8 @@ function ubase(q::LogQuant{<:Any,<:AbstractUnitLike})
     ft = exp(tobase(u))
     return quantity(ft(ustrip(q)), dimension(u))
 end
+
+scalar(q::LogQuant) = ustrip(assert_dimensionless(ubase(q)))
 
 ustrip(q::LogQuant) = q.value
 unit(q::LogQuant) = q.unit
@@ -671,7 +682,7 @@ assert_dimension(u::AbstractUnits) = is_dimension(u) ? u : throw(NotDimensionErr
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
 assert_dimensionless(q::QuantUnion) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
 dimensionless(u::AbstractUnitLike) = dimension(assert_dimensionless(u))
-dimensionless(q::QuantUnion) = ustrip(assert_dimensionless(ubase(q)))
+dimensionless(q::QuantUnion) = scalar(q)
 dimensionless(n) = n
 
 isdimensionless(u::AbstractUnitLike) = isdimensionless(dimension(u))

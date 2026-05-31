@@ -13,7 +13,8 @@ julia --startup-file=no --depwarn=yes --threads=auto --project=. test/invalidati
 
 using Revise
 using FlexUnits, .UnitRegistry
-using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64, dB, Np, NoDims, ⊕, ⊖
+import FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64, dB, Np, NoDims, ⊕, ⊖
+import FlexUnits: assert_dimensionless, assert_dimension
 using TestItems: @testitem
 using TestItemRunner
 using Test
@@ -856,8 +857,8 @@ end
     @test dconvert(u"kg/s", 5.0u"kg/hr") == ubase(5.0u"kg/hr")
     @test ustrip(u"kg/s", 5.0ud"kg/hr") ≈ 5/3600
     @test ustrip([u"kg/hr", u"m^3/hr"], [1.0u"kg/s",2.0u"L/s"]) ≈ [3600, 7.2]
-    @test FlexUnits.ustrip_dimensionless(1.0u"") == 1.0
-    @test_throws DimensionError FlexUnits.ustrip_dimensionless(1.0u"m/s")
+    @test scalar(1.0u"") == 1.0
+    @test_throws DimensionError scalar(1.0u"m/s")
 
     # Types:
     @test typeof(uconvert(ud"nm", 5e-9ud"m")) <: Quantity{Float64, U} 
