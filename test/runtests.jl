@@ -1453,15 +1453,16 @@ end
     @test logquant(10u"kg") ≈ 10dB(u"kg")
     @test logquant(10dB(u"s")) ≈ log(10u"s")
 
-    #Informative errors thrown for incompatible operations (mixed log-linear types)
+    #Informative errors thrown for ambiguous operations (mixed log-linear types)
     @test_throws LogLinearError lq1 + q2
     @test_throws LogLinearError q1 + lq2 
     @test_throws LogLinearError lq1 - q2
     @test_throws LogLinearError q1 - lq2
-    @test_throws LogLinearError lq1 * q2
-    @test_throws LogLinearError q1 * lq2
-    @test_throws LogLinearError lq1 / q2
-    @test_throws LogLinearError q1 / lq2 
+
+    #Multiplying and Dividing are unambiguous and require dimensionless values
+    @test_throws DimensionError lq1 * q2
+    @test_throws DimensionError q1 * lq2
+    @test_throws DimensionError lq1 / q2
 
     #Miscillaneous tests
     @test ubase(lq1)*q2 ≈ q1*q2

@@ -1,6 +1,5 @@
 Changelog:
 1.  Added "scalar(q::Quantity)" to return a scalar value without units 
-2.  Can now multiply (q::Quantity)*(lq::LogQuant) if q is dimensionless
 
 Backlog:
 1.  Enable more Units constructors to build units on the fly

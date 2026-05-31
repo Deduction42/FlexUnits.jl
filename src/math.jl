@@ -404,6 +404,7 @@ function Base.:*(x::NumUnion, u::Units{<:AbstractDimLike,<:ExpAffTransform})
     logtrans = log(tobase(u))
     return logquant(logtrans(x), dimension(u))
 end
+Base.:*(x::Quantity, u::Units{<:AbstractDimLike,<:ExpAffTransform}) = scalar(x)*u
 
 #Logarithmic quantity algebra
 Base.:+(q::LogQuant) = with_logubase(+, *, q)
@@ -423,10 +424,9 @@ Base.:-(q1::LogQuant, q2::Quantity) = throw(LogLinearError(-, q1, q2))
 Base.:*(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:*(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:/(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)/x, unit(q)^inv(x)))
-Base.:*(q1::Quantity, q2::LogQuant) = throw(LogLinearError(*, q1, q2))
-Base.:*(q1::LogQuant, q2::Quantity) = throw(LogLinearError(*, q1, q2))
-Base.:/(q1::Quantity, q2::LogQuant) = throw(LogLinearError(/, q1, q2))
-Base.:/(q1::LogQuant, q2::Quantity) = throw(LogLinearError(/, q1, q2))
+Base.:*(q1::Quantity, q2::LogQuant) = scalar(q1)*q2
+Base.:*(q1::LogQuant, q2::Quantity) = q1*scalar(q2)
+Base.:/(q1::LogQuant, q2::Quantity) = q1/scalar(q2)
 
 #Addition/subtraction for linear transformations
 ⊕(q1::LogQuant, q2::LogQuant) = log(ubase(q1) + ubase(q2))
