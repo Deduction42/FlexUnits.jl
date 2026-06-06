@@ -261,13 +261,13 @@ Base.:(≈)(q1::T, q2::QuantUnion) where T<:NumUnion = (convert(T, q2) ≈ q1)
 Base.:(≈)(q1::Missing, q2::QuantUnion) = missing 
 Base.:(≈)(q2::QuantUnion, q1::Missing) = missing 
 
-Base.:+(q::QuantUnion, x::NumUnion) = dimensionless(q) + x 
-Base.:+(x::NumUnion, q::QuantUnion) = dimensionless(q) + x
+Base.:+(q::QuantUnion, x::NumUnion) = scalar(q) + x 
+Base.:+(x::NumUnion, q::QuantUnion) = scalar(q) + x
 Base.:+(q1::QuantUnion, q2::QuantUnion) = with_ubase(+, q1, q2)
 Base.:+(q1::QuantUnion, qN::QuantUnion...) = with_ubase(+, q1, qN...)
 
-Base.:-(q::QuantUnion, x::NumUnion) = dimensionless(q) - x 
-Base.:-(x::NumUnion, q::QuantUnion) = x - dimensionless(q)
+Base.:-(q::QuantUnion, x::NumUnion) = scalar(q) - x 
+Base.:-(x::NumUnion, q::QuantUnion) = x - scalar(q)
 Base.:-(q1::QuantUnion, q2::QuantUnion) = with_ubase(-, q1, q2)
 Base.:-(q1::QuantUnion) = with_ubase(-, q1)
 
@@ -404,6 +404,7 @@ function Base.:*(x::NumUnion, u::Units{<:AbstractDimLike,<:ExpAffTransform})
     logtrans = log(tobase(u))
     return logquant(logtrans(x), dimension(u))
 end
+Base.:*(x::Quantity, u::Units{<:AbstractDimLike,<:ExpAffTransform}) = scalar(x)*u
 
 #Logarithmic quantity algebra
 Base.:+(q::LogQuant) = with_logubase(+, *, q)
@@ -423,10 +424,9 @@ Base.:-(q1::LogQuant, q2::Quantity) = throw(LogLinearError(-, q1, q2))
 Base.:*(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:*(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:/(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)/x, unit(q)^inv(x)))
-Base.:*(q1::Quantity, q2::LogQuant) = throw(LogLinearError(*, q1, q2))
-Base.:*(q1::LogQuant, q2::Quantity) = throw(LogLinearError(*, q1, q2))
-Base.:/(q1::Quantity, q2::LogQuant) = throw(LogLinearError(/, q1, q2))
-Base.:/(q1::LogQuant, q2::Quantity) = throw(LogLinearError(/, q1, q2))
+Base.:*(q1::Quantity, q2::LogQuant) = scalar(q1)*q2
+Base.:*(q1::LogQuant, q2::Quantity) = q1*scalar(q2)
+Base.:/(q1::LogQuant, q2::Quantity) = q1/scalar(q2)
 
 #Addition/subtraction for linear transformations
 ⊕(q1::LogQuant, q2::LogQuant) = log(ubase(q1) + ubase(q2))

@@ -13,7 +13,8 @@ julia --startup-file=no --depwarn=yes --threads=auto --project=. test/invalidati
 
 using Revise
 using FlexUnits, .UnitRegistry
-using FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64, dB, Np, NoDims, ⊕, ⊖
+import FlexUnits: DEFAULT_RATIONAL, FixedRational, map_dimensions, dimval, FixRat64, dB, Np, NoDims, ⊕, ⊖
+import FlexUnits: assert_dimensionless, assert_dimension
 using TestItems: @testitem
 using TestItemRunner
 using Test
@@ -856,8 +857,8 @@ end
     @test dconvert(u"kg/s", 5.0u"kg/hr") == ubase(5.0u"kg/hr")
     @test ustrip(u"kg/s", 5.0ud"kg/hr") ≈ 5/3600
     @test ustrip([u"kg/hr", u"m^3/hr"], [1.0u"kg/s",2.0u"L/s"]) ≈ [3600, 7.2]
-    @test FlexUnits.ustrip_dimensionless(1.0u"") == 1.0
-    @test_throws DimensionError FlexUnits.ustrip_dimensionless(1.0u"m/s")
+    @test scalar(1.0u"") == 1.0
+    @test_throws DimensionError scalar(1.0u"m/s")
 
     # Types:
     @test typeof(uconvert(ud"nm", 5e-9ud"m")) <: Quantity{Float64, U} 
@@ -1452,15 +1453,16 @@ end
     @test logquant(10u"kg") ≈ 10dB(u"kg")
     @test logquant(10dB(u"s")) ≈ log(10u"s")
 
-    #Informative errors thrown for incompatible operations (mixed log-linear types)
+    #Informative errors thrown for ambiguous operations (mixed log-linear types)
     @test_throws LogLinearError lq1 + q2
     @test_throws LogLinearError q1 + lq2 
     @test_throws LogLinearError lq1 - q2
     @test_throws LogLinearError q1 - lq2
-    @test_throws LogLinearError lq1 * q2
-    @test_throws LogLinearError q1 * lq2
-    @test_throws LogLinearError lq1 / q2
-    @test_throws LogLinearError q1 / lq2 
+
+    #Multiplying and Dividing are unambiguous and require dimensionless values
+    @test_throws DimensionError lq1 * q2
+    @test_throws DimensionError q1 * lq2
+    @test_throws DimensionError lq1 / q2
 
     #Miscillaneous tests
     @test ubase(lq1)*q2 ≈ q1*q2
@@ -1476,6 +1478,20 @@ end
     @test ustrip(u"", logubase(log(10), u"")) ≈ 10
     @test ustrip(u"", logubase(100, u"%")) ≈ exp(1)
     @test ustrip(u"", logubase(1, D""())) ≈ exp(1)
+
+    @test 5u""*(5dB(u"m")) == 5*(5dB(u"m"))
+    @test (5u"")*dB(u"W") == 5dB(u"W")
+    @test_throws DimensionError (5u"m")*dB(u"W")
+
+    #Practical test, linear sound wave propagation
+    α = ustrip(Np(), 20dB())u"1/m"
+    r = 1u"m" 
+    @test exp(α*r) ≈ 100.0
+    @test exp(α*r*Np()) ≈ 100.0
+
+    α = ustrip(dB(), 20dB())u"1/m"
+    r = 1u"m" 
+    @test exp(α*r*dB()) ≈ 100.0
 
 end
 

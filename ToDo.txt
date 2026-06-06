@@ -1,26 +1,19 @@
 Changelog:
-1.  Concatenating FlexQuant{VectorOrMat, <:AbstractDimLike} will now produce a LinmapQuant
-2.  Multiplying/Dividing StaticDims{d} with NoDims will produce a StaticDims{d}
+1.  Added "scalar(q::Quantity)" to return a scalar value without units 
+2.  Can now multiply unitless quantities with logarithmic units
 
 Backlog:
-1.  Specialized concatenation (hcat, vcat, but not hvcat) operations to produce LinmapQuant:
-    -   Matrices with uniform static dimensions are guaranteed to be compatible with LinmapQuant
-            [m1.*u"m", v1.*u"kg", ...]
-    -   FlexQuant{<:AbstractVectorOrMat} are also guaranteed to be compaibible with LinmapQuant
-            [m1*u"m", v1*u"kg", ...] 
-    -   Both vcat and hcat should work, but hvcat might not
-
-2.  Enable more Units constructors to build units on the fly
+1.  Enable more Units constructors to build units on the fly
     -   Units(Pair{String, <:Units}), Units(Pair{String, <:Quantity})
     -   Useful for unit registry and setting preferred units
 
-3.  Move factorizations to LinearAlgebra extension
+2.  Move factorizations to LinearAlgebra extension
     -   implement a unitful "cholupdate!" and "choldowndate!"
     -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
     -   Add performance benchmarks
 
 
-4.  Add plot recipes
+3.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
 
 
