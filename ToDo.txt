@@ -1,6 +1,26 @@
 Changelog:
-1.  Added "scalar(q::Quantity)" to return a scalar value without units 
-2.  Can now multiply unitless quantities with logarithmic units
+
+Current Patch:
+1.  Disable +(Number, LogQuant), it's not obvious that you're multiplying the quantity by a factor of exp(5), why not exp10(5)?
+2.  Introduce the LogRate{T, UL, UQ} type which is a relationship between logs and quantities
+    -   See notes below on the structure and mathematical operations 
+3.  Bump minor version
+
+
+struct LogRate{T, UL, UQ}
+    value :: LogQuant{T, UL}
+    units :: UQ
+end
+LogRate *|/ Number = LogRate
+LogRate + LogRate = LogRate #fails if UQ are different 
+LogRate + LogQuant = LogQuant #fails if UQ is not unitless
+LogQuant *|/ Quantity = LogRate 
+LogQuant *|/ Units = LogRate #Fails if units are non-scalar 
+exp(LogRate) = Quantity #fails if UQ is not unitless
+
+# Multiplies r.value by uscale(r.units) and then calls logubase(r.value)
+logubase(r::LogRate) = LogRate(uscale(r.units)*logubase(r.value), dimension(r.units))
+
 
 Backlog:
 1.  Enable more Units constructors to build units on the fly
