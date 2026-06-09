@@ -5,7 +5,11 @@ Current Patch:
 2.  Introduce the LogRate{T, UL, UQ} type which is a relationship between logs and quantities
     -   See notes below on the structure and mathematical operations
 3.  Enable more Units constructors to build units on the fly
-    -   Units(Pair{Symbol, <:Quantity}), Units(Pair{Symbol, <:Units}), Units(Pair{AbstractString, <:Union{Quantity,Units}})
+    -   Units(Quantity, Symbol), Units(Quantity, AbstractSring), Units(Pair{<:Union{Symbol,AbstractString}, <:Union{Quantity,Units}})
+    -   Units(AbstractUnitLike, AffineTransform, Symbol)
+        -   Currently this asserts if the unit is a dimensional alias (like u"m", but things like u"km" won't work)
+        -   We can generalize this by renaming the "todims" argument as "tounits" and using 
+            Units(dimension(u), tobase(u) ∘ tounits, symbol) #Throw error if (tobase(u) ∘ tounits) isn't an AbstractTransform
 3.  Bump minor version
 
 
