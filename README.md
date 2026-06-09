@@ -296,10 +296,10 @@ t1flex = [1.0u"m/s", 1.0u"m/s", 1.0u"m/s"]
 ```
 In this case, the performance boost from static inference is only ~2.5× but in more demanding cases, the boosts can be somewhat greater (roughly 5×). While DynamicQuantities works much better than Unitful in worst-case scenarios, FlexUnits can match performance of both packages in their respective strengths. In most benchmarks, FlexUnits performance will tie with the better option of DynamicQuantities and Unitful with one notable exception: ***unit conversion***.
 
--  ***Unitful is fastest at static unit conversions***. Because it compiles both dimensions and conversion factors, it outperforms FlexUnits (~25×) and DynamicQuantities (~1000×)
--  ***FlexUnits is fastest at dynamic unit conversions***. It outperforms Unitful.jl (~20×) because dynamic units are type-stsable and DynamicQuantities (~25×) because the FlexUnits `Units{Dimensions{FixRat32}}` object is much simpler and performant than the `SymbolicDimensions{FRInt32}` object that DynamicQuantities requires for this purpose
+-  ***Unitful is fastest at static unit conversions***. Because it compiles both dimensions and conversion factors, Unitful outperforms FlexUnits (~25×) which compiles only dimensions and DynamicQuantities (~1000×) which compiles nothing
+-  ***FlexUnits is fastest at dynamic unit conversions***. Because its dynamic units type `Units{Dimensions{FixRat32}}` is type-stable and simple, FlexUnits outperforms Unitful (~20×) which is not dynamically type-stable, and DynamicQuantities (~25×) which uses the complicated and slow `SymbolicDimensions{FRInt32}` for unit conversion
 
-Dynamic unit conversion is much more useful for repeatable applications as you often don't know beforehand what units your data will be in, or what units your users will want the results in (although dimensions are often known). 
+Dynamic unit conversion is much more useful for repeatable applications as you often don't know beforehand what units your data will be in, or what units your users will want the results in (although dimensions are often known). If input datasets are large, the performance differences can be substantial.
 
 More benchmarks can be accessed through the "benchmarks.jl" file in the "test" folder of this repo.
 
