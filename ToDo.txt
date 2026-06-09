@@ -3,7 +3,9 @@ Changelog:
 Current Patch:
 1.  Disable +(Number, LogQuant), it's not obvious that you're multiplying the quantity by a factor of exp(5), why not exp10(5)?
 2.  Introduce the LogRate{T, UL, UQ} type which is a relationship between logs and quantities
-    -   See notes below on the structure and mathematical operations 
+    -   See notes below on the structure and mathematical operations
+3.  Enable more Units constructors to build units on the fly
+    -   Units(Pair{Symbol, <:Quantity}), Units(Pair{Symbol, <:Units}), Units(Pair{AbstractString, <:Union{Quantity,Units}})
 3.  Bump minor version
 
 
