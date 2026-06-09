@@ -294,10 +294,12 @@ t1flex = [1.0u"m/s", 1.0u"m/s", 1.0u"m/s"]
 @btime sum(x->x^2, $t1flex)
   3.000 ns (0 allocations: 0 bytes)
 ```
-In this case, the performance boost from static inference is only ~2.5x but in more demanding cases, the boosts can be somewhat greater (roughly 5x). While DynamicQuantities works much better than Unitful in worst-case scenarios, FlexUnits can match performance of both packages in their respective strengths. In most benchmarks, FlexUnits performance will tie with the better option of DynamicQuantities and Unitful with two notable exceptions:
+In this case, the performance boost from static inference is only ~2.5× but in more demanding cases, the boosts can be somewhat greater (roughly 5×). While DynamicQuantities works much better than Unitful in worst-case scenarios, FlexUnits can match performance of both packages in their respective strengths. In most benchmarks, FlexUnits performance will tie with the better option of DynamicQuantities and Unitful with one notable exception: ***unit conversion***.
 
-1. FlexUnits performance is between Unitful and DynamicQuantities in the area of unit conversion (as FlexUnits doesn't support static unit conversion, only static dimension tracking)
-2. FlexUnits outperforms both Unitful and DynamicQuantities in cases where units are statically inferrable but internal variables are repeatedly re-assigned (for example, iterative solvers that re-assign variables, as FlexUnits doesn't over-specialize on units)
+-  ***Unitful is fastest at static unit conversions***. Because it compiles both dimensions and conversion factors, it outperforms FlexUnits (~25×) and DynamicQuantities (~1000×)
+-  ***FlexUnits is fastest at dynamic unit conversions***. It outperforms Unitful.jl (~20×) because dynamic units are type-stsable and DynamicQuantities (~25×) because the FlexUnits `Units{Dimensions{FixRat32}}` object is much simpler and performant than the `SymbolicDimensions{FRInt32}` object that DynamicQuantities requires for this purpose
+
+Dynamic unit conversion is much more useful for repeatable applications as you often don't know beforehand what units your data will be in, or what units your users will want the results in (although dimensions are often known). 
 
 More benchmarks can be accessed through the "benchmarks.jl" file in the "test" folder of this repo.
 
