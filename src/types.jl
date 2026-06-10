@@ -320,9 +320,17 @@ julia> (ustrip(5ud"°C") + ustrip(2ud"°C"))*u"°C" #Strips, adds raw quantity v
     tobase :: T
     symbol :: Symbol = DEFAULT_USYMBOL
 end
-Units{D}(dims, tobase::T, symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} = Units{D,T}(dims, tobase, symbol)
-Units(dims::D, tobase::AbstractUnitTransform=NoTransform(), symbol=DEFAULT_USYMBOL) where D<:AbstractDimLike = Units(dims, tobase, symbol)
-Units(units::U, tobase::AbstractUnitTransform, symbol=DEFAULT_USYMBOL) where U<:AbstractUnits = Units(dimension(assert_dimension(units)), tobase, symbol)
+Units{D}(dims, tobase::T, symbol::Symbol=DEFAULT_USYMBOL) where {D,T<:AbstractUnitTransform} = Units{D,T}(dims, tobase, symbol)
+Units(dims::AbstractDimLike, tobase::AbstractUnitTransform) = Units(dims, tobase, DEFAULT_USYMBOL)
+Units(dims::AbstractDimLike, symbol::Symbol=DEFAULT_USYMBOL) = Units(dims, NoTransform(), symbol)
+Units(u::Units, symbol::Symbol) = Units(dimension(u), tobase(u), symbol)
+Units(u::Units) = u
+
+function Units(u::Units, tounits::AbstractUnitTransform, symbol::Symbol=DEFAULT_USYMBOL)
+    newtrans = tobase(u) ∘ tounits
+    (newtrans isa AbstractUnitTransform) || throw(ArgumentError("Transform $(tounits) does not combine with $(tobase(u)) to produce an AbstractUnitTransform"))
+    return Units(dimension(u), newtrans, symbol)
+end
 
 tobase(u::Units) = u.tobase
 dimension(u::Units) = u.dims 
@@ -392,6 +400,8 @@ FlexQuant{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(d
 FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
 FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))
 
+Units(q::QuantUnion{<:Number, <:AbstractUnitLike}, symbol=DEFAULT_USYMBOL) = Units(dims=dimension(q), tobase=tobase(unit(q))*ustrip(q), symbol=symbol)
+Units(p::Pair{<:Union{Symbol,AbstractString}, <:Union{Quantity,AbstractUnitLike}}) = Units(p[2], Symbol(p[1]))
 
 """
     ubase(q::QuantUnion)

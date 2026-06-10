@@ -592,7 +592,7 @@ end
     @test (°C |> °F)(0) ≈ 32
 
     @test Units(dims=ud"Pa", tobase=AffineTransform()) == ud"Pa"
-    @test_throws NotDimensionError Units(dims=ud"kPa", tobase=AffineTransform())
+    @test Units(dims=ud"kPa", tobase=AffineTransform(), symbol=:kPa) == ud"kPa"
 
     # Test display against errors
     celsius = Units(tobase=AffineTransform(offset=273.15), dims=ud"K")

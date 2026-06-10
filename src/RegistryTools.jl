@@ -58,14 +58,13 @@ Base.delete!(d, k) = throw(PermanentDictError("Removing entries is prohibited"))
 Registers a unit into the dictionary. This version should be used instead of the `Symbol` versions as 
 it will validate whether or not the proposed name can be parsed.
 """
-function register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{String,<:UnitOrQuantity})
-    (k,v) = p
-    name = Meta.parse(k)
+register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{<:Union{AbstractString,Symbol},<:UnitOrQuantity}) = register_unit!(reg, Units(p))
 
-    if name isa Symbol
-        return _register_unit!(reg, name => v)
+function register_unit!(reg::AbstractDict{Symbol,<:Units}, u::Units)
+    if Meta.parse(String(usymbol(u))) isa Symbol
+        return _register_unit!(reg, u)
     else
-        throw(ArgumentError("Invalid unit registration name for $(k), it did not parse as a Symbol"))
+        throw(ArgumentError("Invalid unit registration name $(usymbol(u)), it did not parse as a Symbol"))
     end
 end
 
@@ -83,14 +82,9 @@ Returns the dimension type of a registry
 """
 regdimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 
-function _register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair{Symbol,<:AbstractUnitLike})
-    (k,v) = p
-    return setindex!(reg, v, k)
-end
 
-function _register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair{Symbol, <:QuantUnion})
-    return _register_unit!(reg, p[1]=>Units(p[2]))
-end
+_register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, u::Units) = setindex!(reg, u, usymbol(u))
+_register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair) = _register_unit!(reg, Units(p))
 
 function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
     original = reg[u]
@@ -100,7 +94,6 @@ function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, 
     end
     return reg
 end
-
 
 function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnits
     #reg = PermanentDict{Symbol, Units{DEFAULT_DIMENSONS}}()
