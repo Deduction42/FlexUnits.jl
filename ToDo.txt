@@ -1,18 +1,16 @@
 Changelog:
-
-Current Patch:
-1.  Disable +(Number, LogQuant), it's not obvious that you're multiplying the quantity by a factor of exp(5), why not exp10(5)?
-2.  Introduce the LogRate{T, UL, UQ} type which is a relationship between logs and quantities
-    -   See notes below on the structure and mathematical operations
-3.  Enable more Units constructors to build units on the fly
+1.  Enable more Units constructors to build units on the fly
     -   Units(Quantity, Symbol), Units(Quantity, AbstractSring), Units(Pair{<:Union{Symbol,AbstractString}, <:Union{Quantity,Units}})
     -   Units(AbstractUnitLike, AffineTransform, Symbol)
         -   Currently this asserts if the unit is a dimensional alias (like u"m", but things like u"km" won't work)
         -   We can generalize this by renaming the "todims" argument as "tounits" and using 
             Units(dimension(u), tobase(u) ∘ tounits, symbol) #Throw error if (tobase(u) ∘ tounits) isn't an AbstractTransform
-3.  Bump minor version
+2.  AffineTransform now only uses matmul for numeric values, uses normal operators for other cases
+3.  Functions with unitless output (exp, sin, cos etc) now produce Real/Complex instead of Quantity{T, NoDims} (matching Unitful behaviour)
+4.  Loosened rules around LogQuant operations
 
-
+Current Patch:
+#Hypthetical structure (seems redundant because we could jsut have Quantity{LogQuant{T,LU}, U})
 struct LogRate{T, UL, UQ}
     value :: LogQuant{T, UL}
     units :: UQ

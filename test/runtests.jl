@@ -1454,10 +1454,10 @@ end
     @test logquant(10dB(u"s")) ≈ log(10u"s")
 
     #Informative errors thrown for ambiguous operations (mixed log-linear types)
-    @test_throws LogLinearError lq1 + q2
-    @test_throws LogLinearError q1 + lq2 
-    @test_throws LogLinearError lq1 - q2
-    @test_throws LogLinearError q1 - lq2
+    @test_throws DimensionError lq1 + q2
+    @test_throws DimensionError q1 + lq2 
+    @test_throws DimensionError lq1 - q2
+    @test_throws DimensionError q1 - lq2
 
     #Multiplying and Dividing are unambiguous and require dimensionless values
     @test_throws DimensionError lq1 * q2
@@ -1484,14 +1484,10 @@ end
     @test_throws DimensionError (5u"m")*dB(u"W")
 
     #Practical test, linear sound wave propagation
-    α = ustrip(Np(), 20dB())u"1/m"
+    α = quantity(20dB(), u"1/m")
     r = 1u"m" 
     @test exp(α*r) ≈ 100.0
-    @test exp(α*r*Np()) ≈ 100.0
-
-    α = ustrip(dB(), 20dB())u"1/m"
-    r = 1u"m" 
-    @test exp(α*r*dB()) ≈ 100.0
+    @test exp(α*r + 10dB(u"Pa")) ≈ 1000u"Pa"
 
 end
 
