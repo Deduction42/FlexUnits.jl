@@ -1,6 +1,30 @@
 Changelog:
-1.  Added "scalar(q::Quantity)" to return a scalar value without units 
-2.  Can now multiply unitless quantities with logarithmic units
+1.  Enable more Units constructors to build units on the fly
+    -   Units(Quantity, Symbol), Units(Quantity, AbstractSring), Units(Pair{<:Union{Symbol,AbstractString}, <:Union{Quantity,Units}})
+    -   Units(AbstractUnitLike, AffineTransform, Symbol)
+        -   Currently this asserts if the unit is a dimensional alias (like u"m", but things like u"km" won't work)
+        -   We can generalize this by renaming the "todims" argument as "tounits" and using 
+            Units(dimension(u), tobase(u) ∘ tounits, symbol) #Throw error if (tobase(u) ∘ tounits) isn't an AbstractTransform
+2.  AffineTransform now only uses matmul for numeric values, uses normal operators for other cases
+3.  Functions with unitless output (exp, sin, cos etc) now produce Real/Complex instead of Quantity{T, NoDims} (matching Unitful behaviour)
+4.  Loosened rules around LogQuant operations
+
+Current Patch:
+#Hypthetical structure (seems redundant because we could jsut have Quantity{LogQuant{T,LU}, U})
+struct LogRate{T, UL, UQ}
+    value :: LogQuant{T, UL}
+    units :: UQ
+end
+LogRate *|/ Number = LogRate
+LogRate + LogRate = LogRate #fails if UQ are different 
+LogRate + LogQuant = LogQuant #fails if UQ is not unitless
+LogQuant *|/ Quantity = LogRate 
+LogQuant *|/ Units = LogRate #Fails if units are non-scalar 
+exp(LogRate) = Quantity #fails if UQ is not unitless
+
+# Multiplies r.value by uscale(r.units) and then calls logubase(r.value)
+logubase(r::LogRate) = LogRate(uscale(r.units)*logubase(r.value), dimension(r.units))
+
 
 Backlog:
 1.  Enable more Units constructors to build units on the fly

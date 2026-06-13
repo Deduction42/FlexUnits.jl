@@ -8,6 +8,7 @@ import Unitful                            # u"..."
 import DynamicQuantities                  # u"...", ua"..."
 using DynamicQuantities: QuantityArray, uexpand, ustrip
 using FlexUnits, .UnitRegistry            # UnitRegistry.u"..." 
+using StaticArrays
 
 println("\n== Versions ==")
 @show Base.VERSION
@@ -162,7 +163,7 @@ print("FlexUnits:\t")
 # ========== S4.1. upreferred ==========
 println("\nS4.1) static upreferred\n")
 
-base_array = rand(Ns)
+base_array = SVector{50}(randn(50))
 l_uni = base_array .* Unitful.u"cm"
 l_dyn = base_array .* DynamicQuantities.us"cm"
 l_flex = quantity.(base_array, UnitRegistry.u"cm")
@@ -184,13 +185,22 @@ print("FlexU:  \t")
 @btime FlexUnits.ustrip.(UnitRegistry.u"mm", $l_flex);
 
 # ========== S4.3. uconvert ==========
-println("\nS4.3) uconvert to arbitrary units\n")
+println("\nS4.3) Statically inferrable unit conversions\n")
 print("Unitful:\t")
-@btime Unitful.uconvert.(Unitful.u"ft", $l_uni);
+@btime Unitful.uconvert.(Ref(Unitful.u"ft"), $l_uni);
 print("DynamicQ:\t")
-@btime DynamicQuantities.uconvert.(DynamicQuantities.us"ft", $l_dyn);
+@btime DynamicQuantities.uconvert.(Ref(DynamicQuantities.us"ft"), $l_dyn);
 print("FlexU:  \t")
-@btime FlexUnits.uconvert.(UnitRegistry.u"ft", $l_flex);
+@btime FlexUnits.uconvert.(Ref(UnitRegistry.u"ft"), $l_flex);
+
+println("\nS4.4) Dynamic unit conversions\n")
+print("Unitful:\t")
+dyn_ft = Ref{eltype([Unitful.ft, Unitful.kg])}(Unitful.ft)
+@btime Unitful.uconvert.(dyn_ft, $l_uni);
+print("DynamicQ:\t")
+@btime DynamicQuantities.uconvert.(Ref(DynamicQuantities.us"ft"), $l_dyn);
+print("FlexU:  \t")
+@btime FlexUnits.uconvert.(Ref(UnitRegistry.ud"ft"), $l_flex);
 
 # ========== S5. Affine units (°C/°F) ==========
 println("\nS5) Ideal gas law with affine units: PV = nRT at 25°C, 101.3kPa, n=1 mol\n")

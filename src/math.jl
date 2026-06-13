@@ -282,8 +282,6 @@ Base.:/(q1::QuantUnion, q2::QuantUnion) = with_ubase(/, q1, q2)
 Base.:inv(q::QuantUnion) = with_ubase(inv, q)
 Base.adjoint(q::QuantUnion) = with_ubase(adjoint, q)
 
-Base.muladd(x::NumUnion, y::QuantUnion, z::QuantUnion) = muladd(x, dstrip(y), dstrip(z)) * equaldims(dimension(y), dimension(z))
-Base.muladd(x::QuantUnion, y::NumUnion, z::QuantUnion) = muladd(dstrip(x), y, dstrip(z)) * equaldims(dimension(x), dimension(z))
 Base.muladd(x::QuantUnion, y::QuantUnion, z::QuantUnion) = muladd(dstrip(x), dstrip(y), dstrip(z)) * equaldims(dimension(x)*dimension(y), dimension(z))
 
 #Operators on explicitly missing values simply return missing
@@ -345,8 +343,7 @@ for f in (
         :coth, :asech, :acsch, :acoth, :log, :log2, :log10, :log1p, :exp, :exp2, :exp10, 
         :expm1, :frexp, :exponent,
     )
-    @eval Base.$f(u::AbstractDimLike) = dimensionless(u)
-    @eval Base.$f(q::QuantUnion) = with_ubase($f, q)
+    @eval Base.$f(q::QuantUnion) = $f(scalar(q))
 end
 
 #Single-argument functions that only operate on values
@@ -411,15 +408,15 @@ Base.:+(q::LogQuant) = with_logubase(+, *, q)
 Base.:+(q1::LogQuant, q2::LogQuant) = with_logubase(+, *, q1, q2)
 Base.:+(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q) + x, unit(q)))
 Base.:+(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q) + x, unit(q)))
-Base.:+(q1::Quantity, q2::LogQuant) = throw(LogLinearError(+, q1, q2))
-Base.:+(q1::LogQuant, q2::Quantity) = throw(LogLinearError(+, q1, q2))
+Base.:+(q1::Quantity, q2::LogQuant) = scalar(q1) + q2
+Base.:+(q1::LogQuant, q2::Quantity) = q1 + scalar(q2)
 
 Base.:-(q::LogQuant) = with_logubase(-, inv, q)
 Base.:-(q1::LogQuant, q2::LogQuant) = with_logubase(-, /, q1, q2)
 Base.:-(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(x - ustrip(q), inv(unit(q))))
 Base.:-(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q) - x, unit(q)))
-Base.:-(q1::Quantity, q2::LogQuant) = throw(LogLinearError(-, q1, q2))
-Base.:-(q1::LogQuant, q2::Quantity) = throw(LogLinearError(-, q1, q2))
+Base.:-(q1::Quantity, q2::LogQuant) = scalar(q1) - q2
+Base.:-(q1::LogQuant, q2::Quantity) = q1 - scalar(q2)
 
 Base.:*(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:*(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
