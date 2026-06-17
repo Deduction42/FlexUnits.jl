@@ -1,13 +1,7 @@
 Changelog:
-1.  Enable more Units constructors to build units on the fly
-    -   Units(Quantity, Symbol), Units(Quantity, AbstractSring), Units(Pair{<:Union{Symbol,AbstractString}, <:Union{Quantity,Units}})
-    -   Units(AbstractUnitLike, AffineTransform, Symbol)
-        -   Currently this asserts if the unit is a dimensional alias (like u"m", but things like u"km" won't work)
-        -   We can generalize this by renaming the "todims" argument as "tounits" and using 
-            Units(dimension(u), tobase(u) ∘ tounits, symbol) #Throw error if (tobase(u) ∘ tounits) isn't an AbstractTransform
-2.  AffineTransform now only uses matmul for numeric values, uses normal operators for other cases
-3.  Functions with unitless output (exp, sin, cos etc) now produce Real/Complex instead of Quantity{T, NoDims} (matching Unitful behaviour)
-4.  Loosened rules around LogQuant operations
+1.  Enable Log/Linear operations like +-*/
+    -   Also enable this for op(LogQuant, Units) 
+2.  Add shortcut operations for ^(d::NoDims, x) = d
 
 Current Patch:
 #Hypthetical structure (seems redundant because we could jsut have Quantity{LogQuant{T,LU}, U})
