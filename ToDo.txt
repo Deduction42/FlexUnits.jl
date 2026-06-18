@@ -1,23 +1,15 @@
 Changelog:
-1.  Enable Log/Linear operations like +-*/
-    -   Also enable this for op(LogQuant, Units) 
-2.  Add shortcut operations for ^(d::NoDims, x) = d
+1.  Added ustrip(::Type{D}, q::QuantUnion) where D<:StaticDims
+2.  Units are now callable, calling units applies "uconvert", and pipeline operators are no longer overloaded in this case
 
-Current Patch:
-#Hypthetical structure (seems redundant because we could jsut have Quantity{LogQuant{T,LU}, U})
-struct LogRate{T, UL, UQ}
-    value :: LogQuant{T, UL}
-    units :: UQ
-end
-LogRate *|/ Number = LogRate
-LogRate + LogRate = LogRate #fails if UQ are different 
-LogRate + LogQuant = LogQuant #fails if UQ is not unitless
-LogQuant *|/ Quantity = LogRate 
-LogQuant *|/ Units = LogRate #Fails if units are non-scalar 
-exp(LogRate) = Quantity #fails if UQ is not unitless
+Current Patch ToDo:
+3.  Enable multiplication and division between Log and Linear units 
+    -   Produces a Quantity{LogQuant{T,UL}, U}
+4.  Create a LogLinUnit{UL, U} type 
+    -   Gets produced by *(ulog::Units{D,ExpAffineTrans}, u::Union{AbstractDimLike, Units{D,AffineTransform}})
+    -   Multiplying or constructing a quantity with a LogLinUnit produces a Quantity{LogQuant{T,UL}, U}
+    -   Conversions between Quantity{LogQuant{T,UL}, U} can be acheived by uconvert(u::LogLinUnit)
 
-# Multiplies r.value by uscale(r.units) and then calls logubase(r.value)
-logubase(r::LogRate) = LogRate(uscale(r.units)*logubase(r.value), dimension(r.units))
 
 
 Backlog:

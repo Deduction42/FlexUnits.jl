@@ -880,8 +880,9 @@ end
 
     #Dimension validation 
     @test ustrip(5u"kJ" |> D"kJ") ≈ 5000
-    @test 5u"kJ" |> D"kJ" isa Quantity{Float64, D"J"}
-
+    @test ustrip(D"kJ", 5u"kJ") ≈ 5000
+    @test uconvert(D"kJ", 5u"kJ")  isa Quantity{Float64, D"J"}
+    @test u"kJ"|>D"kJ" == AffineTransform{Float64}(scale=1000)
 
 end
 
