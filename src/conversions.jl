@@ -155,6 +155,8 @@ function Base.convert(::Type{FlexQuant{T,D}}, u::AbstractUnitLike) where {T,D<:A
     return FlexQuant(uscale(u), dimension(u))
 end
 
+# Converting mixed logarithimic/linear quantities ====================================================
+Base.convert(::Type{LogQuant{T,U}}, q::Quantity{<:LogQuant}) where {T,U} = convert(LogQuant{T,U}, scalar(q))
 
 # Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), tobase=tobase(u), symbol=usymbol(u))
@@ -214,6 +216,18 @@ end
 function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U<:AbstractUnitLike, Q1<:QuantUnion{T1,U}, Q2<:QuantUnion{T2,U}}
     T = promote_type(T1, T2)
     return quant_type(T){T, U}
+end
+
+#Mixed log-linear promotions 
+function Base.promote_rule(::Type{LQ1}, ::Type{<:Quantity{LQ2}}) where {LQ1<:LogQuant, LQ2<:LogQuant}
+    D = promote_type(dimtype(LQ1), dimtype(LQ2))
+    T = promote_type(valtype(LQ1), valtype(LQ2))
+    return LogQuant{T, D}
+end
+function Base.promote_rule(::Type{<:Quantity{LQ2}}, ::Type{LQ1}) where {LQ1<:LogQuant, LQ2<:LogQuant}
+    D = promote_type(dimtype(LQ1), dimtype(LQ2))
+    T = promote_type(valtype(LQ1), valtype(LQ2))
+    return LogQuant{T, D}
 end
 
 #Cases where values are updated to quantities

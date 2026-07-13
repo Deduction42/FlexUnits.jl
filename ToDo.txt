@@ -1,18 +1,19 @@
-Changelog:
-1.  Added ustrip(::Type{D}, q::QuantUnion) where D<:StaticDims
-2.  Units are now callable, calling units applies "uconvert", and pipeline operators are no longer overloaded in this case
+Current Patch Changelog:
+    -   LogLinearError removed (mixed linear-logarithmic operations are now supported)
+    -   Logartihmic and Linear quantities can now be multiplied (produces a `Quantity{LogQuant{T,UL}, U}`)
 
 Current Patch ToDo:
-3.  Enable multiplication and division between Log and Linear units 
-    -   Produces a Quantity{LogQuant{T,UL}, U}
-4.  Create a LogLinUnit{UL, U} type 
+2.  Create a LogLinUnit{UL, U} type 
     -   Gets produced by *(ulog::Units{D,ExpAffineTrans}, u::Union{AbstractDimLike, Units{D,AffineTransform}})
     -   Multiplying or constructing a quantity with a LogLinUnit produces a Quantity{LogQuant{T,UL}, U}
     -   Conversions between Quantity{LogQuant{T,UL}, U} can be acheived by uconvert(u::LogLinUnit)
 
-
-
 Backlog:
+0.  Make fields of dimensions actual units (not dimension names)
+    -   (m, kg, s, A, K, cd, mol)
+    -   Completely removes ambiguity (i.e. m=1 is more explicit than length=1)
+    -   Eliminates need for "unit_symbols" function
+
 1.  Enable more Units constructors to build units on the fly
     -   Units(Pair{String, <:Units}), Units(Pair{String, <:Quantity})
     -   Useful for unit registry and setting preferred units
@@ -21,7 +22,6 @@ Backlog:
     -   implement a unitful "cholupdate!" and "choldowndate!"
     -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
     -   Add performance benchmarks
-
 
 3.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl

@@ -1460,10 +1460,10 @@ end
     @test_throws DimensionError lq1 - q2
     @test_throws DimensionError q1 - lq2
 
-    #Multiplying and Dividing are unambiguous and require dimensionless values
-    @test_throws DimensionError lq1 * q2
-    @test_throws DimensionError q1 * lq2
-    @test_throws DimensionError lq1 / q2
+    #Multiplying and dividing LoqQuant by Quantity
+    @test exp(lq1 * q2 / q2) ≈ q1
+    @test exp(q1 * lq2 / q1) ≈ q2 
+    @test exp((lq1 / q2) * q2) ≈ q1
 
     #Miscillaneous tests
     @test ubase(lq1)*q2 ≈ q1*q2
