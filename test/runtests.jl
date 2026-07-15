@@ -1485,7 +1485,7 @@ end
     @test_throws DimensionError (5u"m")*dB(u"W")
 
     #Practical test, linear sound wave propagation
-    α = quantity(20dB(), u"1/m")
+    α = 20dB()/(1u"m")
     r = 1u"m" 
     @test exp(α*r) ≈ 100.0
     @test exp(α*r + 10dB(u"Pa")) ≈ 1000u"Pa"
