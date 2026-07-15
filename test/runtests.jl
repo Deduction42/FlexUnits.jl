@@ -1490,6 +1490,16 @@ end
     @test exp(α*r) ≈ 100.0
     @test exp(α*r + 10dB(u"Pa")) ≈ 1000u"Pa"
 
+    #Conversion table test 
+    λ = Units(5*u"m", :λ)
+    c = 1500*u"m/s"
+    f = 2*π*c/(1λ)
+
+    u1 = dB()/λ
+    @test ustrip(u1, 1dB()/1λ) ≈ 1.0
+    @test ustrip(u1, 1dB()/1u"m") ≈ ustrip(u"m", 1λ)
+    @test ustrip(u1, (c/λ)*1dB()/u"m*Hz") ≈ ustrip(u"m/s", c)
+    @test ustrip(u1, 1(Np()/u"m")) ≈ 10ustrip(u"m", 1λ)/log(10)
 end
 
 

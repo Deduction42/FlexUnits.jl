@@ -1,12 +1,8 @@
 Current Patch Changelog:
     -   LogLinearError removed (mixed linear-logarithmic operations are now supported)
-    -   Logartihmic and Linear quantities can now be multiplied (produces a `Quantity{LogQuant{T,UL}, U}`)
+    -   Logarithmic and Linear quantities can now be multiplied (produces a `Quantity{LogQuant{T,UL}, U}`)
+    -   LogLinUnit introduced to enable mixed log/linear unit conversions
 
-Current Patch ToDo:
-2.  Create a LogLinUnit{UL, U} type 
-    -   Gets produced by *(ulog::Units{D,ExpAffineTrans}, u::Union{AbstractDimLike, Units{D,AffineTransform}})
-    -   Multiplying or constructing a quantity with a LogLinUnit produces a Quantity{LogQuant{T,UL}, U}
-    -   Conversions between Quantity{LogQuant{T,UL}, U} can be acheived by uconvert(u::LogLinUnit)
 
 Backlog:
 0.  Make fields of dimensions actual units (not dimension names)

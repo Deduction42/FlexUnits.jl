@@ -595,6 +595,35 @@ end
 dB = LogScale(scale=0.1, base=10, symbol=:dB)
 Np = LogScale(scale=1, base=exp(1), symbol=:Np)
 
+#=================================================================================================
+Log-Linear Mixture Unit
+=================================================================================================#
+"""
+    struct LogLinUnits{L<:AbstractUnits{<:Any, <:ExpAffTransform}, U<:Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike}} <: AbstractUnitLike
+        ulog :: L 
+        ulin :: U
+    end
+
+An object that represents a mixture of logarithmic/linear units, such as dB/m
+"""
+
+@kwdef struct LogLinUnits{L<:AbstractUnits{<:Any, <:ExpAffTransform}, U<:Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike}} <: AbstractUnitLike
+    ulog :: L 
+    ulin :: U
+end
+
+function Base.:*(ulog::AbstractUnits{<:Any, <:ExpAffTransform}, ulin::Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike})
+    return LogLinUnits(ulog, assert_scalar(ulin))
+end
+
+function Base.:*(ulin::Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike}, ulog::AbstractUnits{<:Any, <:ExpAffTransform})
+    return LogLinUnits(ulog, assert_scalar(ulin))
+end
+
+function Base.:/(ulog::AbstractUnits{<:Any, <:ExpAffTransform}, ulin::Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike})
+    inv_ulin = Units(inv(assert_scalar(ulin)), Symbol("($(usymbol(ulin)))⁻¹"))
+    return LogLinUnits(ulog, inv_ulin)
+end
 
 #=============================================================================================
 Constructor utilities
@@ -693,7 +722,7 @@ assert_dimension(u::AbstractDimLike) =  u
 assert_dimension(u::AbstractUnits) = is_dimension(u) ? u : throw(NotDimensionError(u))
 
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
-assert_dimensionless(q::QuantUnion) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
+assert_dimensionless(q::LogQuantUnion) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
 dimensionless(u::AbstractUnitLike) = dimension(assert_dimensionless(u))
 dimensionless(q::QuantUnion) = scalar(q)
 dimensionless(n) = n

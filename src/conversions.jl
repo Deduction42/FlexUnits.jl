@@ -82,6 +82,11 @@ function uconvert(u::Units{D,<:ExpAffTransform}, lq::LogQuant) where D<:Abstract
     return LogQuant{typeof(newval), typeof(newunit)}(newval, newunit)
 end
 
+function uconvert(u::LogLinUnits, q::Quantity)
+    q_inner = uconvert(u.ulog, ustrip(u.ulin, q))
+    return Quantity(q_inner, u.ulin)
+end
+
 
 """
     dconvert(u::AbstractUnitLike, x)
@@ -111,6 +116,7 @@ Converts quantity `q` to units `u` equivalent and removes units
 ustrip(u::AbstractUnitLike, q::QuantUnion) = uconvert(u, unit(q))(ustrip(q))
 ustrip(u::AbstractUnitLike, q::LogQuant) = uconvert(u, dimension(q))(dstrip(q))
 ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
+ustrip(u::LogLinUnits, q::Quantity) = ustrip(ustrip(uconvert(u,q)))
 
 """
     dstrip(u::AbstractUnitLike, q::QuantUnion)
