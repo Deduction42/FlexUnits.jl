@@ -198,6 +198,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     #Angled units: For the SI system, considers "degrees/radians" to be dimensionless 
     _register_unit(:rad => reg[:NoDims])
     _register_unit(:deg => (2*π/360)*reg[:NoDims])
+    _register_unit(:rps => (2*π)*reg[:Hz])
     _register_unit(:rpm => (2*π/60)*(reg[:Hz]))
 
     #If you want to add "angle" as a dimension, you can overload the appropriate function

@@ -401,6 +401,12 @@ function Base.:*(x::NumUnion, u::Units{<:AbstractDimLike,<:ExpAffTransform})
     logtrans = log(tobase(u))
     return logquant(logtrans(x), dimension(u))
 end
+
+function Base.:*(x::NumUnion, u::LogLinUnits)
+    innerval = tobase(u.ulin)(x)
+    return quantity(innerval*u.ulog, dimension(u.ulin))
+end
+
 Base.:*(x::Quantity, u::Units{<:AbstractDimLike,<:ExpAffTransform}) = scalar(x)*u
 
 #Logarithmic quantity algebra
@@ -451,3 +457,20 @@ function Base.rem(lq1::LogQuant{<:Number,D1}, lq2::LogQuant{<:Number,D2}) where 
     return LogQuant(rem(dstrip(lq1), dstrip(lq2)), d)
 end
 Base.rem(lq1::LogQuant, lq2::LogQuant) = rem(logubase(lq1), logubase(lq2))
+
+
+#= Experimental, multiplying/dividing LogQuant which may not make sense
+function Base.:*(q1::LogQuant, q2::LogQuant)
+    if isdimensionless(dimension(q1))
+        return ustrip(logubase(q1))*logubase(q2) 
+    elseif isdimensionless(dimension(q2))
+        return ustrip(logubase(q2))*logubase(q1)
+    end 
+    throw(ArgumentError("One argument must be dimensionless"))
+end
+
+function Base.:/(q1::LogQuant, q2::LogQuant)
+    assert_dimensionless(q2)
+    return logubase(q1) / ustrip(logubase(q2))
+end
+=#

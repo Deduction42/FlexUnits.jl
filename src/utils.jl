@@ -132,6 +132,15 @@ function ushow(io::IO, u::AbstractUnits; pretty=PRETTY_DIM_OUTPUT[])
     end
 end
 
+#Showing LogLinUnits 
+function ushow(io::IO, u::LogLinUnits; pretty=PRETTY_DIM_OUTPUT)
+    ushow(io, u.ulog, pretty=pretty)
+    if !startswith(string(usymbol(u.ulin)), "/")
+        print(io, ' ')
+    end
+    return ushow(io, u.ulin, pretty=pretty)
+end
+
 #Fallback for showing dimensions with generic values
 function ushow(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<: AbstractDimensions
     vals = map(fn->fn=>getproperty(d,fn), dimension_names(D))

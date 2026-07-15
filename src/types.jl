@@ -595,6 +595,35 @@ end
 dB = LogScale(scale=0.1, base=10, symbol=:dB)
 Np = LogScale(scale=1, base=exp(1), symbol=:Np)
 
+#=================================================================================================
+Log-Linear Mixture Unit
+=================================================================================================#
+"""
+    struct LogLinUnits{L<:AbstractUnits{<:Any, <:ExpAffTransform}, U<:Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike}} <: AbstractUnitLike
+        ulog :: L 
+        ulin :: U
+    end
+
+An object that represents a mixture of logarithmic/linear units, such as dB/m
+"""
+
+@kwdef struct LogLinUnits{L<:AbstractUnits{<:Any, <:ExpAffTransform}, U<:Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike}} <: AbstractUnitLike
+    ulog :: L 
+    ulin :: U
+end
+
+function Base.:*(ulog::AbstractUnits{<:Any, <:ExpAffTransform}, ulin::Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike})
+    return LogLinUnits(ulog, assert_scalar(ulin))
+end
+
+function Base.:*(ulin::Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike}, ulog::AbstractUnits{<:Any, <:ExpAffTransform})
+    return LogLinUnits(ulog, assert_scalar(ulin))
+end
+
+function Base.:/(ulog::AbstractUnits{<:Any, <:ExpAffTransform}, ulin::Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike})
+    inv_ulin = Units(inv(assert_scalar(ulin)), Symbol("($(usymbol(ulin)))⁻¹"))
+    return LogLinUnits(ulog, inv_ulin)
+end
 
 #=============================================================================================
 Constructor utilities
@@ -668,23 +697,6 @@ struct NotDimensionError{D} <: Exception
 end
 Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim," cannot be treated as dimension, operation only valid for dimension units")
 
-#=
-"""
-    LogLinearError{F} <: Exception
-
-Error thrown for function {F} when applied to a mixture of linear and logaritmic units
-"""
-struct LogLinearError{F, Q1, Q2} <: Exception
-    f :: F
-    q1 :: Q1 
-    q2 :: Q2 
-end
-Base.showerror(io::IO, e::LogLinearError{F,Q1,Q2}) where {F,Q1,Q2} = print(io, 
-    "LogLinearError: Cannot apply function '",e.f,"' to argument types ",Q1," and ",Q2,
-    "'. Perhaps you meant to convert one of the arguments to linear units using 'ubase(x::LoqQuant)'"
-)
-=#
-
 assert_scalar(u::AbstractDimLike) = u
 assert_scalar(u::AbstractUnits) = is_scalar(u) ? u : throw(NotScalarError(u))
 scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
@@ -693,7 +705,7 @@ assert_dimension(u::AbstractDimLike) =  u
 assert_dimension(u::AbstractUnits) = is_dimension(u) ? u : throw(NotDimensionError(u))
 
 assert_dimensionless(u::AbstractUnitLike) = isdimensionless(u) ? u : throw(DimensionError(u))
-assert_dimensionless(q::QuantUnion) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
+assert_dimensionless(q::LogQuantUnion) = isdimensionless(unit(q)) ? q : throw(DimensionError(q))
 dimensionless(u::AbstractUnitLike) = dimension(assert_dimensionless(u))
 dimensionless(q::QuantUnion) = scalar(q)
 dimensionless(n) = n
