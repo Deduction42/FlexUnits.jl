@@ -697,23 +697,6 @@ struct NotDimensionError{D} <: Exception
 end
 Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", e.dim," cannot be treated as dimension, operation only valid for dimension units")
 
-#=
-"""
-    LogLinearError{F} <: Exception
-
-Error thrown for function {F} when applied to a mixture of linear and logaritmic units
-"""
-struct LogLinearError{F, Q1, Q2} <: Exception
-    f :: F
-    q1 :: Q1 
-    q2 :: Q2 
-end
-Base.showerror(io::IO, e::LogLinearError{F,Q1,Q2}) where {F,Q1,Q2} = print(io, 
-    "LogLinearError: Cannot apply function '",e.f,"' to argument types ",Q1," and ",Q2,
-    "'. Perhaps you meant to convert one of the arguments to linear units using 'ubase(x::LoqQuant)'"
-)
-=#
-
 assert_scalar(u::AbstractDimLike) = u
 assert_scalar(u::AbstractUnits) = is_scalar(u) ? u : throw(NotScalarError(u))
 scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
