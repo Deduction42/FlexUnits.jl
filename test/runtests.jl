@@ -1481,8 +1481,8 @@ end
     @test ustrip(u"", logubase(1, D""())) ≈ exp(1)
 
     @test 5u""*(5dB(u"m")) == 5*(5dB(u"m"))
-    @test (5u"")*dB(u"W") == 5dB(u"W")
-    @test_throws DimensionError (5u"m")*dB(u"W")
+    @test (5u"")*dB(u"W") == 5*(1dB(u"W"))
+    @test (5u"m")*dB() == (5u"m")*(1dB())
 
     #Practical test, linear sound wave propagation
     α = 20dB()/(1u"m")
@@ -1496,9 +1496,9 @@ end
     f = 2*π*c/(1λ)
 
     u1 = dB()/λ
-    @test ustrip(u1, 1dB()/1λ) ≈ 1.0
-    @test ustrip(u1, 1dB()/1u"m") ≈ ustrip(u"m", 1λ)
-    @test ustrip(u1, (c/λ)*1dB()/u"m*Hz") ≈ ustrip(u"m/s", c)
+    @test ustrip(u1, 1dB()/λ) ≈ 1.0
+    @test ustrip(u1, dB()/(1u"m")) ≈ ustrip(u"m", 1λ)
+    @test ustrip(u1, (c/λ)*dB()/u"m*Hz") ≈ ustrip(u"m/s", c)
     @test ustrip(u1, 1(Np()/u"m")) ≈ 10ustrip(u"m", 1λ)/log(10)
 end
 

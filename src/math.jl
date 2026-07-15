@@ -407,7 +407,17 @@ function Base.:*(x::NumUnion, u::LogLinUnits)
     return quantity(innerval*u.ulog, dimension(u.ulin))
 end
 
-Base.:*(x::Quantity, u::Units{<:AbstractDimLike,<:ExpAffTransform}) = scalar(x)*u
+Base.:*(x::Quantity, u::Units{<:AbstractDimLike,<:ExpAffTransform}) = x*(1*u)
+Base.:*(u::Units{<:AbstractDimLike,<:ExpAffTransform}, x::Quantity) = x*(1*u)
+Base.:/(u::Units{<:AbstractDimLike,<:ExpAffTransform}, x::Quantity) = (1*u)/x
+
+Base.:*(x::Quantity, u::LogLinUnits) = x*(1*u)
+Base.:*(u::LogLinUnits, x::Quantity) = x*(1*u)
+Base.:/(u::LogLinUnits, x::Quantity) = (1*u)/x
+
+Base.:*(x::LogQuant, u::Union{Units{<:AbstractDimLike, <:AffineTransform}, AbstractDimLike}) = x*(1*assert_scalar(u))
+Base.:*(u::Union{Units{<:AbstractDimLike, <:AffineTransform}, AbstractDimLike}, x::LogQuant) = x*(1*assert_scalar(u))
+Base.:/(x::LogQuant, u::Union{Units{<:AbstractDimLike, <:AffineTransform}, AbstractDimLike}) = x/(1*assert_scalar(u))
 
 #Logarithmic quantity algebra
 Base.:+(q::LogQuant) = with_logubase(+, *, q)
