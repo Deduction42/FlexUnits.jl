@@ -1,6 +1,9 @@
 #============================================================================================
 uconvert with transformation objects
 ============================================================================================#
+#Calling units triggers a conversion 
+(u::AbstractUnitLike)(x) = uconvert(u, x)
+
 #Generic transformation generator
 """
     uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) 
@@ -34,6 +37,9 @@ function uconvert(u_target::AbstractDimLike, u_current::AbstractDimLike)
 end
 uconvert(ft::AbstractUnitTransform, x) = ft(x)
 uconvert(u_target::StaticDims{D}, u_current::Units{StaticDims{D}}) where D = tobase(u_current)
+
+uconvert(::Type{D}, x) where D <: StaticDims = uconvert(D(), x)
+ustrip(::Type{D}, x) where D <: StaticDims = ustrip(D(), x)
 
 assert_convertable(u_target::AbstractUnitLike, u_current::AbstractUnitLike) = compatible_dims(u_target, u_current) ? u_target : throw(ConversionError(u_target, u_current))
 
@@ -76,20 +82,17 @@ function uconvert(u::Units{D,<:ExpAffTransform}, lq::LogQuant) where D<:Abstract
     return LogQuant{typeof(newval), typeof(newunit)}(newval, newunit)
 end
 
-uconvert(::Type{D}, q::QuantUnion) where D <: StaticDims = uconvert(D(), q)
-uconvert(::Type{D}, q::LogQuant) where D <: StaticDims = uconvert(D(), q)
-
 
 """
-    dconvert(u::AbstractUnitLike, q::QuantUnion)
+    dconvert(u::AbstractUnitLike, x)
 
-Converts quantity `q` to the equivalent dimensional quantity having the same dimensions as `u`
+Converts quantity or unit `x` to the dimensions of `u`, which skips an unnecessary transformation step
 ```julia
 julia> dconvert(u"km/hr", 25u"km/hr")
 6.944444444444445 m/s
 ```
 """
-dconvert(u::AbstractUnitLike, q::QuantUnion) = uconvert(dimension(u), q)
+dconvert(u::AbstractUnitLike, x) = uconvert(dimension(u), x)
 
 
 """
@@ -97,10 +100,8 @@ dconvert(u::AbstractUnitLike, q::QuantUnion) = uconvert(dimension(u), q)
 
 Using `q |> qout` is an alias for `uconvert(u, q)`.
 """
-Base.:(|>)(q::LogQuantUnion, u::AbstractUnitLike) = uconvert(u, q)
-Base.:(|>)(q::LogQuantUnion, ::Type{T}) where T <: StaticDims = uconvert(T(), q)
-Base.:(|>)(u0::AbstractUnitLike, u::AbstractUnitLike) = uconvert(u, u0)
-Base.:(|>)(u0::AbstractUnitLike, ::Type{T}) where T <: StaticDims = uconvert(T(), u0)
+Base.:(|>)(q::LogQuantUnion, ::Type{D}) where D <: StaticDims = uconvert(D(), q)
+Base.:(|>)(u::AbstractUnitLike, ::Type{D}) where D <: StaticDims = uconvert(D(), u)
 
 """
     ustrip(u::AbstractUnitLike, q::QuantUnion)
@@ -154,6 +155,8 @@ function Base.convert(::Type{FlexQuant{T,D}}, u::AbstractUnitLike) where {T,D<:A
     return FlexQuant(uscale(u), dimension(u))
 end
 
+# Converting mixed logarithimic/linear quantities ====================================================
+Base.convert(::Type{LogQuant{T,U}}, q::Quantity{<:LogQuant}) where {T,U} = convert(LogQuant{T,U}, scalar(q))
 
 # Converting unit types ====================================================
 Base.convert(::Type{U}, u::AbstractUnitLike) where {T,D,U<:Units{D,T}} = (u isa Units{D,T}) ? u : Units{D,T}(dims=dimension(u), tobase=tobase(u), symbol=usymbol(u))
@@ -213,6 +216,18 @@ end
 function Base.promote_rule(::Type{Q1}, ::Type{Q2}) where {T1, T2, U<:AbstractUnitLike, Q1<:QuantUnion{T1,U}, Q2<:QuantUnion{T2,U}}
     T = promote_type(T1, T2)
     return quant_type(T){T, U}
+end
+
+#Mixed log-linear promotions 
+function Base.promote_rule(::Type{LQ1}, ::Type{<:Quantity{LQ2}}) where {LQ1<:LogQuant, LQ2<:LogQuant}
+    D = promote_type(dimtype(LQ1), dimtype(LQ2))
+    T = promote_type(valtype(LQ1), valtype(LQ2))
+    return LogQuant{T, D}
+end
+function Base.promote_rule(::Type{<:Quantity{LQ2}}, ::Type{LQ1}) where {LQ1<:LogQuant, LQ2<:LogQuant}
+    D = promote_type(dimtype(LQ1), dimtype(LQ2))
+    T = promote_type(valtype(LQ1), valtype(LQ2))
+    return LogQuant{T, D}
 end
 
 #Cases where values are updated to quantities

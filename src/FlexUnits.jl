@@ -18,7 +18,7 @@ for ustr in ["F", "H", "T", "Ω", "V", "W", "J", "Pa", "N", "C", "L", "(m/s)"]
 end
 
 export AbstractUnitLike, AbstractDimLike, AbstractDimensions, AbstractUnits, AbstractUnitTransform
-export ConversionError, DimensionError, NotScalarError, NotDimensionError, LogLinearError, FixRat32
+export ConversionError, DimensionError, NotScalarError, NotDimensionError, FixRat32
 export Dimensions, Units, StaticDims, LogScale, Quantity, FlexQuant, LogQuant, QuantUnion, AffineTransform, NoTransform, ExpAffTransform
 export RegistryTools, UnitRegistry, LogUnitRegistry
 export static_fieldnames, uscale, uoffset, dimension, pretty_print_units

@@ -421,9 +421,10 @@ Base.:-(q1::LogQuant, q2::Quantity) = q1 - scalar(q2)
 Base.:*(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:*(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:/(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)/x, unit(q)^inv(x)))
-Base.:*(q1::Quantity, q2::LogQuant) = scalar(q1)*q2
-Base.:*(q1::LogQuant, q2::Quantity) = q1*scalar(q2)
-Base.:/(q1::LogQuant, q2::Quantity) = q1/scalar(q2)
+
+Base.:*(q1::LogQuant, q2::Quantity) = quantity(dstrip(q2)*q1, dimension(q2))
+Base.:*(q1::Quantity, q2::LogQuant) = q2*q1
+Base.:/(q1::LogQuant, q2::Quantity) = q1*inv(q2)
 
 #Addition/subtraction for linear transformations
 ⊕(q1::LogQuant, q2::LogQuant) = log(ubase(q1) + ubase(q2))

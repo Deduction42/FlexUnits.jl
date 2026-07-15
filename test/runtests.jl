@@ -880,8 +880,9 @@ end
 
     #Dimension validation 
     @test ustrip(5u"kJ" |> D"kJ") ≈ 5000
-    @test 5u"kJ" |> D"kJ" isa Quantity{Float64, D"J"}
-
+    @test ustrip(D"kJ", 5u"kJ") ≈ 5000
+    @test uconvert(D"kJ", 5u"kJ")  isa Quantity{Float64, D"J"}
+    @test u"kJ"|>D"kJ" == AffineTransform{Float64}(scale=1000)
 
 end
 
@@ -1459,10 +1460,10 @@ end
     @test_throws DimensionError lq1 - q2
     @test_throws DimensionError q1 - lq2
 
-    #Multiplying and Dividing are unambiguous and require dimensionless values
-    @test_throws DimensionError lq1 * q2
-    @test_throws DimensionError q1 * lq2
-    @test_throws DimensionError lq1 / q2
+    #Multiplying and dividing LoqQuant by Quantity
+    @test exp(lq1 * q2 / q2) ≈ q1
+    @test exp(q1 * lq2 / q1) ≈ q2 
+    @test exp((lq1 / q2) * q2) ≈ q1
 
     #Miscillaneous tests
     @test ubase(lq1)*q2 ≈ q1*q2
@@ -1484,7 +1485,7 @@ end
     @test_throws DimensionError (5u"m")*dB(u"W")
 
     #Practical test, linear sound wave propagation
-    α = quantity(20dB(), u"1/m")
+    α = 20dB()/(1u"m")
     r = 1u"m" 
     @test exp(α*r) ≈ 100.0
     @test exp(α*r + 10dB(u"Pa")) ≈ 1000u"Pa"
