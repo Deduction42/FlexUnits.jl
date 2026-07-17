@@ -1,13 +1,3 @@
-Current Patch Changelog:
-    -   Now supports `ustrip` methods on StaticDim types `ustrip(D"...", q)`
-    -   LogLinearError removed (mixed linear-logarithmic operations are now supported)
-    -   Logarithmic and Linear quantities can now be multiplied (produces a `Quantity{LogQuant{T,UL}, U}`)
-    -   LogLinUnit introduced to enable mixed log/linear unit conversions
-
-Upcoming Patch Features:
-    -   Commutative multiplication of LogQuant and linear units
-    -   Commutative multiplication of Quantity and LogLinUnit
-
 Backlog:
 0.  Make fields of dimensions actual units (not dimension names)
     -   (m, kg, s, A, K, cd, mol)
