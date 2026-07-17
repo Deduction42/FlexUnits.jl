@@ -743,6 +743,21 @@ end
     @test (1.0u"m")^(-3) === 1.0u"1/m^3"
     
 
+    #NoDims operations (pseudo static)
+    @test 1NoDims() == 1
+    @test 1 == 1NoDims()
+    @test 1NoDims() + 1u"" == 2
+    @test 1u"" + 1NoDims() == 2 
+    @test inv(1NoDims()) == 1NoDims()
+
+    #Directly test math due to the fact that promotion rules often skip this
+    @test dimension(ud"m/s") * NoDims() == dimension(ud"m/s")
+    @test NoDims() * dimension(ud"m/s") == dimension(ud"m/s")
+    @test dimension(ud"m/s") / NoDims() == dimension(ud"m/s")
+    @test NoDims() / dimension(ud"m/s") == inv(dimension(ud"m/s"))
+    @test NoDims() * NoDims() == NoDims()
+    @test NoDims() / NoDims() == NoDims()
+    
 end
 
 @testset "Type conversions" begin
@@ -1500,6 +1515,19 @@ end
     @test ustrip(u1, dB()/(1u"m")) ≈ ustrip(u"m", 1λ)
     @test ustrip(u1, (c/λ)*dB()/u"m*Hz") ≈ ustrip(u"m/s", c)
     @test ustrip(u1, 1(Np()/u"m")) ≈ 10ustrip(u"m", 1λ)/log(10)
+    
+    u2 = dB()/u"m"
+    @test ustrip(u2, 1dB()*u"1/m") ≈ 1.0 
+    @test ustrip(u2, inv(λ)*(1dB())) ≈ ustrip(λ, 1u"m")
+    @test ustrip(u2, (c/λ)*dB()*u"1/(m*Hz)") ≈ ustrip(u"Hz", c/λ)
+    @test ustrip(u2, u"1/(m*Hz)"*((c/λ)*dB())) ≈ ustrip(u"Hz", c/λ)
+    @test ustrip(u2, 1(Np()*u"1/m")) ≈ 10/log(10)
+
+    u3 = Np()/u"m"
+    @test exp(1u"m"*u3) ≈ exp(1.0)
+    @test exp(u3*1u"m") ≈ exp(1.0)
+    @test exp(u3/(1u"1/m")) ≈ exp(1.0)
+
 end
 
 

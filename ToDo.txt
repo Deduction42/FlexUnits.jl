@@ -1,4 +1,5 @@
 Current Patch Changelog:
+    -   Now supports `ustrip` methods on StaticDim types `ustrip(D"...", q)`
     -   LogLinearError removed (mixed linear-logarithmic operations are now supported)
     -   Logarithmic and Linear quantities can now be multiplied (produces a `Quantity{LogQuant{T,UL}, U}`)
     -   LogLinUnit introduced to enable mixed log/linear unit conversions
