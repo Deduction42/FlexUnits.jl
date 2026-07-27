@@ -6,11 +6,11 @@ Changelog
 Backlog:
 1.  Extend FieldArray to QuantFieldArray
     -   QuantFieldArray already in some of the examples (should be part of FlexUnits)
-    -   QuantFieldArray{N,T,D,L} <: FieldArray{N,T,L}
+    -   QuantFieldArray{D,N,T,L} <: FieldArray{N,T,L}
         -   D is NoDims by default
-            -   getproperty(qa::QuantFieldArray{N,T,D}, fn::Symbol) where D::NoDims = getfield(qa, fn)
-            -   getproperty(qa::QuantFieldArray{N,T,D}, fn::Symbol) where D::StaticDims = getfield(qa, fn)*D() 
-            -   getindex(qa::QuantFieldArray{N,T,D}, fn::Symbol) where D = dstrip(qa) 
+            -   getproperty(qa::QuantFieldArray{D,N,T}, fn::Symbol) where D::NoDims = getfield(qa, fn)
+            -   getproperty(qa::QuantFieldArray{D,N,T}, fn::Symbol) where D::StaticDims = getfield(qa, fn)*D() 
+            -   getindex(qa::QuantFieldArray{D,N,T}, fn::Symbol) where D = dstrip(qa) 
     -   Constructors will convert quantities to dimensions (dimtype(fieldtype(fn))()/D())
 
 2.  Move factorizations to LinearAlgebra extension
