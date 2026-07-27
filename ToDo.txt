@@ -4,10 +4,11 @@ Backlog:
     -   Completely removes ambiguity (i.e. m=1 is more explicit than length=1)
     -   Eliminates need for "unit_symbols" function
 
-1.  Extend FieldArray to QuantFieldArray and ModQuantFieldArray
+1.  Extend FieldArray to QuantFieldArray and ModQFieldArray
     -   QuantFieldArray already in some of the examples (should be part of FlexUnits)
-    -   ModQuantFieldArray can modify a QuantFieldArray by a certain dimension
+    -   ModQFieldArray can modify a QuantFieldArray by a certain dimension
         -   Useful for calculating the derivative of a state
+        -   Built using dimsmod(D::Type{StaticDims}, Q::Type{FieldArray}; kwargs...)
 
 2.  Move factorizations to LinearAlgebra extension
     -   implement a unitful "cholupdate!" and "choldowndate!"
