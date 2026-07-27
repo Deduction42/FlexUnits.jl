@@ -105,14 +105,14 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
 
     #SI dimensional units
     _register_unit(:NoDims => Dims())
-    _register_unit(:m => Dims(length=1))
-    _register_unit(:g => 0.001*Dims(mass=1))
-    _register_unit(:t => 1000*Dims(mass=1))
-    _register_unit(:s => Dims(time=1))
-    _register_unit(:A => Dims(current=1))
-    _register_unit(:K => Dims(temperature=1))
-    _register_unit(:cd => Dims(luminosity=1))
-    _register_unit(:mol => Dims(amount=1))
+    _register_unit(:m => Dims(m=1))
+    _register_unit(:g => 0.001*Dims(kg=1))
+    _register_unit(:t => 1000*Dims(kg=1))
+    _register_unit(:s => Dims(s=1))
+    _register_unit(:A => Dims(A=1))
+    _register_unit(:K => Dims(K=1))
+    _register_unit(:cd => Dims(cd=1))
+    _register_unit(:mol => Dims(mol=1))
     
     add_prefixes(:m, si_prefixes[( :f, :p, :n, :μ, :u, :m, :c, :d, :k, :M, :G )])
     add_prefixes(:g, si_prefixes[( :n, :μ, :u, :m, :k)])

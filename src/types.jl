@@ -34,16 +34,17 @@ abstract type AbstractUnitTransform end
 """
     AbstractDimLike
 
-A broad class representing anything that can be interpreted as a dimension
+A broad class representing anything that can be interpreted as a dimension or coherent unit system
+(i.e. a set of fundamental units)
 """
 abstract type AbstractDimLike <: AbstractUnitLike end
 
 """
     AbstractDimensions
 
-A class that represents a specific dimensional schema, by default, its
-only child is Dimensions (SI units), but users can build their own versions 
-(even based on imperial measurements, or where angles are a dimension)
+A class that represents a coherent units system (i.e. dimensions and a base unit for each dimension) 
+By default, its children are Dimensions (SI units), and NoDims, but users can build their own versions 
+(even based on imperial equivalents, or where angles are a dimension)
 """
 abstract type AbstractDimensions{P} <: AbstractDimLike end
 
@@ -206,31 +207,25 @@ Dimensions
 """
     Dimensions{P}
 
-Basic SI dimensions:
-    length = m, 
-    mass = kg, 
-    time = s, 
-    current = A, 
-    temperature = K, 
-    luminosity = cd, 
-    amount = mol
+A dimensional structure with fields corresponding to fundamental SI units:
+    m, 
+    kg, 
+    s, 
+    A, 
+    K, 
+    cd, 
+    mol
 """
 @kwdef struct Dimensions{P} <: AbstractDimensions{P}
-    length::P = FixedRational(0)
-    mass::P = FixedRational(0)
-    time::P = FixedRational(0)
-    current::P = FixedRational(0)
-    temperature::P = FixedRational(0)
-    luminosity::P = FixedRational(0)
-    amount::P = FixedRational(0)
+    m::P = zero(FixRat32)
+    kg::P = zero(FixRat32)
+    s::P = zero(FixRat32)
+    A::P = zero(FixRat32)
+    K::P = zero(FixRat32)
+    cd::P = zero(FixRat32)
+    mol::P = zero(FixRat32)
 end
 Dimensions(args::Real...) = Dimensions{FixRat32}(args...)
-
-function unit_symbols(::Type{<:Dimensions})
-    return Dimensions{Symbol}(
-        length=:m, mass=:kg, time=:s, current=:A, temperature=:K, luminosity=:cd, amount=:mol
-    )
-end
 
 """
     dimension_names(::Type{<:AbstractDimensions})

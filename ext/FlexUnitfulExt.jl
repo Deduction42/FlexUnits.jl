@@ -7,7 +7,7 @@ import Unitful: @u_str
 
 
 @generated function validate_upreferred()
-    si_units = (length=u"m", mass=u"kg", time=u"s", current=u"A", temperature=u"K", luminosity=u"cd", amount=u"mol")
+    si_units = (m=u"m", kg=u"kg", s=u"s", A=u"A", K=u"K", cd=u"cd", mol=u"mol")
 
     for k in keys(si_units)
         Unitful.upreferred(si_units[k]) == si_units[k] || error("Found custom `Unitful.preferunits`: FlexUnits only supporsts the default SI option for `Unitful.upreferred`")
@@ -73,13 +73,13 @@ function Base.convert(::Type{FlexUnits.Dimensions{R}}, dims::Unitful.Dimension{D
     FlexDim = FlexUnits.Dimensions{R}
     validate_upreferred()
 
-    D == :Length && return FlexDim(length=dims.power)
-    D == :Mass && return FlexDim(mass=dims.power)
-    D == :Time && return FlexDim(time=dims.power)
-    D == :Current && return FlexDim(current=dims.power)
-    D == :Temperature && return FlexDim(temperature=dims.power)
-    D == :Luminosity && return FlexDim(luminosity=dims.power)
-    D == :Amount && return FlexDim(amount=dims.power)
+    D == :Length && return FlexDim(m=dims.power)
+    D == :Mass && return FlexDim(kg=dims.power)
+    D == :Time && return FlexDim(s=dims.power)
+    D == :Current && return FlexDim(A=dims.power)
+    D == :Temperature && return FlexDim(K=dims.power)
+    D == :Luminosity && return FlexDim(cd=dims.power)
+    D == :Amount && return FlexDim(mol=dims.power)
     error("Unknown dimension: $D")
 end
 

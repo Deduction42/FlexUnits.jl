@@ -36,11 +36,11 @@ const AT = AffineTransform{Float64}
     @test UnitRegistry.utype() === DEFAULT_UNIT_TYPE
     @test UnitRegistry.dtype() === DEFAULT_DIM_TYPE
 
-    d = Dimensions(length=2, mass=1, time=-2)
+    d = Dimensions(m=2, kg=1, s=-2)
     D = typeof(d)
-    @test d.length == 2
-    @test d.mass == 1
-    @test d.time == -2
+    @test d.m == 2
+    @test d.kg == 1
+    @test d.s == -2
     @test FlexUnits.dimtype(typeof(d)) == DEFAULT_DIM_TYPE
     @test FlexUnits.dimvaltype(typeof(u"m/s")) == DEFAULT_DIM_TYPE
     @test uscale(d) == 1
@@ -61,7 +61,7 @@ const AT = AffineTransform{Float64}
     @test udynamic(dimension(u"m/s")) === dimension(ud"m/s")
 
     @test U"kg" == typeof(u"kg")
-    @test D"kg" == StaticDims{DEFAULT_DIM_TYPE(mass=1)}
+    @test D"kg" == StaticDims{DEFAULT_DIM_TYPE(kg=1)}
 
     @test FlexUnits.remove_offset(u"°C") == u"K"
     @test FlexUnits.constructorof(typeof(Dimensions())) == Dimensions
@@ -91,11 +91,11 @@ const AT = AffineTransform{Float64}
     @test uscale(t_affine2) == 2
     @test uoffset(t_affine2) == 1
 
-    @test Units{Dimensions{FixRat32}}(Dimensions{FixRat64}(length=1), AffineTransform()) == ud"m" 
+    @test Units{Dimensions{FixRat32}}(Dimensions{FixRat64}(m=1), AffineTransform()) == ud"m" 
     @test Units(ud"m/s") === ud"m/s"
     @test Units(u"m/s") === u"m/s"
-    @test FlexUnits.dimtype(Units{Dimensions{FixRat32}}(Dimensions{FixRat64}(length=1), AffineTransform())) <: Dimensions{FixRat32}
-    @test FlexUnits.dimtype(Units(Dimensions{FixRat64}(length=1), AffineTransform())) <: Dimensions{FixRat64}
+    @test FlexUnits.dimtype(Units{Dimensions{FixRat32}}(Dimensions{FixRat64}(m=1), AffineTransform())) <: Dimensions{FixRat32}
+    @test FlexUnits.dimtype(Units(Dimensions{FixRat64}(m=1), AffineTransform())) <: Dimensions{FixRat64}
     @test FlexUnits.dimtype(u"m/s") == typeof(dimension(u"m/s"))
     @test ustatic(Units(dimension(ud"m/s"), AffineTransform(), Symbol("m/s"))) === u"m/s"
 
@@ -103,7 +103,7 @@ const AT = AffineTransform{Float64}
     @test FlexUnits.unittype(Quantity{Float64, typeof(u"m/s")}) == typeof(u"m/s")
     @test FlexUnits.dimvaltype(Quantity{Float64, typeof(u"m/s")}) == Dimensions{FixRat32}
     @test FlexUnits.dimvaltype(1.0u"kJ") == Dimensions{FixRat32}
-    @test FlexUnits.dimtype(1.0u"m") == StaticDims{Dimensions(length=1)}
+    @test FlexUnits.dimtype(1.0u"m") == StaticDims{Dimensions(m=1)}
     @test udynamic(1.0u"kJ") === ubase(1.0ud"kJ")
     @test assert_dimension(dimension(u"m/s")) == dimension(u"m/s")
 
@@ -126,7 +126,6 @@ const AT = AffineTransform{Float64}
     @test string(zero(typeof(1ud"m/s"))) == "0.0 ?/?"
     @test string(vsum) == "Quantity{Float64, Dimensions{FixRat32}}[0.5235987755982988 1/s 0.001388888888888889 kg/s 5000.0 kg/(m s²)]"
 
-    @test string(FlexUnits.unit_symbols(Dimensions{FixRat32})) == "(:length => :m, :mass => :kg, :time => :s, :current => :A, :temperature => :K, :luminosity => :cd, :amount => :mol)"
 
     #Vector operations
     vq = quantity([1,2], u"m/s")
@@ -166,14 +165,14 @@ end
     for Q in [Quantity], T in [Float16, Float32, Float64], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
         
         D = Dimensions{R}
-        x = Q(T(0.2), D(length=1, mass=2.5, time=-1))
+        x = Q(T(0.2), D(m=1, kg=2.5, s=-1))
 
         @test typeof(x).parameters[1] == T
         @test typeof(x).parameters[2] == D
         @test ustrip(x) ≈ T(0.2)
-        @test dimension(x) == D(length=1, mass=5//2, time=-1)
+        @test dimension(x) == D(m=1, kg=5//2, s=-1)
         if R == DEFAULT_RATIONAL
-            @test dimension(x) == Dimensions(length=1, mass=5//2, time=-1)
+            @test dimension(x) == Dimensions(m=1, kg=5//2, s=-1)
         end
 
         y = x^2
@@ -208,7 +207,7 @@ end
         @test isfinite(x)
         @test !isfinite(y)
        
-        u = Dimensions{R}(length=2//5)
+        u = Dimensions{R}(m=2//5)
         x = Quantity(-1.2, u)
 
         @test typemax(x) == Quantity(typemax(-1.2), u)
@@ -375,7 +374,7 @@ end
 @testset "UnitfulCallable" begin
     #Test callable application
     angle_coords(θ::Real, r::Real) = r.*(cos(θ), sin(θ))
-    unitful_angle_coords = UnitfulCallable(angle_coords, (u"", u"m") => (Dimensions(length=1), Dimensions(length=1)))
+    unitful_angle_coords = UnitfulCallable(angle_coords, (u"", u"m") => (Dimensions(m=1), Dimensions(m=1)))
     c = unitful_angle_coords(30u"deg", 6u"cm")
     @test all(c .≈ (cosd(30), sind(30)).*(ubase(0.06u"m")))
 
@@ -412,7 +411,7 @@ end
 =#
 
 @testset "Dynamic unit functionality" begin
-    x = Quantity(0.2, Dimensions(length=1, mass=2.5, time=-1))
+    x = Quantity(0.2, Dimensions(m=1, kg=2.5, s=-1))
     u = ustrip(x)
 
     #Test round-trip parsing
@@ -523,8 +522,8 @@ end
     °C  = ud"°C"
     °F  = ud"°F"
     K   = ud"K"
-    @test dimension(°C).temperature == 1
-    @test dimension(°C).length == 0
+    @test dimension(°C).K == 1
+    @test dimension(°C).m == 0
     @test °C == ud"degC"
     @test °F == ud"degF"
     @test 5°C - 4°C == 1K
@@ -602,7 +601,7 @@ end
 
     # Test updating affine units
     @test register_unit("°C" => °C) isa AbstractDict # Updating the same value does nothing for unit
-    @test register_unit("K" => Dimensions(temperature=1)) isa AbstractDict # same value yields nothing for dimension
+    @test register_unit("K" => Dimensions(K=1)) isa AbstractDict # same value yields nothing for dimension
     @test_throws MethodError register_unit(ud"K") # cannot register only a unit
 
     # Cannot re-register a unit if its value changes nor can we delete a unit
@@ -613,9 +612,9 @@ end
     @test_throws ArgumentError register_unit("m/s"=>ud"m/s")
 
     # Test map_dimensions
-    @test map_dimensions(+, dimension(ud"m/s"), dimension(ud"m/s")) == Dimensions(length=2, time=-2)
-    @test map_dimensions(-, dimension(ud"m"), dimension(ud"s"))     == Dimensions(length=1, time=-1)
-    @test map_dimensions(Base.Fix1(*,2), dimension(ud"m/s"))       == Dimensions(length=2, time=-2)
+    @test map_dimensions(+, dimension(ud"m/s"), dimension(ud"m/s")) == Dimensions(m=2, s=-2)
+    @test map_dimensions(-, dimension(ud"m"), dimension(ud"s"))     == Dimensions(m=1, s=-1)
+    @test map_dimensions(Base.Fix1(*,2), dimension(ud"m/s"))       == Dimensions(m=2, s=-2)
 
     # Parsing tests 
     @test ud"1.0" == ud""
@@ -761,7 +760,7 @@ end
 end
 
 @testset "Type conversions" begin
-    d = Dimensions{Rational{Int16}}(mass=2)
+    d = Dimensions{Rational{Int16}}(kg=2)
     d32 = convert(Dimensions{Rational{Int32}}, d)
     @test typeof(d) == Dimensions{Rational{Int16}}
     @test typeof(d32) == Dimensions{Rational{Int32}}
@@ -798,7 +797,7 @@ end
     @test typeof(inv(q)) == Quantity{Float64,typeof(d)}
 
     # Test conversion of unit types 
-    @test convert(DEFAULT_DIM_TYPE, ud"m") === Dimensions(length=1)
+    @test convert(DEFAULT_DIM_TYPE, ud"m") === Dimensions(m=1)
     @test_throws NotDimensionError convert(DEFAULT_DIM_TYPE, ud"mm")
     @test convert(Units{DEFAULT_DIM_TYPE, AT}, ubase(2ud"m")) == Units(tobase=AffineTransform(scale=2.0, offset=0.0), dims=dimension(ud"m"))
     @test_throws ArgumentError convert(Units{DEFAULT_DIM_TYPE, AT}, quantity(2, ud"°C"))
@@ -817,7 +816,7 @@ end
     @test_throws ArgumentError convert(NoTransform, FlexUnits.tobase(Np(u"kg")))
 
     # Test that adding different dimension subtypes still works
-    @test 1*Dimensions{Int64}(length=1) + 1ud"m" == 2ud"m"
+    @test 1*Dimensions{Int64}(m=1) + 1ud"m" == 2ud"m"
 
     # Tests on conversions between static/dynamic units and dimensions
     @test convert(D"m/s", u"m/s") == dimension(u"m/s")
@@ -842,17 +841,17 @@ end
     # Automatic conversions via constructor:
     for T in [Float16, Float32, Float64, BigFloat], R in [DEFAULT_RATIONAL, Rational{Int16}, Rational{Int32}]
         D = Dimensions{R}
-        q = Quantity{T,D}(2, D(length=1.5))
+        q = Quantity{T,D}(2, D(m=1.5))
         @test typeof(q) == Quantity{T,D}
         @test typeof(ustrip(q)) == T
 
         # Now, without R, the default will be DEFAULT_DIM_BASE_TYPE:
-        q = Quantity{T}(2, D(length=1.5))
+        q = Quantity{T}(2, D(m=1.5))
         @test typeof(q) == Quantity{T,D}
         @test typeof(ustrip(q)) == T
 
         # Just dimensions:
-        d = D(length=1.5)
+        d = D(m=1.5)
         @test typeof(d) == D
     end
 end
@@ -880,7 +879,7 @@ end
     @test typeof(uconvert(ud"nm", Quantity(5e-9, ud"m"))) <: Quantity{Float64, U}
     @test uconvert(ud"nm", Quantity(5e-9, ud"m")) ≈ 5ud"nm"
 
-    @test dimension(1ud"m" |> ud"nm")[:length] == 1
+    @test dimension(1ud"m" |> ud"nm")[:m] == 1
 
    
     # Different types require converting both arguments:
@@ -1575,8 +1574,8 @@ end
     @test typeof(promote(FixedRational{10,Int8}(2), FixedRational{10,Int8}(2))) == typeof((f8, f8))
 
     # Required to hit integer branch (otherwise will go to `literal_pow`)
-    f(i::Int) = Dimensions(length=1, mass=-1)^i
-    @test f(2) == Dimensions(length=2, mass=-2)
+    f(i::Int) = Dimensions(m=1, kg=-1)^i
+    @test f(2) == Dimensions(m=2, kg=-2)
 
     # Null conversion
     @test typeof(FixedRational{10,Int}(FixedRational{10,Int}(2))) == FixedRational{10,Int}
@@ -1618,8 +1617,8 @@ LogUnitRegistry.register_unit("dB_V" => dB(u"V"))
     IntDimType = Dimensions{Int32}
     reg = RegistryTools.PermanentDict{Symbol, Units{IntDimType, AffineTransform{Float64}}}()
     reg = RegistryTools.registry_defaults!(reg)  
-    @test reg[:m]  == Units(tobase=AffineTransform{Float64}(), dims=IntDimType(length=1), symbol=:m)
-    @test reg[:kg] == Units(tobase=AffineTransform{Float64}(), dims=IntDimType(mass=1), symbol=:kg)    
+    @test reg[:m]  == Units(tobase=AffineTransform{Float64}(), dims=IntDimType(m=1), symbol=:m)
+    @test reg[:kg] == Units(tobase=AffineTransform{Float64}(), dims=IntDimType(kg=1), symbol=:kg)    
 
     #Test reregistration of a unit
     @test LogUnitRegistry.register_unit("db_V" => dB(u"V")) isa AbstractDict
