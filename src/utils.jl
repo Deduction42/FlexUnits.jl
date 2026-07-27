@@ -155,7 +155,6 @@ end
 #Showing dimensions with numeric values
 function ushow(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<:AbstractDimensions{<:Real}
     dimnames = collect(static_fieldnames(D))
-    dimunits = unit_symbols(D)
 
     if isunknown(d)
         print(io, "?/?")
@@ -163,7 +162,7 @@ function ushow(io::IO, d::D; pretty=PRETTY_DIM_OUTPUT[]) where D<:AbstractDimens
     end
 
     usep = ifelse(pretty, " ", "*")
-    abs_dim_pwr(dim::Symbol) = _unit_pwr_string(dimunits[dim], abs(d[dim]), pretty=pretty)
+    abs_dim_pwr(dim::Symbol) = _unit_pwr_string(dim, abs(d[dim]), pretty=pretty)
 
     function print_dim_series(series_io::IO, dims)
         if length(dims) == 1
