@@ -72,26 +72,17 @@ abstract type QuantFieldMatrix{N1, N2, T} <: QuantFieldArray{Tuple{N1, N2}, T, 2
 
 abstract type QuantFieldVector{N, T} <: QuantFieldArray{Tuple{N}, T, 1} end 
 
-struct ModDimQuantArray{SD<:StaticDims, N, T, D, A<:QuantFieldArray{N,T,D}} <: QuantFieldArray{N, T, D}
-    data :: A
-    ModDimQuantArray{SD}(a::QuantFieldArray{N,T,D}) where {SD<:StaticDims, N, T, D} = new{SD, N, T, D, typeof(a)}(a)
-end
+Base.getindex(qa::QuantFieldArray, ind::Int) = dstrip(getfield(qa, ind))
+fieldunit(::Type{T}, ind::Union{Symbol, Int}) where T<:QuantFieldArray = unittype(fieldtype(T, ind))()
 
 function dimsmod(::Type{D}, ::Type{QA}; kwargs...) where {D<:StaticDims, QA<:QuantFieldArray}
     mod_ustrip(fn::Symbol, q::Quantity) = ustrip(fieldunit(QA, fn)*D(), q)
 
-    nt = values(kwargs)
-    mod_nt = NamedTuple{propertynames(nt)}(map(mod_ustrip, propertynames(nt), values(nt)))
-    return ModDimQuantArray{D}(QA(;pairs(mod_nt)...))
+    nt  = values(kwargs)
+    fns = propertynames(nt)
+    mod_nt = NamedTuple{fns}(map(mod_ustrip, fns, values(nt)))
+    return QA(;pairs(mod_nt)...)
 end
-
-Base.getindex(qa::QuantFieldArray, ind::Int) = dstrip(getfield(qa, ind))
-Base.getindex(qa::ModDimQuantArray, ind::Int) = getindex(getfield(qa, :data), ind)
-Base.getproperty(qa::ModDimQuantArray{SD}, fn::Symbol) where SD = getproperty(getfield(qa, :data), fn)*SD()
-
-fieldunit(::Type{T}, ind::Union{Symbol, Int}) where T<:QuantFieldArray = unittype(fieldtype(T, ind))()
-fieldunit(::Type{T}, ind::Union{Symbol, Int}) where {SD, T<:ModDimQuantArray{SD}} = SD()*unittype(fieldtype(T, :data), ind)
-
 
 
 """
