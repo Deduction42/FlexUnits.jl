@@ -2,16 +2,20 @@ Changelog
 1.  Fields of Dimensions are explicit units (not dimension names) to avoid confusion
     -   (m, kg, s, A, K, cd, mol)
 
-
-Backlog:
 1.  Extend FieldArray to QuantFieldArray
     -   QuantFieldArray already in some of the examples (should be part of FlexUnits)
-    -   QuantFieldArray{D,N,T,L} <: FieldArray{N,T,L}
-        -   D is NoDims by default
-            -   getproperty(qa::QuantFieldArray{D,N,T}, fn::Symbol) where D::NoDims = getfield(qa, fn)
-            -   getproperty(qa::QuantFieldArray{D,N,T}, fn::Symbol) where D::StaticDims = getfield(qa, fn)*D() 
-            -   getindex(qa::QuantFieldArray{D,N,T}, fn::Symbol) where D = dstrip(qa) 
+    -   QuantFieldArray{N,T,L} <: FieldArray{N,T,L}
+        -   Added DimsMod{D, QA<:QuantFieldArray} to allow for modified dimension behaviour
     -   Constructors will convert quantities to dimensions (dimtype(fieldtype(fn))()/D())
+
+Backlog:
+(current)
+1.  Make DimsMod{D, QA<:QuantFieldArray} subtype to QuantFieldArray
+
+(future)
+2.  Make dimsmod{D, QA; kwargs...} a generated function 
+    -   Base it off of the fieldnames of QA which are known at compile time
+    -   Statically resolve the units to strip at compile time
 
 2.  Move factorizations to LinearAlgebra extension
     -   implement a unitful "cholupdate!" and "choldowndate!"
