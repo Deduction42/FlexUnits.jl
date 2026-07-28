@@ -6,6 +6,7 @@ using StaticArrays
 using Plots
 using BenchmarkTools
 
+import FlexUnits.DimsMod
 import OrdinaryDiffEqTsit5.SciMLBase.FullSpecialize
 
 # =============================================================================================================

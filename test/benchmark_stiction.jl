@@ -4,6 +4,7 @@ using OrdinaryDiffEqRosenbrock
 using StaticArrays 
 using TimeRecords
 using FlexUnits, .UnitRegistry
+using BenchmarkTools
 
 import OrdinaryDiffEqTsit5.SciMLBase.FullSpecialize
 import FlexUnits.DimsMod
@@ -48,7 +49,6 @@ end
 =#
 
 #Second method, slightly slower
-
 function lugre_diff(xvec::AbstractVector, θ, t)
     x = ValveState(xvec)
     u = interpolate(θ.u, t, order=1)
@@ -86,12 +86,8 @@ abstol = SVector(ValveState{Float64}(x=1e-6u"m", v=1e-6u"m/s", z=1e-6u"m"))
 reltol = SA[1e-6, 1e-6, 1e-6]
 
 prob = ODEProblem{false, FullSpecialize}(lugre_diff, x0, Δt, θ, abstol=abstol, reltol=reltol)
-@time sol = solve(prob, Rodas4P())
-
-@time for ii in 1:100
-    prob = ODEProblem{false, FullSpecialize}(lugre_diff, x0, Δt, θ, abstol=abstol, reltol=reltol)
-    sol = solve(prob, Rodas4P())
-end
+sol = solve(prob, Rodas4P())
+@btime solve(prob, Rodas4P())
 
 using Plots
 vt = LinRange(Δt[begin], Δt[end], 100)
