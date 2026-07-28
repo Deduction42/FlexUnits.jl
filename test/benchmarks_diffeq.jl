@@ -69,10 +69,8 @@ plt = plot!(plt, sol.t, [u.v for u in sol.u], label="implicit no units") #Each e
 # =============================================================================================================
 @info "FlexUnits Solutions"
 # =============================================================================================================
-
+import FlexUnits.DimsMod
 #Make "getindex" return a unitless version of the value
-abstract type QuantFieldVector{N,T} <: FieldVector{N,T} end
-Base.@propagate_inbounds Base.getindex(a::QuantFieldVector, i::Int) = dstrip(getfield(a, i))
 
 @kwdef struct FallingObjectState{T} <: QuantFieldVector{2,T}
     v  :: Quantity{T, D"m/s"}
@@ -89,16 +87,15 @@ end
 
 function acceleration(u0::AbstractVector, p::FallingObjectProps, t)
     u = FallingObjectState(u0)
-    dt = D"s"() #Time dimension
 
     #Drag force
     fd = -sign(u.v)*0.5*p.ρ*u.v^2*p.Cd*p.A
     
     #Drag force effect on state (multiply by dt to make units work)
-    dv = (fd/p.m - p.g)*dt
-    dh = u.v*dt
+    dv = (fd/p.m - p.g)
+    dh = u.v
 
-    return FallingObjectState(v=dv, h=dh)
+    return ustrip(DimsMod{D"1/s"}(FallingObjectState, v=dv, h=dh))
 end
 
 # =============================================================================================================

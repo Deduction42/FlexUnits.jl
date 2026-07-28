@@ -6,7 +6,7 @@ using TimeRecords
 using FlexUnits, .UnitRegistry
 
 import OrdinaryDiffEqTsit5.SciMLBase.FullSpecialize
-
+import FlexUnits.DimsMod
 
 @kwdef struct ValveState{T} <: QuantFieldVector{3,T}
     x :: Quantity{T, D"m"} #Position
@@ -48,7 +48,7 @@ end
 =#
 
 #Second method, slightly slower
-#=
+
 function lugre_diff(xvec::AbstractVector, θ, t)
     x = ValveState(xvec)
     u = interpolate(θ.u, t, order=1)
@@ -59,13 +59,13 @@ function lugre_diff(xvec::AbstractVector, θ, t)
     Ff = θ.σ₀*x.z + θ.σ₁*ż + θ.μD*x.v
     Fnet = (θ.k*(u-x.x) - Ff) #Force balance
 
-    return SVector(FlexUnits.dimsmod(D"1/s", ValveState,
+    return SVector(DimsMod{D"1/s"}(ValveState,
         x = x.v,
         v = Fnet/θ.m, 
         z = ż
     ))
 end
-=#
+
 
 Δt = (0.0, 30.0)
 vt = LinRange(Δt[begin], Δt[end], 10)
