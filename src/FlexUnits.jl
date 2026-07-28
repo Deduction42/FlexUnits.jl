@@ -26,7 +26,7 @@ export static_fieldnames, uscale, uoffset, dimension, pretty_print_units
 export simplify, set_preferred_unit, set_preferred_logscale, display_simplified_units
 export with_ubase, ustrip, dstrip, ustrip_base, unit, quantity, logquant, linquant
 export ubase, uconvert, dconvert, scalar, udynamic, ustatic, logubase
-export QuantFieldArray, QuantFieldMatrix, QuantFieldVector, DimsMod, dimsmod
+export QuantFieldArray, QuantFieldMatrix, QuantFieldVector, DimsMod
 export LinmapQuant, VectorQuant, FactorQuant, FunctionQuant, UnitMap, DimsMap
 export uinput, uoutput, ufactor
 
