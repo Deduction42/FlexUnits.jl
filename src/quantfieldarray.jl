@@ -39,6 +39,7 @@ abstract type QuantFieldVector{N, T} <: QuantFieldArray{Tuple{N}, T, 1} end
 
 Base.getindex(qa::QuantFieldArray{N,T}, ind::Int) where {N,T} = convert(T, dstrip(getfield(qa, ind)))
 fieldunit(::Type{T}, ind::Union{Symbol, Int}) where T<:QuantFieldArray = unittype(fieldtype(T, ind))()
+fieldunits(::Type{QA}) where QA<: QuantFieldArray = map(Base.Fix1(fieldunit, QA), fieldnames(QA))
 
 
 struct DimsMod{D<:StaticDims, A<:QuantFieldArray}
@@ -49,13 +50,19 @@ DimsMod{D}(arr::QA) where {D,QA} = DimsMod{D,A}(arr)
 DimsMod{D}(::Type{QA}; kwargs...) where {D,QA} = DimsMod{D}(dimsmod(D, QA; kwargs...))
 ustrip(dm::DimsMod) = getfield(dm, :parent)
 
-function dimsmod(::Type{D}, ::Type{QA}; kwargs...) where {D<:StaticDims, QA<:QuantFieldArray}
-    mod_ustrip(fn::Symbol, q::Quantity) = ustrip(fieldunit(QA, fn)*D(), q)
 
-    nt  = values(kwargs)
-    fns = propertynames(nt)
-    mod_nt = NamedTuple{fns}(map(mod_ustrip, fns, values(nt)))
-    return QA(;pairs(mod_nt)...)
+@generated function dimsmod(::Type{D}, ::Type{QA}; kwargs...) where {D<:StaticDims, QA<:QuantFieldArray}
+    fns = fieldnames(QA)
+    fus = fieldunits(QA).*D()
+    expr = :($QA())
+    expr_qa = expr.args
+
+    for (fn, fu) in zip(fns, fus)
+        expr_kw = :($(Expr(:kw, fn, :(ustrip($fu, kwargs[$(Expr(:quote, fn))])))))
+        push!(expr_qa, expr_kw)
+    end
+
+    return expr
 end
 
 Base.getproperty(dm::DimsMod{D}, fn::Symbol) where D = getproperty(ustrip(dm), fn)*D()
