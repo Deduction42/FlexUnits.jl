@@ -11,8 +11,10 @@ Changelog
 
 Backlog:
 (current)
-1.  Write more tests to increase coverage
-2.  Extend and clean out tests 
+1.  Remove QuantFieldArray from automatic exports (user must import it along with DimsMod)
+2.  Document QuantFieldArray etc. and DimsMod under Types
+3.  Write more tests to increase coverage
+4.  Extend and clean out tests 
     -   Include simulation cases in tests (to ensure they run)
     -   Consider adding benchmark tests (see how DynamicQuantities does this)
     -   Move unused test code to an "Archives" folder
