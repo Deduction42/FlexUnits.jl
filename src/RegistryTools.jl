@@ -154,6 +154,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     add_prefixes(:Hz, si_prefixes[(:n, :μ, :u, :m, :k, :M, :G)])
     add_prefixes(:N, si_prefixes[(:μ, :u, :m, :k)])
     add_prefixes(:Pa, si_prefixes[(:μ, :u, :m, :k, :M, :G)])
+    add_prefixes(:bar, si_prefixes[(:μ, :u, :m, :k, :M)])
     add_prefixes(:J, si_prefixes[(:μ, :u, :m, :k,:M,:G)])
     add_prefixes(:W, si_prefixes[(:μ, :u, :m, :k, :M, :G)])
     add_prefixes(:V, si_prefixes[(:p, :n, :μ, :u, :m, :k, :M, :G)])
