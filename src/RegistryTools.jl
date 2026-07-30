@@ -135,7 +135,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:L => 0.001*reg[:m]^3)
     _register_unit(:Hz => inv(s))
     _register_unit(:N => kg*m/s^2); N = reg[:N]
-    _register_unit(:Pa => N/m^2);
+    _register_unit(:Pa => N/m^2); Pa = reg[:Pa]
     _register_unit(:J => N*m); J = reg[:J]
     _register_unit(:W => J/s); W = reg[:W]
     _register_unit(:C => A*s); C = reg[:C]
@@ -147,6 +147,8 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:H => N*m/A^2)
     _register_unit(:T => N/(A*m))
     _register_unit(:Wb => V*s)
+    _register_unit(:bar => 1e5*Pa)
+    _register_unit(:cP => 0.001Pa*s)
 
     add_prefixes(:L, si_prefixes[(:μ, :u, :m)])
     add_prefixes(:Hz, si_prefixes[(:n, :μ, :u, :m, :k, :M, :G)])
