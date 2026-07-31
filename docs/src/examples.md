@@ -39,7 +39,7 @@ using Plots
 using BenchmarkTools
 using LinearAlgebra
 
-import FlexUnits.DimsMod
+import FlexUnits: QuantFieldVector, DimsMod
 import OrdinaryDiffEqTsit5.SciMLBase.FullSpecialize
 
 @kwdef struct FallingObjectState{T} <: QuantFieldVector{2,T}

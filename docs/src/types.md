@@ -39,6 +39,15 @@ NoTransform
 AffineTransform
 ```
 
+## QuantFieldArrray
+Objects are a subtype of FieldArray, which can store multiple values with different static dimensions in a type-stable manner. This is done by returning *only the magnitude* when indexed by number, but the quantity (both magnitude and dimensions) when indexed by field name. This allows for easy cross-conversion between the agnostic `SArray` and `QuantFieldArray` types allowing for dimension-checking in dimension-aware engineering calculations, but forgoes this in linear algebra operations allowing for unit checking only when needed at zero cost. These types are not exported by default and need to be explicitly imported.
+```@docs
+QuantFieldArray
+QuantFieldMatrix
+QuantFieldVector
+DimsMod
+```
+
 ## Linear Algebra
 Linear algebra functionality is achieved by observing that any matrix of quantities that supports multiplication is a special kind of quantity matrix that functions as a *linear mapping*. Such matrices have a special structure for units. These special unit structures are *unit mappings* that contain an input vector of units, and an output vector of units. Accelerated linear algebra operations are achieved by keeping numerical matrices and unit mappings separate in a `LinmapQuant` and performing the linear algebra and unit inference separately (not unlike how a `Quantity` operates).
 
