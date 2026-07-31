@@ -11,7 +11,6 @@ Changelog
 
 Backlog:
 (current)
-1.  Remove QuantFieldArray from automatic exports (user must import it along with DimsMod)
 2.  Document QuantFieldArray etc. and DimsMod under Types
 3.  Write more tests to increase coverage
 4.  Extend and clean out tests 
@@ -20,12 +19,21 @@ Backlog:
     -   Move unused test code to an "Archives" folder
 
 (future)
-1.  Move factorizations to LinearAlgebra extension
+1.  Add compatibility layer with Dates 
+    -   Create "seconds_unit(::Type{D}) where D<:AbstractDimensions" function (and extend for Units, and StaticDims)
+        -   This should return a StaticDims or Unit{StaticDims}
+        -   This usually returns StaticDims{D(s=1)}
+    -   Define toseconds(p::Period)
+    -   Define conversions
+        -   convert(::Type{Q}, p::Period) = convert(Q, quantity(toseconds(p), seconds_unit(dimtype(Q))))
+    -   Define rounding functions and conversion to Period
+
+2.  Move factorizations to LinearAlgebra extension
     -   implement a unitful "cholupdate!" and "choldowndate!"
     -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
     -   Add performance benchmarks
 
-2.  Add plot recipes
+3.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
 
 
