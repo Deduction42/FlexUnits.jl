@@ -283,6 +283,9 @@ Base.:inv(q::QuantUnion) = with_ubase(inv, q)
 Base.adjoint(q::QuantUnion) = with_ubase(adjoint, q)
 
 Base.muladd(x::QuantUnion, y::QuantUnion, z::QuantUnion) = muladd(dstrip(x), dstrip(y), dstrip(z)) * equaldims(dimension(x)*dimension(y), dimension(z))
+Base.muladd(x::NumUnion, y::QuantUnion, z::QuantUnion) = muladd(x, dstrip(y), dstrip(z)) * equaldims(dimension(y), dimension(z))
+Base.muladd(x::QuantUnion, y::NumUnion, z::QuantUnion) = muladd(dstrip(x), y, dstrip(z)) * equaldims(dimension(x), dimension(z))
+Base.muladd(x::QuantUnion, y::QuantUnion, z::NumUnion) = muladd(dstrip(x), dstrip(y), z) * equaldims(dimension(x)*dimension(y), dimension(z))
 
 #Operators on explicitly missing values simply return missing
 for op in (:+,:-,:*,:/)

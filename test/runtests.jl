@@ -296,6 +296,12 @@ end
     @test 5u"m/s" <= 5u"m/s"
     @test_throws DimensionError 5u"m/s" <= 5u"kg"
 
+    t = 0.0u"s"; dt = 0.01u"s"; c = 0.161; f=100.0u"Hz"
+    @test muladd(c, dt, t) == 0.00161u"s"
+    @test muladd(dt, c, t) == 0.00161u"s"
+    @test muladd(c*u"", dt, t) == 0.00161u"s"
+    @test muladd(t, f, c) == 0.161
+
     #Math on arrays of number quantities 
     mq = [5*u"m/s" 2u"m/s^2"; 1*u"kg/s" 4*u"kg/s^2"]
     vq = [1u"s", 2u"s^2"]
