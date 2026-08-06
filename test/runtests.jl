@@ -1481,7 +1481,7 @@ end
     @test_throws DimensionError q1 - lq2
 
     #Multiplying and dividing LoqQuant by Quantity
-    @test exp(lq1 * q2 / q2) ≈ q1
+    @test exp(lq1 * scalar(q2 / q2)) ≈ q1
     @test exp(q1 * lq2 / q1) ≈ q2 
     @test exp((lq1 / q2) * q2) ≈ q1
 
