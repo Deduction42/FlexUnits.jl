@@ -1533,6 +1533,13 @@ end
     @test exp(u3*1u"m") ≈ exp(1.0)
     @test exp(u3/(1u"1/m")) ≈ exp(1.0)
 
+    #Practical sanity test, log-mean temperature difference
+    UA  = 10u"W/K" 
+    ΔT1 = 5u"K"
+    ΔT2 = 3u"K"
+    @test UA*(ΔT1 - ΔT2)/log(ΔT1/ΔT2) ≈ 10*((5-3)/(log(5/3)))u"W"
+    @test UA*(ΔT1 - ΔT2)/(log(ΔT1) - log(ΔT2)) ≈ 10*((5-3)/(log(5/3)))u"W"
+
 end
 
 
