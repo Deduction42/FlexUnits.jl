@@ -1537,8 +1537,11 @@ end
     UA  = 10u"W/K" 
     ΔT1 = 5u"K"
     ΔT2 = 3u"K"
-    @test UA*(ΔT1 - ΔT2)/log(ΔT1/ΔT2) ≈ 10*((5-3)/(log(5/3)))u"W"
-    @test UA*(ΔT1 - ΔT2)/(log(ΔT1) - log(ΔT2)) ≈ 10*((5-3)/(log(5/3)))u"W"
+    Q = 10*((5-3)/(log(5/3)))u"W" #LMTD formula with direct numbers
+    @test UA*(ΔT1 - ΔT2)/log(ΔT1/ΔT2) ≈ Q
+    @test UA*(ΔT1 - ΔT2)/(log(ΔT1) - log(ΔT2)) ≈ Q
+    @test UA*(ΔT1 - ΔT2)*inv(log(ΔT1/ΔT2)) ≈ Q
+    @test (log(ΔT1) - log(ΔT2))/(UA*(ΔT1 - ΔT2)) ≈ inv(Q)
 
 end
 
