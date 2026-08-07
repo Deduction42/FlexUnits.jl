@@ -283,6 +283,9 @@ Base.:inv(q::QuantUnion) = with_ubase(inv, q)
 Base.adjoint(q::QuantUnion) = with_ubase(adjoint, q)
 
 Base.muladd(x::QuantUnion, y::QuantUnion, z::QuantUnion) = muladd(dstrip(x), dstrip(y), dstrip(z)) * equaldims(dimension(x)*dimension(y), dimension(z))
+Base.muladd(x::NumUnion, y::QuantUnion, z::QuantUnion) = muladd(x, dstrip(y), dstrip(z)) * equaldims(dimension(y), dimension(z))
+Base.muladd(x::QuantUnion, y::NumUnion, z::QuantUnion) = muladd(dstrip(x), y, dstrip(z)) * equaldims(dimension(x), dimension(z))
+Base.muladd(x::QuantUnion, y::QuantUnion, z::NumUnion) = muladd(dstrip(x), dstrip(y), z) * equaldims(dimension(x)*dimension(y), dimension(z))
 
 #Operators on explicitly missing values simply return missing
 for op in (:+,:-,:*,:/)
@@ -438,9 +441,11 @@ Base.:*(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q
 Base.:*(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:/(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)/x, unit(q)^inv(x)))
 
-Base.:*(q1::LogQuant, q2::Quantity) = quantity(dstrip(q2)*q1, dimension(q2))
-Base.:*(q1::Quantity, q2::LogQuant) = q2*q1
-Base.:/(q1::LogQuant, q2::Quantity) = q1*inv(q2)
+Base.:*(q1::LogQuant, q2::Quantity) = scalar(q1)*q2
+Base.:*(q1::Quantity, q2::LogQuant) = q1*scalar(q2)
+Base.:/(q1::LogQuant, q2::Quantity) = scalar(q1)/q2
+Base.:/(q1::Quantity, q2::LogQuant) = q1/scalar(q2)
+Base.inv(q::LogQuant) = inv(scalar(q))
 
 #Addition/subtraction for linear transformations
 ⊕(q1::LogQuant, q2::LogQuant) = log(ubase(q1) + ubase(q2))

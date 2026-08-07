@@ -527,7 +527,7 @@ function ubase(q::LogQuant{<:Any,<:AbstractUnitLike})
     return quantity(ft(ustrip(q)), dimension(u))
 end
 
-scalar(q::LogQuant) = ustrip(assert_dimensionless(ubase(q)))
+scalar(q::LogQuant) = ustrip(assert_dimensionless(logubase(q)))
 
 ustrip(q::LogQuant) = q.value
 unit(q::LogQuant) = q.unit
