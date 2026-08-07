@@ -1482,8 +1482,8 @@ end
 
     #Multiplying and dividing LoqQuant by Quantity
     @test exp(lq1 * scalar(q2 / q2)) ≈ q1
-    @test exp(q1 * lq2 / q1) ≈ q2 
-    @test exp((lq1 / q2) * q2) ≈ q1
+    @test_throws DimensionError exp(q1 * lq2 / q1)
+    @test_throws DimensionError exp((lq1 / q2) * q2)
 
     #Miscillaneous tests
     @test ubase(lq1)*q2 ≈ q1*q2
@@ -1500,12 +1500,17 @@ end
     @test ustrip(u"", logubase(100, u"%")) ≈ exp(1)
     @test ustrip(u"", logubase(1, D""())) ≈ exp(1)
 
-    @test 5u""*(5dB(u"m")) == 5*(5dB(u"m"))
-    @test (5u"")*dB(u"W") == 5*(1dB(u"W"))
+    @test_throws DimensionError 5u""*(5dB(u"m"))
+    @test_throws DimensionError (5u"")*dB(u"W")
     @test (5u"m")*dB() == (5u"m")*(1dB())
 
     #Practical test, linear sound wave propagation
     α = 20dB()/(1u"m")
+    r = 1u"m" 
+    @test exp(α*r) ≈ 100.0
+    @test exp(α*r + 10dB(u"Pa")) ≈ 1000u"Pa"
+
+    α = 20(dB()/u"m")
     r = 1u"m" 
     @test exp(α*r) ≈ 100.0
     @test exp(α*r + 10dB(u"Pa")) ≈ 1000u"Pa"
@@ -1516,16 +1521,16 @@ end
     f = 2*π*c/(1λ)
 
     u1 = dB()/λ
-    @test ustrip(u1, 1dB()/λ) ≈ 1.0
-    @test ustrip(u1, dB()/(1u"m")) ≈ ustrip(u"m", 1λ)
-    @test ustrip(u1, (c/λ)*dB()/u"m*Hz") ≈ ustrip(u"m/s", c)
+    @test ustrip(u1, 1*(dB()/λ)) ≈ 1.0
+    @test ustrip(u1, 1*(dB()/u"m")) ≈ ustrip(u"m", 1λ)
+    @test ustrip(u1, (c/λ)*(dB()/u"m*Hz")) ≈ ustrip(u"m/s", c)
     @test ustrip(u1, 1(Np()/u"m")) ≈ 10ustrip(u"m", 1λ)/log(10)
     
     u2 = dB()/u"m"
-    @test ustrip(u2, 1dB()*u"1/m") ≈ 1.0 
-    @test ustrip(u2, inv(λ)*(1dB())) ≈ ustrip(λ, 1u"m")
-    @test ustrip(u2, (c/λ)*dB()*u"1/(m*Hz)") ≈ ustrip(u"Hz", c/λ)
-    @test ustrip(u2, u"1/(m*Hz)"*((c/λ)*dB())) ≈ ustrip(u"Hz", c/λ)
+    @test ustrip(u2, 1(dB()*u"1/m")) ≈ 1.0 
+    @test ustrip(u2, 1(inv(λ)*dB())) ≈ ustrip(λ, 1u"m")
+    @test ustrip(u2, (c/λ)*(dB()*u"1/(m*Hz)")) ≈ ustrip(u"Hz", c/λ)
+    @test ustrip(u2, (c/λ)*(u"1/(m*Hz)"*dB())) ≈ ustrip(u"Hz", c/λ)
     @test ustrip(u2, 1(Np()*u"1/m")) ≈ 10/log(10)
 
     u3 = Np()/u"m"

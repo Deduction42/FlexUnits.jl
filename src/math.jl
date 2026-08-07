@@ -445,6 +445,7 @@ Base.:*(q1::LogQuant, q2::Quantity) = scalar(q1)*q2
 Base.:*(q1::Quantity, q2::LogQuant) = q1*scalar(q2)
 Base.:/(q1::LogQuant, q2::Quantity) = scalar(q1)/q2
 Base.:/(q1::Quantity, q2::LogQuant) = q1/scalar(q2)
+Base.inv(q::LogQuant) = inv(scalar(q))
 
 #Addition/subtraction for linear transformations
 ⊕(q1::LogQuant, q2::LogQuant) = log(ubase(q1) + ubase(q2))
