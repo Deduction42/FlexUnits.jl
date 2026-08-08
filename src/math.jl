@@ -440,6 +440,7 @@ Base.:-(q1::LogQuant, q2::Quantity) = q1 - scalar(q2)
 Base.:*(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:*(x::Real, q0::LogQuant) = (q = logubase(q0); logquant(ustrip(q)*x, unit(q)^x))
 Base.:/(q0::LogQuant, x::Real) = (q = logubase(q0); logquant(ustrip(q)/x, unit(q)^inv(x)))
+Base.:/(x::Real, q0::LogQuant) = x/scalar(q0)
 
 Base.:*(q1::LogQuant, q2::Quantity) = scalar(q1)*q2
 Base.:*(q1::Quantity, q2::LogQuant) = q1*scalar(q2)

@@ -1548,6 +1548,11 @@ end
     @test UA*(ΔT1 - ΔT2)*inv(log(ΔT1/ΔT2)) ≈ Q
     @test (log(ΔT1) - log(ΔT2))/(UA*(ΔT1 - ΔT2)) ≈ inv(Q)
 
+    #Other operations 
+    @test 1/(log(ΔT1)-log(ΔT2)) ≈ 1/log(ustrip(ΔT1)/ustrip(ΔT2))
+    @test convert(Float64, log(ΔT1)-log(ΔT2)) ≈ log(ustrip(ΔT1)/ustrip(ΔT2))
+    @test convert(Float64, 1*(log(ΔT1)-log(ΔT2))) ≈ log(ustrip(ΔT1)/ustrip(ΔT2))
+
 end
 
 
