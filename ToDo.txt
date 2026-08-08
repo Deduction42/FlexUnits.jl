@@ -9,16 +9,9 @@ Changelog
     -   Modifies a QuantFieldArray by a dimension D 
     -   Useful for taking derivatives
 
-Backlog:
-(current)
-0.  Fix issues with LogQuant 
-    -   Conversion strategies to raw numeric floats 
-        -   convert(Float64, 1.0 * (log(t1)-log(t2))) #This doesnt work 
-        -   convert(Float64, 1.0 * t1/t2) #This works
-    -   Other operations 
-        -   1/(log(t1)-log(t2)) #This doesn't work 
-        -   1u""/(log(t1)-log(t2)) #This works
+3.  Fixed issues with converting dimensionless LogQuant to a numeric value
 
+Backlog:
 1.  Write more tests to increase coverage
 2.  Extend and clean out tests 
     -   Include simulation cases in tests (to ensure they run)
