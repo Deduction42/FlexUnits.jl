@@ -7,7 +7,7 @@ using FlexUnits, .UnitRegistry
 using BenchmarkTools
 
 import OrdinaryDiffEqTsit5.SciMLBase.FullSpecialize
-import FlexUnits.DimsMod
+import FlexUnits: QuantFieldVector, DimsMod
 
 @kwdef struct ValveState{T} <: QuantFieldVector{3,T}
     x :: Quantity{T, D"m"} #Position
@@ -89,9 +89,9 @@ prob = ODEProblem{false, FullSpecialize}(lugre_diff, x0, Δt, θ, abstol=abstol,
 sol = solve(prob, Rodas4P())
 @btime solve(prob, Rodas4P())
 
+#=
 using Plots
 vt = LinRange(Δt[begin], Δt[end], 100)
 ax = plot(vt, dstrip.(interpolate(θ.u, vt, order=1)), label="setpoint")
 plot!(ax, sol.t, [dstrip(x.x) for x in sol.u], label="actual")
-
-
+=#
