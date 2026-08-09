@@ -1070,7 +1070,42 @@ end
 
 end
 
+@testset "QuantFieldArray" begin
+    import FlexUnits: DimsMod, QuantFieldVector, QuantFieldMatrix
 
+    @kwdef struct ValveState{T} <: QuantFieldVector{3,T}
+        x :: Quantity{T, D"m"} #Position
+        v :: Quantity{T, D"m/s"} #Velocity 
+        z :: Quantity{T, D"m"} #Internal state position
+    end
+
+    state = ValveState{Float64}(0,1,0.1)
+
+    @test state.x === 0.0u"m" 
+    @test state.v === 1.0u"m/s"
+    @test (2.0 .* state).z === 0.2u"m"
+    @test state[1] === 0.0
+
+    d_state = DimsMod{D"1/s"}(ValveState,
+        x = 0.0u"m/s",
+        v = 1.0u"m/s^2",
+        z = 0.1u"m/s"
+    )
+    @test d_state.x === 0.0u"m/s"
+    @test d_state.v === 1.0u"m/s^2"
+    @test d_state[1] === 0.0 
+
+    @kwdef struct HeightVelocityJac{T} <: QuantFieldMatrix{2,2,T}
+        dhh :: Quantity{T, D"1/s"}
+        dvh :: Quantity{T, D""}
+        dhv :: Quantity{T, D"m/s"}
+        dvv :: Quantity{T, D"1/s"}
+    end
+
+    jac = HeightVelocityJac{Float64}(0, -0.2, 0.2, -0.1)
+    @test jac.dhh === 0.0u"1/s"
+    @test jac[2,1] === -0.2
+end
 
 @testset "Additional tests of FixedRational" begin
     #Tests were basically copied from DynamicQuantities, since FixedRational isn't its own package

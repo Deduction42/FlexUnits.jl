@@ -13,7 +13,6 @@ julia --startup-file=no --depwarn=yes --threads=auto --project=. test/invalidati
 
 using TestItems: @testitem
 using TestItemRunner
-
 using Revise
 
 @testitem "Basic Functionality" begin
