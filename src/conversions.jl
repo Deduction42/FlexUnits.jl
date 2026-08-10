@@ -183,7 +183,7 @@ Base.convert(::Type{T}, t::NoTransform) where T <: Union{<:AffineTransform, <:No
 Base.convert(::Type{U}, q::QuantUnion) where U<:Units = Units(q)
 
 # Converting between generic numbers and quantity types 
-Base.convert(::Type{T}, q::QuantUnion) where {T<:MathUnion} = convert(T, dimensionless(q))
+Base.convert(::Type{T}, q::LogQuantUnion) where {T<:MathUnion} = convert(T, scalar(q))
 
 # Promotion rules ======================================================
 Base.promote_rule(::Type{AffineTransform{T1}}, ::Type{AffineTransform{T2}}) where{T1,T2} = AffineTransform{promote_type{T1,T2}}

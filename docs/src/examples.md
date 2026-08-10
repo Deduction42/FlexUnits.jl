@@ -29,23 +29,19 @@ Let us consider an application where we are using the drag force equation to mod
 4. `m` the mass of the object
 5. `g` gravitational acceleration
 
-First, we import necessary packages and define our new `QuantFieldVector` that returns scalars with `getindex`
+First, we import necessary packages and define our object as QuantFieldVectors contain state values with static dimensions attached to them. The `@D_str` macro makes easy work of assigning static dimensions in an intuitive manner.
 ```julia
 using FlexUnits, .UnitRegistry
-using OrdinaryDiffEq
+using OrdinaryDiffEqTsit5
+using OrdinaryDiffEqRosenbrock
 using StaticArrays
 using Plots
 using BenchmarkTools
 using LinearAlgebra
 
-#Make "getindex" return a unitless version of the value
-abstract type QuantFieldVector{N,T} <: FieldVector{N,T} end
+import FlexUnits: QuantFieldVector, DimsMod
+import OrdinaryDiffEqTsit5.SciMLBase.FullSpecialize
 
-Base.@propagate_inbounds Base.getindex(a::QuantFieldVector, i::Int) = dstrip(getfield(a, i))
-```
-We can then define the state values with static dimensions attached to them. The `@D_str` macro makes easy work of assigning static dimensions in an intuitive manner.
-
-```julia
 @kwdef struct FallingObjectState{T} <: QuantFieldVector{2,T}
     v  :: Quantity{T, D"m/s"}
     h  :: Quantity{T, D"m"}
@@ -60,20 +56,19 @@ end
 end 
 ```
 
-We can write out the equations as we would normally express them; when returning the value, we have to multiply by seconds because this is in differential form. This will validate that the output is in the correct units.
+We can write out the equations as we would normally express them; when returning the value, we need to modify the dimensions by `1/s` for the derivative. The `ustrip` command ensures the output type is the same as the input type (a requirement for the ode solver)
 ```julia
-function acceleration_raw(u0::AbstractVector, p::FallingObjectProps, t)
+function acceleration(u0::AbstractVector, p::FallingObjectProps, t)
     u = FallingObjectState(u0)
-    dt = D"s"() #Time dimension
 
     #Drag force
     fd = -sign(u.v)*0.5*p.ρ*u.v^2*p.Cd*p.A
     
     #Drag force effect on state (multiply by dt to make units work)
-    dv = (fd/p.m - p.g)*dt
-    dh = u.v*dt
+    dv = (fd/p.m - p.g)
+    dh = u.v
 
-    return FallingObjectState(v=dv, h=dh)
+    return ustrip(DimsMod{D"1/s"}(FallingObjectState, v=dv, h=dh))
 end
 ```
 
@@ -106,7 +101,7 @@ abstol = FallingObjectState{Float64}(v=1e-6u"m/s", h=1e-6u"m")
 reltol = SA[1e-6, 1e-6]
 
 tspan = dstrip.((0.0u"min", 0.25u"min")) #Time span must be in seconds, dstrip takes care of this
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_raw, u0, tspan, p, abstol=abstol, reltol=reltol)
+prob = ODEProblem{false, FullSpecialize}(acceleration, u0, tspan, p, abstol=abstol, reltol=reltol)
 sol = solve(prob, Tsit5())
 plt = plot(sol.t, [dstrip(u.v) for u in sol.u], label="explicit") #Each element in sol.u is a QuantFieldVector
 
@@ -117,7 +112,7 @@ u0 = FallingObjectState{Float64}(v=0.0u"m/s", h=100u"m")
 p  = FallingObjectProps{Float64}(Cd=1.0, A=0.1u"m^2", ρ=1.0u"kg/m^3", m=50u"kg", g=9.81u"m/s^2")
 
 tspan = dstrip.((0.0u"min", 0.25u"min"))
-prob = ODEProblem{false, OrdinaryDiffEq.SciMLBase.NoSpecialize}(acceleration_raw, u0, tspan, p, abstol=abstol, reltol=reltol)
+prob = ODEProblem{false, FullSpecialize}(acceleration, u0, tspan, p, abstol=abstol, reltol=reltol)
 sol = solve(prob, Rodas5P())
 plt = plot!(plt, sol.t, [dstrip(u.v) for u in sol.u], label="implicit") #Each element in sol.u is a QuantFieldVector
 ```
