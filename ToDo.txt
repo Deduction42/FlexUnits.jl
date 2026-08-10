@@ -12,13 +12,17 @@ Changelog
 3.  Fixed issues with converting dimensionless LogQuant to a numeric value
 
 Backlog:
-1.  Write more tests to increase coverage
-2.  Extend and clean out tests 
-    -   Include simulation cases in tests (to ensure they run)
-    -   Consider adding benchmark tests (see how DynamicQuantities does this)
-    -   Move unused test code to an "Archives" folder
 
 (future)
+0.  Extend and clean out tests 
+    -   Include simulation cases in tests (simply test the flag of the simulation output)
+        -   Test Raw / Dynamic / QuantFieldArray versions of FallingObject 
+        -   Test Raw / QuantFieldArray versions of Stiction
+        -   These two cases will be separate "TestItem" objects 
+            -   Tests within these two items are separate "TestSet" objects
+    -   Move unused test code to an "Archives" folder
+
+
 1.  Add compatibility layer with Dates 
     -   Create "seconds_unit(::Type{D}) where D<:AbstractDimensions" function (and extend for Units, and StaticDims)
         -   This should return a StaticDims or Unit{StaticDims}
@@ -28,12 +32,14 @@ Backlog:
         -   convert(::Type{Q}, p::Period) = convert(Q, quantity(toseconds(p), seconds_unit(dimtype(Q))))
     -   Define rounding functions and conversion to Period
 
-2.  Move factorizations to LinearAlgebra extension
+2.  Add QuantFieldArray section to LinearAlgebra docs
+
+3.  Move factorizations to LinearAlgebra extension
     -   implement a unitful "cholupdate!" and "choldowndate!"
     -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
     -   Add performance benchmarks
 
-3.  Add plot recipes
+4.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
 
 

@@ -42,10 +42,10 @@ AffineTransform
 ## QuantFieldArrray
 Objects are a subtype of FieldArray, which can store multiple values with different static dimensions in a type-stable manner. This is done by returning *only the magnitude* when indexed by number, but the quantity (both magnitude and dimensions) when indexed by field name. This allows for easy cross-conversion between the agnostic `SArray` and `QuantFieldArray` types allowing for dimension-checking in dimension-aware engineering calculations, but forgoes this in linear algebra operations allowing for unit checking only when needed at zero cost. These types are not exported by default and need to be explicitly imported.
 ```@docs
-QuantFieldArray
-QuantFieldMatrix
-QuantFieldVector
-DimsMod
+FlexUnits.QuantFieldArray
+FlexUnits.QuantFieldMatrix
+FlexUnits.QuantFieldVector
+FlexUnits.DimsMod
 ```
 
 ## Linear Algebra
