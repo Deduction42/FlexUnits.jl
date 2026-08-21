@@ -27,6 +27,10 @@ end
     include("test_statistics.jl")
 end
 
+@testitem "Custom Dimensions" begin 
+    include("test_currency_registry.jl")
+end
+
 @testitem "Integration tests with Unitful" begin
     import Unitful 
     using FlexUnits, .UnitRegistry 
@@ -46,6 +50,7 @@ end
 
 @testitem "Aqua.jl" begin
     using Aqua
+    using FlexUnits
     Aqua.test_all(FlexUnits)
 end
 
