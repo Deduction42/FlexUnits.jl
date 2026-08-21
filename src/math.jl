@@ -2,18 +2,20 @@
  Dimension fundamentals
 =============================================================================================#
 """
-    map_dimensions(f::F, args::AbstractDimensions...)
+    map_dimensions(f::Function, arg1::D, argN::D...) where {D<:AbstractDimensions}
 
 Similar to the `map` function, but specifically iterates over dimensions.
 Useful for defining mathematical operations for dimensions
 """
-@inline function map_dimensions(f::F, args::AbstractDimensions...) where {F<:Function}
-    D = promote_type(typeof(args).parameters...)
+function map_dimensions(f::Function, arg1::D, argN::D...) where {D<:AbstractDimensions}
+    args = (arg1, argN...)
     dnames = dimension_names(D)
     return  D(
-        ( f((getproperty(arg, name) for arg in args)...) for name in  dnames)...
+        ( f((getproperty(arg, name) for arg in args)...) for name in dnames)...
     )
 end
+
+@inline map_dimensions(f::Function, arg1::AbstractDimensions, argN::AbstractDimensions...) = map_dimensions(f, promote(arg1, argN...)...)
 
 unknown(::Type{D}) where {T, D<:AbstractDimensions{T}} = D(typemax(T))
 isunknown(d::D, fn::Symbol) where {T, D<:AbstractDimensions{T}} = (getproperty(d, fn) == typemax(T))
@@ -24,14 +26,14 @@ isknown(d::StaticDims{D}) where D = isknown(D)
 
 #Checks equality of dimensions, returns first non-mirrored dimension
 @inline equaldims(arg1::AbstractDimensions) = arg1
-equaldims(arg1::AbstractDimensions, arg2::AbstractDimensions) = equaldims(promote(arg1, arg2)...)
-function equaldims(d1::D, d2::D) where D<:AbstractDimensions
+function equaldims(d1::AbstractDimensions, d2::AbstractDimensions)
+    D = promote_type(typeof(d1), typeof(d2))
     if (d1 == d2)
-        return d1
+        return convert(D, d1)
     elseif isunknown(d2)
-        return d1
+        return convert(D, d1)
     elseif isunknown(d1)
-        return d2
+        return convert(D, d2)
     else
         throw(DimensionError(d1,d2))
     end
@@ -46,21 +48,23 @@ raw_inv(d::AbstractDimensions) = map_dimensions(-, d)
 #=============================================================================================
  Mathematical operations on dimensions
 =============================================================================================#
-function Base.:*(d1::AbstractDimensions, d2::AbstractDimensions) 
+function Base.:*(d1::AbstractDimensions, d2::AbstractDimensions)
+    D = promote_type(typeof(d1), typeof(d2))
     if isunknown(d1)
-        return d1 
+        return unknown(D) 
     elseif isunknown(d2)
-        return d2 
+        return unknown(D) 
     else
         return raw_mul(d1, d2)
     end
 end
 
 function Base.:/(d1::AbstractDimensions, d2::AbstractDimensions)
+    D = promote_type(typeof(d1), typeof(d2))
     if isunknown(d1)
-        return d1 
+        return unknown(D) 
     elseif isunknown(d2)
-        return d2 
+        return unknown(D)
     else
         return raw_div(d1, d2)
     end
@@ -99,15 +103,26 @@ Base.adjoint(d::AbstractDimensions) = d
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-1}) = inv(d) 
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-2}) = isknown(d) ? raw_inv(raw_mul(d, d)) : d
 
+#============================================================================================================================
+Equality
+============================================================================================================================#
+Base.:(==)(d1::D, d2::D) where D<:AbstractDimensions = (d1 === d2)
+Base.:(==)(d1::AbstractDimensions, d2::AbstractDimensions) = ===(promote(d1, d2)...)
+Base.:(==)(d1::AbstractDimensions, d2::NoDims) = isdimensionless(d1)
+Base.:(==)(d1::NoDims, d2::AbstractDimensions) = isdimensionless(d2)
+Base.:(==)(d1::AbstractDimensions, d2::StaticDims) = (d1 == dimval(d2))
+Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
+Base.:(==)(d1::StaticDims{D1}, d2::StaticDims{D2}) where {D1, D2} = (D1 == D2)
+Base.:(==)(d1::NoDims, d2::StaticDims) = isdimensionless(d2)
+Base.:(==)(d1::StaticDims, d2::NoDims) = isdimensionless(d1)
+Base.:(==)(d1::NoDims, d2::NoDims) = true
 
-#NoDims shortcuts
+#============================================================================================================================
+NoDims shortcuts
+============================================================================================================================#
 @inline equaldims(d1::AbstractDimensions, d2::NoDims) = assert_dimensionless(d1)
 @inline equaldims(d1::NoDims, a2::AbstractDimensions) = assert_dimensionless(d2)
 @inline equaldims(d1::NoDims, d2::NoDims) = d1
-
-Base.:(==)(d1::NoDims, d2::AbstractDimLike) = isdimensionless(d2)
-Base.:(==)(d1::AbstractDimLike, d2::NoDims) = isdimensionless(d1)
-Base.:(==)(d1::NoDims, d2::NoDims) = true
 
 Base.:*(d1::AbstractDimensions, d2::NoDims) = d1
 Base.:*(d1::NoDims, d2::AbstractDimensions) = d2
@@ -126,14 +141,9 @@ Base.:^(d::NoDims, p::Real) = d
 #============================================================================================================================
 Static dimension ops
 ============================================================================================================================#
-Base.:(==)(d1::AbstractDimensions, d2::StaticDims) = (d1 == dimval(d2))
-Base.:(==)(d1::StaticDims, d2::AbstractDimensions) = (dimval(d1) == d2)
-Base.:(==)(d1::NoDims, d2::StaticDims) = (d1 == dimval(d2))
-Base.:(==)(d1::StaticDims, d2::NoDims) = (dimval(d1) == d2)
-
 equaldims(arg1::StaticDims, arg2::AbstractDimensions) = (dimval(arg1) == arg2) || isunknown(arg2) ? arg1 : throw(DimensionError(arg1,arg2))
 equaldims(arg1::AbstractDimensions, arg2::StaticDims) = (arg1 == dimval(arg2)) || isunknown(arg1) ? arg2 : throw(DimensionError(arg1,arg2))
-equaldims(arg1::StaticDims, arg2::StaticDims) = (dimval(arg1) == dimval(arg2)) ? arg1 : throw(DimensionError(arg1,arg2))
+equaldims(arg1::StaticDims, arg2::StaticDims) = StaticDims{equaldims(dimval(arg1), dimval(arg2))}()
 
 Base.:*(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1*D2}()
 Base.:/(arg1::StaticDims{D1}, arg2::StaticDims{D2}) where {D1,D2} = StaticDims{D1/D2}()
