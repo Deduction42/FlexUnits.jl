@@ -187,3 +187,107 @@ julia> uconvert(u"°C", 14u"°F")
 -10//1 °C
 ```
 This can be used to modify many different behaviours if you don't agree with the design decisions of the default registry. FlexUnits registries are designed to be truly modular and flexible.
+
+## Custom dimensions
+The default dimensions uses the SI unit system dimensions, but there is some contention around what constitutes a dimension. For example, angles are not a dimension, since they can be described as a ratio. Moreover, this system has no notion of currency, because it is not a *physical* dimension but merely a fuzzy human notion of value (hence why currencies fluctuate over time, usually downward due to inflation). This does not stop you, the user, from being able to include additional dimensions such as currency and angles. In this example below, we will be adding a currency dimension in the form of Euros.
+
+```julia
+#===============================================================================================================================
+Define your custom dimensions that include Euros, note that the € symbol is a completely valid Julia variable name
+===============================================================================================================================#
+using FlexUnits 
+
+@kwdef struct MoneyDimensions{P} <: AbstractDimensions{P}
+    m   ::P = zero(FixRat32)
+    kg  ::P = zero(FixRat32)
+    s   ::P = zero(FixRat32)
+    A   ::P = zero(FixRat32)
+    K   ::P = zero(FixRat32)
+    cd  ::P = zero(FixRat32)
+    mol ::P = zero(FixRat32)
+    €   ::P = zero(FixRat32)
+end
+MoneyDimensions(args::Real...) = MoneyDimensions{FixRat32}(args...)
+```
+While this is technically usable, most of the FlexUnits API makes use of string macros which look up units from a registry. Unfortunately, in order to make units type stable, all units in a registry must have the same (dynamic) dimension type. As shown in the previous RationalRegistry example, FlexUnits provides tooling to make building registries as painless as possible. Since `MoneyDimensions` is a generalization of `Dimensions`, `registry_defaults!` can be used to populate the registry with all the units normally inside `Dimensions`.
+
+```julia
+#===============================================================================================================================
+Create your unit registry as a module using RegistryTools
+===============================================================================================================================#
+module CurrencyUnits
+
+using FlexUnits
+using FlexUnits.RegistryTools
+import ..MoneyDimensions
+
+const UNITS = PermanentDict{Symbol,Units{MoneyDimensions{FixRat32},AffineTransform{Float64}}}()
+
+registry_defaults!(UNITS)
+register_unit!(UNITS, "€" => MoneyDimensions{FixRat32}(€=1))
+register_unit!(UNITS, "EUR" => UNITS[:€])
+
+uparse(str::String) = RegistryTools.uparse(str, UNITS)
+qparse(str::String) = RegistryTools.qparse(str, UNITS)
+
+macro u_str(str); return suparse_expr(str, UNITS); end
+macro ud_str(str); return uparse_expr(str, UNITS); end
+macro q_str(str); return qparse_expr(str, UNITS); end
+macro U_str(str); suexpr = suparse_expr(str, UNITS); return :($typeof($suexpr)); end
+macro D_str(str); suexpr = suparse_expr(str, UNITS); return :($dimtype($suexpr)); end
+
+utype() = RegistryTools.regunittype(UNITS)
+dtype() = RegistryTools.regdimtype(UNITS)
+
+export @u_str, @ud_str, @q_str, @U_str, @D_str, uparse, qparse, utype, dtype
+
+end
+```
+This now gives you the ability to use string macros and look up units. Note that you must "use" this module instead of the default `UnitRegistry`.
+```julia
+using .CurrencyUnits
+
+fuel_price = 2.04u"€/L"
+driver_price = 20u"€/hr"
+trip_speed = 5u"km/hr"
+trip_distance = 100u"km"
+fuel_consumption = 8.1u"L"/100u"km"
+estimated_price = fuel_price*trip_distance*fuel_consumption + driver_price*trip_distance/trip_speed
+416.524 €
+```
+Unfortunately, `simplify` must assume a set of units; if your units are not compatible with `Dimensions` (i.e. fields are not the same), simplify will not work.
+```julia
+electricity_price = 0.195u"€/(kW*hr)"
+5.416666666666666e-8 (s² €)/(m² kg)
+
+electricity_price = 0.195u"€/(kW*hr)" |> simplify
+ArgumentError: type does not have a definite number of fields
+```
+In order to support simplification, you will need to create a constant vector of desired units (ordered by highest complexity first) and extend `FlexUnits.preferred_units(::Type{T})` to map your dimensional type to that vector.
+
+```julia
+#===============================================================================================================================
+If you want simplify(...) to work with your units, 
+    => define a constant vector of preferred units that are compatible with your new type
+    => overload FlexUnits.preferred_units(::Type{T}) to refer to that list of preferred units
+===============================================================================================================================#
+const CURRENCY_UNITS = [ CurrencyUnits.UNITS[k] for k in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L, :€] ]
+FlexUnits.preferred_units(::Type{<:MoneyDimensions}) = CURRENCY_UNITS
+
+electricity_price = 0.195u"€/(kW*hr)" |> simplify
+5.416666666666666e-8 €/J
+```
+
+If you create a custom dimension set with a custom registry to go along with it, you will most likely only want to work with the dimension types in that registry. In the rare occasion that you will want to combine operations with the default unit registry (such as creating an extension to FlexUnits), you will need to define (1) promotion rules to prioritize your type (2) a conversion constructor to convert `Dimensions` to your new type
+```julia
+#===============================================================================================================================
+If you want to combine operations with default unit registry
+    => Add promotion rules and constructor to build your new type from Dimensions
+===============================================================================================================================#
+MoneyDimensions{T}(d::Dimensions) where T = MoneyDimensions{T}(m=d.m, kg=d.kg, s=d.s, A=d.A, K=d.K, cd=d.cd, mol=d.mol, €=zero(T))
+Base.promote_rule(::Type{MoneyDimensions{T1}}, ::Type{Dimensions{T2}}) where {T1, T2} = MoneyDimensions{promote_type(T1,T2)}
+Base.promote_rule(::Type{Dimensions{T1}}, ::Type{MoneyDimensions{T2}}) where {T1, T2} = MoneyDimensions{promote_type(T1,T2)}
+
+(25*u"EUR") / (1*UnitRegistry.u"hr")
+0.006944444444444444 €/s
+```

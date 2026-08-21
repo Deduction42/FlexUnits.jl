@@ -21,7 +21,7 @@ This packages is built around the following major design decisions:
 
 2. Quantities with units are converted to quantities with dimensions (i.e. SI units) before any calculation is performed which greatly simplifies many calculation operations. When applied to `StaticDims`, this also reduces over-specialization because there is only one unit for every dimension. For example, velocity is always in "m/s", temperature is always in "K", and pressure is always in "Pa"="kg/(m s²)". This can lead to faster compile times and greater type-stability when variables are re-assigned.
 
-3. The use of a sentinel value to denote an `unknown` dimension. This enhances compatibility for Julia codbases where `zero(T)` is called without foreknowledge of units (such as initializing mixed-unit matrices, or indexing sparse/diagonal matrices). This special value sets all dimensions to the exponent's `typemax`, and is displayed as `?/?`. This alone has been able to make certain functions like `mean` and `cov` work out of the box, where other unit packages failed.
+3. The use of a sentinel value to denote an `unknown` dimension. This enhances compatibility for Julia codebases where `zero(T)` is called without foreknowledge of units (such as initializing mixed-unit matrices, or indexing sparse/diagonal matrices). This special value sets all dimensions to the exponent's `typemax`, and is displayed as `?/?`. This alone has been able to make certain functions like `mean` and `cov` work out of the box, where other unit packages failed.
 
 4. Introducing a special array type called a `LinmapQuant`, a special matrix type of `Quantity` that is intended for linear algebra operations. `Quantity` matrices that can be multiplied are *linear mappings* (hence `LinmapQuant`) that map input dimensions to output dimensions. Enforcing this structure results in a dimension-matrix that can be summarized by two vectors and a scalar, resulting in unit inference techniques that are much simpler than the linear algebra itself. For example, matrix multiplication is an O(n³) operation, but its unit inference is only O(n); matrix inversion is also O(n³) but its unit inference is only O(1). Many two-argument linear algebra functions guarantee a `LinmapQuant` result, so these matrices tend to propagate, resulting in better performance if even one matrix is a `LinmapQuant` (broadcasting is an exception).
 
@@ -116,7 +116,7 @@ display_simplified_units(true) #Show simplified results
 julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" #This is convenient
 2798.0640000000003 Pa
 ```
-This begs the question: *Why is this not enabled by default?*. The main reason is ***because it lies***; it displays results *as though they were simplified*, but does not actually simplify the results. This can mess up `ustrip` ***Ye be warned***
+This begs the question: *Why is this not enabled by default?*. The main reason is ***because it can lie***; it displays results *as though they were simplified*, but does not actually simplify the results. This can mess up `ustrip` ***Ye be warned***
 ```julia
 display_simplified_units(true)
 set_preferred_unit(u"psi")
@@ -127,6 +127,7 @@ julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" #This is convenient
 julia> ustrip(p) #I have been deceived
 2798.0640000000003
 ```
+Another reason not to enable by default is that ***if you wish to create custom dimensions, simplification will not work out of the box***. You will need to do some extra work to get simplification to run (see the advanced examples section in the documentation for a guide).
 
 ## Mixed-unit linear algebra
 Linear algebra is accelerated through `LinmapQuant` objects that define a linear mapping from input units to output units. To attach these units, simply multiply a matrix times a `UnitMap` constructor that specifies an example of the input and output units expected by a multiplication.
