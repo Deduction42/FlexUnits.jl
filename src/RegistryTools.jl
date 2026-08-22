@@ -83,8 +83,7 @@ Returns the dimension type of a registry
 regdimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 
 
-_register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, u::Units) = setindex!(reg, u, usymbol(u))
-_register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair) = _register_unit!(reg, Units(p))
+
 
 function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
     original = reg[u]
@@ -95,6 +94,11 @@ function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, 
     return reg
 end
 
+"""
+    registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnits
+
+Populate the unit registry `reg` with the default set of units
+"""
 function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnits
     #reg = PermanentDict{Symbol, Units{DEFAULT_DIMENSONS}}()
     Dims = dimtype(U)
@@ -103,19 +107,14 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(p::Pair) = _register_unit!(reg, p)
     add_prefixes(symb::Symbol, prfx::NamedTuple) = add_prefixes!(reg, symb, prfx)
 
-    #SI dimensional units
+    initialize_registry!(reg, Dims)
+    
     _register_unit(:NoDims => Dims())
-    _register_unit(:m => Dims(m=1))
     _register_unit(:g => 0.001*Dims(kg=1))
     _register_unit(:t => 1000*Dims(kg=1))
-    _register_unit(:s => Dims(s=1))
-    _register_unit(:A => Dims(A=1))
-    _register_unit(:K => Dims(K=1))
-    _register_unit(:cd => Dims(cd=1))
-    _register_unit(:mol => Dims(mol=1))
-    
+
     add_prefixes(:m, si_prefixes[( :f, :p, :n, :μ, :u, :m, :c, :d, :k, :M, :G )])
-    add_prefixes(:g, si_prefixes[( :n, :μ, :u, :m, :k)])
+    add_prefixes(:g, si_prefixes[( :n, :μ, :u, :m)])
     add_prefixes(:t, si_prefixes[( :k, :M, :G)])
     add_prefixes(:s, si_prefixes[( :f, :p, :n, :μ, :m)])
     add_prefixes(:A, si_prefixes[( :n, :μ, :u, :m, :k)])
@@ -216,6 +215,23 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
 
     return reg
 end
+
+"""
+    initialize_registry!(reg::AbstractDict{Symbol}, ::Type{D}) where D <:AbstractDimensions
+
+In order to use `registry_defaults!`, you must have the base SI units registered first. If your dimensions object does not cover the
+base SI units, overload this function on your dimension type D to manually populate the registry.
+"""
+function initialize_registry!(reg::AbstractDict{Symbol}, ::Type{D}) where D <:AbstractDimensions
+    #Register all existing dimensional symbols
+    for u in fieldnames(D)
+        _register_unit!(reg, u => D(; u=>1))
+    end
+    return reg 
+end
+
+_register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, u::Units) = setindex!(reg, u, usymbol(u))
+_register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair) = _register_unit!(reg, Units(p))
 
 # Dynamic parsing API ======================================================================================
 function uparse(str::String, reg::AbstractDict{Symbol, U}) where {U<:AbstractUnitLike}
