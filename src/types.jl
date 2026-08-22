@@ -67,9 +67,16 @@ Base.eltype(::Type{<:AbstractDimensions{P}}) where P = P
 #=======================================================================================
 AbstractDimensions API
 =======================================================================================#
-#Dimension constructor from other types of dimensions
-function (::Type{D})(x::AbstractDimensions) where {P, D<:AbstractDimensions{P}}
-    return D(map(Base.Fix1(getproperty, x), static_fieldnames(D))...)
+#Construct a new (superset) dimension from an old (subset) dimension
+@generated function (::Type{D})(d::D0) where {P, D<:AbstractDimensions{P}, D0<:AbstractDimensions}
+    assert_superset(D, D0)
+    (new_names, old_names) = (dimension_names(D), dimension_names(D0))
+
+    args = map(new_names) do name
+        name ∈ old_names ? :(convert($P, d.$name)) : :(zero($P))
+    end
+
+    return :(isunknown(d) ? unknown($D) : $D($(args...)))
 end
 
 #Assign a single value to all dimensions
@@ -269,6 +276,7 @@ Placehoder for a unitless dimension in cases where the base dimension type is un
     any :: Bool = false #Has a single value set to false so that it doesn't trigger "isunknown(NoDims())=true")
     NoDims(x::Bool) = new(x)
 end
+(::Type{D})(d::NoDims) where {P, D<:AbstractDimensions{P}} = D(0)
 Base.getproperty(d::NoDims, ::Symbol) = getfield(d,:any)
 dimension(x::NumUnion) = NoDims()
 dimtype(::Type{<:NumUnion}) = NoDims
@@ -712,3 +720,10 @@ isdimensionless(d::AbstractDimLike)  = iszero(d) || isunknown(d)
 isdimensionless(d::NoDims) = true
 Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))
 Base.iszero(u::StaticDims{d}) where d = iszero(d)
+
+function assert_superset(::Type{D}, ::Type{D0}) where {D<:AbstractDimensions, D0<:AbstractDimensions}
+    (new_names, old_names) = (dimension_names(D), dimension_names(D0))
+    missing_dims = filter(name -> name ∉ new_names, old_names)
+    !isempty(missing_dims) && throw(ArgumentError("$(D) cannot extend $(D0): missing dimensions $(missing_dims)"))
+    return D 
+end

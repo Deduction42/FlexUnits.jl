@@ -61,7 +61,6 @@ FlexUnits.preferred_units(::Type{<:MoneyDimensions}) = CURRENCY_UNITS
 If you want to combine operations with default unit registry
     => Add promotion rules and a conversion function 
 ===============================================================================================================================#
-MoneyDimensions{T}(d::Dimensions) where T = MoneyDimensions{T}(m=d.m, kg=d.kg, s=d.s, A=d.A, K=d.K, cd=d.cd, mol=d.mol, €=zero(T))
 Base.promote_rule(::Type{MoneyDimensions{T1}}, ::Type{Dimensions{T2}}) where {T1, T2} = MoneyDimensions{promote_type(T1,T2)}
 Base.promote_rule(::Type{Dimensions{T1}}, ::Type{MoneyDimensions{T2}}) where {T1, T2} = MoneyDimensions{promote_type(T1,T2)}
 
