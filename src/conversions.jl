@@ -189,10 +189,23 @@ Base.convert(::Type{T}, q::LogQuantUnion) where {T<:MathUnion} = convert(T, scal
 Base.promote_rule(::Type{AffineTransform{T1}}, ::Type{AffineTransform{T2}}) where{T1,T2} = AffineTransform{promote_type{T1,T2}}
 Base.promote_rule(::Type{AffineTransform{T}}, ::Type{NoTransform}) where{T} = AffineTransform{T}
 
+#Generic dimension promotion favors the supertype
+function Base.promote_rule(::Type{D1}, ::Type{D2}) where {P1, P2, D1<:AbstractDimensions{P1}, D2<:AbstractDimensions{P2}}
+    P = promote_type(P1, P2)
+    (dnames1, dnames2) = (dimension_names(D1), dimension_names(D2))
+    if dnames1 ⊆ dnames2
+        return constructorof(D2){P}
+    elseif dnames2 ⊆ dnames1
+        return constructorof(D1){P}
+    end
+    error("Cannot build a generic promotion rule between dimensions $(D1) and $(D2), as they have disjoint dimension names. A custom promotion rule is needed.")
+end
+
 function Base.promote_rule(::Type{<:Dimensions{P1}}, ::Type{<:Dimensions{P2}}) where {P1, P2}
     return Dimensions{promote_type(P1,P2)}
 end
 Base.promote_rule(::Type{T1}, ::Type{T2}) where {T1<:NoTransform, T2<:AbstractUnitTransform} = T2
+
 
 #Conflicting or uncertain static dimensions get promoted to dynamic version
 Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:StaticDims} = promote_type(D1, dimvaltype(D2))
