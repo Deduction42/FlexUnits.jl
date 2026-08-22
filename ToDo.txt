@@ -2,16 +2,19 @@ Backlog:
 
 (future)
 0.  Add macros to simplify the creation of custom registries
-    -   @generate_registry_defaults(UNITS)
-        -   Creates the constant UNITS = PermanentDict{Symbol, U}
-        -   Populates the constant using registry_defaults! 
-        -   Generates a list of preferred units
-        -   Extends the definition of FlexUnits.preferred_units(::Type{D}) where D <: dimtype(eltype(values(UNITS))) 
+    -   User must create the UNITS const and populate it manually
+    -   User must create PREFERRED_UNITS manually
+    -   @generate_unit_simplifier(D, PREFERRED_UNITS)
+        -   Sorts PREFERRED_UNITS by complexity
+        -   Extends the definition of FlexUnits.preferred_units(::Type{<:D})
             -   Makes this function refer to the current preferred units 
     -   @generate_registry_exports(UNITS)
         -   Creates a ReentrantLock and defines the register_unit function around it 
         -   Generates string macros and instrospective functions 
         -   Exports the standard functions
+    -   Add this example to the README.md file (it should be short enough now)
+    -   May want to put logic that prevents re-defining ":rad" if it already exists 
+        -   Will make "AngleDimensions" easier
 
 1.  Make log(5 m/s) display as 1.6094379... Np(m/s)
     -   This helps consistency with "ustrip"
