@@ -190,8 +190,8 @@ Base.promote_rule(::Type{AffineTransform{T1}}, ::Type{AffineTransform{T2}}) wher
 Base.promote_rule(::Type{AffineTransform{T}}, ::Type{NoTransform}) where{T} = AffineTransform{T}
 
 #Generic dimension promotion favors the supertype
-function Base.promote_rule(::Type{D1}, ::Type{D2}) where {P1, P2, D1<:AbstractDimensions{P1}, D2<:AbstractDimensions{P2}}
-    P = promote_type(P1, P2)
+function Base.promote_rule(::Type{D1}, ::Type{D2}) where {D1<:AbstractDimensions, D2<:AbstractDimensions}
+    P = promote_type(dimpowtype(D1), dimpowtype(D2))
     (dnames1, dnames2) = (dimension_names(D1), dimension_names(D2))
     if dnames1 ⊆ dnames2
         return constructorof(D2){P}
