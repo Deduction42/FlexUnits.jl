@@ -13,10 +13,6 @@ include("RegistryTools.jl")
 include("UnitRegistry.jl")
 include("LogUnitRegistry.jl")
 
-# Set default units for Simplification
-for ustr in ["F", "H", "T", "Ω", "V", "W", "J", "Pa", "N", "C", "L", "(m/s)"]
-    set_preferred_unit(UnitRegistry.uparse(ustr))
-end
 
 export AbstractUnitLike, AbstractDimLike, AbstractDimensions, AbstractUnits, AbstractUnitTransform
 export ConversionError, DimensionError, NotScalarError, NotDimensionError, FixRat32

@@ -4,10 +4,13 @@ module RegistryTools
 import ..AbstractUnitLike, ..AbstractUnits,  ..AbstractDimensions, ..AbstractUnitTransform
 import ..Units, ..Dimensions, ..AffineTransform, ..ExpAffTransform, ..NoTransform, ..QuantUnion, ..Quantity, ..FixRat32, ..FixRat64
 import ..uscale, ..uoffset, ..tobase, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype, ..ustatic
+import ..complexity_sort!, ..preferred_units, ..dimvaltype
 
 export AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64 
-export Units, Dimensions, AffineTransform, ExpAffTransform, NoTransform, QuantUnion, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol
+export Units, Dimensions, AffineTransform, ExpAffTransform, NoTransform, QuantUnion, Quantity, UnitOrQuantity
+export uscale, uoffset, dimension, usymbol, complexity_sort!, dimvaltype
 export PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, suparse_expr, dimtype
+export @generate_registry_exports, @generate_unit_simplifier
 
 const UnitOrQuantity = Union{AbstractUnitLike, QuantUnion}
 const PARSE_CASES = Union{Expr,Symbol,Real,Nothing}
@@ -82,17 +85,6 @@ Returns the dimension type of a registry
 """
 regdimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 
-
-
-
-function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
-    original = reg[u]
-    for (name, scale) in pairs(prefixes)
-        newname = Symbol(string(name)*string(u))
-        reg[newname] = Units(dims=dimension(original), tobase=tobase(original)*scale, symbol=newname)
-    end
-    return reg
-end
 
 """
     registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnits
@@ -230,8 +222,65 @@ function initialize_registry!(reg::AbstractDict{Symbol}, ::Type{D}) where D <:Ab
     return reg 
 end
 
+function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
+    original = reg[u]
+    for (name, scale) in pairs(prefixes)
+        newname = Symbol(string(name)*string(u))
+        reg[newname] = Units(dims=dimension(original), tobase=tobase(original)*scale, symbol=newname)
+    end
+    return reg
+end
+
 _register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, u::Units) = setindex!(reg, u, usymbol(u))
 _register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair) = _register_unit!(reg, Units(p))
+
+macro generate_unit_simplifier(upref)
+    esc(quote
+        RegistryTools.complexity_sort!($upref)
+        RegistryTools.preferred_units(::Type{dimvaltype(eltype($upref))}) = $upref 
+    end)
+end
+
+macro generate_registry_exports(ureg)
+    return esc(quote
+        const UNIT_LOCK = ReentrantLock()
+
+        register_unit(p::Pair{String, <:Any}) = lock(UNIT_LOCK) do 
+            RegistryTools.register_unit!($ureg, p)
+        end
+
+        uparse(str::String) = RegistryTools.uparse(str, $ureg)
+        qparse(str::String) = RegistryTools.qparse(str, $ureg)
+
+        macro u_str(str)
+            return RegistryTools.suparse_expr(str, $ureg)
+        end
+        
+        macro ud_str(str)
+            return RegistryTools.uparse_expr(str, $ureg)
+        end
+        
+        macro q_str(str)
+            return RegistryTools.qparse_expr(str, $ureg)
+        end
+        
+        macro U_str(str)
+            suexpr = RegistryTools.suparse_expr(str, $ureg)
+            return :(typeof($suexpr))
+        end
+        
+        macro D_str(str)
+            suexpr = RegistryTools.suparse_expr(str, $ureg)
+            return :(RegistryTools.dimtype($suexpr))
+        end
+
+        utype() = RegistryTools.regunittype($ureg)
+        dtype() = RegistryTools.regdimtype($ureg)
+
+        export @u_str, @ud_str, @q_str, @U_str, @D_str, uparse, qparse, register_unit
+    end)
+end
+
 
 # Dynamic parsing API ======================================================================================
 function uparse(str::String, reg::AbstractDict{Symbol, U}) where {U<:AbstractUnitLike}

@@ -3,22 +3,26 @@ module LogUnitRegistry
 
 #RegistryTools contains all you need to build a registry in one simple import
 using ..RegistryTools
-import ..RegistryTools.dimtype 
-import ..RegistryTools.unittype
 
-const UNIT_LOCK = ReentrantLock()
+#Affine-Log Units are a union, so we need to define convert functions
 const AffLogUnits = Union{Units{Dimensions{FixRat32}, AffineTransform{Float64}}, Units{Dimensions{FixRat32},ExpAffTransform{Float64}}}
-const UNITS = PermanentDict{Symbol, AffLogUnits}()
-
-#Additional conversion functions
 Base.convert(::Type{AffLogUnits}, u::AbstractUnitLike) = convert(Units{Dimensions{FixRat32}, AffineTransform{Float64}}, u)
 Base.convert(::Type{AffLogUnits}, u::Units{<:Any, <:ExpAffTransform}) = convert(Units{Dimensions{FixRat32}, ExpAffTransform{Float64}}, u)
 Base.convert(::Type{AffLogUnits}, u::QuantUnion) = convert(Units{Dimensions{FixRat32}, AffineTransform{Float64}}, u)
 
-#Fill the UNITS registry with default values
+#Create the registry (dict of units) and populate its default values
+const UNITS = PermanentDict{Symbol, AffLogUnits}()
 registry_defaults!(UNITS)
 
+#Use macros to generate the boilerplate code for registry exports (no need for simplifier)
+@generate_registry_exports(UNITS)
+
+end
+
+#= Old boierplate code replaced by macros
+
 #Ueses a ReentrantLock() on register_unit to prevent race conditions when multithreading
+const UNIT_LOCK = ReentrantLock()
 register_unit(p::Pair{String, <:Any}) = lock(UNIT_LOCK) do 
     register_unit!(UNITS, p)
 end
@@ -58,4 +62,4 @@ dtype() = RegistryTools.regdimtype(UNITS)
 #You can import these by invoking `using .Registry`
 export @u_str, @ud_str, @q_str, @U_str, @D_str, uparse, qparse, register_unit
 
-end
+=#
