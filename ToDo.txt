@@ -13,8 +13,11 @@ Backlog:
         -   Generates string macros and instrospective functions 
         -   Exports the standard functions
     -   Add this example to the README.md file (it should be short enough now)
-    -   May want to put logic that prevents re-defining ":rad" if it already exists 
+    -   May want to put logic in registry_defaults! that prevents re-defining ":rad" if it already exists
+        -   Internal registration function should avoid re-defining units in general
         -   Will make "AngleDimensions" easier
+    -   preferred_units(::Type{<:Any}) should produce an error saying that preferred units do not exist for this type 
+        -   Make the default registries have their own version of preferred_units
 
 1.  Make log(5 m/s) display as 1.6094379... Np(m/s)
     -   This helps consistency with "ustrip"
