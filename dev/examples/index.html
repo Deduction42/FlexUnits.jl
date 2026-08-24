@@ -70,54 +70,22 @@ julia&gt; uconvert(u&quot;°C&quot;, 32u&quot;°F&quot;)
 5.684341886080802e-14 °C
 
 julia&gt; uconvert(u&quot;°C&quot;, 14u&quot;°F&quot;)
--9.999999999999943 °C</code></pre><p>However, FlexUnits is designed to be registry-agnostic, with simply registry construction so this default Float64 conversion behaviour doesn&#39;t have to be the case (which is why it isn&#39;t exported by default). A user can simply copy-paste the &quot;UnitRegistry.jl&quot; file and modify one line of code that assigns <code>const UNITS</code> to use the transform type <code>AffineTransform{Rational{Int64}}</code> instead of <code>AffineTransform{Float64}</code>.</p><pre><code class="language-julia hljs">using FlexUnits
+-9.999999999999943 °C</code></pre><p>You can change this behaviour by building a new registry with a different <code>AffineTransform</code> type that preserves exact rational expressions. FlexUnits is designed around interchangeable unit registries which are simply dictionaries that live inside a module. Due to how many problems can be solved by new unit registries, FlexUnits provides tools to build new registries with only a few lines of code.</p><pre><code class="language-julia hljs">using FlexUnits
 
 module RationalRegistry
-    #RegistryTools contains all you need to build a registry in one simple import
-    using ..RegistryTools
+    using ..RegistryTools #RegistryTools contains all you need to build a registry in one simple import
 
-    const UNIT_LOCK = ReentrantLock()
     const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Rational{Int64}}}}() #Just change the AffineTransform type
+    registry_defaults!(UNITS) #Auto-populate the new registry
 
-    #Fill the UNITS registry with default values
-    registry_defaults!(UNITS)
-
-    #Uses a ReentrantLock() on register_unit to prevent race conditions when multithreading
-    register_unit(p::Pair{String, &lt;:Any}) = lock(UNIT_LOCK) do
-        register_unit!(UNITS, p)
-    end
-
-    #Parsing functions that don&#39;t require a dictionary argument
-    uparse(str::String) = RegistryTools.uparse(str, UNITS)
-    qparse(str::String) = RegistryTools.qparse(str, UNITS)
-
-    #String macros are possible now that we are internally referring to UNITS
-    macro u_str(str)
-        return esc(suparse_expr(str, UNITS))
-    end
-
-    macro ud_str(str)
-        return esc(uparse_expr(str, UNITS))
-    end
-
-    macro q_str(str)
-        return esc(qparse_expr(str, UNITS))
-    end
-
-    #Functions to facilitate knowing types ahead of time, DO NOT EXPORT IF MULTIPLE REGISTRIES ARE USED
-    unittype() = RegistryTools.unittype(UNITS)
-    dimtype()  = RegistryTools.dimtype(UNITS)
-
-    #Registry is exported but these functions/macros are not (in case user wants their own version)
-    #You can import these by invoking `using .Registry`
-    export @u_str, @ud_str, uparse, @q_str, qparse, register_unit
-end</code></pre><p>We can then export all of the macros from our newly created <code>RationalRegistry</code> model, and check out the new behaviour.</p><pre><code class="language-julia hljs">using .RationalRegistry
+    @generate_registry_exports(UNITS) #Use macros to generate the boilerplate code for registry exports
+end</code></pre><p>That&#39;s it. We can restart the Julia, add this registry (Module), export all of the macros from our newly created <code>RationalRegistry</code>, and check out the new behaviour.</p><pre><code class="language-julia hljs">using .RationalRegistry
 
 julia&gt; uconvert(u&quot;°C&quot;, 32u&quot;°F&quot;)
 0//1 °C
 
 julia&gt; uconvert(u&quot;°C&quot;, 14u&quot;°F&quot;)
--10//1 °C</code></pre><p>This can be used to modify many different behaviours if you don&#39;t agree with the design decisions of the default registry. FlexUnits registries are designed to be truly modular and flexible.</p><h2 id="Custom-dimensions"><a class="docs-heading-anchor" href="#Custom-dimensions">Custom dimensions</a><a id="Custom-dimensions-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-dimensions" title="Permalink"></a></h2><p>The default dimensions uses the SI unit system dimensions, but there is some contention around what constitutes a dimension. For example, angles are not a dimension, since they can be described as a ratio. Moreover, this system has no notion of currency, because it is not a <em>physical</em> dimension but merely a fuzzy human notion of value (hence why currencies fluctuate over time, usually downward due to inflation). This does not stop you, the user, from being able to include additional dimensions such as currency and angles. In this example below, we will be adding a currency dimension in the form of Euros.</p><pre><code class="language-julia hljs">#===============================================================================================================================
+-10//1 °C</code></pre><p>This can be used to modify many different behaviours if you don&#39;t agree with the design decisions of the default registry. FlexUnits registries are designed to be interchangeable.</p><h2 id="Custom-dimensions"><a class="docs-heading-anchor" href="#Custom-dimensions">Custom dimensions</a><a id="Custom-dimensions-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-dimensions" title="Permalink"></a></h2><p>The default dimensions uses the SI unit system dimensions, but there is some contention around what constitutes a dimension. For example, this unit system has no notion of currency, because it is not a <em>physical</em> dimension but merely a fuzzy human notion of value (hence why currencies fluctuate over time, usually downward due to inflation). This does not stop you from being able to include additional dimensions such as currency and angles. In this example below, we will be adding a currency dimension in the form of Euros.</p><pre><code class="language-julia hljs">#===============================================================================================================================
 Define your custom dimensions that include Euros, note that the € symbol is a completely valid Julia variable name
 ===============================================================================================================================#
 using FlexUnits 
@@ -132,35 +100,23 @@ using FlexUnits
     mol ::P = zero(FixRat32)
     €   ::P = zero(FixRat32)
 end
-MoneyDimensions(args::Real...) = MoneyDimensions{FixRat32}(args...)</code></pre><p>While this is technically usable, most of the FlexUnits API makes use of string macros which look up units from a registry. Unfortunately, in order to make units type stable, all units in a registry must have the same (dynamic) dimension type. As shown in the previous RationalRegistry example, FlexUnits provides tooling to make building registries as painless as possible. Since <code>MoneyDimensions</code> is a generalization of <code>Dimensions</code>, <code>registry_defaults!</code> can be used to populate the registry with all the units normally inside <code>Dimensions</code>.</p><pre><code class="language-julia hljs">#===============================================================================================================================
-Create your unit registry as a module using RegistryTools
-===============================================================================================================================#
-module CurrencyUnits
+MoneyDimensions(args::Real...) = MoneyDimensions{FixRat32}(args...)</code></pre><p>While this is object is technically usable, most of the FlexUnits API makes use of string macros which look up units from a <em>type-stable</em> unit registry. Unfortunately, this new <code>MoneyDimensions</code> object is not compatible with the default registry which is built using <code>Dimensions</code>. Moreover, the <code>simplify</code> function requires looking at a list of preferred units defined in a registry, so unit simplification will not automatically work for this dimension type.</p><pre><code class="language-julia hljs">julia&gt; simplify( 5*Dimensions(kg=1, m=1, s=-2))
+5.0 N
 
-using FlexUnits
+julia&gt; simplify( 5*MoneyDimensions(kg=1, m=1, s=-2))
+ERROR: Function `preferred_units` not defined for type MoneyDimensions{FixRat32}: This function is usually defined in a unit registry. Perhaps there is no unit registry for MoneyDimensions{FixRat32} or its unit registry was not properly configured</code></pre><p>However, as seen in the previous example, new unit registries are relatively painless to build. There are a couple of things we should note before starting. Since <code>MoneyDimensions</code> is a generalization of <code>Dimensions</code>, <code>registry_defaults!</code> can be used to populate the registry with all the units normally inside <code>Dimensions</code>. Simplification doesn&#39;t work with this dimension out of hte box, so we will need to perform the additional step of configuring unit simplification.</p><pre><code class="language-julia hljs">module CurrencyUnits
+
 using FlexUnits.RegistryTools
 import ..MoneyDimensions
 
 const UNITS = PermanentDict{Symbol,Units{MoneyDimensions{FixRat32},AffineTransform{Float64}}}()
-
 registry_defaults!(UNITS)
-register_unit!(UNITS, &quot;€&quot; =&gt; MoneyDimensions{FixRat32}(€=1))
 register_unit!(UNITS, &quot;EUR&quot; =&gt; UNITS[:€])
 
-uparse(str::String) = RegistryTools.uparse(str, UNITS)
-qparse(str::String) = RegistryTools.qparse(str, UNITS)
+const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
 
-macro u_str(str); return suparse_expr(str, UNITS); end
-macro ud_str(str); return uparse_expr(str, UNITS); end
-macro q_str(str); return qparse_expr(str, UNITS); end
-macro U_str(str); suexpr = suparse_expr(str, UNITS); return :($typeof($suexpr)); end
-macro D_str(str); suexpr = suparse_expr(str, UNITS); return :($dimtype($suexpr)); end
-
-utype() = RegistryTools.regunittype(UNITS)
-dtype() = RegistryTools.regdimtype(UNITS)
-
-export @u_str, @ud_str, @q_str, @U_str, @D_str, uparse, qparse, utype, dtype
-
+@generate_unit_simplifier(PREFERRED_UNITS)
+@generate_registry_exports(UNITS)
 end</code></pre><p>This now gives you the ability to use string macros and look up units. Note that you must &quot;use&quot; this module instead of the default <code>UnitRegistry</code>.</p><pre><code class="language-julia hljs">using .CurrencyUnits
 
 fuel_price = 2.04u&quot;€/L&quot;
@@ -169,26 +125,8 @@ trip_speed = 5u&quot;km/hr&quot;
 trip_distance = 100u&quot;km&quot;
 fuel_consumption = 8.1u&quot;L&quot;/100u&quot;km&quot;
 estimated_price = fuel_price*trip_distance*fuel_consumption + driver_price*trip_distance/trip_speed
-416.524 €</code></pre><p>Unfortunately, <code>simplify</code> must assume a set of units; if your units are not compatible with <code>Dimensions</code> (i.e. fields are not the same), simplify will not work.</p><pre><code class="language-julia hljs">electricity_price = 0.195u&quot;€/(kW*hr)&quot;
+416.524 €</code></pre><p>Simplification also works as expected</p><pre><code class="language-julia hljs">julia&gt; electricity_price = 0.195u&quot;€/(kW*hr)&quot;
 5.416666666666666e-8 (s² €)/(m² kg)
 
-electricity_price = 0.195u&quot;€/(kW*hr)&quot; |&gt; simplify
-ArgumentError: type does not have a definite number of fields</code></pre><p>In order to support simplification, you will need to create a constant vector of desired units (ordered by highest complexity first) and extend <code>FlexUnits.preferred_units(::Type{T})</code> to map your dimensional type to that vector.</p><pre><code class="language-julia hljs">#===============================================================================================================================
-If you want simplify(...) to work with your units, 
-    =&gt; define a constant vector of preferred units that are compatible with your new type
-    =&gt; overload FlexUnits.preferred_units(::Type{T}) to refer to that list of preferred units
-===============================================================================================================================#
-const CURRENCY_UNITS = [ CurrencyUnits.UNITS[k] for k in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L, :€] ]
-FlexUnits.preferred_units(::Type{&lt;:MoneyDimensions}) = CURRENCY_UNITS
-
-electricity_price = 0.195u&quot;€/(kW*hr)&quot; |&gt; simplify
-5.416666666666666e-8 €/J</code></pre><p>If you create a custom dimension set with a custom registry to go along with it, you will most likely only want to work with the dimension types in that registry. In the rare occasion that you will want to combine operations with the default unit registry (such as creating an extension to FlexUnits), you will need to define (1) promotion rules to prioritize your type (2) a conversion constructor to convert <code>Dimensions</code> to your new type</p><pre><code class="language-julia hljs">#===============================================================================================================================
-If you want to combine operations with default unit registry
-    =&gt; Add promotion rules and constructor to build your new type from Dimensions
-===============================================================================================================================#
-MoneyDimensions{T}(d::Dimensions) where T = MoneyDimensions{T}(m=d.m, kg=d.kg, s=d.s, A=d.A, K=d.K, cd=d.cd, mol=d.mol, €=zero(T))
-Base.promote_rule(::Type{MoneyDimensions{T1}}, ::Type{Dimensions{T2}}) where {T1, T2} = MoneyDimensions{promote_type(T1,T2)}
-Base.promote_rule(::Type{Dimensions{T1}}, ::Type{MoneyDimensions{T2}}) where {T1, T2} = MoneyDimensions{promote_type(T1,T2)}
-
-(25*u&quot;EUR&quot;) / (1*UnitRegistry.u&quot;hr&quot;)
-0.006944444444444444 €/s</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../dispatch/">« Dispatch Examples</a><a class="docs-footer-nextpage" href="../types/">Types »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 21 August 2026 23:12">Friday 21 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+julia&gt; electricity_price = 0.195u&quot;€/(kW*hr)&quot; |&gt; simplify
+5.416666666666666e-8 €/J</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../dispatch/">« Dispatch Examples</a><a class="docs-footer-nextpage" href="../types/">Types »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 24 August 2026 19:27">Monday 24 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
