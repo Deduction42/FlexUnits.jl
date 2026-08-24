@@ -5,7 +5,7 @@
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://deduction42.github.io/FlexUnits.jl/dev)
 
 # FlexUnits.jl
-FlexUnits.jl is the Julia units package for demanding users who want the low-level static performance of Unitful.jl, the type-stable high-level dynamic performance of DynamicQuantities.jl. Additionally, FlexUnits also enables high-performance linear algebra operations on mixed-unit matrices and extends mixed-unit compatibility for Julia packages like Statistics.jl and DifferentialEquations.jl (something that other unit packages struggle with). 
+FlexUnits.jl is the Julia units package for demanding users who want the static performance of Unitful.jl and the dynamic performance of DynamicQuantities.jl all in one package. High performance in both modes allows FlexUnits to achieve faster compile times than Unitful.jl with the same run-time cost, and exhibit superior performance in real-world situations where both modes are required (such as mixed-unit linear algebra). FlexUnits adheres to a modular design philosophy which allows it to support a variety of features such as rigorous treatment of logarithmic units, easy dimension-based dispatch, and intuitive unit simplification.
 
 To get started, simply run
 ```
@@ -280,10 +280,10 @@ import FlexUnits.dB
 julia> q = 30dB(u"W")
 log(1000.0000000000016 (m² kg)/s³)
 ```
-As you can see here, `30 dB(W)` is equivalent to `1000 W` but it displayed as its logarithm. This helps reinforce how operations are performed based on logarithmic identities. While their logarithms are displayed (to emphasize this algebra), the actual numerical value stored is the logarithmic form
+As you can see here, `30 dB(W)` is equivalent to `1000 W` but it displayed as its logarithm. This helps reinforce how operations are performed based on logarithmic identities. While their logarithms are displayed (to emphasize this algebra), the actual numerical value stored in the natural log form
 ```julia
-julia> ustrip(log(2u"W"))
-0.6931471805599453
+julia> ustrip(30dB(u"W"))
+6.907755278982139
 ```
 
 ### Operations on logarithmic quantities
