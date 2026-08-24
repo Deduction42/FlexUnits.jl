@@ -94,6 +94,37 @@ julia> register_unit("bbl" => 0.164*u"m^3") # UK barrel of beer
 ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
 ```
 
+## Dimensional Enforcement and Dispatch
+FlexUnits simplifies dispatch and dimensional enforcement with the `@D_str` macro exported from the unit registry; this macro produces a static dimension type given input units.
+```julia
+julia> D"kPa"
+StaticDims{kg/(m s²)}
+```
+This allows you to parameterize quantities, for example:
+```julia
+julia> const PressureQuant{T} = Quantity{T, D"Pa"}
+Quantity{T, StaticDims{kg/(m s²)}} where T
+```
+This practice comes with two major benefits:
+1.  It enforces unit consistency early on in the process, catching errors near the source 
+```julia
+julia> PressureQuant{Float64}(5*uparse("kg"))
+ERROR: ConversionError: Cannot convert unit 'kg' to target unit 'kg/(m s²)' due to a dimension mismatch of '(m s²)' 
+```
+2. Static knowledge of the dimensions improves run-time performance
+```julia
+julia> typeof(5*uparse("kPa")) #Slower dynamic quantity
+Quantity{Float64, Dimensions{FixRat32}}
+
+julia> typeof(PressureQuant{Float64}(5*uparse("kPa"))) #Faster static quantity
+Quantity{Float64, StaticDims{kg/(m s²)}}
+```
+You can also easily create dispatch patterns based off different dimensions.
+```
+mass_flow(vf::Quantity{<:Any, D"m^3/s"}, ρ::Quantity{<:Any, D"kg/m^3"}) = vf*ρ
+mass_flow(vf::Quantity{<:Any, D"m^3/s"}, vs::Quantity{<:Any, D"m^3/kg"}) = vf/vs
+```
+
 ## Unit Simplification
 While operations always convert to SI units, FlexUnits contains a `simplify` function which applies a greedy algorithm to reduce the number of symbols. 
 
@@ -146,40 +177,9 @@ julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" #This is convenient
 julia> ustrip(p) #I have been deceived
 2798.0640000000003
 ```
-Another reason not to enable by default is that ***if you wish to create custom dimensions, simplification will not work out of the box***. You will need to do some extra work to get simplification to run (see the advanced examples section in the documentation for a guide).
+Another reason not to enable by default is that ***if you wish to create custom dimensions, simplification will not work out of the box***. You will need to do some extra work to get simplification to run (see the section below or advanced examples section in the documentation for a guide).
 
-## Dimensional Enforcement and Dispatch
-FlexUnits simplifies dispatch and dimensional enforcement with the `@D_str` macro exported from the unit registry; this macro produces a static dimension type given input units.
-```julia
-julia> D"kPa"
-StaticDims{kg/(m s²)}
-```
-This allows you to parameterize quantities, for example:
-```julia
-julia> const PressureQuant{T} = Quantity{T, D"Pa"}
-Quantity{T, StaticDims{kg/(m s²)}} where T
-```
-This practice comes with two major benefits:
-1.  It enforces unit consistency early on in the process, catching errors near the source 
-```julia
-julia> PressureQuant{Float64}(5*uparse("kg"))
-ERROR: ConversionError: Cannot convert unit 'kg' to target unit 'kg/(m s²)' due to a dimension mismatch of '(m s²)' 
-```
-2. Static knowledge of the dimensions improves run-time performance
-```julia
-julia> typeof(5*uparse("kPa")) #Slower dynamic quantity
-Quantity{Float64, Dimensions{FixRat32}}
-
-julia> typeof(PressureQuant{Float64}(5*uparse("kPa"))) #Faster static quantity
-Quantity{Float64, StaticDims{kg/(m s²)}}
-```
-You can also easily create dispatch patterns based off different dimensions.
-```
-mass_flow(vf::Quantity{<:Any, D"m^3/s"}, ρ::Quantity{<:Any, D"kg/m^3"}) = vf*ρ
-mass_flow(vf::Quantity{<:Any, D"m^3/s"}, vs::Quantity{<:Any, D"m^3/kg"}) = vf/vs
-```
-
-## Extending Dimensions with Custom Registries
+## Custom Dimensions and Registries
 While the default registry is usually sufficient for most cases, FlexUnits lets you interchangeably define new registries if the default doesn't suit your needs. One such case is if you need to define new dimensions not present in `Dimensions{FixRat32}`. For example, let us consider the case where we want to extend the dimensions to include currency in Euros. We first need to define a new `AbstractDimensions` type:
 
 ```julia
@@ -196,7 +196,7 @@ using FlexUnits
 end
 MoneyDimensions(args::Real...) = MoneyDimensions{FixRat32}(args...)
 ```
-We then need to build out a unit registry that uses this dimension. Additionally, because simplification only supports `Dimensions{FixRat32}`, we need to add this type as a simplification option. This can be done by building a new registry as follows:
+We then need to build out a unit registry that uses `MoneyDimensions`. Additionally, because simplification only supports `Dimensions{FixRat32}` out of the box, we need to define simplification routines for `MoneyDimensions` in our new registry.
 ```julia
 module CurrencyUnits
     using FlexUnits.RegistryTools
@@ -214,7 +214,7 @@ module CurrencyUnits
     @generate_registry_exports(UNITS) # takes care of typical string macro and unit parsing exports
 end
 ```
-You can now use this new module to support string macro parsing and simplification.
+We can now use this new module to support string macro parsing and simplification.
 ```julia
 using .CurrencyUnits
 
@@ -224,7 +224,7 @@ julia> electricity_price = 0.195u"€/(kW*hr)"
 julia> electricity_price = 0.195u"€/(kW*hr)" |> simplify
 5.416666666666666e-8 €/J
 ```
-Admittedly, this process is more involved than registering a new dimension in Unitful.jl, it is on par with the effort required registering new Unitful units, and is less frequently needed.
+Admittedly, this process is more involved than registering a new dimension in Unitful.jl, but it is on par with the effort required for registering new units in the same package. FlexUnits makes a rare workflow (registering dimensions) more difficult in exchange for more performance and simplicity in common workflows (type-stable unit parsing and registering units).
 
 ## Mixed-unit linear algebra
 Linear algebra is accelerated through `LinmapQuant` objects that define a linear mapping from input units to output units. To attach these units, simply multiply a matrix times a `UnitMap` constructor that specifies an example of the input and output units expected by a multiplication.
