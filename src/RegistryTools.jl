@@ -96,7 +96,15 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     Dims = dimtype(U)
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
     
-    _register_unit(p::Pair) = _register_unit!(reg, p)
+    #Internal registration function skips repeated definitions
+    function _register_unit(p::Pair) 
+        if haskey(reg, p[1])
+            @warn "Unit $(p[1]) already exists, skipping."
+        else
+            return _register_unit!(reg, p)
+        end
+    end
+
     add_prefixes(symb::Symbol, prfx::NamedTuple) = add_prefixes!(reg, symb, prfx)
 
     initialize_registry!(reg, Dims)
@@ -172,7 +180,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:mi => 5280*ft)
     _register_unit(:mile => 5280*ft)
     _register_unit(:lb => 0.453592*kg); lb = reg[:lb]
-    _register_unit(:oz => (1/16)*lb)
+    _register_unit(:oz => (1//16)*lb)
     _register_unit(:psi => 6.89476*reg[:kPa])
     _register_unit(:hp => 745.699871*reg[:W])
     _register_unit(:lbf => 4.44822*N)
@@ -183,9 +191,9 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:gal => 4*reg[:quart])
     _register_unit(:Ra => 5/9*reg[:K])
 
-    #Strictly affine temperature measurements
-    _register_unit(:°C => Units(dims=K, tobase=AffineTransform(offset=(273 + 15//100))))
-    _register_unit(:°F => Units(dims=K, tobase=AffineTransform(scale=5//9, offset=(273 + 15//100 - 32*5//9))))
+    #Strictly affine temperature measurements, use Rational to preserve exact conversions
+    _register_unit(:°C => Units(dims=K, tobase=AffineTransform{Rational{Int64}}(offset=(273 + 15//100))))
+    _register_unit(:°F => Units(dims=K, tobase=AffineTransform{Rational{Int64}}(scale=5//9, offset=(273 + 15//100 - 32*5//9))))
     _register_unit(:degC => reg[:°C])
     _register_unit(:degF => reg[:°F])
 
@@ -194,16 +202,6 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:deg => (2*π/360)*reg[:NoDims])
     _register_unit(:rps => (2*π)*reg[:Hz])
     _register_unit(:rpm => (2*π/60)*(reg[:Hz]))
-
-    #If you want to add "angle" as a dimension, you can overload the appropriate function
-
-    #function apply_trig_func(f, q::QuantUnion{<:Any, <:RadDimensions{T}}) where T
-    #   baseq = ubase(q)
-    #   assert_radians(unit(baseq))
-    #   return Quantity(f(ustrip(baseq)), RadDimensions{T}())
-    #end
-
-    #sin(q::QuantUnion{<:RadDimensions}) = apply_trig_func(sin, q)
 
     return reg
 end
@@ -226,7 +224,11 @@ function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, 
     original = reg[u]
     for (name, scale) in pairs(prefixes)
         newname = Symbol(string(name)*string(u))
-        reg[newname] = Units(dims=dimension(original), tobase=tobase(original)*scale, symbol=newname)
+        if haskey(reg, newname)
+            @warn "Unit symbol $(reg) already exists, skipping"
+        else
+            reg[newname] = Units(dims=dimension(original), tobase=tobase(original)*scale, symbol=newname)
+        end
     end
     return reg
 end

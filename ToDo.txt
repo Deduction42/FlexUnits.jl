@@ -1,24 +1,9 @@
+Changelog:
+1.  Added two macros for eliminating boilerplate code around custom registries (@generate_unit_simplifier, @generate_registry_exports)
+
 Backlog:
 
 (future)
-0.  Add macros to simplify the creation of custom registries
-    -   User must create the UNITS const and populate it manually
-    -   User must create PREFERRED_UNITS manually
-    -   @generate_unit_simplifier(D, PREFERRED_UNITS)
-        -   Sorts PREFERRED_UNITS by complexity
-        -   Extends the definition of FlexUnits.preferred_units(::Type{<:D})
-            -   Makes this function refer to the current preferred units 
-    -   @generate_registry_exports(UNITS)
-        -   Creates a ReentrantLock and defines the register_unit function around it 
-        -   Generates string macros and instrospective functions 
-        -   Exports the standard functions
-    -   Add this example to the README.md file (it should be short enough now)
-    -   May want to put logic in registry_defaults! that prevents re-defining ":rad" if it already exists
-        -   Internal registration function should avoid re-defining units in general
-        -   Will make "AngleDimensions" easier
-    -   preferred_units(::Type{<:Any}) should produce an error saying that preferred units do not exist for this type 
-        -   Make the default registries have their own version of preferred_units
-
 1.  Make log(5 m/s) display as 1.6094379... Np(m/s)
     -   This helps consistency with "ustrip"
     -   Space formatting is more consistent

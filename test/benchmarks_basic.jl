@@ -163,7 +163,7 @@ print("FlexUnits:\t")
 # ========== S4.1. upreferred ==========
 println("\nS4.1) static upreferred\n")
 
-base_array = SVector{50}(randn(50))
+base_array = SVector{20}(randn(20))
 l_uni = base_array .* Unitful.u"cm"
 l_dyn = base_array .* DynamicQuantities.us"cm"
 l_flex = quantity.(base_array, UnitRegistry.u"cm")
@@ -325,7 +325,7 @@ print("FlexU:  \t")
 
 println("\nS7.1) Missing quantities\n")
 vdm = DynamicQuantities.GenericQuantity.(vm, Ref(DynamicQuantities.dimension(DynamicQuantities.u"m")))
-vfm = FlexQuant{eltype(vm)}.(vm, dimension(UnitRegistry.u"m"))
+vfm = FlexQuant{eltype(vm)}.(vm, FlexUnits.dimension(UnitRegistry.u"m"))
 
 print("Unitful:\t  fails\n")
 print("DynamicQ:\t")

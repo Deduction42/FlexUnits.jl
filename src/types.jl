@@ -69,11 +69,12 @@ AbstractDimensions API
 =======================================================================================#
 #Construct a new (superset) dimension from an old (subset) dimension
 @generated function (::Type{D})(d::D0) where {P, D<:AbstractDimensions{P}, D0<:AbstractDimensions}
-    assert_superset(D, D0)
-    (new_names, old_names) = (dimension_names(D), dimension_names(D0))
+    (newdims, olddims) = (dimension_names(D), dimension_names(D0))
+    missingdims = filter(name -> name ∉ newdims, olddims)
+    isempty(missingdims) || throw(ArgumentError("Cannot convert $(D0) to the target $(D). The target is missing the following dimensions: $(missingdims)"))
 
-    args = map(new_names) do name
-        name ∈ old_names ? :(convert($P, d.$name)) : :(zero($P))
+    args = map(newdims) do name
+        name ∈ olddims ? :(convert($P, d.$name)) : :(zero($P))
     end
 
     return :(isunknown(d) ? unknown($D) : $D($(args...)))
@@ -720,10 +721,3 @@ isdimensionless(d::AbstractDimLike)  = iszero(d) || isunknown(d)
 isdimensionless(d::NoDims) = true
 Base.iszero(u::D) where D<:AbstractDimensions = (u == D(0))
 Base.iszero(u::StaticDims{d}) where d = iszero(d)
-
-function assert_superset(::Type{D}, ::Type{D0}) where {D<:AbstractDimensions, D0<:AbstractDimensions}
-    (new_names, old_names) = (dimension_names(D), dimension_names(D0))
-    missing_dims = filter(name -> name ∉ new_names, old_names)
-    !isempty(missing_dims) && throw(ArgumentError("$(D) cannot extend $(D0): missing dimensions $(missing_dims)"))
-    return D 
-end

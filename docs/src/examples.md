@@ -129,54 +129,22 @@ julia> uconvert(u"°C", 14u"°F")
 -9.999999999999943 °C
 ```
 
-However, FlexUnits is designed to be registry-agnostic, with simply registry construction so this default Float64 conversion behaviour doesn't have to be the case (which is why it isn't exported by default). A user can simply copy-paste the "UnitRegistry.jl" file and modify one line of code that assigns `const UNITS` to use the transform type `AffineTransform{Rational{Int64}}` instead of `AffineTransform{Float64}`.
+You can change this behaviour by building a new registry with a different `AffineTransform` type that preserves exact rational expressions. FlexUnits is designed around interchangeable unit registries which are simply dictionaries that live inside a module. Due to how many problems can be solved by new unit registries, FlexUnits provides tools to build new registries with only a few lines of code.
 
 ```julia
 using FlexUnits
 
 module RationalRegistry
-    #RegistryTools contains all you need to build a registry in one simple import
-    using ..RegistryTools
+    using ..RegistryTools #RegistryTools contains all you need to build a registry in one simple import
 
-    const UNIT_LOCK = ReentrantLock()
     const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Rational{Int64}}}}() #Just change the AffineTransform type
+    registry_defaults!(UNITS) #Auto-populate the new registry
 
-    #Fill the UNITS registry with default values
-    registry_defaults!(UNITS)
-
-    #Uses a ReentrantLock() on register_unit to prevent race conditions when multithreading
-    register_unit(p::Pair{String, <:Any}) = lock(UNIT_LOCK) do
-        register_unit!(UNITS, p)
-    end
-
-    #Parsing functions that don't require a dictionary argument
-    uparse(str::String) = RegistryTools.uparse(str, UNITS)
-    qparse(str::String) = RegistryTools.qparse(str, UNITS)
-
-    #String macros are possible now that we are internally referring to UNITS
-    macro u_str(str)
-        return esc(suparse_expr(str, UNITS))
-    end
-
-    macro ud_str(str)
-        return esc(uparse_expr(str, UNITS))
-    end
-
-    macro q_str(str)
-        return esc(qparse_expr(str, UNITS))
-    end
-
-    #Functions to facilitate knowing types ahead of time, DO NOT EXPORT IF MULTIPLE REGISTRIES ARE USED
-    unittype() = RegistryTools.unittype(UNITS)
-    dimtype()  = RegistryTools.dimtype(UNITS)
-
-    #Registry is exported but these functions/macros are not (in case user wants their own version)
-    #You can import these by invoking `using .Registry`
-    export @u_str, @ud_str, uparse, @q_str, qparse, register_unit
+    @generate_registry_exports(UNITS) #Use macros to generate the boilerplate code for registry exports
 end
 ```
 
-We can then export all of the macros from our newly created `RationalRegistry` model, and check out the new behaviour.
+That's it. We can restart the Julia, add this registry (Module), export all of the macros from our newly created `RationalRegistry`, and check out the new behaviour.
 ```julia
 using .RationalRegistry
 
@@ -186,10 +154,10 @@ julia> uconvert(u"°C", 32u"°F")
 julia> uconvert(u"°C", 14u"°F")
 -10//1 °C
 ```
-This can be used to modify many different behaviours if you don't agree with the design decisions of the default registry. FlexUnits registries are designed to be truly modular and flexible.
+This can be used to modify many different behaviours if you don't agree with the design decisions of the default registry. FlexUnits registries are designed to be interchangeable.
 
 ## Custom dimensions
-The default dimensions uses the SI unit system dimensions, but there is some contention around what constitutes a dimension. For example, angles are not a dimension, since they can be described as a ratio. Moreover, this system has no notion of currency, because it is not a *physical* dimension but merely a fuzzy human notion of value (hence why currencies fluctuate over time, usually downward due to inflation). This does not stop you, the user, from being able to include additional dimensions such as currency and angles. In this example below, we will be adding a currency dimension in the form of Euros.
+The default dimensions uses the SI unit system dimensions, but there is some contention around what constitutes a dimension. For example, this unit system has no notion of currency, because it is not a *physical* dimension but merely a fuzzy human notion of value (hence why currencies fluctuate over time, usually downward due to inflation). This does not stop you from being able to include additional dimensions such as currency and angles. In this example below, we will be adding a currency dimension in the form of Euros.
 
 ```julia
 #===============================================================================================================================
@@ -209,38 +177,30 @@ using FlexUnits
 end
 MoneyDimensions(args::Real...) = MoneyDimensions{FixRat32}(args...)
 ```
-While this is technically usable, most of the FlexUnits API makes use of string macros which look up units from a registry. Unfortunately, in order to make units type stable, all units in a registry must have the same (dynamic) dimension type. As shown in the previous RationalRegistry example, FlexUnits provides tooling to make building registries as painless as possible. Since `MoneyDimensions` is a generalization of `Dimensions`, `registry_defaults!` can be used to populate the registry with all the units normally inside `Dimensions`.
+While this is object is technically usable, most of the FlexUnits API makes use of string macros which look up units from a *type-stable* unit registry. Unfortunately, this new `MoneyDimensions` object is not compatible with the default registry which is built using `Dimensions`. Moreover, the `simplify` function requires looking at a list of preferred units defined in a registry, so unit simplification will not automatically work for this dimension type.
+```julia
+julia> simplify( 5*Dimensions(kg=1, m=1, s=-2))
+5.0 N
+
+julia> simplify( 5*MoneyDimensions(kg=1, m=1, s=-2))
+ERROR: Function `preferred_units` not defined for type MoneyDimensions{FixRat32}: This function is usually defined in a unit registry. Perhaps there is no unit registry for MoneyDimensions{FixRat32} or its unit registry was not properly configured
+```
+However, as seen in the previous example, new unit registries are relatively painless to build. There are a couple of things we should note before starting. Since `MoneyDimensions` is a generalization of `Dimensions`, `registry_defaults!` can be used to populate the registry with all the units normally inside `Dimensions`. Simplification doesn't work with this dimension out of hte box, so we will need to perform the additional step of configuring unit simplification.
 
 ```julia
-#===============================================================================================================================
-Create your unit registry as a module using RegistryTools
-===============================================================================================================================#
 module CurrencyUnits
 
-using FlexUnits
 using FlexUnits.RegistryTools
 import ..MoneyDimensions
 
 const UNITS = PermanentDict{Symbol,Units{MoneyDimensions{FixRat32},AffineTransform{Float64}}}()
-
 registry_defaults!(UNITS)
-register_unit!(UNITS, "€" => MoneyDimensions{FixRat32}(€=1))
 register_unit!(UNITS, "EUR" => UNITS[:€])
 
-uparse(str::String) = RegistryTools.uparse(str, UNITS)
-qparse(str::String) = RegistryTools.qparse(str, UNITS)
+const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
 
-macro u_str(str); return suparse_expr(str, UNITS); end
-macro ud_str(str); return uparse_expr(str, UNITS); end
-macro q_str(str); return qparse_expr(str, UNITS); end
-macro U_str(str); suexpr = suparse_expr(str, UNITS); return :($typeof($suexpr)); end
-macro D_str(str); suexpr = suparse_expr(str, UNITS); return :($dimtype($suexpr)); end
-
-utype() = RegistryTools.regunittype(UNITS)
-dtype() = RegistryTools.regdimtype(UNITS)
-
-export @u_str, @ud_str, @q_str, @U_str, @D_str, uparse, qparse, utype, dtype
-
+@generate_unit_simplifier(PREFERRED_UNITS)
+@generate_registry_exports(UNITS)
 end
 ```
 This now gives you the ability to use string macros and look up units. Note that you must "use" this module instead of the default `UnitRegistry`.
@@ -255,39 +215,11 @@ fuel_consumption = 8.1u"L"/100u"km"
 estimated_price = fuel_price*trip_distance*fuel_consumption + driver_price*trip_distance/trip_speed
 416.524 €
 ```
-Unfortunately, `simplify` must assume a set of units; if your units are not compatible with `Dimensions` (i.e. fields are not the same), simplify will not work.
+Simplification also works as expected
 ```julia
-electricity_price = 0.195u"€/(kW*hr)"
+julia> electricity_price = 0.195u"€/(kW*hr)"
 5.416666666666666e-8 (s² €)/(m² kg)
 
-electricity_price = 0.195u"€/(kW*hr)" |> simplify
-ArgumentError: type does not have a definite number of fields
-```
-In order to support simplification, you will need to create a constant vector of desired units (ordered by highest complexity first) and extend `FlexUnits.preferred_units(::Type{T})` to map your dimensional type to that vector.
-
-```julia
-#===============================================================================================================================
-If you want simplify(...) to work with your units, 
-    => define a constant vector of preferred units that are compatible with your new type
-    => overload FlexUnits.preferred_units(::Type{T}) to refer to that list of preferred units
-===============================================================================================================================#
-const CURRENCY_UNITS = [ CurrencyUnits.UNITS[k] for k in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L, :€] ]
-FlexUnits.preferred_units(::Type{<:MoneyDimensions}) = CURRENCY_UNITS
-
-electricity_price = 0.195u"€/(kW*hr)" |> simplify
+julia> electricity_price = 0.195u"€/(kW*hr)" |> simplify
 5.416666666666666e-8 €/J
-```
-
-If you create a custom dimension set with a custom registry to go along with it, you will most likely only want to work with the dimension types in that registry. In the rare occasion that you will want to combine operations with the default unit registry (such as creating an extension to FlexUnits), you will need to define (1) promotion rules to prioritize your type (2) a conversion constructor to convert `Dimensions` to your new type
-```julia
-#===============================================================================================================================
-If you want to combine operations with default unit registry
-    => Add promotion rules and constructor to build your new type from Dimensions
-===============================================================================================================================#
-MoneyDimensions{T}(d::Dimensions) where T = MoneyDimensions{T}(m=d.m, kg=d.kg, s=d.s, A=d.A, K=d.K, cd=d.cd, mol=d.mol, €=zero(T))
-Base.promote_rule(::Type{MoneyDimensions{T1}}, ::Type{Dimensions{T2}}) where {T1, T2} = MoneyDimensions{promote_type(T1,T2)}
-Base.promote_rule(::Type{Dimensions{T1}}, ::Type{MoneyDimensions{T2}}) where {T1, T2} = MoneyDimensions{promote_type(T1,T2)}
-
-(25*u"EUR") / (1*UnitRegistry.u"hr")
-0.006944444444444444 €/s
 ```

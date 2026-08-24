@@ -4,7 +4,7 @@ module LogUnitRegistry
 #RegistryTools contains all you need to build a registry in one simple import
 using ..RegistryTools
 
-#Affine-Log Units are a union, so we need to define convert functions
+#Affine-Log Units are a Union, so we need to define convert functions
 const AffLogUnits = Union{Units{Dimensions{FixRat32}, AffineTransform{Float64}}, Units{Dimensions{FixRat32},ExpAffTransform{Float64}}}
 Base.convert(::Type{AffLogUnits}, u::AbstractUnitLike) = convert(Units{Dimensions{FixRat32}, AffineTransform{Float64}}, u)
 Base.convert(::Type{AffLogUnits}, u::Units{<:Any, <:ExpAffTransform}) = convert(Units{Dimensions{FixRat32}, ExpAffTransform{Float64}}, u)
