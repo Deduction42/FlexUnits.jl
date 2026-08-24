@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Advanced Examples · FlexUnits.jl</title><meta name="title" content="Advanced Examples · FlexUnits.jl"/><meta property="og:title" content="Advanced Examples · FlexUnits.jl"/><meta property="twitter:title" content="Advanced Examples · FlexUnits.jl"/><meta name="description" content="Documentation for FlexUnits.jl."/><meta property="og:description" content="Documentation for FlexUnits.jl."/><meta property="twitter:description" content="Documentation for FlexUnits.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">FlexUnits.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../performance/">Performance</a></li><li><a class="tocitem" href="../manipulation/">Unit Manipulation</a></li><li><a class="tocitem" href="../linearalgebra/">Linear Algebra</a></li><li><a class="tocitem" href="../dispatch/">Dispatch Examples</a></li><li class="is-active"><a class="tocitem" href>Advanced Examples</a><ul class="internal"><li><a class="tocitem" href="#Solving-Differential-Equations"><span>Solving Differential Equations</span></a></li><li><a class="tocitem" href="#Exact-conversions-with-Rational"><span>Exact conversions with Rational</span></a></li><li><a class="tocitem" href="#Custom-dimensions"><span>Custom dimensions</span></a></li></ul></li><li><a class="tocitem" href="../types/">Types</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Advanced Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Advanced Examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/Deduction42/FlexUnits.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/Deduction42/FlexUnits.jl/blob/main/docs/src/examples.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Advanced-Examples"><a class="docs-heading-anchor" href="#Advanced-Examples">Advanced Examples</a><a id="Advanced-Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Advanced-Examples" title="Permalink"></a></h1><h2 id="Solving-Differential-Equations"><a class="docs-heading-anchor" href="#Solving-Differential-Equations">Solving Differential Equations</a><a id="Solving-Differential-Equations-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-Differential-Equations" title="Permalink"></a></h2><p>There has been some attempts at passing units through differential equations solvers, and while FlexUnits can do this it comes with certain drawbacks:</p><ol><li>Passing units through ODE solvers does take a performance hit (often 2x the time)</li><li>Passing units through ODE solvers isn&#39;t rigorously tested by their developers and regressions can happen</li><li>If done improperly, it&#39;s difficult to troubleshoot errors</li></ol><p>It also turns out that passing units through an ODE solver is often unnecessary. These solvers already produce correct results as long as the <em>units are coherent</em> (that is, they don&#39;t require scaling between dimensions). Unit/dimension errors often show up in setting up the ODE equations/functions, so it makes sense to restrict unit validation activity to this space.</p><p>In the section below, we introduce a strategy that can validate units inside differential equations, the benefits of this approach include:</p><ol><li>It solves the system at <em>essentially zero added cost</em> </li><li>It introduces no added complexity, using the ODE solvers as the developers intended (and test for )</li><li>It validates units in a way that is easy to interpret</li></ol><p>This strategy involves defining new objects that behave like a user-defined object with units inside the differential equation system, but behave like numerical vectors inside the differential equation solver. This can be done with the following steps</p><ol><li>Define a modified <code>FieldVector</code> object (from StaticArrays) called <code>QuantFieldVector</code> that stores values with static dimensions</li><li>Override <code>getindex</code> so that it that produces raw numbers in base SI units when indexed like a vector (but still produces quantities with field access)</li><li>Define new objects with clear dimensional representations and subtype it to <code>QuantFieldVector</code></li></ol><p>Note that in the near future, FlexUnits may define its own <code>QuantFieldVector</code> object, simplifying this process.</p><h4 id="The-problem-definition"><a class="docs-heading-anchor" href="#The-problem-definition">The problem definition</a><a id="The-problem-definition-1"></a><a class="docs-heading-anchor-permalink" href="#The-problem-definition" title="Permalink"></a></h4><p>Let us consider an application where we are using the drag force equation to model a falling object with velocity <code>v</code> and position <code>h</code>. This equation also requires us to consider the following parameters:</p><ol><li><code>Cd</code> the drag force coefficient</li><li><code>A</code> the reference area</li><li><code>ρ</code> the density of the fluid the object is falling through</li><li><code>m</code> the mass of the object</li><li><code>g</code> gravitational acceleration</li></ol><p>First, we import necessary packages and define our object as QuantFieldVectors contain state values with static dimensions attached to them. The <code>@D_str</code> macro makes easy work of assigning static dimensions in an intuitive manner.</p><pre><code class="language-julia hljs">using FlexUnits, .UnitRegistry
+using OrdinaryDiffEqTsit5
+using OrdinaryDiffEqRosenbrock
+using StaticArrays
+using Plots
+using BenchmarkTools
+using LinearAlgebra
+
+import FlexUnits: QuantFieldVector, DimsMod
+import OrdinaryDiffEqTsit5.SciMLBase.FullSpecialize
+
+@kwdef struct FallingObjectState{T} &lt;: QuantFieldVector{2,T}
+    v  :: Quantity{T, D&quot;m/s&quot;}
+    h  :: Quantity{T, D&quot;m&quot;}
+end
+
+@kwdef struct FallingObjectProps{T} &lt;: QuantFieldVector{5,T}
+    Cd :: Quantity{T, D&quot;&quot;}
+    A  :: Quantity{T, D&quot;m^2&quot;}
+    ρ  :: Quantity{T, D&quot;kg/m^3&quot;}
+    m  :: Quantity{T, D&quot;kg&quot;}
+    g  :: Quantity{T, D&quot;m/s^2&quot;}
+end </code></pre><p>We can write out the equations as we would normally express them; when returning the value, we need to modify the dimensions by <code>1/s</code> for the derivative. The <code>ustrip</code> command ensures the output type is the same as the input type (a requirement for the ode solver)</p><pre><code class="language-julia hljs">function acceleration(u0::AbstractVector, p::FallingObjectProps, t)
+    u = FallingObjectState(u0)
+
+    #Drag force
+    fd = -sign(u.v)*0.5*p.ρ*u.v^2*p.Cd*p.A
+    
+    #Drag force effect on state (multiply by dt to make units work)
+    dv = (fd/p.m - p.g)
+    dh = u.v
+
+    return ustrip(DimsMod{D&quot;1/s&quot;}(FallingObjectState, v=dv, h=dh))
+end</code></pre><p>The trick with defining the system this way is that calling <code>FallingObjectState()</code> on a unitless vector will apply units to it, and getting indices from it will give you a unitless scalar in SI base units. </p><pre><code class="language-julia hljs">julia&gt; fos = FallingObjectState([1.0,1.0])
+2-element FallingObjectState{Float64} with indices SOneTo(2):
+ 1
+ 1
+
+julia&gt; fos.v
+1.0 m/s
+
+julia&gt; SVector(fos)
+2-element SVector{2, Float64} with indices SOneTo(2):
+ 1.0
+ 1.0</code></pre><h4 id="Solving-the-problem"><a class="docs-heading-anchor" href="#Solving-the-problem">Solving the problem</a><a id="Solving-the-problem-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-the-problem" title="Permalink"></a></h4><p>Defining the problem in this manner will give you internal unit verification of your equations (where you need it most) at <em>zero runtime cost</em> regardless as to whether or not you&#39;re using an implicit or explicit solver. You can simply solve the system the way you would normally do it</p><pre><code class="language-julia hljs"># =============================================================================================================
+println(&quot;\nExplicit Solution&quot;)
+# =============================================================================================================
+u0 = FallingObjectState{Float64}(v=0.0u&quot;m/s&quot;, h=100u&quot;m&quot;)
+p  = FallingObjectProps{Float64}(Cd=1.0, A=0.1u&quot;m^2&quot;, ρ=1.0u&quot;kg/m^3&quot;, m=50u&quot;kg&quot;, g=9.81u&quot;m/s^2&quot;)
+abstol = FallingObjectState{Float64}(v=1e-6u&quot;m/s&quot;, h=1e-6u&quot;m&quot;)
+reltol = SA[1e-6, 1e-6]
+
+tspan = dstrip.((0.0u&quot;min&quot;, 0.25u&quot;min&quot;)) #Time span must be in seconds, dstrip takes care of this
+prob = ODEProblem{false, FullSpecialize}(acceleration, u0, tspan, p, abstol=abstol, reltol=reltol)
+sol = solve(prob, Tsit5())
+plt = plot(sol.t, [dstrip(u.v) for u in sol.u], label=&quot;explicit&quot;) #Each element in sol.u is a QuantFieldVector
+
+# =============================================================================================================
+println(&quot;\nImplicit Solution&quot;)
+# =============================================================================================================
+u0 = FallingObjectState{Float64}(v=0.0u&quot;m/s&quot;, h=100u&quot;m&quot;)
+p  = FallingObjectProps{Float64}(Cd=1.0, A=0.1u&quot;m^2&quot;, ρ=1.0u&quot;kg/m^3&quot;, m=50u&quot;kg&quot;, g=9.81u&quot;m/s^2&quot;)
+
+tspan = dstrip.((0.0u&quot;min&quot;, 0.25u&quot;min&quot;))
+prob = ODEProblem{false, FullSpecialize}(acceleration, u0, tspan, p, abstol=abstol, reltol=reltol)
+sol = solve(prob, Rodas5P())
+plt = plot!(plt, sol.t, [dstrip(u.v) for u in sol.u], label=&quot;implicit&quot;) #Each element in sol.u is a QuantFieldVector</code></pre><h2 id="Exact-conversions-with-Rational"><a class="docs-heading-anchor" href="#Exact-conversions-with-Rational">Exact conversions with Rational</a><a id="Exact-conversions-with-Rational-1"></a><a class="docs-heading-anchor-permalink" href="#Exact-conversions-with-Rational" title="Permalink"></a></h2><p>This package defaults to using Float64 conversion factors to accomplish conversions. This often results in small but visually annoying round-off errors.</p><pre><code class="language-julia hljs">using FlexUnits, .UnitRegistry
+julia&gt; uconvert(u&quot;°C&quot;, 32u&quot;°F&quot;)
+5.684341886080802e-14 °C
+
+julia&gt; uconvert(u&quot;°C&quot;, 14u&quot;°F&quot;)
+-9.999999999999943 °C</code></pre><p>You can change this behaviour by building a new registry with a different <code>AffineTransform</code> type that preserves exact rational expressions. FlexUnits is designed around interchangeable unit registries which are simply dictionaries that live inside a module. Due to how many problems can be solved by new unit registries, FlexUnits provides tools to build new registries with only a few lines of code.</p><pre><code class="language-julia hljs">using FlexUnits
+
+module RationalRegistry
+    using ..RegistryTools #RegistryTools contains all you need to build a registry in one simple import
+
+    const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Rational{Int64}}}}() #Just change the AffineTransform type
+    registry_defaults!(UNITS) #Auto-populate the new registry
+
+    @generate_registry_exports(UNITS) #Use macros to generate the boilerplate code for registry exports
+end</code></pre><p>That&#39;s it. We can restart the Julia, add this registry (Module), export all of the macros from our newly created <code>RationalRegistry</code>, and check out the new behaviour.</p><pre><code class="language-julia hljs">using .RationalRegistry
+
+julia&gt; uconvert(u&quot;°C&quot;, 32u&quot;°F&quot;)
+0//1 °C
+
+julia&gt; uconvert(u&quot;°C&quot;, 14u&quot;°F&quot;)
+-10//1 °C</code></pre><p>This can be used to modify many different behaviours if you don&#39;t agree with the design decisions of the default registry. FlexUnits registries are designed to be interchangeable.</p><h2 id="Custom-dimensions"><a class="docs-heading-anchor" href="#Custom-dimensions">Custom dimensions</a><a id="Custom-dimensions-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-dimensions" title="Permalink"></a></h2><p>The default dimensions uses the SI unit system dimensions, but there is some contention around what constitutes a dimension. For example, this unit system has no notion of currency, because it is not a <em>physical</em> dimension but merely a fuzzy human notion of value (hence why currencies fluctuate over time, usually downward due to inflation). This does not stop you from being able to include additional dimensions such as currency and angles. In this example below, we will be adding a currency dimension in the form of Euros.</p><pre><code class="language-julia hljs">#===============================================================================================================================
+Define your custom dimensions that include Euros, note that the € symbol is a completely valid Julia variable name
+===============================================================================================================================#
+using FlexUnits 
+
+@kwdef struct MoneyDimensions{P} &lt;: AbstractDimensions{P}
+    m   ::P = zero(FixRat32)
+    kg  ::P = zero(FixRat32)
+    s   ::P = zero(FixRat32)
+    A   ::P = zero(FixRat32)
+    K   ::P = zero(FixRat32)
+    cd  ::P = zero(FixRat32)
+    mol ::P = zero(FixRat32)
+    €   ::P = zero(FixRat32)
+end
+MoneyDimensions(args::Real...) = MoneyDimensions{FixRat32}(args...)</code></pre><p>While this is object is technically usable, most of the FlexUnits API makes use of string macros which look up units from a <em>type-stable</em> unit registry. Unfortunately, this new <code>MoneyDimensions</code> object is not compatible with the default registry which is built using <code>Dimensions</code>. Moreover, the <code>simplify</code> function requires looking at a list of preferred units defined in a registry, so unit simplification will not automatically work for this dimension type.</p><pre><code class="language-julia hljs">julia&gt; simplify( 5*Dimensions(kg=1, m=1, s=-2))
+5.0 N
+
+julia&gt; simplify( 5*MoneyDimensions(kg=1, m=1, s=-2))
+ERROR: Function `preferred_units` not defined for type MoneyDimensions{FixRat32}: This function is usually defined in a unit registry. Perhaps there is no unit registry for MoneyDimensions{FixRat32} or its unit registry was not properly configured</code></pre><p>However, as seen in the previous example, new unit registries are relatively painless to build. There are a couple of things we should note before starting. Since <code>MoneyDimensions</code> is a generalization of <code>Dimensions</code>, <code>registry_defaults!</code> can be used to populate the registry with all the units normally inside <code>Dimensions</code>. Simplification doesn&#39;t work with this dimension out of hte box, so we will need to perform the additional step of configuring unit simplification.</p><pre><code class="language-julia hljs">module CurrencyUnits
+
+using FlexUnits.RegistryTools
+import ..MoneyDimensions
+
+const UNITS = PermanentDict{Symbol,Units{MoneyDimensions{FixRat32},AffineTransform{Float64}}}()
+registry_defaults!(UNITS)
+register_unit!(UNITS, &quot;EUR&quot; =&gt; UNITS[:€])
+
+const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
+
+@generate_unit_simplifier(PREFERRED_UNITS)
+@generate_registry_exports(UNITS)
+end</code></pre><p>This now gives you the ability to use string macros and look up units. Note that you must &quot;use&quot; this module instead of the default <code>UnitRegistry</code>.</p><pre><code class="language-julia hljs">using .CurrencyUnits
+
+fuel_price = 2.04u&quot;€/L&quot;
+driver_price = 20u&quot;€/hr&quot;
+trip_speed = 5u&quot;km/hr&quot;
+trip_distance = 100u&quot;km&quot;
+fuel_consumption = 8.1u&quot;L&quot;/100u&quot;km&quot;
+estimated_price = fuel_price*trip_distance*fuel_consumption + driver_price*trip_distance/trip_speed
+416.524 €</code></pre><p>Simplification also works as expected</p><pre><code class="language-julia hljs">julia&gt; electricity_price = 0.195u&quot;€/(kW*hr)&quot;
+5.416666666666666e-8 (s² €)/(m² kg)
+
+julia&gt; electricity_price = 0.195u&quot;€/(kW*hr)&quot; |&gt; simplify
+5.416666666666666e-8 €/J</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../dispatch/">« Dispatch Examples</a><a class="docs-footer-nextpage" href="../types/">Types »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 24 August 2026 19:52">Monday 24 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
