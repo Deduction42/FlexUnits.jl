@@ -5,7 +5,7 @@
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://deduction42.github.io/FlexUnits.jl/dev)
 
 # FlexUnits.jl
-FlexUnits.jl is the Julia units package for demanding users who want the low-level static performance of Unitful.jl, the type-stable high-level dynamic performance of DynamicQuantities.jl and intelligent selection on which mode should be applied. In addition, FlexUnits also enables high-performance linear algebra on mixed-unit matrices and extends mixed-unit compatibility for Julia packages like Statistics.jl and DifferentialEquations.jl (something that other unit packages struggle with). 
+FlexUnits.jl is the Julia units package for demanding users who want the static performance of Unitful.jl and the dynamic performance of DynamicQuantities.jl all in one package. High performance in both modes allows FlexUnits to achieve faster compile times than Unitful.jl with the same run-time cost, and exhibit superior performance in real-world situations where both modes are required (such as mixed-unit linear algebra). FlexUnits adheres to a modular design philosophy which allows it to support a variety of features such as rigorous treatment of logarithmic units, easy dimension-based dispatch, and intuitive unit simplification.
 
 To get started, simply run
 ```
@@ -17,24 +17,26 @@ Note that the unit registry isn't exported by default; it must be manually impor
 ## Design Philosophy
 This packages is built around the following major design decisions:
 
-1. Promotion rules that convert Unitful-like `StaticDims` into DynamicQuantities-like `Dimensions` when units are mismatched or uninferrable. Operations on `Dimensions` are slower than `StaticDims` because dimension operations need to be performed at runtime; however, dynamic dimension ops are type-stable, compilable, and still much faster than dynamic dispatch that Unitful falls back to.
+1. Mixed functionality between Unitful-like `StaticDims` and DynamicQuantities-like `AbstractDimensions`. Promotion rules convert StaticDims to their dynamic counterparts when units are mismatched or uninferrable allowing for a type-stable dynamic fallback. Parameterization and conversion rules can validate dynamic `AbstractDimensions` to catch dimension errors early and convert them to the static counterparts.
 
-2. Quantities with units are converted to quantities with dimensions (i.e. SI units) before any calculation is performed which greatly simplifies many calculation operations. When applied to `StaticDims`, this also reduces over-specialization because there is only one unit for every dimension. For example, velocity is always in "m/s", temperature is always in "K", and pressure is always in "Pa"="kg/(m s²)". This can lead to faster compile times and greater type-stability when variables are re-assigned.
+2. Quantities are converted to base units before any calculations are performed. This achieves the run-time performance of DynamicQuantities.jl and greatly improves compile-time performance over Unitful.jl.
 
-3. The use of a sentinel value to denote an `unknown` dimension. This enhances compatibility for Julia codebases where `zero(T)` is called without foreknowledge of units (such as initializing mixed-unit matrices, or indexing sparse/diagonal matrices). This special value sets all dimensions to the exponent's `typemax`, and is displayed as `?/?`. This alone has been able to make certain functions like `mean` and `cov` work out of the box, where other unit packages failed.
+3. Unit registries consist of a type-stable dictionary living inside a module that exports standard functionality, including the ability to *register new units at runtime*. A default registry is supplied but FlexUnits but registries are designed to be interchangeable; advanced functionality, such as defining new dimensions or transformations requires building a new registry.
 
-4. Introducing a special array type called a `LinmapQuant`, a special matrix type of `Quantity` that is intended for linear algebra operations. `Quantity` matrices that can be multiplied are *linear mappings* (hence `LinmapQuant`) that map input dimensions to output dimensions. Enforcing this structure results in a dimension-matrix that can be summarized by two vectors and a scalar, resulting in unit inference techniques that are much simpler than the linear algebra itself. For example, matrix multiplication is an O(n³) operation, but its unit inference is only O(n); matrix inversion is also O(n³) but its unit inference is only O(1). Many two-argument linear algebra functions guarantee a `LinmapQuant` result, so these matrices tend to propagate, resulting in better performance if even one matrix is a `LinmapQuant` (broadcasting is an exception).
+4. Introducing a special array type called a `LinmapQuant`, a special matrix type of `Quantity` that is intended for linear algebra operations on mixed-dimensions. If a mixed-dimensional `Quantity` matrix is valid for matrix multiplication, it is a *linear mapping* (hence `LinmapQuant`) which maps input dimensions to output dimensions. This structure is used to enforce validity of matrix operations and reduce unit inference overhead to linear time or better.
+
+5. The use of a sentinel value to denote an `unknown` dimension displayed as `?/?`. This enhances compatibility for Julia codebases where `zero(T)` is called without foreknowledge of units (such as initializing mixed-unit matrices, or indexing sparse/diagonal matrices). 
 
 In addition to these design changes, there are a number of other notable differences from Unitful.
 
 #### Notable differences between FlexUnits.jl and Unitful.jl
-1. The string macro `u_str` and parsing function `uparse` are not automatically exported (allowing users to export their own registries)
-2. Units are not tracked through calculations, ony dimensions; calculation results are displayed as though `upreferred` was called on them.
-3. The function `upreferred` is replaced by `ubase` which converts to raw dimensions (like SI)
-4. Operations on affine units do not produce errors (due to automatic conversion to dimensions). **This the correct action for the vast majority of cases, but care must be taken to make sure that affine differences such as ***temperature differences*** are in absolute units.** For example, try running following commands:
+1. FlexUnits registries are designed to be interchangeable and consist of an dictionary of dynamic units living inside a module that exports string macros and parsing functions. String macros can produce static units while string parsing functions produce type-stable dynamic units.
+2. The string macro `u_str` and parsing function `uparse` are not automatically exported, but must be exported by a chosen unit registry (allowing users to export their own registries)
+3. Only dimensions are tracked through calculations and results are displayed as though `upreferred` was called on them. More intuitive representations can be obtained using `simplify(q)` or setting `display_simplified_units(true)`.
+4. The function `upreferred` is replaced by `ubase` which converts quantities to base units.
+5. Operations on affine units do not produce errors (due to automatic conversion to dimensions). **This the correct action for the vast majority of cases, but care must be taken to make sure that affine differences such as ***temperature differences*** are in absolute units.** For example, try running following commands:
     - ```(5u"°C" - 2u"°C") == 3u"°C"```
     - ```(5u"°C" - 2u"°C") == 3u"K"```
-5. FlexUnits registries are somewhat simpler than Unitful. A FlexUnits registry is a dictionary of units living inside a module that exports string macros and dynamic parsing functions. String macros can produce static units while string parsing functions produce dynamic units (as the code cannot infer such static units at parse time).
 6. Much like Unitful, `Quantity` subtypes to number, but an additional type `FlexQuant` can support any value type (such as a Distribution or Array). The function `quantity(q, u)` selects the appropriate output type based on the arguments.
 7. FlexUnits uses the concept of a `LogQuant` to allow taking the `log` of a `Quantity`, and handling logarithmic units like decibels
 
@@ -73,6 +75,54 @@ julia> uconvert(u"°F", 373.15*u"K")
 
 julia> 9u"μm/(m*K)" |> u"μm/(m*Ra)"
 5.0 μm/(m*Ra)
+```
+
+## Registering New Units
+The default unit registry exports a function `register_unit` (and by following the template, user-defined registries can do the same). The unit registration process is much simpler than Unitful.jl as you only need to call this function; *no additional registries or modules are required* and you can even register units at run-time.
+```julia
+using FlexUnits, .UnitRegistry
+
+julia> register_unit("bbl" => 0.158987*u"m^3") # US barrel of oil
+FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+```
+However, due to the nature of macros, these dictionaries are permanent. You can re-register units with the same values (so that you can re-run scripts) but changing them is not allowed.
+```julia
+julia> register_unit("bbl" => 0.158987*u"m^3") # US barrel of oil
+FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+
+julia> register_unit("bbl" => 0.164*u"m^3") # UK barrel of beer
+ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
+```
+
+## Dimensional Enforcement and Dispatch
+FlexUnits simplifies dispatch and dimensional enforcement with the `@D_str` macro exported from the unit registry; this macro produces a static dimension type given input units.
+```julia
+julia> D"kPa"
+StaticDims{kg/(m s²)}
+```
+This allows you to parameterize quantities, for example:
+```julia
+julia> const PressureQuant{T} = Quantity{T, D"Pa"}
+Quantity{T, StaticDims{kg/(m s²)}} where T
+```
+This practice comes with two major benefits:
+1.  It enforces unit consistency early on in the process, catching errors near the source 
+```julia
+julia> PressureQuant{Float64}(5*uparse("kg"))
+ERROR: ConversionError: Cannot convert unit 'kg' to target unit 'kg/(m s²)' due to a dimension mismatch of '(m s²)' 
+```
+2. Static knowledge of the dimensions improves run-time performance
+```julia
+julia> typeof(5*uparse("kPa")) #Slower dynamic quantity
+Quantity{Float64, Dimensions{FixRat32}}
+
+julia> typeof(PressureQuant{Float64}(5*uparse("kPa"))) #Faster static quantity
+Quantity{Float64, StaticDims{kg/(m s²)}}
+```
+You can also easily create dispatch patterns based off different dimensions.
+```
+mass_flow(vf::Quantity{<:Any, D"m^3/s"}, ρ::Quantity{<:Any, D"kg/m^3"}) = vf*ρ
+mass_flow(vf::Quantity{<:Any, D"m^3/s"}, vs::Quantity{<:Any, D"m^3/kg"}) = vf/vs
 ```
 
 ## Unit Simplification
@@ -127,7 +177,54 @@ julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" #This is convenient
 julia> ustrip(p) #I have been deceived
 2798.0640000000003
 ```
-Another reason not to enable by default is that ***if you wish to create custom dimensions, simplification will not work out of the box***. You will need to do some extra work to get simplification to run (see the advanced examples section in the documentation for a guide).
+Another reason not to enable by default is that ***if you wish to create custom dimensions, simplification will not work out of the box***. You will need to do some extra work to get simplification to run (see the section below or advanced examples section in the documentation for a guide).
+
+## Custom Dimensions and Registries
+While the default registry is usually sufficient for most cases, FlexUnits lets you interchangeably define new registries if the default doesn't suit your needs. One such case is if you need to define new dimensions not present in `Dimensions{FixRat32}`. For example, let us consider the case where we want to extend the dimensions to include currency in Euros. We first need to define a new `AbstractDimensions` type:
+
+```julia
+using FlexUnits
+@kwdef struct MoneyDimensions{P} <: AbstractDimensions{P}
+    m   ::P = zero(FixRat32)
+    kg  ::P = zero(FixRat32)
+    s   ::P = zero(FixRat32)
+    A   ::P = zero(FixRat32)
+    K   ::P = zero(FixRat32)
+    cd  ::P = zero(FixRat32)
+    mol ::P = zero(FixRat32)
+    €   ::P = zero(FixRat32)
+end
+MoneyDimensions(args::Real...) = MoneyDimensions{FixRat32}(args...)
+```
+We then need to build out a unit registry that uses `MoneyDimensions`. Additionally, because simplification only supports `Dimensions{FixRat32}` out of the box, we need to define simplification routines for `MoneyDimensions` in our new registry.
+```julia
+module CurrencyUnits
+    using FlexUnits.RegistryTools
+    import ..MoneyDimensions
+
+    # Define your unit registry dict and auto-populate it
+    const UNITS = PermanentDict{Symbol,Units{MoneyDimensions{FixRat32},AffineTransform{Float64}}}()
+    registry_defaults!(UNITS) # registry_defaults! is compatible with MoneyDimensions because it is a superset of Dimensions
+    register_unit!(UNITS, "EUR" => UNITS[:€]) # additional registrations can happen here
+
+    # Optional support for simplification but recommended if dimensions are not Dimensions{FixRat32}
+    const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]] # typical simplification basis you can change at will
+    @generate_unit_simplifier(PREFERRED_UNITS) # takes care of simplification boilerplate code
+
+    @generate_registry_exports(UNITS) # takes care of typical string macro and unit parsing exports
+end
+```
+We can now use this new module to support string macro parsing and simplification.
+```julia
+using .CurrencyUnits
+
+julia> electricity_price = 0.195u"€/(kW*hr)"
+5.416666666666666e-8 (s² €)/(m² kg)
+
+julia> electricity_price = 0.195u"€/(kW*hr)" |> simplify
+5.416666666666666e-8 €/J
+```
+Admittedly, this process is more involved than registering a new dimension in Unitful.jl, but it is on par with the effort required for registering new units in the same package. FlexUnits makes a rare workflow (registering dimensions) more difficult in exchange for more performance and simplicity in common workflows (type-stable unit parsing and registering units).
 
 ## Mixed-unit linear algebra
 Linear algebra is accelerated through `LinmapQuant` objects that define a linear mapping from input units to output units. To attach these units, simply multiply a matrix times a `UnitMap` constructor that specifies an example of the input and output units expected by a multiplication.
@@ -183,10 +280,10 @@ import FlexUnits.dB
 julia> q = 30dB(u"W")
 log(1000.0000000000016 (m² kg)/s³)
 ```
-As you can see here, `30 dB(W)` is equivalent to `1000 W` but it displayed as its logarithm. This helps reinforce how operations are performed based on logarithmic identities. While their logarithms are displayed (to emphasize this algebra), the actual numerical value stored is the logarithmic form
+As you can see here, `30 dB(W)` is equivalent to `1000 W` but it displayed as its logarithm. This helps reinforce how operations are performed based on logarithmic identities. While their logarithms are displayed (to emphasize this algebra), the actual numerical value stored in the natural log form
 ```julia
-julia> ustrip(log(2u"W"))
-0.6931471805599453
+julia> ustrip(30dB(u"W"))
+6.907755278982139
 ```
 
 ### Operations on logarithmic quantities
@@ -216,30 +313,19 @@ julia> (linquant(log(4u"m")), quantity(log(4u"m")), exp(log(4u"m")))
 (4.0 m, 4.0 m, 4.0 m)
 ```
 
-## Registering new units
-
-### Registering basic units
-The default unit registry exports a function `register_unit` (and by following the template, user-defined registries can do the same). With this function, you can register units using other units or quantities as follows:
+### Registering logarithmic units
+The default unit registry can only register affine units, this is not an issue if you are always constructing logarithmic units with the `dB` or `Np` wrappers:
 ```julia
 using FlexUnits, .UnitRegistry
+import FlexUnits: dB, Np
 
-julia> register_unit("bbl" => 0.158987*u"m^3")
-FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
+julia> dB_kPa = dB(u"kPa")
+dB(kPa)
 ```
-However, due to the nature of macros, these dictionaries are permanent. You can re-register units with the same values (so that you can re-run scripts) but changing them is not allowed.
-```julia
-julia> register_unit("bbl" => 0.158987*u"m^3")
-FlexUnits.RegistryTools.PermanentDict{Symbol, AffineUnits{Dimensions{FixedRational{Int32, 25200}}}} with 150 entries:
-
-julia> register_unit("bbl" => 22.5*u"m^3")
-ERROR: PermanentDictError: Key bbl already exists. Cannot assign a different value.
-```
-
-### Registering logarithmic units
-The default unit registry can only register affine units, which is sufficient for logarithmic units *unless you need to parse strings to produce logarithmic units*. In such cases, you will need to register logarithmic units with the `LogUnitRegistry` instead. This registry can hold both affine and logarithmic units, but `uparse` can introduce performance issues because the output is a `Union`. ***WARNING, because multiplying `uparse` outputs can produce a Quantity or a LogQuant, based on the string value, it's recommended that you use explicit constructors like `quantity` or `ubase` to always produce linear quantities, or `logquant` or `logubase` always produce logarithmic units.***
+However, if you need to call `uparse` on strings that can represent logarithmic units, you will need to register them in the `LogUnitRegistry` instead. This registry can hold both affine and logarithmic units, but `uparse` can introduce performance issues because the output is a `Union`. ***WARNING, because multiplying `uparse` outputs can produce a Quantity or a LogQuant, based on the string value, it's recommended that you use explicit constructors like `quantity` or `ubase` to always produce linear quantities, or `logquant` or `logubase` always produce logarithmic units.***
 ```julia
 using FlexUnits, .LogUnitRegistry
-import FlexUnits.dB
+import FlexUnits: dB, Np
 
 register_unit("dB_V" => dB(u"V"))
 
@@ -253,12 +339,11 @@ julia> ubase(10, uparse("dB_V"))
 10.000000000000002 (m² kg)/(s³ A)
 
 julia> logubase(10, uparse("V"))
-log(10.000000000000002 (m² kg)/(s³ A))
+log(22026.465794806718 (m² kg)/(s³ A))
 
 julia> 10u"dB_V"
 log(10.000000000000002 (m² kg)/(s³ A))
 ```
-
 
 ## Benchmarks
 ### Static vs dynamic units
@@ -297,8 +382,8 @@ t1flex = [1.0u"m/s", 1.0u"m/s", 1.0u"m/s"]
 ```
 In this case, the performance boost from static inference is only ~2.5× but in more demanding cases, the boosts can be somewhat greater (roughly 5×). While DynamicQuantities works much better than Unitful in worst-case scenarios, FlexUnits can match performance of both packages in their respective strengths. In most benchmarks, FlexUnits performance will tie with the better option of DynamicQuantities and Unitful with one notable exception: ***unit conversion***.
 
--  ***Unitful is fastest at static unit conversions***. Because it compiles both dimensions and conversion factors, Unitful outperforms FlexUnits (~25×) which compiles only dimensions and DynamicQuantities (~1000×) which compiles nothing
--  ***FlexUnits is fastest at dynamic unit conversions***. Because its dynamic units type `Units{Dimensions{FixRat32}}` is type-stable and simple, FlexUnits outperforms Unitful (~20×) which is not dynamically type-stable, and DynamicQuantities (~25×) which uses the complicated and slow `SymbolicDimensions{FRInt32}` for unit conversion
+-  ***Unitful is fastest at static unit conversions***. Because it compiles both dimensions and conversion factors, Unitful outperforms FlexUnits (~10×) which compiles only dimensions and DynamicQuantities (~500×) which relies on the inefficient `SymbolicDimensions{T}` object for conversion
+-  ***FlexUnits is fastest at dynamic unit conversions***. Because `FlexUnits.Units{Dimensions{T}}` is type-stable and efficient, FlexUnits outperforms Unitful (~35×) which is not dynamically type-stable, and DynamicQuantities (~40×) due to its use of `SymbolicDimensions{T}`
 
 Dynamic unit conversion is much more useful for repeatable applications as you often don't know beforehand what units your data will be in, or what units your users will want the results in (although dimensions are often known). If input datasets are large, the performance differences can be substantial.
 
@@ -348,15 +433,15 @@ The main reason why FlexUnits.jl has nearly no overhead is that only the inner p
 ## Interfacing with Unitful.jl
 Previous versions of FlexUnits did not support static units, so an interface was provided to work with Unitful through `uconvert` to provide that performance boost where units could be statically inferred. However, now that FlexUnits supports static units with equivalent or better performance (including intelligent promotion to dynamic units), it is recommended to simply use FlexUnits (especially since similar method names between the two packages can lead to confusion). Nevertheless, this interface still exists to support legacy applications.
 ```julia
-julia> using Unitful
-julia> import FlexUnits
-julia> import FlexUnits.UnitRegistry
-julia> import FlexUnits.uconvert
+using Unitful
+import FlexUnits
+import FlexUnits.UnitRegistry
+import FlexUnits.uconvert
 
 julia> x = UnitRegistry.qparse.(["5.0 km/hr", "2.0 N", "10 °C"])
 
 julia> velocity = uconvert(u"km/hr", x[1])
-18.0 km hr^-1
+5.0 km hr^-1
 
 julia> force = uconvert(u"N", x[2])
 2.0 N

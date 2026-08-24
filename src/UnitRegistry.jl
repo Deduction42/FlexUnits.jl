@@ -3,16 +3,24 @@ module UnitRegistry
 
 #RegistryTools contains all you need to build a registry in one simple import
 using ..RegistryTools
-import ..RegistryTools.dimtype 
-import ..RegistryTools.unittype
 
-const UNIT_LOCK = ReentrantLock()
+#Create the registry (dict of units) and populate its default values
 const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}()
+registry_defaults!(UNITS) 
 
-#Fill the UNITS registry with default values
-registry_defaults!(UNITS)
+#Define an initial set of preferred units (can be changed by set_preferred_unit(u::Unit))
+const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
 
+#Use macros to generate the boilerplate code for the simplifier and registry exports
+@generate_unit_simplifier(PREFERRED_UNITS)
+@generate_registry_exports(UNITS)
+
+end
+
+#=
+#Old boilerplate code
 #Ueses a ReentrantLock() on register_unit to prevent race conditions when multithreading
+const UNIT_LOCK = ReentrantLock()
 register_unit(p::Pair{String, <:Any}) = lock(UNIT_LOCK) do 
     register_unit!(UNITS, p)
 end
@@ -51,5 +59,4 @@ dtype() = RegistryTools.regdimtype(UNITS)
 #Registry is exported but these functions/macros are not (in case user wants their own verison)
 #You can import these by invoking `using .Registry`
 export @u_str, @ud_str, @q_str, @U_str, @D_str, uparse, qparse, register_unit
-
-end
+=#

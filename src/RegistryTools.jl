@@ -4,10 +4,13 @@ module RegistryTools
 import ..AbstractUnitLike, ..AbstractUnits,  ..AbstractDimensions, ..AbstractUnitTransform
 import ..Units, ..Dimensions, ..AffineTransform, ..ExpAffTransform, ..NoTransform, ..QuantUnion, ..Quantity, ..FixRat32, ..FixRat64
 import ..uscale, ..uoffset, ..tobase, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype, ..ustatic
+import ..complexity_sort!, ..preferred_units, ..dimvaltype
 
 export AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64 
-export Units, Dimensions, AffineTransform, ExpAffTransform, NoTransform, QuantUnion, Quantity, UnitOrQuantity, uscale, uoffset, dimension, usymbol
+export Units, Dimensions, AffineTransform, ExpAffTransform, NoTransform, QuantUnion, Quantity, UnitOrQuantity
+export uscale, uoffset, dimension, usymbol, complexity_sort!, dimvaltype
 export PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, suparse_expr, dimtype
+export @generate_registry_exports, @generate_unit_simplifier
 
 const UnitOrQuantity = Union{AbstractUnitLike, QuantUnion}
 const PARSE_CASES = Union{Expr,Symbol,Real,Nothing}
@@ -83,39 +86,35 @@ Returns the dimension type of a registry
 regdimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 
 
-_register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, u::Units) = setindex!(reg, u, usymbol(u))
-_register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair) = _register_unit!(reg, Units(p))
+"""
+    registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnits
 
-function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
-    original = reg[u]
-    for (name, scale) in pairs(prefixes)
-        newname = Symbol(string(name)*string(u))
-        reg[newname] = Units(dims=dimension(original), tobase=tobase(original)*scale, symbol=newname)
-    end
-    return reg
-end
-
+Populate the unit registry `reg` with the default set of units
+"""
 function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnits
     #reg = PermanentDict{Symbol, Units{DEFAULT_DIMENSONS}}()
     Dims = dimtype(U)
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
     
-    _register_unit(p::Pair) = _register_unit!(reg, p)
+    #Internal registration function skips repeated definitions
+    function _register_unit(p::Pair) 
+        if haskey(reg, p[1])
+            @warn "Unit $(p[1]) already exists, skipping."
+        else
+            return _register_unit!(reg, p)
+        end
+    end
+
     add_prefixes(symb::Symbol, prfx::NamedTuple) = add_prefixes!(reg, symb, prfx)
 
-    #SI dimensional units
+    initialize_registry!(reg, Dims)
+    
     _register_unit(:NoDims => Dims())
-    _register_unit(:m => Dims(m=1))
     _register_unit(:g => 0.001*Dims(kg=1))
     _register_unit(:t => 1000*Dims(kg=1))
-    _register_unit(:s => Dims(s=1))
-    _register_unit(:A => Dims(A=1))
-    _register_unit(:K => Dims(K=1))
-    _register_unit(:cd => Dims(cd=1))
-    _register_unit(:mol => Dims(mol=1))
-    
+
     add_prefixes(:m, si_prefixes[( :f, :p, :n, :μ, :u, :m, :c, :d, :k, :M, :G )])
-    add_prefixes(:g, si_prefixes[( :n, :μ, :u, :m, :k)])
+    add_prefixes(:g, si_prefixes[( :n, :μ, :u, :m)])
     add_prefixes(:t, si_prefixes[( :k, :M, :G)])
     add_prefixes(:s, si_prefixes[( :f, :p, :n, :μ, :m)])
     add_prefixes(:A, si_prefixes[( :n, :μ, :u, :m, :k)])
@@ -181,7 +180,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:mi => 5280*ft)
     _register_unit(:mile => 5280*ft)
     _register_unit(:lb => 0.453592*kg); lb = reg[:lb]
-    _register_unit(:oz => (1/16)*lb)
+    _register_unit(:oz => (1//16)*lb)
     _register_unit(:psi => 6.89476*reg[:kPa])
     _register_unit(:hp => 745.699871*reg[:W])
     _register_unit(:lbf => 4.44822*N)
@@ -192,9 +191,9 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:gal => 4*reg[:quart])
     _register_unit(:Ra => 5/9*reg[:K])
 
-    #Strictly affine temperature measurements
-    _register_unit(:°C => Units(dims=K, tobase=AffineTransform(offset=(273 + 15//100))))
-    _register_unit(:°F => Units(dims=K, tobase=AffineTransform(scale=5//9, offset=(273 + 15//100 - 32*5//9))))
+    #Strictly affine temperature measurements, use Rational to preserve exact conversions
+    _register_unit(:°C => Units(dims=K, tobase=AffineTransform{Rational{Int64}}(offset=(273 + 15//100))))
+    _register_unit(:°F => Units(dims=K, tobase=AffineTransform{Rational{Int64}}(scale=5//9, offset=(273 + 15//100 - 32*5//9))))
     _register_unit(:degC => reg[:°C])
     _register_unit(:degF => reg[:°F])
 
@@ -204,18 +203,86 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:rps => (2*π)*reg[:Hz])
     _register_unit(:rpm => (2*π/60)*(reg[:Hz]))
 
-    #If you want to add "angle" as a dimension, you can overload the appropriate function
-
-    #function apply_trig_func(f, q::QuantUnion{<:Any, <:RadDimensions{T}}) where T
-    #   baseq = ubase(q)
-    #   assert_radians(unit(baseq))
-    #   return Quantity(f(ustrip(baseq)), RadDimensions{T}())
-    #end
-
-    #sin(q::QuantUnion{<:RadDimensions}) = apply_trig_func(sin, q)
-
     return reg
 end
+
+"""
+    initialize_registry!(reg::AbstractDict{Symbol}, ::Type{D}) where D <:AbstractDimensions
+
+In order to use `registry_defaults!`, you must have the base SI units registered first. If your dimensions object does not cover the
+base SI units, overload this function on your dimension type D to manually populate the registry.
+"""
+function initialize_registry!(reg::AbstractDict{Symbol}, ::Type{D}) where D <:AbstractDimensions
+    #Register all existing dimensional symbols
+    for u in fieldnames(D)
+        _register_unit!(reg, u => D(; u=>1))
+    end
+    return reg 
+end
+
+function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
+    original = reg[u]
+    for (name, scale) in pairs(prefixes)
+        newname = Symbol(string(name)*string(u))
+        if haskey(reg, newname)
+            @warn "Unit symbol $(reg) already exists, skipping"
+        else
+            reg[newname] = Units(dims=dimension(original), tobase=tobase(original)*scale, symbol=newname)
+        end
+    end
+    return reg
+end
+
+_register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, u::Units) = setindex!(reg, u, usymbol(u))
+_register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair) = _register_unit!(reg, Units(p))
+
+macro generate_unit_simplifier(upref)
+    esc(quote
+        RegistryTools.complexity_sort!($upref)
+        RegistryTools.preferred_units(::Type{dimvaltype(eltype($upref))}) = $upref 
+    end)
+end
+
+macro generate_registry_exports(ureg)
+    return esc(quote
+        const UNIT_LOCK = ReentrantLock()
+
+        register_unit(p::Pair{String, <:Any}) = lock(UNIT_LOCK) do 
+            RegistryTools.register_unit!($ureg, p)
+        end
+
+        uparse(str::String) = RegistryTools.uparse(str, $ureg)
+        qparse(str::String) = RegistryTools.qparse(str, $ureg)
+
+        macro u_str(str)
+            return RegistryTools.suparse_expr(str, $ureg)
+        end
+        
+        macro ud_str(str)
+            return RegistryTools.uparse_expr(str, $ureg)
+        end
+        
+        macro q_str(str)
+            return RegistryTools.qparse_expr(str, $ureg)
+        end
+        
+        macro U_str(str)
+            suexpr = RegistryTools.suparse_expr(str, $ureg)
+            return :(typeof($suexpr))
+        end
+        
+        macro D_str(str)
+            suexpr = RegistryTools.suparse_expr(str, $ureg)
+            return :(RegistryTools.dimtype($suexpr))
+        end
+
+        utype() = RegistryTools.regunittype($ureg)
+        dtype() = RegistryTools.regdimtype($ureg)
+
+        export @u_str, @ud_str, @q_str, @U_str, @D_str, uparse, qparse, register_unit
+    end)
+end
+
 
 # Dynamic parsing API ======================================================================================
 function uparse(str::String, reg::AbstractDict{Symbol, U}) where {U<:AbstractUnitLike}

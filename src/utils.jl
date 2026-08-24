@@ -209,7 +209,11 @@ end
 Base.inv(ufit::UnitFitResult) = UnitFitResult(ufit.unit, -ufit.power, ufit.improvement)
 
 #Main dispatch unit to select preferred units, just in case dimensions are incompatible with PREFERRED_UNITS
-preferred_units(::Type{<:Any}) = PREFERRED_UNITS
+function preferred_units(::Type{D}) where D <:AbstractDimensions 
+    error("Function `preferred_units` not defined for type $(D): This function is usually defined in a unit registry. Perhaps there is no unit registry for $(D) or its unit registry was not properly configured")
+end
+
+preferred_units(::Type{D}) where D <: NoDims = SVector{0, Units{NoDims, NoTransform}}()
 
 #Main methods exposed to the user
 simplify(q::LogQuantUnion) = simplify(q, preferred_units(dimvaltype(q)))

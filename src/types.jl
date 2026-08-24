@@ -67,9 +67,17 @@ Base.eltype(::Type{<:AbstractDimensions{P}}) where P = P
 #=======================================================================================
 AbstractDimensions API
 =======================================================================================#
-#Dimension constructor from other types of dimensions
-function (::Type{D})(x::AbstractDimensions) where {P, D<:AbstractDimensions{P}}
-    return D(map(Base.Fix1(getproperty, x), static_fieldnames(D))...)
+#Construct a new (superset) dimension from an old (subset) dimension
+@generated function (::Type{D})(d::D0) where {P, D<:AbstractDimensions{P}, D0<:AbstractDimensions}
+    (newdims, olddims) = (dimension_names(D), dimension_names(D0))
+    missingdims = filter(name -> name ∉ newdims, olddims)
+    isempty(missingdims) || throw(ArgumentError("Cannot convert $(D0) to the target $(D). The target is missing the following dimensions: $(missingdims)"))
+
+    args = map(newdims) do name
+        name ∈ olddims ? :(convert($P, d.$name)) : :(zero($P))
+    end
+
+    return :(isunknown(d) ? unknown($D) : $D($(args...)))
 end
 
 #Assign a single value to all dimensions
@@ -269,6 +277,7 @@ Placehoder for a unitless dimension in cases where the base dimension type is un
     any :: Bool = false #Has a single value set to false so that it doesn't trigger "isunknown(NoDims())=true")
     NoDims(x::Bool) = new(x)
 end
+(::Type{D})(d::NoDims) where {P, D<:AbstractDimensions{P}} = D(0)
 Base.getproperty(d::NoDims, ::Symbol) = getfield(d,:any)
 dimension(x::NumUnion) = NoDims()
 dimtype(::Type{<:NumUnion}) = NoDims
