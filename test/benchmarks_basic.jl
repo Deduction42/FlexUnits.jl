@@ -160,13 +160,47 @@ print("DynamicQ:\t")
 print("FlexUnits:\t")
 @btime Xfq*Mfq
 
-# ========== S4.1. upreferred ==========
-println("\nS4.1) static upreferred\n")
 
+# ========== Unit Conversions ==============
 base_array = SVector{20}(randn(20))
 l_uni = base_array .* Unitful.u"cm"
 l_dyn = base_array .* DynamicQuantities.us"cm"
 l_flex = quantity.(base_array, UnitRegistry.u"cm")
+
+ft_stat = (
+    uni = Ref(Unitful.u"ft"),
+    dyn = Ref(DynamicQuantities.u"ft"),
+    flex = Ref(UnitRegistry.u"ft"),
+)
+
+ft_dyn = (
+    uni = Ref{eltype([Unitful.ft, Unitful.kg])}(Unitful.ft),
+    dyn = Ref(DynamicQuantities.us"ft"),
+    flex = Ref(UnitRegistry.ud"ft"),
+)
+
+
+# ========== S4.1 Static ustrip ==========
+println("\nS4.1.1) Static ustrip to arbitrary units\n")
+print("Unitful:\t")
+@btime Unitful.ustrip.($ft_stat.uni, $l_uni);
+print("DynamicQ:\t")
+@btime DynamicQuantities.ustrip.($ft_stat.dyn, $l_dyn);
+print("FlexU:  \t")
+@btime FlexUnits.ustrip.($ft_stat.flex, $l_flex);
+
+# ========== S4.1.2 Dynamic ustrip ==========
+println("\nS4.1.2) Dynamic ustrip to arbitrary units\n")
+print("Unitful:\t")
+@btime Unitful.ustrip.($ft_dyn.uni, $l_uni);
+print("DynamicQ:\t")
+@btime DynamicQuantities.ustrip.($ft_stat.dyn, $l_dyn);
+print("FlexU:  \t")
+@btime FlexUnits.ustrip.($ft_dyn.flex, $l_flex);
+
+
+# ========== S4.2 upreferred ==========
+println("\nS4.2) static upreferred\n")
 
 print("Unitful:\t")
 @btime Unitful.upreferred.($l_uni);
@@ -175,32 +209,22 @@ print("DynamicQ:\t")
 print("FlexU:  \t")
 @btime FlexUnits.ubase.($l_flex);
 
-# ========== S4.2. ustrip ==========
-println("\nS4.2) ustrip\n")
-print("Unitful:\t")
-@btime Unitful.ustrip.(Unitful.u"mm", $l_uni);
-print("DynamicQ:\t")
-@btime DynamicQuantities.ustrip.(DynamicQuantities.u"mm", $l_dyn);
-print("FlexU:  \t")
-@btime FlexUnits.ustrip.(UnitRegistry.u"mm", $l_flex);
-
 # ========== S4.3. uconvert ==========
-println("\nS4.3) Statically inferrable unit conversions\n")
+println("\nS4.3.1) Static conversion to arbitrary units\n")
 print("Unitful:\t")
-@btime Unitful.uconvert.(Ref(Unitful.u"ft"), $l_uni);
+@btime Unitful.uconvert.($ft_stat.uni, $l_uni);
 print("DynamicQ:\t")
-@btime DynamicQuantities.uconvert.(Ref(DynamicQuantities.us"ft"), $l_dyn);
+@btime DynamicQuantities.uconvert.($ft_dyn.dyn, $l_dyn);
 print("FlexU:  \t")
-@btime FlexUnits.uconvert.(Ref(UnitRegistry.u"ft"), $l_flex);
+@btime FlexUnits.uconvert.($ft_stat.flex, $l_flex);
 
-println("\nS4.4) Dynamic unit conversions\n")
+println("\nS4.3.2) Dynamic conversion to arbitrary units\n")
 print("Unitful:\t")
-dyn_ft = Ref{eltype([Unitful.ft, Unitful.kg])}(Unitful.ft)
-@btime Unitful.uconvert.(dyn_ft, $l_uni);
+@btime Unitful.uconvert.($ft_dyn.uni, $l_uni);
 print("DynamicQ:\t")
-@btime DynamicQuantities.uconvert.(Ref(DynamicQuantities.us"ft"), $l_dyn);
+@btime DynamicQuantities.uconvert.($ft_dyn.dyn, $l_dyn);
 print("FlexU:  \t")
-@btime FlexUnits.uconvert.(Ref(UnitRegistry.ud"ft"), $l_flex);
+@btime FlexUnits.uconvert.($ft_dyn.flex, $l_flex);
 
 # ========== S5. Affine units (°C/°F) ==========
 println("\nS5) Ideal gas law with affine units: PV = nRT at 25°C, 101.3kPa, n=1 mol\n")
