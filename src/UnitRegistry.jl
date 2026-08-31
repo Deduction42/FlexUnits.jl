@@ -10,11 +10,11 @@ registry_defaults!(UNITS)
 
 #Define an initial set of preferred units (can be changed by set_preferred_unit(u::Unit))
 const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
+RegistryTools.complexity_sort!(PREFERRED_UNITS)
+RegistryTools.preferred_units(::Type{<:Dimensions}) = PREFERRED_UNITS
 
-#Use macros to generate the boilerplate code for the simplifier and registry exports
-@generate_unit_simplifier(PREFERRED_UNITS)
+#Macro to generate the boilerplate code for registry exports
 @generate_registry_exports(UNITS)
-
 end
 
 #=
