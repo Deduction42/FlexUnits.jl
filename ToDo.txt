@@ -1,5 +1,6 @@
 Changelog:
-1.  Added two macros for eliminating boilerplate code around custom registries (@generate_unit_simplifier, @generate_registry_exports)
+1.  Default simplifier is general, allowing for custom modules to specialize rather than overwrite
+2.  Fixed some conversion issues.
 
 Backlog:
 

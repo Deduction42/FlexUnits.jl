@@ -43,6 +43,11 @@ ustrip(::Type{D}, x) where D <: StaticDims = ustrip(D(), x)
 
 check_convertable(u_target::AbstractUnitLike, u_current::AbstractUnitLike) = compatible_dims(u_target, u_current) || throw(ConversionError(u_target, u_current))
 
+function swap_convertable(u_target::AbstractUnitLike, u_current::AbstractUnitLike)
+    check_convertable(u_target, u_current)
+    return u_target 
+end
+
 #============================================================================================
 uconvert with quantities
 ============================================================================================#
@@ -172,8 +177,8 @@ Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)
 Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D, dimval(d))
 
 Base.convert(::Type{D}, u::AbstractUnitLike) where {D<:StaticDims} = convert(D, dimension(assert_dimension(u)))
-Base.convert(::Type{D}, d::AbstractDimensions) where {D<:StaticDims} = check_convertable(D(), d)
-Base.convert(::Type{D}, d::StaticDims) where {D<:StaticDims} = check_convertable(D(), d)
+Base.convert(::Type{D}, d::AbstractDimensions) where {D<:StaticDims} = swap_convertable(D(), d)
+Base.convert(::Type{D}, d::StaticDims) where {D<:StaticDims} = swap_convertable(D(), d)
 Base.convert(::Type{D}, d::NoDims) where {D<:StaticDims} = assert_dimensionless(D())
 
 # Converting transform types ===============================================
