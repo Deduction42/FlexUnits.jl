@@ -20,19 +20,19 @@ julia> uconvert(u"K", u"°C")(0)
 ```
 """
 function uconvert(u_target::AbstractUnitLike, u_current::AbstractUnitLike) 
-    check_convertable(u_target, u_current)
+    asssert_compatible_dims(u_target, u_current)
     return inv(tobase(u_target)) ∘ tobase(u_current)
 end
 function uconvert(u_target::AbstractUnitLike, u_current::AbstractDimLike)
-    check_convertable(u_target, u_current)
+    asssert_compatible_dims(u_target, u_current)
     return Base.Fix1(inv, tobase(u_target))
 end
 function uconvert(u_target::AbstractDimLike, u_current::AbstractUnitLike)
-    check_convertable(u_target, u_current)
+    asssert_compatible_dims(u_target, u_current)
     return tobase(u_current)
 end
 function uconvert(u_target::AbstractDimLike, u_current::AbstractDimLike)
-    check_convertable(u_target, u_current)
+    asssert_compatible_dims(u_target, u_current)
     return NoTransform()
 end
 uconvert(ft::AbstractUnitTransform, x) = ft(x)
@@ -41,12 +41,7 @@ uconvert(u_target::StaticDims{D}, u_current::Units{StaticDims{D}}) where D = tob
 uconvert(::Type{D}, x) where D <: StaticDims = uconvert(D(), x)
 ustrip(::Type{D}, x) where D <: StaticDims = ustrip(D(), x)
 
-check_convertable(u_target::AbstractUnitLike, u_current::AbstractUnitLike) = compatible_dims(u_target, u_current) || throw(ConversionError(u_target, u_current))
-
-function swap_convertable(u_target::AbstractUnitLike, u_current::AbstractUnitLike)
-    check_convertable(u_target, u_current)
-    return u_target 
-end
+asssert_compatible_dims(u_target::AbstractUnitLike, u_current::AbstractUnitLike) = compatible_dims(u_target, u_current) ? u_target : throw(ConversionError(u_target, u_current))
 
 #============================================================================================
 uconvert with quantities
@@ -67,7 +62,7 @@ function uconvert(u::AbstractUnitLike, q::QuantUnion)
 end
 
 function uconvert(u::AbstractUnitLike, lq::LogQuant)
-    check_convertable(u, unit(lq))
+    asssert_compatible_dims(u, unit(lq))
     ft = inv(tobase(u)) ∘ exp(tobase(unit(lq))) #This produces an affine transform of an ExpAffineTransform
     newval = ft(ustrip(lq))
     return Quantity{typeof(newval), typeof(u)}(newval, u)
@@ -80,7 +75,7 @@ function uconvert(u::Units{D,<:ExpAffTransform}, q::QuantUnion) where D<:Abstrac
 end
 
 function uconvert(u::Units{D,<:ExpAffTransform}, lq::LogQuant) where D<:AbstractDimLike
-    check_convertable(u, unit(lq))
+    asssert_compatible_dims(u, unit(lq))
     ft = inv(log(tobase(u))) ∘ tobase(unit(lq)) #This produces an AffineTransform
     newval = ft(ustrip(lq))
     newunit = Units{D}(dimension(u), log(tobase(u)), usymbol(u))
@@ -177,8 +172,8 @@ Base.convert(::Type{D}, u::AbstractDimLike) where D<:AbstractDimensions = D(u)
 Base.convert(::Type{D}, d::StaticDims) where {D<:AbstractDimensions} = convert(D, dimval(d))
 
 Base.convert(::Type{D}, u::AbstractUnitLike) where {D<:StaticDims} = convert(D, dimension(assert_dimension(u)))
-Base.convert(::Type{D}, d::AbstractDimensions) where {D<:StaticDims} = swap_convertable(D(), d)
-Base.convert(::Type{D}, d::StaticDims) where {D<:StaticDims} = swap_convertable(D(), d)
+Base.convert(::Type{D}, d::AbstractDimensions) where {D<:StaticDims} = asssert_compatible_dims(D(), d)
+Base.convert(::Type{D}, d::StaticDims) where {D<:StaticDims} = asssert_compatible_dims(D(), d)
 Base.convert(::Type{D}, d::NoDims) where {D<:StaticDims} = assert_dimensionless(D())
 
 # Converting transform types ===============================================
