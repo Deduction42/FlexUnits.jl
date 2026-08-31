@@ -382,8 +382,8 @@ t1flex = [1.0u"m/s", 1.0u"m/s", 1.0u"m/s"]
 ```
 In this case, the performance boost from static inference is only ~2.5× but in more demanding cases, the boosts can be somewhat greater (roughly 5×). While DynamicQuantities works much better than Unitful in worst-case scenarios, FlexUnits can match performance of both packages in their respective strengths. In most benchmarks, FlexUnits performance will tie with the better option of DynamicQuantities and Unitful with one notable exception: ***unit conversion***.
 
--  ***Unitful is fastest at static unit conversions***. Because it compiles both dimensions and conversion factors, Unitful outperforms FlexUnits (~10×) which compiles only dimensions and DynamicQuantities (~500×) which relies on the inefficient `SymbolicDimensions{T}` object for conversion
--  ***FlexUnits is fastest at dynamic unit conversions***. Because `FlexUnits.Units{Dimensions{T}}` is type-stable and efficient, FlexUnits outperforms Unitful (~35×) which is not dynamically type-stable, and DynamicQuantities (~40×) due to its use of `SymbolicDimensions{T}`
+-  ***Unitful is fastest at static unit conversions***. Because it compiles both dimensions and conversion factors, Unitful outperforms FlexUnits (~8×) which compiles only dimensions and DynamicQuantities (~300×) which relies on the inefficient `SymbolicDimensions{T}` object for conversion
+-  ***FlexUnits is fastest at dynamic unit conversions***. Because `FlexUnits.Units{Dimensions{T}}` is type-stable and efficient, FlexUnits outperforms Unitful (~40×) which is not dynamically type-stable, and DynamicQuantities (~40×) due to its use of `SymbolicDimensions{T}`
 
 Dynamic unit conversion is much more useful for repeatable applications as you often don't know beforehand what units your data will be in, or what units your users will want the results in (although dimensions are often known). If input datasets are large, the performance differences can be substantial.
 
