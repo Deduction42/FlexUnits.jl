@@ -130,6 +130,7 @@ compatible_dims(d_target::AbstractDimLike, d_current::AbstractDimLike) = (d_targ
 compatible_dims(d_target::StaticDims{d1}, d_current::StaticDims{d2}) where {d1, d2} = compatible_dims(d1, d2)
 compatible_dims(target, current) = compatible_dims(dimension(target), dimension(current))
 
+
 #=================================================================================================
 Conversion and Promotion
 

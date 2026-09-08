@@ -290,6 +290,11 @@ end
     @test muladd(c*u"", dt, t) == 0.00161u"s"
     @test muladd(t, f, c) == 0.161
 
+    @test flipsign(dt, f) == dt 
+    @test flipsign(dt, -f) == -dt 
+    @test flipsign(dt, c) == dt 
+    @test flipsign(dt, -c) == -dt
+
     #Math on arrays of number quantities 
     mq = [5*u"m/s" 2u"m/s^2"; 1*u"kg/s" 4*u"kg/s^2"]
     vq = [1u"s", 2u"s^2"]

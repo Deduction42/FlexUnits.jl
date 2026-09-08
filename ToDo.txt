@@ -1,6 +1,7 @@
 Changelog:
 1.  Default simplifier is general, allowing for custom modules to specialize rather than overwrite
-2.  Fixed some conversion issues.
+2.  Added `flipsign` methods
+3.  Slight speedup of many operations
 
 Backlog:
 

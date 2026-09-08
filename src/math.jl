@@ -248,11 +248,9 @@ f(args::QuantUnion...) = with_ubase(f, args...)
 ```
 """
 function with_ubase(f, args::QuantUnion...)
-    baseargs = map(ubase, args)
-    basevals = map(ustrip, baseargs)
-    basedims = map(unit, baseargs)
-    scaleval = f(basevals...)
-    return quantity(scaleval, f(basedims...))
+    basevals = map(dstrip, args)
+    basedims = map(dimension, args)
+    return quantity(f(basevals...), f(basedims...))
 end
 
 function Base.:(==)(q1::QuantUnion, q2::QuantUnion)
@@ -315,6 +313,8 @@ Base.abs2(q::QuantUnion) = with_ubase(abs2, q)
 Base.max(q1::QuantUnion, q2::QuantUnion) = with_ubase(max, q1, q2)
 Base.min(q1::QuantUnion, q2::QuantUnion) = with_ubase(min, q1, q2)
 Base.rem(q1::QuantUnion, q2::QuantUnion) = with_ubase(rem, q1, q2)
+Base.flipsign(q1::QuantUnion, q2::QuantUnion) = quantity(flipsign(dstrip(q1), dstrip(q2)), dimension(q1))
+Base.flipsign(q1::QuantUnion, n2::NumUnion) = quantity(flipsign(dstrip(q1), n2), dimension(q1))
 Base.zero(::Type{D}) where D<:AbstractDimensions = D()
 Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), tobase=T())
 
@@ -483,20 +483,3 @@ function Base.rem(lq1::LogQuant{<:Number,D1}, lq2::LogQuant{<:Number,D2}) where 
     return LogQuant(rem(dstrip(lq1), dstrip(lq2)), d)
 end
 Base.rem(lq1::LogQuant, lq2::LogQuant) = rem(logubase(lq1), logubase(lq2))
-
-
-#= Experimental, multiplying/dividing LogQuant which may not make sense
-function Base.:*(q1::LogQuant, q2::LogQuant)
-    if isdimensionless(dimension(q1))
-        return ustrip(logubase(q1))*logubase(q2) 
-    elseif isdimensionless(dimension(q2))
-        return ustrip(logubase(q2))*logubase(q1)
-    end 
-    throw(ArgumentError("One argument must be dimensionless"))
-end
-
-function Base.:/(q1::LogQuant, q2::LogQuant)
-    assert_dimensionless(q2)
-    return logubase(q1) / ustrip(logubase(q2))
-end
-=#
