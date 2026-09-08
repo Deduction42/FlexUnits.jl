@@ -29,14 +29,12 @@ end
 
 
 #First method, shown to be slightly faster 
-#=
 function lugre_diff(xvec::VT, θ, t) where VT<:AbstractVector
     x = ValveState(xvec)
     u = interpolate(θ.u, t, order=1)
-    α = 2 # used to approximate Stribeck effect, can range from 0.5 <= α <= 2.0
    
-    gv = θ.Fc + θ.Fs*exp(-abs(x.v/θ.vs)^α)
-    ż  = x.v - (θ.σ₀/gv)*x.z*abs(x.v)
+    gv = θ.Fc + θ.Fs*exp(-abs(x.v/θ.vs))
+    ż  = x.v - (θ.σ₀/gv)*(x.z*abs(x.v))
     Ff = θ.σ₀*x.z + θ.σ₁*ż + θ.μD*x.v
     Fnet = (θ.k*(u-x.x) - Ff) #Force balance
 
@@ -46,16 +44,16 @@ function lugre_diff(xvec::VT, θ, t) where VT<:AbstractVector
         z = ustrip(D"m/s", ż)
     ))
 end
-=#
+
 
 #Second method, slightly slower
+#=
 function lugre_diff(xvec::AbstractVector, θ, t)
     x = ValveState(xvec)
     u = interpolate(θ.u, t, order=1)
-    α = 2 # used to approximate Stribeck effect, can range from 0.5 <= α <= 2.0
    
-    gv = θ.Fc + θ.Fs*exp(-abs(x.v/θ.vs)^α)
-    ż  = x.v - (θ.σ₀/gv)*x.z*abs(x.v)
+    gv = θ.Fc + θ.Fs*exp(-abs(x.v/θ.vs))
+    ż  = x.v - (θ.σ₀/gv)*(x.z*abs(x.v))
     Ff = θ.σ₀*x.z + θ.σ₁*ż + θ.μD*x.v
     Fnet = (θ.k*(u-x.x) - Ff) #Force balance
 
@@ -65,7 +63,7 @@ function lugre_diff(xvec::AbstractVector, θ, t)
         z = ż
     ))
 end
-
+=#
 
 Δt = (0.0, 30.0)
 vt = LinRange(Δt[begin], Δt[end], 10)
