@@ -272,7 +272,7 @@ Base.:(≈)(q2::QuantUnion, q1::Missing) = missing
 Base.:+(q::QuantUnion, x::NumUnion) = scalar(q) + x 
 Base.:+(x::NumUnion, q::QuantUnion) = scalar(q) + x
 Base.:+(q1::QuantUnion, q2::QuantUnion) = with_ubase(+, q1, q2)
-Base.:+(q1::QuantUnion, qN::QuantUnion...) = with_ubase(+, q1, qN...)
+#Base.:+(q1::QuantUnion, qN::QuantUnion...) = with_ubase(+, q1, qN...)
 
 Base.:-(q::QuantUnion, x::NumUnion) = scalar(q) - x 
 Base.:-(x::NumUnion, q::QuantUnion) = x - scalar(q)
@@ -282,7 +282,7 @@ Base.:-(q1::QuantUnion) = with_ubase(-, q1)
 Base.:*(q0::QuantUnion, x::NumUnion) = (q = ubase(q0); quantity(ustrip(q)*x, unit(q)))
 Base.:*(x::NumUnion, q0::QuantUnion) = (q = ubase(q0); quantity(ustrip(q)*x, unit(q)))
 Base.:*(q1::QuantUnion, q2::QuantUnion) = with_ubase(*, q1, q2)
-Base.:*(q1::QuantUnion, qN::QuantUnion...) = with_ubase(*, q1, qN...)
+#Base.:*(q1::QuantUnion, qN::QuantUnion...) = with_ubase(*, q1, qN...)
 
 Base.:/(q0::QuantUnion, x::NumUnion) = (q = ubase(q0); quantity(ustrip(q)/x, unit(q)))
 Base.:/(x::NumUnion, q0::QuantUnion) = (q = ubase(q0); quantity(x/ustrip(q), inv(unit(q))))
