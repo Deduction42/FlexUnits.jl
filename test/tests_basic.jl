@@ -294,6 +294,7 @@ end
     @test flipsign(dt, -f) == -dt 
     @test flipsign(dt, c) == dt 
     @test flipsign(dt, -c) == -dt
+    @test t*dt*f == 0*u"s"
 
     #Math on arrays of number quantities 
     mq = [5*u"m/s" 2u"m/s^2"; 1*u"kg/s" 4*u"kg/s^2"]
