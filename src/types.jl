@@ -189,7 +189,6 @@ this is useful for logarithmic units
     ExpAffTransform(scale::Real, offset::Real)
     ExpAffTransform(; scale, offset)
 """
-
 @kwdef struct ExpAffTransform{T<:Real} <: AbstractUnitTransform
     scale  :: T = 1.0
     offset :: T = 0.0
@@ -610,7 +609,6 @@ Log-Linear Mixture Unit
 
 An object that represents a mixture of logarithmic/linear units, such as dB/m
 """
-
 @kwdef struct LogLinUnits{L<:AbstractUnits{<:Any, <:ExpAffTransform}, U<:Union{AbstractUnits{<:Any, <:AffineTransform}, AbstractDimLike}} <: AbstractUnitLike
     ulog :: L 
     ulin :: U

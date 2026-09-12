@@ -1,7 +1,8 @@
 Changelog:
-1.  Default simplifier is general, allowing for custom modules to specialize rather than overwrite
-2.  Added `flipsign` methods
-3.  Slight speedup of many operations
+1.  Fixed an issue where ForwardDiff multiplication with 3 or more terms resulted in type-instability 
+2.  Improved performance of `DimsMod` constructor to improve type inferrability
+    -   Can now NamedTuple instead of keywords for construction, which improves type-stability
+    -   `DimsMod{D"1/s"}(FallingObjectState, (v=dv, h=dh))`
 
 Backlog:
 

@@ -24,7 +24,7 @@ isknown(d::D) where D<:AbstractDimensions = !isunknown(d, dimension_names(D)[end
 isunknown(d::StaticDims{D}) where D = isunknown(D)
 isknown(d::StaticDims{D}) where D = isknown(D)
 
-#Checks equality of dimensions, returns first non-mirrored dimension
+#Checks equality of dimensions, prioritizes returning static, known dimensions
 @inline equaldims(arg1::AbstractDimensions) = arg1
 function equaldims(d1::AbstractDimensions, d2::AbstractDimensions)
     D = promote_type(typeof(d1), typeof(d2))

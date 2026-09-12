@@ -113,10 +113,30 @@ struct DimsMod{SD<:StaticDims, N, T, D, A<:QuantFieldArray} <: QuantFieldArray{N
     parent :: A 
     DimsMod{SD}(parent::A) where {SD<:StaticDims, N, T, D, A<:QuantFieldArray{N,T,D}} = new{SD, N, T, D, A}(parent)
 end
-DimsMod{D}(::Type{QA}; kwargs...) where {D,QA} = DimsMod{D}(dimsmod(D, QA; kwargs...))
-ustrip(dm::DimsMod) = getfield(dm, :parent)
+DimsMod{D}(::Type{QA}, nt::NamedTuple) where {D,QA} = DimsMod{D}(dimsmod(D, QA, nt))
+DimsMod{D}(::Type{QA}; kwargs...) where {D,QA} = DimsMod{D}(dimsmod(D, QA, NamedTuple(kwargs)))
 
+modstrip(dm::DimsMod) = getfield(dm, :parent)
+Base.convert(::Type{QA}, dm::DimsMod) where QA <: QuantFieldArray = convert(QA, modstrip(dm))
 
+@generated function dimsmod(::Type{D}, ::Type{QA}, nt::NamedTuple) where {D<:StaticDims, QA<:QuantFieldArray}
+    fns = fieldnames(QA)
+    fus = fieldunits(QA).*D()
+    expr = :($QA())
+    expr_qa = expr.args
+
+    for (fn, fu) in zip(fns, fus)
+        push!(expr_qa, :(ustrip($fu, nt.$fn)))
+    end
+
+    return expr
+end
+
+Base.getproperty(dm::DimsMod{D}, fn::Symbol) where D = getproperty(modstrip(dm), fn)*D()
+Base.getindex(dm::DimsMod, ind::Int) = getindex(modstrip(dm), ind)
+
+#=
+#Older version which used keyword arguments. For some reason, this was type-unstable; NamedTuple improved performance
 @generated function dimsmod(::Type{D}, ::Type{QA}; kwargs...) where {D<:StaticDims, QA<:QuantFieldArray}
     fns = fieldnames(QA)
     fus = fieldunits(QA).*D()
@@ -130,7 +150,4 @@ ustrip(dm::DimsMod) = getfield(dm, :parent)
 
     return expr
 end
-
-Base.getproperty(dm::DimsMod{D}, fn::Symbol) where D = getproperty(ustrip(dm), fn)*D()
-Base.getindex(dm::DimsMod, ind::Int) = getindex(ustrip(dm), ind)
-
+=#

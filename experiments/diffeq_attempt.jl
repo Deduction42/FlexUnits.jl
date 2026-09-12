@@ -11,7 +11,7 @@ using LinearAlgebra
 #OrdinaryDiffEq.OrdinaryDiffEqCore.DiffEqBase.value(q::Quantity) = dstrip(q)
 
 # =============================================================================================================
-include("diffeq_extension.jl")
+#include("diffeq_extension.jl")
 
 @kwdef struct FallingObjectState{T} <: FieldVector{2,T}
     v  :: T
