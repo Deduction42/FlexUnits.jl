@@ -28,7 +28,13 @@ end
 end
 
 @testitem "Custom Dimensions" begin 
-    include("test_currency_registry.jl")
+    include("test_registry_currency.jl")
+    include("test_registry_rational.jl")
+end
+
+@testitem "ODE Solving" begin 
+    include("test_ode_falling.jl")
+    include("test_ode_stiction.jl")
 end
 
 @testitem "Integration tests with Unitful" begin

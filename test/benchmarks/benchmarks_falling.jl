@@ -96,7 +96,7 @@ function acceleration(u0::AbstractVector, p::FallingObjectProps, t)
     dv = (fd/p.m - p.g)
     dh = u.v
 
-    return ustrip(DimsMod{D"1/s"}(FallingObjectState, v=dv, h=dh))
+    return ustrip(DimsMod{D"1/s"}(FallingObjectState, (v=dv, h=dh)))
 end
 
 # =============================================================================================================

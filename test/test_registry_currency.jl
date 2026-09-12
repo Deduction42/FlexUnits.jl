@@ -20,18 +20,17 @@ MoneyDimensions(args::Real...) = MoneyDimensions{FixRat32}(args...)
 Create your unit registry as a module using RegistryTools
 ===============================================================================================================================#
 module CurrencyUnits
+    using FlexUnits.RegistryTools
+    import ..MoneyDimensions
 
-using FlexUnits.RegistryTools
-import ..MoneyDimensions
+    const UNITS = PermanentDict{Symbol,Units{MoneyDimensions{FixRat32},AffineTransform{Float64}}}()
+    registry_defaults!(UNITS)
+    register_unit!(UNITS, "EUR" => UNITS[:€])
 
-const UNITS = PermanentDict{Symbol,Units{MoneyDimensions{FixRat32},AffineTransform{Float64}}}()
-registry_defaults!(UNITS)
-register_unit!(UNITS, "EUR" => UNITS[:€])
+    const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
 
-const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
-
-@generate_unit_simplifier(PREFERRED_UNITS)
-@generate_registry_exports(UNITS)
+    @generate_unit_simplifier(PREFERRED_UNITS)
+    @generate_registry_exports(UNITS)
 end
 
 
