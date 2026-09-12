@@ -27,43 +27,19 @@ end
     vs :: Quantity{T, D"m/s"} #Velocity below which static friction starts to dominate
 end
 
-
-#First method, shown to be slightly faster 
-function lugre_diff(xvec::VT, θ, t) where VT<:AbstractVector
-    x = ValveState(xvec)
-    u = interpolate(θ.u, t, order=1)
-   
-    gv = θ.Fc + θ.Fs*exp(-abs(x.v/θ.vs))
-    ż  = x.v - (θ.σ₀/gv)*(x.z*abs(x.v))
-    Ff = θ.σ₀*x.z + θ.σ₁*ż + θ.μD*x.v
-    Fnet = (θ.k*(u-x.x) - Ff) #Force balance
-
-    return SVector(ValveState(
-        x = ustrip(D"m/s", x.v),
-        v = ustrip(D"m/s^2", Fnet/θ.m), 
-        z = ustrip(D"m/s", ż)
-    ))
-end
-
-
-#Second method, slightly slower
-#=
 function lugre_diff(xvec::AbstractVector, θ, t)
     x = ValveState(xvec)
     u = interpolate(θ.u, t, order=1)
    
     gv = θ.Fc + θ.Fs*exp(-abs(x.v/θ.vs))
-    ż  = x.v - (θ.σ₀/gv)*(x.z*abs(x.v))
+    ż  = x.v - (θ.σ₀/gv)*x.z*abs(x.v)
     Ff = θ.σ₀*x.z + θ.σ₁*ż + θ.μD*x.v
     Fnet = (θ.k*(u-x.x) - Ff) #Force balance
 
-    return SVector(DimsMod{D"1/s"}(ValveState,
-        x = x.v,
-        v = Fnet/θ.m, 
-        z = ż
-    ))
+    #Validate units of the results, then return the unitless version
+    dx = DimsMod{D"1/s"}(ValveState, (x = x.v, v = Fnet/θ.m, z = ż))
+    return SVector(dx)
 end
-=#
 
 Δt = (0.0, 30.0)
 vt = LinRange(Δt[begin], Δt[end], 10)
@@ -86,6 +62,11 @@ reltol = SA[1e-6, 1e-6, 1e-6]
 prob = ODEProblem{false, FullSpecialize}(lugre_diff, x0, Δt, θ, abstol=abstol, reltol=reltol)
 sol = solve(prob, Rodas4P())
 @btime solve(prob, Rodas4P())
+#=
+@profview for ii in 1:100
+    solve(prob, Rodas4P())
+end
+=#
 
 #=
 using Plots

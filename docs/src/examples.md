@@ -13,13 +13,7 @@ In the section below, we introduce a strategy that can validate units inside dif
 2. It introduces no added complexity, using the ODE solvers as the developers intended (and test for )
 3. It validates units in a way that is easy to interpret
 
-This strategy involves defining new objects that behave like a user-defined object with units inside the differential equation system, but behave like numerical vectors inside the differential equation solver. This can be done with the following steps
-
-1. Define a modified `FieldVector` object (from StaticArrays) called `QuantFieldVector` that stores values with static dimensions
-2. Override `getindex` so that it that produces raw numbers in base SI units when indexed like a vector (but still produces quantities with field access)
-3. Define new objects with clear dimensional representations and subtype it to `QuantFieldVector`
-
-Note that in the near future, FlexUnits may define its own `QuantFieldVector` object, simplifying this process.
+This strategy involves defining new objects that behave like a user-defined object with units inside the differential equation system, but behave like numerical vectors inside the differential equation solver. This can be done by defining new objects with clear dimensional representations and subtype it to `QuantFieldVector` abstract class defined in FlexUnits
 
 #### The problem definition
 Let us consider an application where we are using the drag force equation to model a falling object with velocity `v` and position `h`. This equation also requires us to consider the following parameters:
@@ -56,7 +50,10 @@ end
 end 
 ```
 
-We can write out the equations as we would normally express them; when returning the value, we need to modify the dimensions by `1/s` for the derivative. The `ustrip` command ensures the output type is the same as the input type (a requirement for the ode solver)
+We can write out the equations as we would normally express them; when returning the value, we need to modify the dimensions by `1/s` for the derivative. This is done using the `DimsMod{D"1/s"}` object constructor which modifies a `QuantFieldArray` object by a static dimension type `D"1/s"` to produce a time derivative. The constructor takes two arguments:
+1. The original object (`FallingObjectState`)
+2. A `NamedTuple` with fields identical to the original object, and values which are quantities having the modified dimensions
+
 ```julia
 function acceleration(u0::AbstractVector, p::FallingObjectProps, t)
     u = FallingObjectState(u0)
@@ -64,11 +61,13 @@ function acceleration(u0::AbstractVector, p::FallingObjectProps, t)
     #Drag force
     fd = -sign(u.v)*0.5*p.ρ*u.v^2*p.Cd*p.A
     
-    #Drag force effect on state (multiply by dt to make units work)
+    #Drag force effect on state, DimsMod validates the units of the derivative
     dv = (fd/p.m - p.g)
     dh = u.v
 
-    return ustrip(DimsMod{D"1/s"}(FallingObjectState, v=dv, h=dh))
+    #Validate the units using DimsMod and return the original type (as required by the ODE solver)
+    du = DimsMod{D"1/s"}(FallingObjectState, (v=dv, h=dh))
+    return convert(typeof(u0), du)
 end
 ```
 
