@@ -107,18 +107,17 @@ MoneyDimensions(args::Real...) = MoneyDimensions{FixRat32}(args...)</code></pre>
 
 julia&gt; simplify( 5*MoneyDimensions(kg=1, m=1, s=-2))
 ERROR: Function `preferred_units` not defined for type MoneyDimensions{FixRat32}: This function is usually defined in a unit registry. Perhaps there is no unit registry for MoneyDimensions{FixRat32} or its unit registry was not properly configured</code></pre><p>However, as seen in the previous example, new unit registries are relatively painless to build. There are a couple of things we should note before starting. Since <code>MoneyDimensions</code> is a generalization of <code>Dimensions</code>, <code>registry_defaults!</code> can be used to populate the registry with all the units normally inside <code>Dimensions</code>. Simplification doesn&#39;t work with this dimension out of hte box, so we will need to perform the additional step of configuring unit simplification.</p><pre><code class="language-julia hljs">module CurrencyUnits
+    using FlexUnits.RegistryTools
+    import ..MoneyDimensions
 
-using FlexUnits.RegistryTools
-import ..MoneyDimensions
+    const UNITS = PermanentDict{Symbol,Units{MoneyDimensions{FixRat32},AffineTransform{Float64}}}()
+    registry_defaults!(UNITS)
+    register_unit!(UNITS, &quot;EUR&quot; =&gt; UNITS[:€])
 
-const UNITS = PermanentDict{Symbol,Units{MoneyDimensions{FixRat32},AffineTransform{Float64}}}()
-registry_defaults!(UNITS)
-register_unit!(UNITS, &quot;EUR&quot; =&gt; UNITS[:€])
+    const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
 
-const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
-
-@generate_unit_simplifier(PREFERRED_UNITS)
-@generate_registry_exports(UNITS)
+    @generate_unit_simplifier(PREFERRED_UNITS)
+    @generate_registry_exports(UNITS)
 end</code></pre><p>This now gives you the ability to use string macros and look up units. Note that you must &quot;use&quot; this module instead of the default <code>UnitRegistry</code>.</p><pre><code class="language-julia hljs">using .CurrencyUnits
 
 fuel_price = 2.04u&quot;€/L&quot;
@@ -131,4 +130,4 @@ estimated_price = fuel_price*trip_distance*fuel_consumption + driver_price*trip_
 5.416666666666666e-8 (s² €)/(m² kg)
 
 julia&gt; electricity_price = 0.195u&quot;€/(kW*hr)&quot; |&gt; simplify
-5.416666666666666e-8 €/J</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../dispatch/">« Dispatch Examples</a><a class="docs-footer-nextpage" href="../types/">Types »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Saturday 12 September 2026 20:37">Saturday 12 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+5.416666666666666e-8 €/J</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../dispatch/">« Dispatch Examples</a><a class="docs-footer-nextpage" href="../types/">Types »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Saturday 12 September 2026 21:47">Saturday 12 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
