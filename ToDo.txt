@@ -13,6 +13,11 @@ Backlog:
     -   Define rounding functions and conversion to Period
 
 3.  Remove FactorQuant, and instead use factors on LinmapQuant directly
+    -   No need for StaticDims in DimsMap
+        -   Factorization guarantees that uniform dimensions are NoDims
+        -   Just create "lengthless" NoDimVec object 
+        -   getindex(v::NoDimVec, ind::Integer) = NoDims()
+        -   vcat(v1::NoDimVec, v2::NoDimVec) = NoDimVec()
     -   This makes FlexUnits easier to integrate with LinearAlgebra
     -   Using "cholesky" as an example
         -   cholesky(m::LinmapQuant) should return a Cholesky{Quantity, LinmapQuant}
@@ -20,13 +25,14 @@ Backlog:
         -   The inner result is wrapped in a LinmapQuant and fed to a Cholesky object constructor 
         -   Calls on getproperty(Cholesky{Quantity, LinmapQuant}, fn::Symbol) are dispatched
             -   Units are resolved based on the inner object's dimensions 
-    -   Same can be done for "eigen" and "lu"
+    -   Same can be done for 
+        -   "eigen", "lu", "qr", "lq"
     -   Move this code into a LinearAlgebra extension (along with special matrix dispatches)
     -   Add missing features
         -   implement a unitful "cholupdate!" and "choldowndate!" if it doesn't work already
     -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations and nomenclature 
         -   should the nomenclature be "repeatable", "idempotent" and "symmetric" ?
-        -   or "identity", "scalar", "symmetric"
+        -   or "identity", "scalar", "symmetric" (this is likely preferrable)
 
 4.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
