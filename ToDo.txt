@@ -1,7 +1,15 @@
 Backlog:
 
 (future)
-1.  Add QuantFieldArray section to LinearAlgebra docs
+0.  Allow affine units in compound expressions by implicitly converting them to scalar
+    -   Test to see if NON_SCALAR_ERROR is even needed anymore
+    -   Remove "assert_scalar(u)" from "set_preferred_unit!"
+    -   Other instances of "assert_scalar" are valid
+
+1.  Update documentation 
+    -   Add QuantFieldArray section to LinearAlgebra docs
+    -   Case out "Extending FlexUnits" examples to a new header
+    -   Add "Vessel Units" example as a third "Tweaking Default Behaviours" section    
 
 2.  Add compatibility layer with Dates 
     -   Create "seconds_unit(::Type{D}) where D<:AbstractDimensions" function (and extend for Units, and StaticDims)
@@ -12,16 +20,24 @@ Backlog:
         -   convert(::Type{Q}, p::Period) = convert(Q, quantity(toseconds(p), seconds_unit(dimtype(Q))))
     -   Define rounding functions and conversion to Period
 
-3.  Remove FactorQuant, and instead use factors on LinmapQuant directly
+3.  Introduce a new object NoDimsVec(len::Integer) <: AbstractVector{NoDims}
+        struct NoDimsVec <: AbstractVector{NoDims}
+            len :: Int 
+        end
+        NoDimsVec(x::AbstractVector{NoDims}) = NoDimsVec(lenth(x))
+
+        getindex(v::NoDimsVec, ind::Integer) = NoDims()
+        vcat(v1::AbstractVector{NoDims}, v2::AbstractVector{NoDims}) = NoDimsVec(length(v1)+lengnth(v2))
+        dot(v1::AbstractVector{NoDims}, v2::AbstractVector{NoDims}) = NoDims()
+
     -   No need for StaticDims in DimsMap
-        -   Factorization guarantees that uniform dimensions are NoDims
-        -   Just create "lengthless" NoDimVec object 
-        -   getindex(v::NoDimVec, ind::Integer) = NoDims()
-        -   vcat(v1::NoDimVec, v2::NoDimVec) = NoDimVec()
+    -   Unit factorization guarantees that uniform dimensions are NoDims
+
+4.  Remove FactorQuant, and instead use factors on LinmapQuant directly
     -   This makes FlexUnits easier to integrate with LinearAlgebra
     -   Using "cholesky" as an example
         -   cholesky(m::LinmapQuant) should return a Cholesky{Quantity, LinmapQuant}
-        -   Internally cholesky is called on the original matrix 
+        -   Internally "cholesky" is called on the original matrix 
         -   The inner result is wrapped in a LinmapQuant and fed to a Cholesky object constructor 
         -   Calls on getproperty(Cholesky{Quantity, LinmapQuant}, fn::Symbol) are dispatched
             -   Units are resolved based on the inner object's dimensions 
@@ -34,7 +50,7 @@ Backlog:
         -   should the nomenclature be "repeatable", "idempotent" and "symmetric" ?
         -   or "identity", "scalar", "symmetric" (this is likely preferrable)
 
-4.  Add plot recipes
+5.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
 
 
