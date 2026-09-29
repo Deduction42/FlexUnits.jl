@@ -34,9 +34,10 @@ In addition to these design changes, there are a number of other notable differe
 2. The string macro `u_str` and parsing function `uparse` are not automatically exported, but must be exported by a chosen unit registry (allowing users to export their own registries)
 3. Only dimensions are tracked through calculations and results are displayed as though `upreferred` was called on them. More intuitive representations can be obtained using `simplify(q)` or setting `display_simplified_units(true)`.
 4. The function `upreferred` is replaced by `ubase` which converts quantities to base units.
-5. Operations on affine units do not produce errors (due to automatic conversion to dimensions). **This the correct action for the vast majority of cases, but care must be taken to make sure that affine differences such as ***temperature differences*** are in absolute units.** For example, try running following commands:
-    - ```(5u"°C" - 2u"°C") == 3u"°C"```
-    - ```(5u"°C" - 2u"°C") == 3u"K"```
+5. Operations on affine units do not produce errors (due to automatic conversion to dimensions). **This the correct action for the vast majority of cases, but care must be taken to make sure that affine differences such as ***temperature differences*** are in absolute units.**\
+   For example:
+    - ```(5u"°C" - 2u"°C") == 3u"°C"``` returns `false`
+    - ```(5u"°C" - 2u"°C") == 3u"K"``` returns `true`
 6. Much like Unitful, `Quantity` subtypes to number, but an additional type `FlexQuant` can support any value type (such as a Distribution or Array). The function `quantity(q, u)` selects the appropriate output type based on the arguments.
 7. FlexUnits uses the concept of a `LogQuant` to allow taking the `log` of a `Quantity`, and handling logarithmic units like decibels
 
