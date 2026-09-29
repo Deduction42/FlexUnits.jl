@@ -92,11 +92,11 @@ regdimtype(reg::AbstractDict{Symbol,<:U}) where U<:AbstractUnitLike = dimtype(U)
 Populate the unit registry `reg` with the default set of units
 """
 function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnits
-    #reg = PermanentDict{Symbol, Units{DEFAULT_DIMENSONS}}()
+    # reg = PermanentDict{Symbol, Units{DEFAULT_DIMENSONS}}()
     Dims = dimtype(U)
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
     
-    #Internal registration function skips repeated definitions
+    # Internal registration function skips repeated definitions
     function _register_unit(p::Pair) 
         if haskey(reg, p[1])
             @warn "Unit $(p[1]) already exists, skipping."
@@ -147,7 +147,9 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:T => N/(A*m))
     _register_unit(:Wb => V*s)
     _register_unit(:bar => 1e5*Pa)
+    _register_unit(:atm => 101325*Pa)
     _register_unit(:cP => 0.001Pa*s)
+    _register_unit(:gn => 9.80665*m/s^2); gn = reg[:gn]
 
     add_prefixes(:L, si_prefixes[(:μ, :u, :m)])
     add_prefixes(:Hz, si_prefixes[(:n, :μ, :u, :m, :k, :M, :G)])
@@ -163,7 +165,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     add_prefixes(:S, si_prefixes[(:n, :μ, :u, :m, :k, :M, :G)])
     add_prefixes(:Wb, si_prefixes[(:n, :μ, :u, :m)])
 
-    #Common time units
+    # Common time units
     _register_unit(:min => 60*s); minute=reg[:min]
     _register_unit(:minute => minute)
     _register_unit(:h => 60*minute); h = reg[:h]
@@ -173,23 +175,18 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:wk => 7*day);
     _register_unit(:yr => 365.25*day);
 
-    #Common imperial units
-    _register_unit(:inch => 2.54*reg[:cm]); inch = reg[:inch]
+    # Standard imperial units (yards and pounds are international standards) 
+    # Non-standardized units will require custom registries
+    _register_unit(:lb => 0.45359237*kg); lb = reg[:lb]
+    _register_unit(:yd => 0.9144*m); yd = reg[:yd]
+    _register_unit(:inch => (1//36)*yd); inch = reg[:inch]
     _register_unit(:in => inch)
-    _register_unit(:ft => 12*inch); ft = reg[:ft]
-    _register_unit(:mi => 5280*ft)
-    _register_unit(:mile => 5280*ft)
-    _register_unit(:lb => 0.453592*kg); lb = reg[:lb]
-    _register_unit(:oz => (1//16)*lb)
-    _register_unit(:psi => 6.89476*reg[:kPa])
-    _register_unit(:hp => 745.699871*reg[:W])
-    _register_unit(:lbf => 4.44822*N)
-    _register_unit(:fl_oz => 29.5735*reg[:mL])
-    _register_unit(:cup => 8*reg[:fl_oz])
-    _register_unit(:pint => 2*reg[:cup])
-    _register_unit(:quart => 2*reg[:pint])
-    _register_unit(:gal => 4*reg[:quart])
-    _register_unit(:Ra => 5/9*reg[:K])
+    _register_unit(:ft => (1//3)*yd)
+    _register_unit(:mi => 1760*yd)
+    _register_unit(:mile => 1760*yd)
+    _register_unit(:lbf => lb*gn)
+    _register_unit(:psi => lb*gn/inch^2)
+    _register_unit(:Ra => (5//9)*reg[:K])
 
     #Strictly affine temperature measurements, use Rational to preserve exact conversions
     _register_unit(:°C => Units(dims=K, tobase=AffineTransform{Rational{Int64}}(offset=(273 + 15//100))))

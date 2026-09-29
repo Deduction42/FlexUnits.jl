@@ -1,11 +1,11 @@
+Done:
+1.  Improved precision definitions on lb and yard (as they are international standards)
+
 Backlog:
 1.  Allow affine units in compound expressions by implicitly converting them to scalar
     -   Test to see if NON_SCALAR_ERROR is even needed anymore
     -   Remove "assert_scalar(u)" from "set_preferred_unit!"
     -   Other instances of "assert_scalar" are valid
-2.  Improve precision for conversions
-    -   1 lb is exactly 0.45359237 kg 
-    -   g0 is exactly 9.80665 m/s^2
 
 (future)
 1.  Update documentation 
@@ -35,7 +35,12 @@ Backlog:
     -   No need for StaticDims in DimsMap
     -   Unit factorization guarantees that uniform dimensions are NoDims
 
-4.  Remove FactorQuant, and instead use factors on LinmapQuant directly
+4.  Add other registries
+    -   US Customary Units 
+    -   British Customary Units
+
+5.  Remove FactorQuant, and instead use factors on LinmapQuant directly
+    -   This is potentially a breaking change
     -   This makes FlexUnits easier to integrate with LinearAlgebra
     -   Using "cholesky" as an example
         -   cholesky(m::LinmapQuant) should return a Cholesky{Quantity, LinmapQuant}
@@ -52,7 +57,7 @@ Backlog:
         -   should the nomenclature be "repeatable", "idempotent" and "symmetric" ?
         -   or "identity", "scalar", "symmetric" (this is likely preferrable)
 
-5.  Add plot recipes
+6.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
 
 
