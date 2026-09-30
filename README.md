@@ -36,11 +36,11 @@ In addition to these design changes, there are a number of other notable differe
 4. The function `upreferred` is replaced by `ubase` which converts quantities to base units.
 5. Operations on affine units do not produce errors (due to automatic conversion to dimensions). This the correct action for the vast majority of cases, **you must not use affine units to describe temperature differences**
     
-    For example (note this behaves similarly in Unitful):
+    For an example on similar unintuitive behavour in both FlexUnis and Unitful:
     - ```(5u"°C" - 2u"°C") |> 3u"K"``` returns `3.0 K` wich is both technically correct and intuitive
     - ```(5u"°C" - 2u"°C") |> u"°C"``` returns `-270.15 °C` which is technically correct, but unintuitive.
 
-    The difference in betweenn the two packages is an operation like
+    The difference between the two packages lies in operations like:
     - ```4181u"J/(K kg)"*5u"°C"``` FlexUnits returns the equivalent of `1.16294515e6 J/kg` while Unitful throws an AffineError
     - If the temperature was a difference and desired result is ```20905.0 J/kg```, you need to multiply by ```5u"K"```
 
