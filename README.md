@@ -159,11 +159,11 @@ julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" |> simplify  #Hydraulic pressure
 0.4058247132605051 psi
 ```
 
-#### WARNING Against setting affine units as simplification
-As of version 6.9, FlexUnits allows you to set affine units as preferred. However, this will yield strange results if you set your preferred units as affine and are expecting a temperature difference in the result.
+#### WARNING Against setting affine units as a simplification basis
+As of version 6.9, FlexUnits allows you to set affine units as preferred. Compound units involving affine units will remove offsets, so kJ/(kg °C) parses out to be the same as kJ/(kg K). An exception is made if the dimension is exactly a single temperature where the offset is retained. This will yield the desired result in most cases, however, converting to an affine unit will result in unintuitive behaviour if you are describing a temperature difference:
 
 ```julia 
-set_preferred_unit(u°C)
+set_preferred_unit(u"°C")
 
 # Enthalpy change of water: dH = m*Cp*ΔT  -> ΔT = dH / (m*Cp)
 dH = 5u"kJ"
@@ -171,10 +171,9 @@ Cp = 4.184*u"kJ/(kg*°C)" # Affine units in compound units assume scalar behavio
 m  = 1.0u"kg"
 ΔT = dH / (m*Cp) # results in 1.1950286806883366 K
 ΔT |> simplify 
--271.95497131931165 °C # Probably not what we want but 1.1950 K is roughly -271.9550 °C
+-271.95497131931165 °C # Unintuitive but strictly correct because 1.1950 K ≈ -271.9550 °C
 ```
-
-The underlying lesson here is that *affine units and differences simply don't mix well*.
+The subtle reality is that taking diferences in affine units silently results in an absolute unit. This explains why thermodynamic equations with temperature differences don't need to be converted to Kelvin, because taking the difference silently does this for you. What we *think* is a temperaturee difference in °C is *actually in Kelvin*. The underlying lesson here is that *affine units cannot be intuitively used to describe differences*. The challenge with the above example is that no difference is explicitly taken; the result can only be understood as a difference because of physical context behind the equations. The above result of ΔT = -271.9... °C is correct, *our conventional thinking about affine units is wrong*.
 
 ### Simplified view by default
 It may be cumbersome to constantly use `|> simplify` after every interactive operation. FlexUnits has a configuration function that allows you to view results as though `simplify` was applied to them.
