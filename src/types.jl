@@ -404,8 +404,13 @@ FlexQuant{T,D}(q::QuantUnion) where {T,D<:AbstractDimensions} = FlexQuant{T,D}(d
 FlexQuant{T}(x, u::AbstractUnitLike) where T = FlexQuant{T, typeof(u)}(x, u)
 FlexQuant{T}(q::QuantUnion) where T = FlexQuant{T}(ustrip(q), unit(q))
 
-Units(q::QuantUnion{<:Number, <:AbstractUnitLike}, symbol=DEFAULT_USYMBOL) = Units(dims=dimension(q), tobase=tobase(unit(q))*ustrip(q), symbol=symbol)
 Units(p::Pair{<:Union{Symbol,AbstractString}, <:Union{Quantity,AbstractUnitLike}}) = Units(p[2], Symbol(p[1]))
+
+function Units(q::QuantUnion{<:Number, <:AbstractUnitLike}, symbol=DEFAULT_USYMBOL) 
+    u = assert_scalar(unit(q))
+    return Units(dims=dimension(q), tobase=tobase(u)*ustrip(q), symbol=symbol)
+end
+
 
 """
     ubase(q::QuantUnion)
@@ -701,7 +706,7 @@ Base.showerror(io::IO, e::NotDimensionError) = print(io, "NotDimensionError: ", 
 
 assert_scalar(u::AbstractDimLike) = u
 assert_scalar(u::AbstractUnits) = is_scalar(u) ? u : throw(NotScalarError(u))
-scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
+#scalar_dimension(u::AbstractUnitLike) = dimension(assert_scalar(u))
 
 assert_dimension(u::AbstractDimLike) =  u
 assert_dimension(u::AbstractUnits) = is_dimension(u) ? u : throw(NotDimensionError(u))

@@ -231,7 +231,7 @@ function display_simplified_units(mode::Bool)
 end
 
 function set_preferred_unit!(unitset::AbstractVector{<:Units}, u::Units; warn_failure=true)
-    du = dimension(assert_scalar(u))
+    du = dimension(u)
 
     function abs_dims_match(x::Units)
         dx = dimension(x) 
@@ -288,6 +288,10 @@ end
 
 #Potentially useful to the user, not exported by default
 function compound_unit(numervec::Vector{<:UnitFitResult}, denomvec::Vector{<:UnitFitResult}, remainder::D) where D<:AbstractDimensions
+    #Shortcut if there is only one (potentially affine) unit 
+    if isdimensionless(remainder) && isempty(denomvec) && isone(length(numervec)) && isone(numervec[begin].power)
+        return numervec[begin].unit 
+    end
 
     #Collect the remainder into numervec and denomvec
     for fn in fieldnames(D)

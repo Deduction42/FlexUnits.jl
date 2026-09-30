@@ -1,23 +1,18 @@
-Changelog:
-1.  Fixed an issue where ForwardDiff multiplication with 3 or more terms resulted in type-instability 
-2.  Improved performance of `DimsMod` constructor to improve type inferrability
-    -   Can now NamedTuple instead of keywords for construction, which improves type-stability
-    -   `DimsMod{D"1/s"}(FallingObjectState, (v=dv, h=dh))`
+Done:
+1.  Improved precision definitions on lb and yard (as they are international standards)
+2.  Allowed affine units in compound expressions by implicitly converting them to scalar
+    -   Also enabled affine units in "set_preferred_unit(u)"
+
 
 Backlog:
 
 (future)
-1.  Extend and clean out tests 
-    -   Include simulation cases in tests (simply test the flag of the simulation output)
-        -   Test Raw / Dynamic / QuantFieldArray versions of FallingObject 
-        -   Test Raw / QuantFieldArray versions of Stiction
-        -   These two cases will be separate "TestItem" objects 
-            -   Tests within these two items are separate "TestSet" objects
-    -   Move unused test code to an "Archives" folder
+1.  Update documentation 
+    -   Add QuantFieldArray section to LinearAlgebra docs
+    -   Case out "Extending FlexUnits" examples to a new header
+    -   Add "Vessel Units" example as a third "Tweaking Default Behaviours" section    
 
-2.  Add QuantFieldArray section to LinearAlgebra docs
-
-3.  Add compatibility layer with Dates 
+2.  Add compatibility layer with Dates 
     -   Create "seconds_unit(::Type{D}) where D<:AbstractDimensions" function (and extend for Units, and StaticDims)
         -   This should return a StaticDims or Unit{StaticDims}
         -   This usually returns StaticDims{D(s=1)}
@@ -26,12 +21,42 @@ Backlog:
         -   convert(::Type{Q}, p::Period) = convert(Q, quantity(toseconds(p), seconds_unit(dimtype(Q))))
     -   Define rounding functions and conversion to Period
 
-4.  Move factorizations and special matrices to LinearAlgebra extension
-    -   implement a unitful "cholupdate!" and "choldowndate!"
-    -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations
-    -   Add performance benchmarks
+3.  Introduce a new object NoDimsVec(len::Integer) <: AbstractVector{NoDims}
+        struct NoDimsVec <: AbstractVector{NoDims}
+            len :: Int 
+        end
+        NoDimsVec(x::AbstractVector{NoDims}) = NoDimsVec(lenth(x))
 
-5.  Add plot recipes
+        getindex(v::NoDimsVec, ind::Integer) = NoDims()
+        vcat(v1::AbstractVector{NoDims}, v2::AbstractVector{NoDims}) = NoDimsVec(length(v1)+lengnth(v2))
+        dot(v1::AbstractVector{NoDims}, v2::AbstractVector{NoDims}) = NoDims()
+
+    -   No need for StaticDims in DimsMap
+    -   Unit factorization guarantees that uniform dimensions are NoDims
+
+4.  Add other registries
+    -   US Customary Units 
+    -   British Customary Units
+
+5.  Remove FactorQuant, and instead use factors on LinmapQuant directly
+    -   This is potentially a breaking change
+    -   This makes FlexUnits easier to integrate with LinearAlgebra
+    -   Using "cholesky" as an example
+        -   cholesky(m::LinmapQuant) should return a Cholesky{Quantity, LinmapQuant}
+        -   Internally "cholesky" is called on the original matrix 
+        -   The inner result is wrapped in a LinmapQuant and fed to a Cholesky object constructor 
+        -   Calls on getproperty(Cholesky{Quantity, LinmapQuant}, fn::Symbol) are dispatched
+            -   Units are resolved based on the inner object's dimensions 
+    -   Same can be done for 
+        -   "eigen", "lu", "qr", "lq"
+    -   Move this code into a LinearAlgebra extension (along with special matrix dispatches)
+    -   Add missing features
+        -   implement a unitful "cholupdate!" and "choldowndate!" if it doesn't work already
+    -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations and nomenclature 
+        -   should the nomenclature be "repeatable", "idempotent" and "symmetric" ?
+        -   or "identity", "scalar", "symmetric" (this is likely preferrable)
+
+6.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
 
 

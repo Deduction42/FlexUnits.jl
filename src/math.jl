@@ -169,27 +169,27 @@ Base.:/(d1::StaticDims, d2::NoDims) = d1
 Base.:/(d1::NoDims, d2::StaticDims) = inv(d2)
 
 #=============================================================================================
- Mathematical operations on abstract units and transforms (mostly for parsing)
-=============================================================================================#
-const NON_SCALAR_ERROR = ArgumentError("Operation only allowed on scalar transforms")
+Mathematical operations on abstract units and transforms (mostly for parsing)
 
-function Base.:*(t1::AffineTransform, t2::AffineTransform) 
-    is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
+Note:   Mathematical operations /*^ on affine transforms remove offsets 
+        This is because, units like kJ/(kg*°C) implicitly mean kJ/(kg*K)
+=============================================================================================#
+#const NON_SCALAR_ERROR = ArgumentError("Operation only allowed on scalar transforms")
+
+function Base.:*(t1::AffineTransform, t2::AffineTransform)
     return AffineTransform(scale = t1.scale*t2.scale, offset = 0) 
 end
-Base.:*(t::AffineTransform{T}, x::Real) where T = is_scalar(t) ? AffineTransform{T}(scale=t.scale*x, offset=0) : throw(NON_SCALAR_ERROR)
+Base.:*(t::AffineTransform{T}, x::Real) where T =  AffineTransform{T}(scale=t.scale*x, offset=0)
 Base.:*(t::NoTransform, x::Real) = AffineTransform(scale=x, offset=0)
 
 function Base.:/(t1::AffineTransform, t2::AffineTransform) 
-    is_scalar(t1) & is_scalar(t2) || throw(NON_SCALAR_ERROR)
     return AffineTransform(scale = t1.scale/t2.scale, offset = 0) 
 end
-Base.:/(t::AffineTransform{T}, x::Real) where T = is_scalar(t) ? AffineTransform{T}(scale=t.scale/x, offset=0) : throw(NON_SCALAR_ERROR)
+Base.:/(t::AffineTransform{T}, x::Real) where T = AffineTransform{T}(scale=t.scale/x, offset=0)
 Base.:/(t1::NoTransform, x::Real) = AffineTransform(scale=inv(x), offset=0)
 
 function Base.:^(t::AffineTransform{T}, p::Real) where T
-    is_scalar(t) || throw(NON_SCALAR_ERROR)
-    return AffineTransform{T}(scale = t.scale^p, offset = 0) 
+    return isone(p) ? t : AffineTransform{T}(scale = t.scale^p, offset = 0) 
 end
 Base.:^(t1::NoTransform, p::Real) = t1
 
@@ -206,19 +206,19 @@ Base.:*(m::AbstractArray{<:QuantUnion}, u::AbstractUnitLike) = broadcast(*, m, u
 Base.:*(u::AbstractUnitLike, m::AbstractArray{<:QuantUnion}) = broadcast(*, m, u)
 
 function Base.:*(u1::U, u2::U) where U <: AbstractUnits
-    return constructorof(U)(scalar_dimension(u1)*scalar_dimension(u2), tobase(u1)*tobase(u2))
+    return constructorof(U)(dimension(u1)*dimension(u2), tobase(u1)*tobase(u2))
 end
 
 function Base.:/(u1::U, u2::U) where U <: AbstractUnits
-    return constructorof(U)(scalar_dimension(u1)/scalar_dimension(u2), tobase(u1)/tobase(u2))
+    return constructorof(U)(dimension(u1)/dimension(u2), tobase(u1)/tobase(u2))
 end
 
 function Base.:inv(u::U) where U <: AbstractUnits
-    return constructorof(U)(inv(scalar_dimension(u)), inv(tobase(u)))
+    return constructorof(U)(inv(dimension(u)), inv(tobase(u)))
 end
 
 function Base.:^(u::U, p::Real) where U <:AbstractUnits
-    return constructorof(U)(scalar_dimension(u)^p, tobase(u)^p)
+    return constructorof(U)(dimension(u)^p, tobase(u)^p)
 end
 
 Base.:*(u1::AbstractUnitLike, u2::AbstractUnitLike) = *(promote(u1,u2)...)

@@ -159,6 +159,23 @@ julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" |> simplify  #Hydraulic pressure
 0.4058247132605051 psi
 ```
 
+#### WARNING Against setting affine units as simplification
+As of version 6.9, FlexUnits allows you to set affine units as preferred. However, this will yield strange results if you set your preferred units as affine and are expecting a temperature difference in the result.
+
+```julia 
+set_preferred_unit(u°C)
+
+# Enthalpy change of water: dH = m*Cp*ΔT  -> ΔT = dH / (m*Cp)
+dH = 5u"kJ"
+Cp = 4.184*u"kJ/(kg*°C)" # Affine units in compound units assume scalar behaviour
+m  = 1.0u"kg"
+ΔT = dH / (m*Cp) # results in 1.1950286806883366 K
+ΔT |> simplify 
+-271.95497131931165 °C # Probably not what we want but 1.1950 K is roughly -271.9550 °C
+```
+
+The underlying lesson here is that *affine units and differences simply don't mix well*.
+
 ### Simplified view by default
 It may be cumbersome to constantly use `|> simplify` after every interactive operation. FlexUnits has a configuration function that allows you to view results as though `simplify` was applied to them.
 ```julia
