@@ -149,7 +149,9 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:bar => 1e5*Pa)
     _register_unit(:atm => 101325*Pa)
     _register_unit(:cP => 0.001Pa*s)
-    _register_unit(:gn => 9.80665*m/s^2); gn = reg[:gn]
+
+    gn = 9.80665*m/s^2
+    _register_unit(:gn => gn)
 
     add_prefixes(:L, si_prefixes[(:μ, :u, :m)])
     add_prefixes(:Hz, si_prefixes[(:n, :μ, :u, :m, :k, :M, :G)])
@@ -177,17 +179,20 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
 
     # Standard imperial units (yards and pounds are international standards) 
     # Non-standardized units will require custom registries
-    _register_unit(:lb => 0.45359237*kg); lb = reg[:lb]
-    _register_unit(:yd => 0.9144*m); yd = reg[:yd]
+    lb = 0.45359237*kg
+    yd = 0.9144*m
+    inch = (1//36)*yd
+    _register_unit(:lb => lb)
+    _register_unit(:yd => yd)
     _register_unit(:Ra => (5//9)*reg[:K])
-    _register_unit(:inch => (1//36)*yd); inch = reg[:inch]
+    _register_unit(:inch => inch)
     _register_unit(:in => inch)
     _register_unit(:ft => (1//3)*yd)
     _register_unit(:mi => 1760*yd)
     _register_unit(:mile => 1760*yd)
     _register_unit(:oz => (1//16)*lb)
     _register_unit(:lbf => lb*gn)
-    _register_unit(:psi => lb*gn/inch^2)   
+    _register_unit(:psi => lb*gn/inch^2)
 
     #Strictly affine temperature measurements, use Rational to preserve exact conversions
     _register_unit(:°C => Units(dims=K, tobase=AffineTransform{Rational{Int64}}(offset=(273 + 15//100))))

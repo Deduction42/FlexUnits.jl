@@ -337,12 +337,11 @@ end
 
     #Math on unit transforms 
     @test AffineTransform(scale=2, offset=0)*2 == AffineTransform(scale=4, offset=0)
-    @test_throws ArgumentError AffineTransform(scale=2, offset=1)*2
+    @test AffineTransform(scale=2, offset=1)*2 == AffineTransform(scale=4, offset=0)
     @test AffineTransform(scale=2, offset=0)/2 == AffineTransform(scale=1, offset=0)
-    @test_throws ArgumentError AffineTransform(scale=2, offset=1)*2
     @test NoTransform()^60 == NoTransform()
     @test AffineTransform()^60 == AffineTransform()
-    @test_throws ArgumentError AffineTransform(scale=2, offset=1)^2
+    @test AffineTransform(scale=2, offset=1)^2 == AffineTransform(scale=4, offset=0)
     @test NoTransform()/2 == AffineTransform(scale=0.5, offset=0)
 
     #Math on units 
@@ -463,7 +462,6 @@ end
     @test_throws "Unexpected expression" uparse("import ..Units")
     @test_throws "Unexpected expression" uparse("(m, m)")
     @test_throws LoadError eval(:(us"x"))
-    @test_throws NotScalarError ud"J/°C"
 
     #Basic mathematical operations
     xp = 1ud"percent"
@@ -800,7 +798,7 @@ end
     @test convert(DEFAULT_DIM_TYPE, ud"m") === Dimensions(m=1)
     @test_throws NotDimensionError convert(DEFAULT_DIM_TYPE, ud"mm")
     @test convert(Units{DEFAULT_DIM_TYPE, AT}, ubase(2ud"m")) == Units(tobase=AffineTransform(scale=2.0, offset=0.0), dims=dimension(ud"m"))
-    @test_throws ArgumentError convert(Units{DEFAULT_DIM_TYPE, AT}, quantity(2, ud"°C"))
+    @test_throws NotScalarError convert(Units{DEFAULT_DIM_TYPE, AT}, quantity(2, ud"°C"))
     @test convert(Quantity{Float64, DEFAULT_DIM_TYPE}, 2ud"m") === Quantity{Float64, DEFAULT_DIM_TYPE}(2.0, dimension(ud"m")) 
     @test_throws NotScalarError convert(Quantity{Float64, DEFAULT_DIM_TYPE}, ud"°C") 
     @test promote_type(Quantity{Float32, DEFAULT_DIM_TYPE}, Quantity{Float64, DEFAULT_UNIT_TYPE}) == Quantity{Float64, DEFAULT_DIM_TYPE}
@@ -929,6 +927,15 @@ end
     
     set_preferred_unit(u"Pa")
     set_preferred_unit(u"m")
+
+    set_preferred_unit(u"°C")
+    @test string(0u"K") == "-273.15 °C"
+    @test string(5u"J/K") == "5.0 J/°C"
+    @test string(5u"K"^2) == "5.0 °C²"
+
+    set_preferred_unit(u"K")
+    @test string(5u"K"^2) == "5.0 K²"
+
     display_simplified_units(false)
 end
 

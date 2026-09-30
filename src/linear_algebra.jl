@@ -248,15 +248,13 @@ Specify Base methods combingin AbstractMatrix/AbstractVector subtypes with Linma
 ======================================================================================================================#
 
 #List of matrices we want to overload when using bivariate operations
-const COMB_MATRIX_TYPES = [Matrix, DenseMatrix, AbstractSparseMatrixCSC, Diagonal, Hermitian, Symmetric, SymTridiagonal, Tridiagonal, 
-                            UpperHessenberg, SMatrix, MMatrix, SizedMatrix, FieldMatrix]
+const COMB_MATRIX_TYPES = [Matrix, DenseMatrix, AbstractSparseMatrixCSC, Diagonal, SMatrix, MMatrix, SizedMatrix, FieldMatrix]
 
 #List of vectors we want to overload when using bivariate operations
 const COMB_VECTOR_TYPES = [Vector, DenseVector, AbstractCompressedVector, SVector, SizedVector, FieldVector]                       
 
 #List out quantity matrix types we want to explicitly overload for univariate operations
-const QUANT_MATRIX_TYPES = [Matrix{<:Quantity}, Diagonal{<:Quantity}, Hermitian{<:Quantity}, Symmetric{<:Quantity},
-                            SymTridiagonal{<:Quantity}, Tridiagonal{<:Quantity}, UpperHessenberg{<:Quantity}, SMatrix{<:Any,<:Any,<:Quantity}, 
+const QUANT_MATRIX_TYPES = [Matrix{<:Quantity}, Diagonal{<:Quantity}, SMatrix{<:Any,<:Any,<:Quantity}, 
                             MMatrix{<:Any,<:Any,<:Quantity}, SizedMatrix{<:Any,<:Any,<:Quantity}, FieldMatrix{<:Any,<:Any,<:Quantity}]
 
 #Apply the mixed methods with various kinds of matrices
@@ -271,10 +269,12 @@ for MU in COMB_MATRIX_TYPES
         @eval Base.:*(m1::LinmapQuant, m2::$M) = qmul(m1, m2)
         @eval Base.:*(m::$M, v::VectorQuant) = qmul(m, v)
         @eval Base.:*(vt::Adjoint{<:Any, <:VectorQuant}, m::$M) = qmul(vt, m)
+        @eval Base.:*(vt::Transpose{<:Any, <:VectorQuant}, m::$M) = qmul(vt, m)
 
         @eval Base.:/(m1::$M, m2::LinmapQuant) = qdiv(m1, m2)
         @eval Base.:/(m1::LinmapQuant, m2::$M) = qdiv(m1, m2)
         @eval Base.:/(vt::Adjoint{<:Any, <:VectorQuant}, m::$M) = qdiv(vt, m)
+        @eval Base.:/(vt::Transpose{<:Any, <:VectorQuant}, m::$M) = qdiv(vt, m)
 
         @eval Base.:\(m1::$M, m2::LinmapQuant) = qldiv(m1, m2)
         @eval Base.:\(m1::LinmapQuant, m2::$M) = qldiv(m1, m2)
@@ -298,9 +298,11 @@ for V in COMB_VECTOR_TYPES
     @eval Base.:-(v1::VectorQuant, v2::$V) = qsub(v1, v2)
 
     @eval Base.:*(v::Adjoint{<:Any, <:$V}, m::LinmapQuant) = qmul(v, m)
+    @eval Base.:*(v::Transpose{<:Any, <:$V}, m::LinmapQuant) = qmul(v, m)
     @eval Base.:*(m::LinmapQuant, v::$V) = qmul(m, v)
 
     @eval Base.:/(v::Adjoint{<:Any, <:$V}, m::LinmapQuant) = qdiv(v, m)
+    @eval Base.:/(v::Transpose{<:Any, <:$V}, m::LinmapQuant) = qdiv(v, m)
     @eval Base.:\(m::LinmapQuant, v::$V) = qldiv(m, v)
 
     @eval Base.:≈(v1::$V, v2::VectorQuant) = qisapprox(v1, v2)
