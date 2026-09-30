@@ -1,11 +1,10 @@
 Done:
 1.  Improved precision definitions on lb and yard (as they are international standards)
+2.  Allowed affine units in compound expressions by implicitly converting them to scalar
+    -   Also enabled affine units in "set_preferred_unit(u)"
+
 
 Backlog:
-1.  Allow affine units in compound expressions by implicitly converting them to scalar
-    -   Test to see if NON_SCALAR_ERROR is even needed anymore
-    -   Remove "assert_scalar(u)" from "set_preferred_unit!"
-    -   Other instances of "assert_scalar" are valid
 
 (future)
 1.  Update documentation 
