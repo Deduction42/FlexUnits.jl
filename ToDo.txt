@@ -10,7 +10,8 @@ Backlog:
 1.  Update documentation 
     -   Add QuantFieldArray section to LinearAlgebra docs
     -   Case out "Extending FlexUnits" examples to a new header
-    -   Add "Vessel Units" example as a third "Tweaking Default Behaviours" section    
+    -   Add "Vessel Units" example as a third "Tweaking Default Behaviours" section
+    -   Emphasize that factorizations are experimental  
 
 2.  Add compatibility layer with Dates 
     -   Create "seconds_unit(::Type{D}) where D<:AbstractDimensions" function (and extend for Units, and StaticDims)
@@ -38,18 +39,27 @@ Backlog:
     -   US Customary Units 
     -   British Customary Units
 
-5.  Remove FactorQuant, and instead use factors on LinmapQuant directly
-    -   This is potentially a breaking change
-    -   This makes FlexUnits easier to integrate with LinearAlgebra
-    -   Using "cholesky" as an example
-        -   cholesky(m::LinmapQuant) should return a Cholesky{Quantity, LinmapQuant}
-        -   Internally "cholesky" is called on the original matrix 
-        -   The inner result is wrapped in a LinmapQuant and fed to a Cholesky object constructor 
-        -   Calls on getproperty(Cholesky{Quantity, LinmapQuant}, fn::Symbol) are dispatched
-            -   Units are resolved based on the inner object's dimensions 
-    -   Same can be done for 
-        -   "eigen", "lu", "qr", "lq"
-    -   Move this code into a LinearAlgebra extension (along with special matrix dispatches)
+5.  Revisit factorizations and "views" (like Hessian, LowerTriangular, UpperTriangular) etc
+    -   Dispatch on these types has been broken in Julia v1.13, only works on fundamental dense matrix types
+    -   Consider "eigen", "lu", "qr", "lq", "cholesky" on LinmapQuant
+        -   I am considering the removal of FactorQuant and instead move a LinmapQuant inside a factorization
+            Pros:
+            -   Type-Consistency: cholesky(m::LinmapQuant) returns an actual Cholesky factorization, not FactorQuant{Cholesky}
+            -   Integration: Many algorithms subtype onto a Cholesky, or Eigen decomposition
+            Cons:
+            -   Performance (potentially small): Moving a LinmapQuant inside a factorization hides information about the unit structure
+                    It's always better to resolve the units of a matrix/factorization separately due to degrees of freedom
+                    This may be mitigated by specializing on f(m::LinmapQuant) for constructors and getindex(fac::F{LinmapQuant})
+            -   Ambiguity (potentially massive):
+                    Specializing on LinmapQuant can lead to ambiguities with multiple arguments 
+                    Pointing to specializations on inner arguments is tedious and manual, FactorQuant does this automatically
+            Verdict:
+                I lean toward the current implementation strategy. FactorQuant seems like a a more conventional (even if less Julian) 
+                    design approach, where you build a wrapper object and leverage methods that already exist on inner objects
+
+    -   May be better to focus on applying single-argument constructors to LinmapQuant
+        -   UpperTriangular, LowerTriangular, Hermitian, etc
+        -   Plain matrix multiplications and uniform vector concatenations still produce LinmapQuant
     -   Add missing features
         -   implement a unitful "cholupdate!" and "choldowndate!" if it doesn't work already
     -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations and nomenclature 
