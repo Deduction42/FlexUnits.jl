@@ -928,7 +928,7 @@ end
     set_preferred_unit(u"Pa")
     set_preferred_unit(u"m")
 
-    set_preferred_unit(u"°C")
+    @test_logs (:warn, r"^Setting non-scalar unit") set_preferred_unit(u"°C")
     @test string(0u"K") == "-273.15 °C"
     @test string(5u"J/K") == "5.0 J/°C"
     @test string(5u"K"^2) == "5.0 °C²"

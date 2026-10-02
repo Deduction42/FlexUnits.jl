@@ -1,23 +1,11 @@
 Done:
-1.  Improved precision definitions on lb and yard (as they are international standards)
-2.  Allowed affine units in compound expressions by implicitly converting them to scalar
-    -   Also enabled affine units in "set_preferred_unit(u)"
-
+1.  Also enabled affine units in "set_preferred_unit(u)" now produces warning
+2.  Improved documentation and docstrings around customizing registies and packages
 
 Backlog:
 
 (future)
-0.  Add warning on "set_preferred_unit(u)" if units are affine
-1.  Update documentation 
-    -   Add QuantFieldArray section to LinearAlgebra docs
-    -   Case out "Extending FlexUnits" examples to a new header
-    -   Add documentation (both internal and external) on RegistryTools
-        -   Emphasize that unit registries are modules
-        -   RegistryTools should only be used inside unit registry modules
-    -   Add "Vessel Units" example as a third "Tweaking Default Behaviours" section
-    -   Emphasize that factorizations are experimental 
-
-2.  Add compatibility layer with Dates 
+1.  Add compatibility layer with Dates 
     -   Create "seconds_unit(::Type{D}) where D<:AbstractDimensions" function (and extend for Units, and StaticDims)
         -   This should return a StaticDims or Unit{StaticDims}
         -   This usually returns StaticDims{D(s=1)}
@@ -26,7 +14,7 @@ Backlog:
         -   convert(::Type{Q}, p::Period) = convert(Q, quantity(toseconds(p), seconds_unit(dimtype(Q))))
     -   Define rounding functions and conversion to Period
 
-3.  Introduce a new object NoDimsVec(len::Integer) <: AbstractVector{NoDims}
+2.  Introduce a new object NoDimsVec(len::Integer) <: AbstractVector{NoDims}
         struct NoDimsVec <: AbstractVector{NoDims}
             len :: Int 
         end
@@ -39,11 +27,11 @@ Backlog:
     -   No need for StaticDims in DimsMap
     -   Unit factorization guarantees that uniform dimensions are NoDims
 
-4.  Add other registries
+3.  Add other registries
     -   US Customary Units 
     -   British Customary Units
 
-5.  Revisit factorizations and "views" (like Hessian, LowerTriangular, UpperTriangular) etc
+4.  Revisit factorizations and "views" (like Hessian, LowerTriangular, UpperTriangular) etc
     -   Dispatch on these types has been broken in Julia v1.13, only works on fundamental dense matrix types
     -   Consider "eigen", "lu", "qr", "lq", "cholesky" on LinmapQuant
         -   I am considering the removal of FactorQuant and instead move a LinmapQuant inside a factorization

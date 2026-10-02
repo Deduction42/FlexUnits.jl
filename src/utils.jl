@@ -231,6 +231,24 @@ function display_simplified_units(mode::Bool)
 end
 
 function set_preferred_unit!(unitset::AbstractVector{<:Units}, u::Units; warn_failure=true)
+    if !is_scalar(u)
+        msg = """Setting non-scalar unit as preferred unit can result in unexpected behaviour with differences
+        
+        # Produces technically correct, intuitive result
+        display_simplified_units(true)
+        ΔT = 4.181u"J" / (4.181u"J/(K*kg)" * 0.1u"kg") 
+        10.0 K
+
+        # Produces technically correct (-263.15 °C = 10 K) but unintuitive result 
+        set_preferred_unit(u"°C")
+        ΔT = 4.181u"J" / (4.181u"J/(K*kg)" * 0.1u"kg") 
+        -263.15 °C
+
+        Temperature differences (or any difference for that matter) should NEVER be displayed in affine units.
+        """
+        @warn msg
+    end 
+
     du = dimension(u)
 
     function abs_dims_match(x::Units)
