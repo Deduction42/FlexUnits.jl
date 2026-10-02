@@ -239,6 +239,13 @@ end
 _register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, u::Units) = setindex!(reg, u, usymbol(u))
 _register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair) = _register_unit!(reg, Units(p))
 
+"""
+    @generate_unit_simplifier(upref::Vector{<:AbstractUnits})
+
+Sorts the vector of units `upref` by complexity, and then registers this vector as the preferred 
+units for its dimension type. This macro is neccessary if you are creating a custom dimension type
+and want unit simplification to work for it.
+"""
 macro generate_unit_simplifier(upref)
     esc(quote
         RegistryTools.complexity_sort!($upref)
@@ -246,6 +253,16 @@ macro generate_unit_simplifier(upref)
     end)
 end
 
+"""
+    @generate_registry_exports(ureg::AbstractDict{<:Symbol, <:AbstractUnits})
+
+A unit registry needs to export the following functions and macros:
+
+    `@u_str`, `@ud_str`, `@q_str`, `@U_str`, `@D_str`, `uparse`, `qparse`, `register_unit`
+
+This macro generates these functions and macros pointing them to `ureg` to look up the unit symbols when parsing.
+It also generates the export command for all of these functions so that you don't have to remember what needs exporting.
+"""
 macro generate_registry_exports(ureg)
     return esc(quote
         const UNIT_LOCK = ReentrantLock()

@@ -4,11 +4,21 @@ module UnitRegistry
 #RegistryTools contains all you need to build a registry in one simple import
 using ..RegistryTools
 
-#Create the registry (dict of units) and populate its default values
+"""
+UNITS :: PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}()
+
+A dictionary containing all the units in the default "UnitRegistry". It is a PermanentDict 
+because string macros only look up values at compile time. Changing the units at run time 
+can result in weird behaviour, so this dict type was built to disallow that.
+"""
 const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Float64}}}()
 registry_defaults!(UNITS) 
 
-#Define an initial set of preferred units (can be changed by set_preferred_unit(u::Unit))
+"""
+PREFERRED_UNITS :: Vector{Units{Dimensions{FixRat32}, AffineTransform{Float64}}}
+
+The list of units that are preferred when running the `simplify` function. 
+"""
 const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
 RegistryTools.complexity_sort!(PREFERRED_UNITS)
 RegistryTools.preferred_units(::Type{<:Dimensions}) = PREFERRED_UNITS
