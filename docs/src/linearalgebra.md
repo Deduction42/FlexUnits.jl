@@ -1,7 +1,45 @@
 # Linear Algebra
-FlexUnits provides broader support for mixed-unit operations than other packages to date. This is done in to major ways:
-1. Using a sentinel value to denote unknown dimensions and yield a one-time bypass to unit checking
-2. Factoring units with LinmapQuant object to separate matrices from units, and provide shortcut methods to infer units on various operations
+FlexUnits provides broader support for mixed-unit operations than other packages to date. This is done in three major ways:
+1. Using `QuantFieldArray` to produce units via field-access while bypassing units in generic number-indexed code
+2. Using a sentinel value to denote unknown dimensions and yield a one-time bypass to unit checking
+3. Factoring units with a `LinmapQuant` object to separate matrices from units, and provide shortcut methods to infer units on various operations
+
+## QuantFieldArray
+FlexUnits provides an abstract `QuantFieldArray` type that can allow dimensionful objects behave like dimensonless vectors when indexed numerically. This allows you to unit-check your own code while passing generically-behaving vectors and arrays to other packages (such as a differential equation solver or a numerical optimizer). An example of solving a differential equation is available in the advanced examples section, but we can reiterate the object structure here as an illustration.
+```julia
+using FlexUnits, .UnitRegistry
+import FlexUnits: QuantFieldVector
+@kwdef struct FallingObjectState{T} <: QuantFieldVector{2,T}
+    v  :: Quantity{T, D"m/s"}
+    h  :: Quantity{T, D"m"}
+end
+```
+
+This falling object state has two values: `v` (velocity) and `h` (height). The type annotation `v::Quantity{T, D"m/s"` indicates that a v must have SI units the same dimensions as "m/s". Accessing this vector using fields produces quantities
+```julia
+julia> obj = FallingObjectState(v=0.0, h=100)
+
+julia> obj.v
+0.0 m/s
+```
+However, accessing this object by index produces pure numerical values.
+```
+julia> obj[1]
+0.0
+```
+This object fits into the `StaticArrays` hierarchy can be cleanly converted to a StaticArray, and back
+```
+julia> svec = SVector(obj)
+2-element SVector{2, Float64} with indices SOneTo(2):
+   0.0
+ 100.0
+
+julia> FallingObjectState(svec)
+2-element FallingObjectState{Float64} with indices SOneTo(2):
+   0.0
+ 100.0
+```
+The main motivation for using a `QuantFieldVector` is to allow custom dimensionful types to be passed to generic Julia code as vectors without requiring those packages to worry about the units. Because the SI base unit system is coherent (physics equations in SI base units always return SI base units), results from other Julia packages should produce vectors with same units allowing them to be converted back to `QuantFieldVector`s without much risk of error.
 
 ## Unknown Dimensions
 
@@ -157,8 +195,8 @@ julia> LinmapQuant(X, UnitMap(u_in=inv.([u"K", u"km", u"mol", u"kg", u"A"]), u_o
  -0.601045 K   150.874 m  0.608505 mol  -0.146254 kg   0.509313 A
 ```
 
-### Matrix Factorizations
-Some matrix factorizations are also enabled by FlexUnits. Currently, the supported factorization functions include `lu`, `cholesky`, and `eigen`. Certain factorization have constraints on the pattern of units supported.
+### Matrix Factorizations (experimental)
+Some matrix factorizations are also enabled by FlexUnits. The returned objects however, do not currently fit under the standard `Factorization` hierarchy but are instead objects that *behave* like factorizations. This is because it is most efficient and reliable to have the unit factorization occur at the highest level. Currently, the supported factorization functions include `lu`, `cholesky`, and `eigen`. Certain factorization have constraints on the pattern of units supported.
 - `lu` has no constraints
 - `cholesky` only supports symmetric unit mappings
 - `eigen` only supports repeatable unit mappings (where repeatable means the output units are proportional to input units)
@@ -175,7 +213,7 @@ julia> S = cov(X) #Specialized LinmapQuant version doesn't exist yet
        451.029 kg/s²   3101.84 (m kg²)/s⁵  1.15374e7 kg²/(m² s⁴)
 ```
 
-#### LU Factorization
+#### LU Factorization (experimental)
 LU Factorisation works on LinmapQuant and a selection of matrix types containing quantities. If your desired matrix type isn't supported, you may want to try using `FlexUnits.qlu`. You can access factorizations with `.L` and `.U` and the permutation vector with `.p`
 
 ```julia
@@ -195,7 +233,7 @@ julia> slu.U
 
 ```
 
-#### Cholesky Factorization
+#### Cholesky Factorization (experimental)
 Much like LU factorization, you can also perform Cholesky factorization on a matrix of quantities. If your desired matrix type isn't supported you can use `FlexUnits.qcholesky`.
 
 ```julia
@@ -214,7 +252,7 @@ julia> schol.L
   2596.09 kg/(m s²)    1210.57 kg/(m s²)  1825.45 kg/(m s²)
 ```
 
-#### Eigenvalue Decomposition
+#### Eigenvalue Decomposition (experimental)
 Eigenvalue decomposition can also be performed by calling `eigen`. If this matrix type isn't supported, you can also attempt to use `FlexUnits.qeigen`. You can access the fields `.vectors` and `.values` as normal.
 
 ```julia

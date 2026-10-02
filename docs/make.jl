@@ -13,6 +13,7 @@ makedocs(
         "Unit Manipulation" => "manipulation.md",
         "Linear Algebra" => "linearalgebra.md",
         "Dispatch Examples" => "dispatch.md",
+        "Extending FlexUnits" => "extending.md",
         "Advanced Examples" => "examples.md",
         "Types" => "types.md"
     ]

@@ -34,10 +34,16 @@ In addition to these design changes, there are a number of other notable differe
 2. The string macro `u_str` and parsing function `uparse` are not automatically exported, but must be exported by a chosen unit registry (allowing users to export their own registries)
 3. Only dimensions are tracked through calculations and results are displayed as though `upreferred` was called on them. More intuitive representations can be obtained using `simplify(q)` or setting `display_simplified_units(true)`.
 4. The function `upreferred` is replaced by `ubase` which converts quantities to base units.
-5. Operations on affine units do not produce errors (due to automatic conversion to dimensions). **This the correct action for the vast majority of cases, but care must be taken to make sure that affine differences such as ***temperature differences*** are in absolute units.**\
-   For example:
-    - ```(5u"°C" - 2u"°C") == 3u"°C"``` returns `false`
-    - ```(5u"°C" - 2u"°C") == 3u"K"``` returns `true`
+5. Operations on affine units do not produce errors (due to automatic conversion to dimensions). This the correct action for the vast majority of cases, **you must not use affine units to describe temperature differences**
+    
+    For an example on similar unintuitive behavour in both FlexUnis and Unitful:
+    - ```(5u"°C" - 2u"°C") |> 3u"K"``` returns `3.0 K` wich is both technically correct and intuitive
+    - ```(5u"°C" - 2u"°C") |> u"°C"``` returns `-270.15 °C` which is technically correct, but unintuitive.
+
+    The difference between the two packages lies in operations like:
+    - ```4181u"J/(K kg)"*5u"°C"``` FlexUnits returns the equivalent of `1.16294515e6 J/kg` while Unitful throws an AffineError
+    - If the temperature was a difference and desired result is ```20905.0 J/kg```, you need to multiply by ```5u"K"```
+
 6. Much like Unitful, `Quantity` subtypes to number, but an additional type `FlexQuant` can support any value type (such as a Distribution or Array). The function `quantity(q, u)` selects the appropriate output type based on the arguments.
 7. FlexUnits uses the concept of a `LogQuant` to allow taking the `log` of a `Quantity`, and handling logarithmic units like decibels
 
@@ -159,11 +165,11 @@ julia> p = 1u"kg/L"*9.18u"m/s^2"*1u"ft" |> simplify  #Hydraulic pressure
 0.4058247132605051 psi
 ```
 
-#### WARNING Against setting affine units as simplification
-As of version 6.9, FlexUnits allows you to set affine units as preferred. However, this will yield strange results if you set your preferred units as affine and are expecting a temperature difference in the result.
+#### WARNING Against setting affine units as a simplification basis
+As of version 6.9, FlexUnits allows you to set affine units as preferred. Compound units involving affine units will remove offsets, so kJ/(kg °C) parses out to be the same as kJ/(kg K). An exception is made if the dimension is exactly a single temperature where the offset is retained. This will yield the desired result in most cases, however, converting to an affine unit will result in unintuitive behaviour if you are describing a temperature difference:
 
 ```julia 
-set_preferred_unit(u°C)
+set_preferred_unit(u"°C")
 
 # Enthalpy change of water: dH = m*Cp*ΔT  -> ΔT = dH / (m*Cp)
 dH = 5u"kJ"
@@ -171,10 +177,9 @@ Cp = 4.184*u"kJ/(kg*°C)" # Affine units in compound units assume scalar behavio
 m  = 1.0u"kg"
 ΔT = dH / (m*Cp) # results in 1.1950286806883366 K
 ΔT |> simplify 
--271.95497131931165 °C # Probably not what we want but 1.1950 K is roughly -271.9550 °C
+-271.95497131931165 °C # Unintuitive but strictly correct because 1.1950 K ≈ -271.9550 °C
 ```
-
-The underlying lesson here is that *affine units and differences simply don't mix well*.
+The subtle reality is that taking diferences in affine units silently results in an absolute unit. This explains why thermodynamic equations with temperature differences don't need to be converted to Kelvin, because taking the difference silently does this for you. What we *think* is a temperaturee difference in °C is *actually in Kelvin*. The underlying lesson here is that *affine units cannot be intuitively used to describe differences*. The challenge with the above example is that no difference is explicitly taken; the result can only be understood as a difference because of physical context behind the equations. The above result of ΔT = -271.9... °C is correct, *our conventional thinking about affine units is wrong*.
 
 ### Simplified view by default
 It may be cumbersome to constantly use `|> simplify` after every interactive operation. FlexUnits has a configuration function that allows you to view results as though `simplify` was applied to them.
