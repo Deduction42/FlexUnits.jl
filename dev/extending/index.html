@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Extending FlexUnits · FlexUnits.jl</title><meta name="title" content="Extending FlexUnits · FlexUnits.jl"/><meta property="og:title" content="Extending FlexUnits · FlexUnits.jl"/><meta property="twitter:title" content="Extending FlexUnits · FlexUnits.jl"/><meta name="description" content="Documentation for FlexUnits.jl."/><meta property="og:description" content="Documentation for FlexUnits.jl."/><meta property="twitter:description" content="Documentation for FlexUnits.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">FlexUnits.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../performance/">Performance</a></li><li><a class="tocitem" href="../manipulation/">Unit Manipulation</a></li><li><a class="tocitem" href="../linearalgebra/">Linear Algebra</a></li><li><a class="tocitem" href="../dispatch/">Dispatch Examples</a></li><li class="is-active"><a class="tocitem" href>Extending FlexUnits</a><ul class="internal"><li><a class="tocitem" href="#Custom-registry-tooling"><span>Custom registry tooling</span></a></li><li><a class="tocitem" href="#Custom-Packages"><span>Custom Packages</span></a></li></ul></li><li><a class="tocitem" href="../examples/">Advanced Examples</a></li><li><a class="tocitem" href="../types/">Types</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Extending FlexUnits</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Extending FlexUnits</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/Deduction42/FlexUnits.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/Deduction42/FlexUnits.jl/blob/main/docs/src/extending.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Extending-FlexUnits"><a class="docs-heading-anchor" href="#Extending-FlexUnits">Extending FlexUnits</a><a id="Extending-FlexUnits-1"></a><a class="docs-heading-anchor-permalink" href="#Extending-FlexUnits" title="Permalink"></a></h1><p>FlexUnits was built to be modular and extendable, and supports to major approaches for extension:</p><ol><li>Using local modules to build registries with customized behaviours (FlexUnits is registry-agnostic)</li><li>Using packages with local modules to customize behaviours and be more opinionated about settings</li></ol><h2 id="Custom-registry-tooling"><a class="docs-heading-anchor" href="#Custom-registry-tooling">Custom registry tooling</a><a id="Custom-registry-tooling-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-registry-tooling" title="Permalink"></a></h2><p>A unit registry consists of a local module with the following attributes</p><ol><li>A dictionary containing units for each symbol (required)</li><li>A list of preferred units for simplification (optional)</li><li>Standard functions and macros to be exported (required)</li></ol><p>FlexUnits provides the <code>RegistryTools</code> module to make it easier to build custom registries and export customized parsing and string macros without all the boilerplate code.</p><h3 id="The-RegistryTools-module"><a class="docs-heading-anchor" href="#The-RegistryTools-module">The RegistryTools module</a><a id="The-RegistryTools-module-1"></a><a class="docs-heading-anchor-permalink" href="#The-RegistryTools-module" title="Permalink"></a></h3><p>The FlexUnits.RegistryTools module provides functions and macros to make it easier to build registries. <em>Because this is the design intent, <code>RegistryTool</code>s should only be used inside a module that functions as a unit registry.</em> An example of a standard unit registry module is shown below.</p><pre><code class="language-julia hljs">module MyUnitRegistry
+    using FlexUnits.RegistryTools
+    
+    #PermanentDict prevents changing units because when a string macro is called, it never updates again
+    const UNITS = PermanentDict{Symbol,Units{Dimensions{FixRat32},AffineTransform{Float64}}}()
+    registry_defaults!(UNITS) 
+
+    #(Optional) define a custom set of preferred units
+    const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
+    @generate_unit_simplifier(PREFERRED_UNITS)
+
+    #Macro to generate the boilerplate code for registry exports
+    @generate_registry_exports(UNITS)
+end</code></pre><p>Note that setting <code>PREFERRED_UNITS</code> is optional. It is only required if you change the dimension type, but it is still recommended as it provides decoupling from the default registry.</p><p>While this module exports a number of functions that are useful, most users only need to know about one special type (<code>PermanentDict</code>) and two macros (<code>@generate_registry_exports</code>, <code>@generate_unit_simplifier</code>). The rest of the macros and functions are primarily provided for the macros to use.</p><article><details class="docstring" open="true"><summary id="FlexUnits.RegistryTools.PermanentDict"><a class="docstring-binding" href="#FlexUnits.RegistryTools.PermanentDict"><code>FlexUnits.RegistryTools.PermanentDict</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">PermanentDict{K,T}</code></pre><p>A dict where any additions made are permanent and not allowed to be changed. This prevents &quot;astonishing&quot; behaviour from string macros, which only look up the units at compile time. If a value was changed since the lookup, the string macro will always return the value looked up at compile time. Attempts to delete entries, or modify them will result in an error. Reassinging the same value will result in no action.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/Deduction42/FlexUnits.jl/blob/ec70c484bc257f378c7fcf94856886d6e33d7c29/src/RegistryTools.jl#L17-L25">source</a></section></details></article><article><details class="docstring" open="true"><summary id="FlexUnits.RegistryTools.@generate_registry_exports"><a class="docstring-binding" href="#FlexUnits.RegistryTools.@generate_registry_exports"><code>FlexUnits.RegistryTools.@generate_registry_exports</code></a> — <span class="docstring-category">Macro</span></summary><section><div><pre><code class="language-julia hljs">@generate_registry_exports(ureg::AbstractDict{&lt;:Symbol, &lt;:AbstractUnits})</code></pre><p>A unit registry needs to export the following functions and macros:</p><pre><code class="language-julia hljs">`@u_str`, `@ud_str`, `@q_str`, `@U_str`, `@D_str`, `uparse`, `qparse`, `register_unit`</code></pre><p>This macro generates these functions and macros pointing them to <code>ureg</code> to look up the unit symbols when parsing. It also generates the export command for all of these functions so that you don&#39;t have to remember what needs exporting.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/Deduction42/FlexUnits.jl/blob/ec70c484bc257f378c7fcf94856886d6e33d7c29/src/RegistryTools.jl#L256-L265">source</a></section></details></article><article><details class="docstring" open="true"><summary id="FlexUnits.RegistryTools.@generate_unit_simplifier"><a class="docstring-binding" href="#FlexUnits.RegistryTools.@generate_unit_simplifier"><code>FlexUnits.RegistryTools.@generate_unit_simplifier</code></a> — <span class="docstring-category">Macro</span></summary><section><div><pre><code class="language-julia hljs">@generate_unit_simplifier(upref::Vector{&lt;:AbstractUnits})</code></pre><p>Sorts the vector of units <code>upref</code> by complexity, and then registers this vector as the preferred  units for its dimension type. This macro is neccessary if you are creating a custom dimension type and want unit simplification to work for it.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/Deduction42/FlexUnits.jl/blob/ec70c484bc257f378c7fcf94856886d6e33d7c29/src/RegistryTools.jl#L242-L248">source</a></section></details></article><h3 id="Unit-registry-customization-examples"><a class="docs-heading-anchor" href="#Unit-registry-customization-examples">Unit registry customization examples</a><a id="Unit-registry-customization-examples-1"></a><a class="docs-heading-anchor-permalink" href="#Unit-registry-customization-examples" title="Permalink"></a></h3><h4 id="Exact-conversions-with-Rational"><a class="docs-heading-anchor" href="#Exact-conversions-with-Rational">Exact conversions with Rational</a><a id="Exact-conversions-with-Rational-1"></a><a class="docs-heading-anchor-permalink" href="#Exact-conversions-with-Rational" title="Permalink"></a></h4><p>This package defaults to using Float64 conversion factors to accomplish conversions. This often results in small but visually annoying round-off errors.</p><pre><code class="language-julia hljs">using FlexUnits, .UnitRegistry
+julia&gt; uconvert(u&quot;°C&quot;, 32u&quot;°F&quot;)
+5.684341886080802e-14 °C
+
+julia&gt; uconvert(u&quot;°C&quot;, 14u&quot;°F&quot;)
+-9.999999999999943 °C</code></pre><p>You can change this behaviour by building a new registry with a different <code>AffineTransform</code> type that preserves exact rational expressions. This can be done with only a few lines of code.</p><pre><code class="language-julia hljs">using FlexUnits
+
+module RationalRegistry
+    using ..RegistryTools #RegistryTools contains all you need to build a registry in one simple import
+
+    const UNITS = PermanentDict{Symbol, Units{Dimensions{FixRat32}, AffineTransform{Rational{Int64}}}}() #Just change the AffineTransform type
+    registry_defaults!(UNITS) #Auto-populate the new registry
+
+    @generate_registry_exports(UNITS) #Use macros to generate the boilerplate code for registry exports
+end</code></pre><p>That&#39;s it. We can restart the Julia, add this registry (Module), export all of the macros from our newly created <code>RationalRegistry</code>, and check out the new behaviour.</p><pre><code class="language-julia hljs">using FlexUnits
+using .RationalRegistry
+
+julia&gt; uconvert(u&quot;°C&quot;, 32u&quot;°F&quot;)
+0//1 °C
+
+julia&gt; uconvert(u&quot;°C&quot;, 14u&quot;°F&quot;)
+-10//1 °C</code></pre><p>This can be used to modify many different behaviours if you don&#39;t agree with the design decisions of the default registry. FlexUnits is designed to be registry-agnostic.</p><h4 id="Custom-dimensions"><a class="docs-heading-anchor" href="#Custom-dimensions">Custom dimensions</a><a id="Custom-dimensions-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-dimensions" title="Permalink"></a></h4><p>The default dimensions uses the SI unit system dimensions, but there is some contention around what constitutes a dimension. For example, this unit system has no notion of currency, because it is not a <em>physical</em> dimension but merely a fuzzy human notion of value (hence why currencies fluctuate over time, usually downward due to inflation). This does not stop you from being able to include additional dimensions such as currency and angles. In this example below, we will be adding a currency dimension in the form of Euros.</p><pre><code class="language-julia hljs">#===============================================================================================================================
+Define your custom dimensions that include Euros, note that the € symbol is a completely valid Julia variable name
+===============================================================================================================================#
+using FlexUnits 
+
+@kwdef struct MoneyDimensions{P} &lt;: AbstractDimensions{P}
+    m   ::P = zero(FixRat32)
+    kg  ::P = zero(FixRat32)
+    s   ::P = zero(FixRat32)
+    A   ::P = zero(FixRat32)
+    K   ::P = zero(FixRat32)
+    cd  ::P = zero(FixRat32)
+    mol ::P = zero(FixRat32)
+    €   ::P = zero(FixRat32)
+end
+MoneyDimensions(args::Real...) = MoneyDimensions{FixRat32}(args...)</code></pre><p>While this is object is technically usable, most of the FlexUnits API makes use of string macros which look up units from a <em>type-stable</em> unit registry. Unfortunately, this new <code>MoneyDimensions</code> object is not compatible with the default registry which is built using <code>Dimensions</code>. Moreover, the <code>simplify</code> function requires looking at a list of preferred units defined in a registry, so unit simplification will not automatically work for this dimension type.</p><pre><code class="language-julia hljs">julia&gt; simplify( 5*Dimensions(kg=1, m=1, s=-2))
+5.0 N
+
+julia&gt; simplify( 5*MoneyDimensions(kg=1, m=1, s=-2))
+ERROR: Function `preferred_units` not defined for type MoneyDimensions{FixRat32}: This function is usually defined in a unit registry. Perhaps there is no unit registry for MoneyDimensions{FixRat32} or its unit registry was not properly configured</code></pre><p>However, as seen in the previous example, new unit registries are relatively painless to build. There are a couple of things we should note before starting. Since <code>MoneyDimensions</code> is a generalization of <code>Dimensions</code>, <code>registry_defaults!</code> can be used to populate the registry with all the units normally inside <code>Dimensions</code>. Simplification doesn&#39;t work with this dimension out of the box, so we will need to perform the additional step of configuring unit simplification.</p><pre><code class="language-julia hljs">module CurrencyUnits
+    using FlexUnits.RegistryTools
+    import ..MoneyDimensions
+
+    const UNITS = PermanentDict{Symbol,Units{MoneyDimensions{FixRat32},AffineTransform{Float64}}}()
+    registry_defaults!(UNITS)
+    register_unit!(UNITS, &quot;EUR&quot; =&gt; UNITS[:€])
+
+    const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
+
+    @generate_unit_simplifier(PREFERRED_UNITS)
+    @generate_registry_exports(UNITS)
+end</code></pre><p>This now gives you the ability to use string macros and look up units. Note that you must &quot;use&quot; this module instead of the default <code>UnitRegistry</code>.</p><pre><code class="language-julia hljs">using .CurrencyUnits
+
+fuel_price = 2.04u&quot;€/L&quot;
+driver_price = 20u&quot;€/hr&quot;
+trip_speed = 5u&quot;km/hr&quot;
+trip_distance = 100u&quot;km&quot;
+fuel_consumption = 8.1u&quot;L&quot;/100u&quot;km&quot;
+estimated_price = fuel_price*trip_distance*fuel_consumption + driver_price*trip_distance/trip_speed
+416.524 €</code></pre><p>Simplification also works as expected</p><pre><code class="language-julia hljs">julia&gt; electricity_price = 0.195u&quot;€/(kW*hr)&quot;
+5.416666666666666e-8 (s² €)/(m² kg)
+
+julia&gt; electricity_price = 0.195u&quot;€/(kW*hr)&quot; |&gt; simplify
+5.416666666666666e-8 €/J</code></pre><h2 id="Custom-Packages"><a class="docs-heading-anchor" href="#Custom-Packages">Custom Packages</a><a id="Custom-Packages-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-Packages" title="Permalink"></a></h2><p>FlexUnits design is focused around performance and flexibility, but many design decisions made have tradeoffs that might not be the best fit you. FlexUnits disables unit simplification by default, displaying the result in SI base units. Maybe you want unit simplification enabled. FlexUnits does not automatically export string macros because it&#39;s registry-agnostic, but maybe you want your package to be opinionated about the registry and export the macros automatically. Due to challenges around changing units, FlexUnits only registers units with unique international definitions. Maybe you want U.S. or U.K. customary units in the registry you want to export by default. FlexUnits doesn&#39;t contain constants for units and physical constants, maybe you want to provide some exported constants. These behaviours can be achieved by building your own package that extends FlexUnits. </p><p>The example below is a module that can be used in a package which does the following:</p><ol><li>Creates a new unit registry with some default registrations and customized preferred units</li><li>Creates <code>const</code> variables and exports them</li><li>Exports registry-specific parsing functions and macros</li><li>Automatically enables unit simplification and sets the desired unit simplification basis</li></ol><pre><code class="language-julia hljs">module OpinionatedUnits
+
+import FlexUnits: set_preferred_unit, simplify, display_simplified_units
+
+# Export names from this package
+export inch, mm, lb, kg, lbf, °F, °C, psi, ksi, MPa, kPa, bar, atm, R
+export simplify, set_preferred_unit
+
+# Export common macros and functions from internal registry (this package is opinionated)
+export @u_str, @ud_str, @q_str, @D_str, uparse, qparse, register_unit
+
+# Build internal unit registry with default settings
+module InternalRegistry
+    using FlexUnits.RegistryTools
+
+    # Define the unit registry as an empty dictionary
+    const UNITS = PermanentDict{Symbol,Units{Dimensions{FixRat32},AffineTransform{Float64}}}()
+
+    # Add default units and register new ones to UNITS dictionary
+    registry_defaults!(UNITS)
+    register_unit!(UNITS, &quot;kip&quot; =&gt; 1000 * UNITS[:lbf])
+    register_unit!(UNITS, &quot;ksi&quot; =&gt; 1000 * UNITS[:psi])
+    register_unit!(UNITS, &quot;atm&quot; =&gt; 101.325 * UNITS[:kPa])
+    register_unit!(UNITS, &quot;mph&quot; =&gt; UNITS[:mi] / UNITS[:hr])
+
+    # Define preferred units
+    const PREFERRED_UNITS = [UNITS[u] for u in [:F, :H, :T, :Ω, :V, :W, :J, :Pa, :N, :C, :L]]
+
+    # Generate simplifiers and exports for defined units with included macros
+    @generate_unit_simplifier(PREFERRED_UNITS)
+    @generate_registry_exports(UNITS)
+end 
+
+# &quot;use&quot; the internal package to make functions and macros available in the current namespace
+using .InternalRegistry
+
+# Define selected units in namespace
+const inch = u&quot;inch&quot; # Imperial Length
+const mm = u&quot;mm&quot;     # Metric Length
+const lb = u&quot;lb&quot;     # Imperial Mass
+const kg = u&quot;kg&quot;     # Metric Mass
+const lbf = u&quot;lbf&quot;   # Imperial Force
+const °F = u&quot;°F&quot;     # Imperial Temperature
+const Ra = u&quot;Ra&quot;     # Alternate Imperial Temperature
+const °C = u&quot;°C&quot;     # Metric Temperature
+const psi = u&quot;psi&quot;   # Imperial Pressure
+const ksi = u&quot;ksi&quot;   # Alternate Imperial Pressure
+const MPa = u&quot;MPa&quot;   # Metric Pressure
+const kPa = u&quot;kPa&quot;   # Alternate Metric Pressure
+const bar = u&quot;bar&quot;   # Alternate Metric Pressure
+const atm = u&quot;atm&quot;   # Alternate Metric Pressure
+
+# Define important constants in namespace
+const R = 8.31446261815324u&quot;J/(K*mol)&quot; #Universal gas constant
+
+# Set preferred units for simplification and turn unit simplification on at startup
+# Note the `__init__()` function is required because these statements mutate global variables
+function __init__()
+    set_preferred_unit(inch)
+    set_preferred_unit(lb)
+    set_preferred_unit(lbf)
+    set_preferred_unit(Ra)  
+    set_preferred_unit(ksi)
+    set_preferred_unit(lb/inch^3)
+
+    display_simplified_units(true)  # Always convert to simple preferred units
+end
+
+end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../dispatch/">« Dispatch Examples</a><a class="docs-footer-nextpage" href="../examples/">Advanced Examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Friday 2 October 2026 22:27">Friday 2 October 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
