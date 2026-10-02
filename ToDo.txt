@@ -58,7 +58,7 @@ Backlog:
         -   should the nomenclature be "repeatable", "idempotent" and "symmetric" ?
         -   or "identity", "scalar", "symmetric" (this is likely preferrable)
 
-6.  Add plot recipes
+5.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
 
 
