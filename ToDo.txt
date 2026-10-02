@@ -7,11 +7,15 @@ Done:
 Backlog:
 
 (future)
+0.  Add warning on "set_preferred_unit(u)" if units are affine
 1.  Update documentation 
     -   Add QuantFieldArray section to LinearAlgebra docs
     -   Case out "Extending FlexUnits" examples to a new header
+    -   Add documentation (both internal and external) on RegistryTools
+        -   Emphasize that unit registries are modules
+        -   RegistryTools should only be used inside unit registry modules
     -   Add "Vessel Units" example as a third "Tweaking Default Behaviours" section
-    -   Emphasize that factorizations are experimental  
+    -   Emphasize that factorizations are experimental 
 
 2.  Add compatibility layer with Dates 
     -   Create "seconds_unit(::Type{D}) where D<:AbstractDimensions" function (and extend for Units, and StaticDims)
