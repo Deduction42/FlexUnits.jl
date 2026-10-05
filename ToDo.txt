@@ -1,6 +1,5 @@
 Done:
-1.  Also enabled affine units in "set_preferred_unit(u)" now produces warning
-2.  Improved documentation and docstrings around customizing registies and packages
+1.  Added support for rounding
 
 Backlog:
 

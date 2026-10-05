@@ -296,6 +296,13 @@ end
     @test flipsign(dt, -c) == -dt
     @test t*dt*f == 0*u"s"
 
+    @test ustrip(round(u"MPa", 30000u"psi")) == 207
+    @test round(Int32, u"MPa", 30000u"psi") isa Quantity{Int32}
+    @test ustrip(round(u"MPa", 30000u"psi", RoundUp)) == 207
+    @test ustrip(round(u"MPa", 30000u"psi", RoundDown)) == 206 
+    @test ustrip(round(u"MPa", 30000u"psi", RoundNearest, digits=2)) == 206.84
+    @test ustrip(round(u"MPa", 30000u"psi", digits=2)) == 206.84
+
     #Math on arrays of number quantities 
     mq = [5*u"m/s" 2u"m/s^2"; 1*u"kg/s" 4*u"kg/s^2"]
     vq = [1u"s", 2u"s^2"]
