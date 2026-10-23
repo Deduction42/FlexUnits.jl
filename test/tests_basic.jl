@@ -276,6 +276,7 @@ end
     +(5u"m") == 5u"m"
     @test sin(5u"rad") ≈ sin(5)
     @test cos(60u"deg") ≈ 0.5
+    @test tan(45u"°") ≈ 1
     @test 5u"km/hr" < 6u"km/hr"
     @test 5u"m/s" > 5u"km/hr"
     @test 5u"km/hr" <= 6u"km/hr"
