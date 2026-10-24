@@ -11,33 +11,22 @@ julia --startup-file=no --depwarn=yes --threads=auto --project=. test/invalidati
 #To see the actual coverage in VSCode, install the Coverage Gutters extension
 #https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters
 
-using TestItems: @testitem
-using TestItemRunner
 using Revise
+using Test
 
-@testitem "Basic Functionality" begin
-    include("tests_basic.jl")
-end
 
-@testitem "Linear Algebra" begin 
-    include("test_linear_algebra.jl")
-end
+include("tests_basic.jl")
+include("test_linear_algebra.jl")
+include("test_statistics.jl")
 
-@testitem "Statistics" begin 
-    include("test_statistics.jl")
-end
+include("test_registry_currency.jl")
+include("test_registry_rational.jl")
 
-@testitem "Custom Dimensions" begin 
-    include("test_registry_currency.jl")
-    include("test_registry_rational.jl")
-end
+include("test_ode_falling.jl")
+include("test_ode_stiction.jl")
 
-@testitem "ODE Solving" begin 
-    include("test_ode_falling.jl")
-    include("test_ode_stiction.jl")
-end
 
-@testitem "Integration tests with Unitful" begin
+@testset "Integration tests with Unitful" begin
     import Unitful 
     using FlexUnits, .UnitRegistry 
 
@@ -54,7 +43,7 @@ end
     @test Unitful.ustrip(Unitful.uconvert(Unitful.u"cd/mol", q3)) == ustrip(uconvert(ud"cd/mol", q3))
 end
 
-@testitem "Aqua.jl" begin
+@testset "Aqua.jl" begin
     using Aqua
     using FlexUnits
     Aqua.test_all(FlexUnits)

@@ -318,13 +318,13 @@ Base.flipsign(q1::QuantUnion, n2::NumUnion) = quantity(flipsign(dstrip(q1), n2),
 Base.zero(::Type{D}) where D<:AbstractDimensions = D()
 Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), tobase=T())
 
-function Base.round(::Type{T}, u::AbstractUnitLike, q::QuantUnion, r::RoundingMode=RoundNearest; kwargs...) where {T<:Number}
+function Base.round(::Type{T}, u::AbstractUnitLike, q::Union{NumUnion,QuantUnion}, r::RoundingMode=RoundNearest; kwargs...) where {T<:Number}
     return quantity(round(T, ustrip(u, q), r; kwargs...), u)
 end
-Base.round(u::AbstractUnitLike, q::QuantUnion, r::RoundingMode=RoundNearest; kwargs...) = quantity(round(ustrip(u, q), r; kwargs...), u)
-Base.trunc(u::AbstractUnitLike, q::QuantUnion; kwargs...) = quantity(round(ustrip(u, q), RoundToZero; kwargs...), u)
-Base.floor(u::AbstractUnitLike, q::QuantUnion; kwargs...) = quantity(round(ustrip(u, q), RoundDown; kwargs...), u)
-Base.ceil(u::AbstractUnitLike, q::QuantUnion; kwargs...) = quantity(round(ustrip(u, q), RoundUp; kwargs...), u)
+Base.round(u::AbstractUnitLike, q::Union{NumUnion,QuantUnion}, r::RoundingMode=RoundNearest; kwargs...) = quantity(round(ustrip(u, q), r; kwargs...), u)
+Base.trunc(u::AbstractUnitLike, q::Union{NumUnion,QuantUnion}; kwargs...) = quantity(round(ustrip(u, q), RoundToZero; kwargs...), u)
+Base.floor(u::AbstractUnitLike, q::Union{NumUnion,QuantUnion}; kwargs...) = quantity(round(ustrip(u, q), RoundDown; kwargs...), u)
+Base.ceil(u::AbstractUnitLike, q::Union{NumUnion,QuantUnion}; kwargs...) = quantity(round(ustrip(u, q), RoundUp; kwargs...), u)
 
 #Common functions for initializers
 Base.one(::Type{<:QuantUnion{T}}) where T = one(T) #unitless

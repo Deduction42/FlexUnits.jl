@@ -308,6 +308,15 @@ end
     @test ustrip(trunc(u"MPa", 30000u"psi")) == 206
     @test ustrip(trunc(u"MPa", 30000u"psi", digits=2)) == 206.84
 
+    @test ustrip(round(u"%", 0.234)) == 23
+    @test round(Int32, u"%", 0.234) isa Quantity{Int32}
+    @test ustrip(round(u"%", 0.234, RoundUp)) == 24
+    @test ustrip(round(u"%", 0.234, RoundDown)) == 23
+    @test ustrip(round(u"%", 0.234, RoundNearest, digits=2)) == 23.4
+    @test ustrip(ceil(u"%", 0.234)) == 24
+    @test ustrip(floor(u"%", 0.234)) == 23
+    @test ustrip(trunc(u"%", 0.234)) == 23
+
     #Math on arrays of number quantities
     mq = [5*u"m/s" 2u"m/s^2"; 1*u"kg/s" 4*u"kg/s^2"]
     vq = [1u"s", 2u"s^2"]
