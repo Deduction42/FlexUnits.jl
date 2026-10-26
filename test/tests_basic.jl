@@ -270,6 +270,10 @@ end
         #Cannot check iszero on non-affine units
         @test_throws NotScalarError iszero(5u"K" |> u"°C")
         @test_throws NotScalarError iszero(5ud"K" |> ud"°C")
+
+        #Check for irrational special case 
+        @test Quantity{T,U"°"}(180, u"°") == pi #Irrational has special equality method for number
+        @test FlexQuant{T,U"°"}(180, u"°") ≈ pi #FlexQuant isn't a number so we have to test approximation
     end
 
     #Other mathematical operators/functions
@@ -826,6 +830,10 @@ end
     @test promote_type(Quantity{Float64, typeof(ud"m/s")}, Float64) == Quantity{Float64, typeof(dimension(ud"m/s"))}
     @test promote_type(Quantity{Float32, typeof(ud"m/s")}, Float64) == Quantity{Float64, typeof(dimension(ud"m/s"))}
     @test promote_type(FlexQuant{Matrix{Float32}, typeof(ud"m/s")}, Matrix{Float64}) == FlexQuant{Matrix{Float64}, typeof(dimension(ud"m/s"))}
+    @test promote_type(typeof(π), Quantity{Float64, D""}) == Quantity{Float64, D""} 
+    @test promote_type(typeof(π), FlexQuant{Float64, D""}) == Quantity{Float64, D""} 
+    @test promote_type(typeof(π), Quantity{Float64, Dimensions{FixRat32}}) == Quantity{Float64, Dimensions{FixRat32}}
+    @test_throws "Cannot promote NoDims" promote_type(typeof(π), Quantity{Float64, D"m"})
 
     #Conversions of transform types
     @test convert(AffineTransform{Float64}, NoTransform()) == AffineTransform{Float64}(scale=1, offset=0)
