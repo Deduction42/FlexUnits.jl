@@ -6,7 +6,7 @@ import ..Units, ..Dimensions, ..AffineTransform, ..ExpAffTransform, ..NoTransfor
 import ..uscale, ..uoffset, ..tobase, ..dimension, ..usymbol,  ..ubase, ..constructorof, ..dimtype, ..unittype, ..ustatic
 import ..complexity_sort!, ..preferred_units, ..dimvaltype
 
-export AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64 
+export AbstractUnitLike, AbstractUnits, AbstractDimensions, FixRat32, FixRat64
 export Units, Dimensions, AffineTransform, ExpAffTransform, NoTransform, QuantUnion, Quantity, UnitOrQuantity
 export uscale, uoffset, dimension, usymbol, complexity_sort!, dimvaltype
 export PermanentDict, register_unit!, registry_defaults!, uparse, qparse, uparse_expr, qparse_expr, suparse_expr, dimtype
@@ -48,8 +48,8 @@ function Base.setindex!(d::PermanentDict{<:Any, T}, v, k) where T
     vt = convert(T, v)
     if haskey(d.data, k)
         d.data[k] == vt || throw(PermanentDictError("Key $(k) already exists. Cannot assign a different value."))
-    else 
-        d.data[k] = vt 
+    else
+        d.data[k] = vt
     end
     return d
 end
@@ -58,7 +58,7 @@ Base.delete!(d, k) = throw(PermanentDictError("Removing entries is prohibited"))
 """
     register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{String,<:AbstractUnitLike})
 
-Registers a unit into the dictionary. This version should be used instead of the `Symbol` versions as 
+Registers a unit into the dictionary. This version should be used instead of the `Symbol` versions as
 it will validate whether or not the proposed name can be parsed.
 """
 register_unit!(reg::AbstractDict{Symbol,<:Units}, p::Pair{<:Union{AbstractString,Symbol},<:UnitOrQuantity}) = register_unit!(reg, Units(p))
@@ -95,9 +95,9 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     # reg = PermanentDict{Symbol, Units{DEFAULT_DIMENSONS}}()
     Dims = dimtype(U)
     si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
-    
+
     # Internal registration function skips repeated definitions
-    function _register_unit(p::Pair) 
+    function _register_unit(p::Pair)
         if haskey(reg, p[1])
             @warn "Unit $(p[1]) already exists, skipping."
         else
@@ -108,7 +108,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     add_prefixes(symb::Symbol, prfx::NamedTuple) = add_prefixes!(reg, symb, prfx)
 
     initialize_registry!(reg, Dims)
-    
+
     _register_unit(:NoDims => Dims())
     _register_unit(:g => 0.001*Dims(kg=1))
     _register_unit(:t => 1000*Dims(kg=1))
@@ -140,8 +140,8 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:C => A*s); C = reg[:C]
     _register_unit(:V => W/A); V = reg[:V]
     _register_unit(:Ω => V/A); Ω = reg[:Ω]
-    _register_unit(:F => C/V) 
-    _register_unit(:ohm => Ω) 
+    _register_unit(:F => C/V)
+    _register_unit(:ohm => Ω)
     _register_unit(:S => A/V)
     _register_unit(:H => N*m/A^2)
     _register_unit(:T => N/(A*m))
@@ -173,11 +173,11 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:h => 60*minute); h = reg[:h]
     _register_unit(:hr => h);
     _register_unit(:day => 24*h); day = reg[:day]
-    _register_unit(:d => day); 
+    _register_unit(:d => day);
     _register_unit(:wk => 7*day);
     _register_unit(:yr => 365.25*day);
 
-    # Standard imperial units (yards and pounds are international standards) 
+    # Standard imperial units (yards and pounds are international standards)
     # Non-standardized units will require custom registries
     lb = 0.45359237*kg
     yd = 0.9144*m
@@ -200,11 +200,12 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:degC => reg[:°C])
     _register_unit(:degF => reg[:°F])
 
-    #Angled units: For the SI system, considers "degrees/radians" to be dimensionless 
+    #Angled units: For the SI system, considers "degrees/radians" to be dimensionless
     _register_unit(:rad => reg[:NoDims])
     _register_unit(:deg => (2*π/360)*reg[:NoDims])
     _register_unit(:rps => (2*π)*reg[:Hz])
     _register_unit(:rpm => (2*π/60)*(reg[:Hz]))
+    _register_unit(:° => reg[:deg])
 
     return reg
 end
@@ -220,7 +221,7 @@ function initialize_registry!(reg::AbstractDict{Symbol}, ::Type{D}) where D <:Ab
     for u in fieldnames(D)
         _register_unit!(reg, u => D(; u=>1))
     end
-    return reg 
+    return reg
 end
 
 function add_prefixes!(reg::AbstractDict{Symbol,<:AbstractUnits{D}}, u::Symbol, prefixes::NamedTuple) where D<:AbstractDimensions
@@ -242,14 +243,14 @@ _register_unit!(reg::AbstractDict{Symbol,<:AbstractUnits}, p::Pair) = _register_
 """
     @generate_unit_simplifier(upref::Vector{<:AbstractUnits})
 
-Sorts the vector of units `upref` by complexity, and then registers this vector as the preferred 
+Sorts the vector of units `upref` by complexity, and then registers this vector as the preferred
 units for its dimension type. This macro is neccessary if you are creating a custom dimension type
 and want unit simplification to work for it.
 """
 macro generate_unit_simplifier(upref)
     esc(quote
         RegistryTools.complexity_sort!($upref)
-        RegistryTools.preferred_units(::Type{dimvaltype(eltype($upref))}) = $upref 
+        RegistryTools.preferred_units(::Type{dimvaltype(eltype($upref))}) = $upref
     end)
 end
 
@@ -267,7 +268,7 @@ macro generate_registry_exports(ureg)
     return esc(quote
         const UNIT_LOCK = ReentrantLock()
 
-        register_unit(p::Pair{String, <:Any}) = lock(UNIT_LOCK) do 
+        register_unit(p::Pair{String, <:Any}) = lock(UNIT_LOCK) do
             RegistryTools.register_unit!($ureg, p)
         end
 
@@ -277,20 +278,20 @@ macro generate_registry_exports(ureg)
         macro u_str(str)
             return RegistryTools.suparse_expr(str, $ureg)
         end
-        
+
         macro ud_str(str)
             return RegistryTools.uparse_expr(str, $ureg)
         end
-        
+
         macro q_str(str)
             return RegistryTools.qparse_expr(str, $ureg)
         end
-        
+
         macro U_str(str)
             suexpr = RegistryTools.suparse_expr(str, $ureg)
             return :(typeof($suexpr))
         end
-        
+
         macro D_str(str)
             suexpr = RegistryTools.suparse_expr(str, $ureg)
             return :(RegistryTools.dimtype($suexpr))
@@ -329,7 +330,7 @@ end
 
 function uparse_expr(str::String, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     parsed = Meta.parse(_unit_preprocessing(str))
-    
+
     if !(parsed isa PARSE_CASES)
         throw(ArgumentError("Unexpected expression: String input \"$(str)\" was not parsed as $(PARSE_CASES)"))
     else
@@ -357,11 +358,11 @@ function _parse_expr(ex::Symbol, reg::AbstractDict{Symbol, U}) where U <: Abstra
     return lookup_unit_expr(reg, ex) #If expresion parsed as Symbol, lookup value
 end
 
-function _parse_expr(ex::Nothing, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike 
+function _parse_expr(ex::Nothing, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     return ex_new = :($dimtype($U)()) #If expresion parsed as Nothing, return dimensionless
 end
 
-function _parse_expr(ex::Real, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike 
+function _parse_expr(ex::Real, reg::AbstractDict{Symbol, U}) where U <: AbstractUnitLike
     return :($(ex)*$dimtype($U)()) #If expresion parsed as Real return dimensionless value
 end
 
@@ -390,7 +391,7 @@ function _unit_preprocessing(str1::AbstractString)
     space2mult = r"([\%\w]) +([\%\w])" => s"\1*\2"
     str2 = replace(str1, space2mult) #Spaces between words are multiplications
     str3 = replace(str2, space2mult) #Spaces between words are multiplications
-    return replace(str3, " "=>"", "%"=>"percent") #Eliminates extra spaces 
+    return replace(str3, " "=>"", "%"=>"percent") #Eliminates extra spaces
 end
 
 function _quant_preprocessing(str1::AbstractString)
@@ -408,4 +409,3 @@ function _quant_preprocessing(str1::AbstractString)
 end
 
 end
-

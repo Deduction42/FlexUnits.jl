@@ -61,6 +61,8 @@ function uconvert(u::AbstractUnitLike, q::QuantUnion)
     return Quantity{typeof(newval), typeof(u)}(newval, u)
 end
 
+uconvert(u::AbstractUnitLike, q::NumUnion) = uconvert(u, quantity(q, NoDims()))
+
 function uconvert(u::AbstractUnitLike, lq::LogQuant)
     asssert_compatible_dims(u, unit(lq))
     ft = inv(tobase(u)) ∘ exp(tobase(unit(lq))) #This produces an affine transform of an ExpAffineTransform
@@ -117,6 +119,7 @@ ustrip(u::AbstractUnitLike, q::QuantUnion) = uconvert(u, unit(q))(ustrip(q))
 ustrip(u::AbstractUnitLike, q::LogQuant) = uconvert(u, dimension(q))(dstrip(q))
 ustrip(u::AbstractArray{<:AbstractUnitLike}, q)  = ustrip.(u, q)
 ustrip(u::LogLinUnits, q::Quantity) = ustrip(ustrip(uconvert(u,q)))
+ustrip(u::AbstractUnitLike, q::NumUnion) = uconvert(u, NoDims())(q)
 
 """
     dstrip(u::AbstractUnitLike, q::QuantUnion)
@@ -125,6 +128,7 @@ Converts quantity `q` to its raw dimensional equivalent and verifies if its dime
 Leaving out the unit argument `u` skips the dimensioonal verification process
 """
 dstrip(u::AbstractUnitLike, q::Union{QuantUnion,LogQuant}) = ustrip(dimension(u), q)
+dstrip(u::AbstractUnitLike, q::NumUnion) = ustrip(dimension(u), q)
 
 compatible_dims(d_target::AbstractDimLike, d_current::AbstractDimLike) = (d_target == d_current || isunknown(d_current))
 compatible_dims(d_target::StaticDims{d1}, d_current::StaticDims{d2}) where {d1, d2} = compatible_dims(d1, d2)

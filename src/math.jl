@@ -51,9 +51,9 @@ raw_inv(d::AbstractDimensions) = map_dimensions(-, d)
 function Base.:*(d1::AbstractDimensions, d2::AbstractDimensions)
     D = promote_type(typeof(d1), typeof(d2))
     if isunknown(d1)
-        return unknown(D) 
+        return unknown(D)
     elseif isunknown(d2)
-        return unknown(D) 
+        return unknown(D)
     else
         return raw_mul(d1, d2)
     end
@@ -62,7 +62,7 @@ end
 function Base.:/(d1::AbstractDimensions, d2::AbstractDimensions)
     D = promote_type(typeof(d1), typeof(d2))
     if isunknown(d1)
-        return unknown(D) 
+        return unknown(D)
     elseif isunknown(d2)
         return unknown(D)
     else
@@ -70,13 +70,13 @@ function Base.:/(d1::AbstractDimensions, d2::AbstractDimensions)
     end
 end
 
-function Base.:^(d::AbstractDimensions, p::Real) 
+function Base.:^(d::AbstractDimensions, p::Real)
     if iszero(p)
         return typeof(d)()
-    elseif isknown(d) 
-        return raw_pow(d, p) 
+    elseif isknown(d)
+        return raw_pow(d, p)
     else
-        return d 
+        return d
     end
 end
 
@@ -97,10 +97,10 @@ Base.adjoint(d::AbstractDimensions) = d
 
 @inline zero_pow(d::D) where D<:AbstractDimensions = D()
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{0}) = zero_pow(d)
-@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{1}) = d 
+@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{1}) = d
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{2}) = isknown(d) ? raw_mul(d, d) : d
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{3}) = isknown(d) ? raw_mul(d, raw_mul(d, d)) : d
-@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-1}) = inv(d) 
+@inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-1}) = inv(d)
 @inline Base.literal_pow(::typeof(^), d::AbstractDimensions, ::Val{-2}) = isknown(d) ? raw_inv(raw_mul(d, d)) : d
 
 #============================================================================================================================
@@ -156,10 +156,10 @@ Base.adjoint(d::StaticDims{D}) where D = StaticDims{adjoint(D)}()
 
 @inline zero_pow(d::StaticDims{D}) where D = StaticDims{zero_pow(D)}()
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{0}) = zero_pow(d)
-@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{1}) = d 
-@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{2}) = d*d 
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{1}) = d
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{2}) = d*d
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{3}) = d*d*d
-@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-1}) = inv(d) 
+@inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-1}) = inv(d)
 @inline Base.literal_pow(::typeof(^), d::StaticDims, ::Val{-2}) = inv(d*d)
 
 #Shortcuts to avoid generic fallbacks/promotion
@@ -171,25 +171,25 @@ Base.:/(d1::NoDims, d2::StaticDims) = inv(d2)
 #=============================================================================================
 Mathematical operations on abstract units and transforms (mostly for parsing)
 
-Note:   Mathematical operations /*^ on affine transforms remove offsets 
+Note:   Mathematical operations /*^ on affine transforms remove offsets
         This is because, units like kJ/(kg*°C) implicitly mean kJ/(kg*K)
 =============================================================================================#
 #const NON_SCALAR_ERROR = ArgumentError("Operation only allowed on scalar transforms")
 
 function Base.:*(t1::AffineTransform, t2::AffineTransform)
-    return AffineTransform(scale = t1.scale*t2.scale, offset = 0) 
+    return AffineTransform(scale = t1.scale*t2.scale, offset = 0)
 end
 Base.:*(t::AffineTransform{T}, x::Real) where T =  AffineTransform{T}(scale=t.scale*x, offset=0)
 Base.:*(t::NoTransform, x::Real) = AffineTransform(scale=x, offset=0)
 
-function Base.:/(t1::AffineTransform, t2::AffineTransform) 
-    return AffineTransform(scale = t1.scale/t2.scale, offset = 0) 
+function Base.:/(t1::AffineTransform, t2::AffineTransform)
+    return AffineTransform(scale = t1.scale/t2.scale, offset = 0)
 end
 Base.:/(t::AffineTransform{T}, x::Real) where T = AffineTransform{T}(scale=t.scale/x, offset=0)
 Base.:/(t1::NoTransform, x::Real) = AffineTransform(scale=inv(x), offset=0)
 
 function Base.:^(t::AffineTransform{T}, p::Real) where T
-    return isone(p) ? t : AffineTransform{T}(scale = t.scale^p, offset = 0) 
+    return isone(p) ? t : AffineTransform{T}(scale = t.scale^p, offset = 0)
 end
 Base.:^(t1::NoTransform, p::Real) = t1
 
@@ -239,9 +239,9 @@ Base.:(==)(u1::AbstractUnits, u2::AbstractUnits) = (tobase(u1) == tobase(u2)) & 
     with_ubase(f, args::QuantUnion...)
 
 Converts all arguments to base units, and applies `f` to values and dimensions
-returns the quanity. Useful for defining new functions for quantities 
-    
-Thus, in order to support `f` for quantities, simply define 
+returns the quanity. Useful for defining new functions for quantities
+
+Thus, in order to support `f` for quantities, simply define
 ```
 f(dims::AbstractDimensions...)
 f(args::QuantUnion...) = with_ubase(f, args...)
@@ -266,15 +266,15 @@ function Base.:(≈)(q1::QuantUnion, q2::QuantUnion)
 end
 Base.:(≈)(q1::QuantUnion, q2::T) where T<:NumUnion = (convert(T, q1) ≈ q2)
 Base.:(≈)(q1::T, q2::QuantUnion) where T<:NumUnion = (convert(T, q2) ≈ q1)
-Base.:(≈)(q1::Missing, q2::QuantUnion) = missing 
-Base.:(≈)(q2::QuantUnion, q1::Missing) = missing 
+Base.:(≈)(q1::Missing, q2::QuantUnion) = missing
+Base.:(≈)(q2::QuantUnion, q1::Missing) = missing
 
-Base.:+(q::QuantUnion, x::NumUnion) = scalar(q) + x 
+Base.:+(q::QuantUnion, x::NumUnion) = scalar(q) + x
 Base.:+(x::NumUnion, q::QuantUnion) = scalar(q) + x
 Base.:+(q1::QuantUnion, q2::QuantUnion) = with_ubase(+, q1, q2)
 #Base.:+(q1::QuantUnion, qN::QuantUnion...) = with_ubase(+, q1, qN...)
 
-Base.:-(q::QuantUnion, x::NumUnion) = scalar(q) - x 
+Base.:-(q::QuantUnion, x::NumUnion) = scalar(q) - x
 Base.:-(x::NumUnion, q::QuantUnion) = x - scalar(q)
 Base.:-(q1::QuantUnion, q2::QuantUnion) = with_ubase(-, q1, q2)
 Base.:-(q1::QuantUnion) = with_ubase(-, q1)
@@ -318,10 +318,13 @@ Base.flipsign(q1::QuantUnion, n2::NumUnion) = quantity(flipsign(dstrip(q1), n2),
 Base.zero(::Type{D}) where D<:AbstractDimensions = D()
 Base.zero(::Type{U}) where {D,T,U<:Units{D,T}} = U(dims=D(), tobase=T())
 
-function Base.round(::Type{T}, u::AbstractUnitLike, q::QuantUnion, r::RoundingMode=RoundNearest; kwargs...) where {T<:Number}
+function Base.round(::Type{T}, u::AbstractUnitLike, q::Union{NumUnion,QuantUnion}, r::RoundingMode=RoundNearest; kwargs...) where {T<:Number}
     return quantity(round(T, ustrip(u, q), r; kwargs...), u)
 end
-Base.round(u::AbstractUnitLike, q::QuantUnion, r::RoundingMode=RoundNearest; kwargs...) = quantity(round(ustrip(u, q), r; kwargs...), u)
+Base.round(u::AbstractUnitLike, q::Union{NumUnion,QuantUnion}, r::RoundingMode=RoundNearest; kwargs...) = quantity(round(ustrip(u, q), r; kwargs...), u)
+Base.trunc(u::AbstractUnitLike, q::Union{NumUnion,QuantUnion}; kwargs...) = quantity(round(ustrip(u, q), RoundToZero; kwargs...), u)
+Base.floor(u::AbstractUnitLike, q::Union{NumUnion,QuantUnion}; kwargs...) = quantity(round(ustrip(u, q), RoundDown; kwargs...), u)
+Base.ceil(u::AbstractUnitLike, q::Union{NumUnion,QuantUnion}; kwargs...) = quantity(round(ustrip(u, q), RoundUp; kwargs...), u)
 
 #Common functions for initializers
 Base.one(::Type{<:QuantUnion{T}}) where T = one(T) #unitless
@@ -354,11 +357,11 @@ for f in (
 end
 
 #Single-argument funtions that require dimensionless input and produce dimensionless output
-#Note that dimensionless input for angles are "radians" so functiosn like "sind" don't apply 
+#Note that dimensionless input for angles are "radians" so functiosn like "sind" don't apply
 for f in (
         :sin, :cos, :tan, :sinh, :cosh, :tanh, :asin, :acos,
         :asinh, :acosh, :atanh, :sec, :csc, :cot, :asec, :acsc, :acot, :sech, :csch,
-        :coth, :asech, :acsch, :acoth, :log, :log2, :log10, :log1p, :exp, :exp2, :exp10, 
+        :coth, :asech, :acsch, :acoth, :log, :log2, :log10, :log1p, :exp, :exp2, :exp10,
         :expm1, :frexp, :exponent,
     )
     @eval Base.$f(q::QuantUnion) = $f(scalar(q))
@@ -382,7 +385,7 @@ Logarithmic Quantities, Units and Transforms
     with_logubase(f, args::LogQuant...)
 
 Converts all arguments to log base units, and applies `f` to values and dimensions
-returns the quanity. Useful for defining new functions for quantities 
+returns the quanity. Useful for defining new functions for quantities
 """
 function with_logubase(fv, fd, args::LogQuant...)
     baseargs = map(logubase, args)
@@ -403,10 +406,10 @@ function Base.:(≈)(q1::LogQuant, q2::LogQuant)
     return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
 end
 
-Base.:(≈)(q1::Missing, q2::LogQuant) = missing 
-Base.:(≈)(q2::LogQuant, q1::Missing) = missing 
+Base.:(≈)(q1::Missing, q2::LogQuant) = missing
+Base.:(≈)(q2::LogQuant, q1::Missing) = missing
 
-#Logarithms/Exponentials of transforms 
+#Logarithms/Exponentials of transforms
 Base.log(q::Quantity) = logquant(q)
 Base.log(t::ExpAffTransform) = AffineTransform(scale=uscale(t), offset=uoffset(t))
 
@@ -414,7 +417,7 @@ Base.exp(q::LogQuant) = quantity(q)
 Base.exp(t::AffineTransform) = ExpAffTransform(scale=uscale(t), offset=uoffset(t))
 Base.exp(t::NoTransform) = ExpAffTransform(scale=uscale(t), offset=uoffset(t))
 
-#Mutliplication with Unit{D, ExpAffTransform} produces a LogQuant 
+#Mutliplication with Unit{D, ExpAffTransform} produces a LogQuant
 function Base.:*(x::NumUnion, u::Units{<:AbstractDimLike,<:ExpAffTransform})
     logtrans = log(tobase(u))
     return logquant(logtrans(x), dimension(u))
@@ -481,7 +484,7 @@ for f in (:<, :<=, :isless)
     end
 end
 
-#Unitless remainders 
+#Unitless remainders
 function Base.rem(lq1::LogQuant{<:Number,D1}, lq2::LogQuant{<:Number,D2}) where {D1<:AbstractDimLike, D2<:AbstractDimLike}
     d = equaldims(dimension(lq1), dimension(lq2))
     isdimensionless(d) || error("Operation only supported for dimensionless LogQuant")
