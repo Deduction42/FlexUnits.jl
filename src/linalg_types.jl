@@ -366,19 +366,20 @@ Base.size(q::VectorQuant) = size(q.values)
 
 #======================================================================================================================
 Linear Mapping Factorizations
+Note that this does not subtype to Factorization because some StaticArray factorizations don't subtype either
 ======================================================================================================================#
 """
-    struct FactorQuant{T, D<:AbstractDimensions, F<:Factorization{T}, U<:AbstractUnitMap{D}}
+    struct FactorQuant{F, D<:AbstractDimsMap}
         factor :: F
-        dims  :: U 
+        dims  :: D
     end
 
-A factored linear mapping. A subclass of Factorizations with a unit mapping attached. Calling getproperty
-is re-routed to the original factor, with the appropriate units calcualted from the mapping.
+A factored linear mapping. A factorization-like object containing a factoriztion and a dimension map. Calling getproperty
+is re-routed to the original factor, with the appropriate units calculated from the mapping.
 """
-struct FactorQuant{F, D<:AbstractDimLike, U<:AbstractDimsMap{D}}
+struct FactorQuant{F, D<:AbstractDimsMap}
     factor :: F
-    dims  :: U 
+    dims :: D
 end
 ustrip(fq::FactorQuant) = getfield(fq, :factor)
 dstrip(fq::FactorQuant) = getfield(fq, :factor)
@@ -397,8 +398,9 @@ function qlu(m::AbstractMatrix; kwargs...)
 end
 LinearAlgebra.lu(mq::LinmapQuant; kwargs...) = qlu(mq; kwargs...)
 
-function Base.getproperty(fq::FactorQuant{<:Union{LU, StaticArrays.LU}, D}, fn::Symbol) where D
+function Base.getproperty(fq::FactorQuant{<:Union{LU, StaticArrays.LU}}, fn::Symbol)
     F = ustrip(fq)
+    D = dimtype(dimension(fq))
 
     if fn === :L
         u = unit(fq)
@@ -431,7 +433,7 @@ function qeigen(mq::AbstractMatrix; kwargs...)
 end
 LinearAlgebra.eigen(mq::LinmapQuant; kwargs...) = qeigen(mq; kwargs...)
 
-function Base.getproperty(fq::FactorQuant{<:Eigen, D}, fn::Symbol) where D
+function Base.getproperty(fq::FactorQuant{<:Eigen}, fn::Symbol)
     E = ustrip(fq)
     u = unit(fq)
 
@@ -453,7 +455,7 @@ function qcholesky(mq::AbstractMatrix; kwargs...)
 end
 LinearAlgebra.cholesky(mq::LinmapQuant; kwargs...) = qeigen(mq; kwargs...)
 
-function Base.getproperty(fq::FactorQuant{<:Cholesky, D}, fn::Symbol) where D 
+function Base.getproperty(fq::FactorQuant{<:Cholesky}, fn::Symbol)
     Ch = ustrip(fq)
 
     if fn === :U
