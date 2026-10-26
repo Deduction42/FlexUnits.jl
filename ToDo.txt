@@ -48,6 +48,9 @@ Backlog:
                 I lean toward the current implementation strategy. FactorQuant seems like a a more conventional (even if less Julian) 
                     design approach, where you build a wrapper object and leverage methods that already exist on inner objects
 
+    -   If I continue with FactorQuant, it needs to properly subtype it to "Factorization{T}". For some reason it isn't right now.
+        -   FactorQuant{T, D<:AbstractDimensions, F<:Factorization{T}, U<:AbstractUnitMap{D}} <: Factorization{Quantity{T,D}}
+
     -   May be better to focus on applying single-argument constructors to LinmapQuant
         -   UpperTriangular, LowerTriangular, Hermitian, etc
         -   Plain matrix multiplications and uniform vector concatenations still produce LinmapQuant

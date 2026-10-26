@@ -264,8 +264,9 @@ function Base.:(≈)(q1::QuantUnion, q2::QuantUnion)
     qb2 = ubase(q2)
     return (ustrip(qb1) ≈ ustrip(qb2)) && (unit(qb1) == unit(qb2))
 end
-Base.:(≈)(q1::QuantUnion, q2::T) where T<:NumUnion = (convert(T, q1) ≈ q2)
-Base.:(≈)(q1::T, q2::QuantUnion) where T<:NumUnion = (convert(T, q2) ≈ q1)
+Base.:(≈)(q1::QuantUnion, q2::T) where T<:NumUnion = (dstrip(q1) ≈ q2)
+Base.:(≈)(q1::T, q2::QuantUnion) where T<:NumUnion = (dstrip(q2) ≈ q1)
+
 Base.:(≈)(q1::Missing, q2::QuantUnion) = missing
 Base.:(≈)(q2::QuantUnion, q1::Missing) = missing
 
