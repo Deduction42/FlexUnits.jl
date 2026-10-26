@@ -260,6 +260,13 @@ function Base.promote_rule(::Type{Q}, ::Type{T2}) where {T2<:AbstractArray, T1<:
     return quant_type(T){T, nodim_promote(U)}
 end
 
+#Catch irrational special case 
+function promote_rule(::Type{S}, ::Type{Q}) where {S<:AbstractIrrational, T1<:NumUnion, U<:AbstractUnitLike, Q<:QuantUnion{T1,U}}
+    T = promote_type(S, T1)
+    return quant_type(T){T, nodim_promote(U)}
+end
+
+
 nodim_promote(::Type{U}) where U<:AbstractUnits = nodim_promote(dimtype(U))
 nodim_promote(::Type{D}) where D<:StaticDims = isdimensionless(D) ? D : error("Cannot promote NoDims to $(D) because it's not dimensionless")
 nodim_promote(::Type{D}) where D<:AbstractDimensions = D
