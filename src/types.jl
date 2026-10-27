@@ -429,6 +429,19 @@ a dimensionless result, and then removes units
 scalar(q::QuantUnion) = ustrip(assert_dimensionless(ubase(q)))
 
 
+"""
+    seconds_unit(::Type{D}) where D<:AbstractDimensions
+
+Return the seconds unit for that dimension type. Defaults to `StaticDims{D(s=1)}()`
+"""
+seconds_unit(::Type{D}) where {D <: AbstractDimensions} = StaticDims{D(s=1)}()
+seconds_unit(::Type{D}) where {D <: NoDims} = error("NoDims does not support a seconds unit")
+seconds_unit(::Type{StaticDims{d}}) where {d} = seconds_unit(typeof(d))
+seconds_unit(::Type{U}) where {D, U <: AbstractUnits{D}} = seconds_unit(D)
+seconds_unit(::Type{Q}) where {U, Q <: QuantUnion{<:Any,U}} = seconds_unit(U)
+seconds_unit(x) = seconds_unit(typeof(x))
+
+
 ustrip(q::QuantUnion) = q.value
 unit(q::QuantUnion) = q.unit
 tobase(q::QuantUnion) = tobase(q.unit)
