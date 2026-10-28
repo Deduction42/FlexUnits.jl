@@ -156,6 +156,62 @@ AffineTransform(scale::T1, offset::T2) where {T1,T2} = AffineTransform{promote_t
 
 (t::AffineTransform)(x) = x*t.scale + t.offset 
 (t::AffineTransform)(x::NumUnion) = muladd(x, t.scale, t.offset)
+
+#=======================================================================================
+A rational scale applied to a float
+
+`x*t.scale` with a `Rational` scale would promote the scale to the float type first
+(`9.0*(1//1000)` is `9.0*0.001`: two roundings, and `9.0*mm` lands an ulp off 0.009 for
+about one decimal in seven). A rational scale num/den is instead applied as the exact
+`x*num/den`, rounded ONCE to the float type: one IEEE operation when num or den is 1 (an SI
+prefix: `x/1000`, `x*1000`), and an exact integer quotient otherwise (inch = 127//5000).
+The inverse applies den/num. An offset (°C) is added after, as before.
+=======================================================================================#
+const _ExactFloat = Union{Float16, Float32, Float64}
+const _SmallInt = Union{Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32}
+
+(t::AffineTransform{<:Rational{<:_SmallInt}})(x::_ExactFloat) = _add_offset(_mul_ratio(x, numerator(t.scale), denominator(t.scale)), t.offset)
+function Base.inv(t::AffineTransform{<:Rational{<:_SmallInt}}, x::_ExactFloat)
+    (n, d) = (numerator(t.scale), denominator(t.scale))
+    iszero(n) && return (x - t.offset)/t.scale #a zero scale: as before (±Inf, NaN)
+    return _mul_ratio(iszero(t.offset) ? x : x - t.offset, d, n)
+end
+#A zero offset is not added: `-0.0 + 0` would lose the sign of a zero
+_add_offset(y, offset) = iszero(offset) ? y : y + offset
+
+"""
+    _mul_ratio(x::AbstractFloat, n::Integer, d::Integer)
+
+`x*n/d` correctly rounded to the type of `x`, for integers `n`, `d` (d ≠ 0) of at most 64 bits.
+"""
+function _mul_ratio(x::T, n::Integer, d::Integer) where T<:_ExactFloat
+    (d < 0) && return _mul_ratio(x, -Int128(n), -Int128(d))
+    (isfinite(x) && !iszero(x) && !iszero(n)) || return x*(T(n)/T(d)) #zeros, Inf and NaN as before
+    m = maxintfloat(T)
+    #Either term is 1 and the other an exact float: ONE IEEE operation
+    isone(d) && (abs(n) <= m) && return x*T(n)
+    (abs(n) == 1) && (d <= m) && return x/T(copysign(d, n))
+    return _mul_ratio_exact(x, Int128(n), Int128(d))
+end
+
+#x*n/d for d > 0, by integer division: the significand of x times n, divided by d with enough
+#quotient bits for the round bit, and the remainder as a sticky bit, so the one conversion of
+#the quotient to T rounds correctly (to nearest, ties to even).
+function _mul_ratio_exact(x::T, n::Int128, d::Int128) where T<:_ExactFloat
+    p = precision(T)
+    (f, e) = frexp(abs(x)) #abs(x) = f*2^e with f in [0.5, 1)
+    num = Int128(ldexp(f, p))*abs(n) #at most p + 64 bits
+    k = p + 2 + (128 - leading_zeros(d)) - (128 - leading_zeros(num)) #quotient bits at least p+2
+    (k > 0) && (num <<= k)
+    (q, r) = divrem(num, d)
+    q |= !iszero(r) #the sticky bit, below the round bit
+    y = ldexp(T(q), e - p - max(k, 0))
+    #ldexp is exact unless the result leaves the normal range: then the exact rational decides
+    if !(floatmin(T) <= y <= floatmax(T))
+        y = T(Rational{BigInt}(abs(n), d)*big(abs(x)))
+    end
+    return (signbit(x) != signbit(n)) ? -y : y
+end
 Base.inv(t::AffineTransform, x) = (x - t.offset)/t.scale
 (t::AffineTransform)(x::AbstractArray) = x.*t.scale .+ t.offset
 Base.inv(t::AffineTransform, x::AbstractArray) = (x .- t.offset)./t.scale
