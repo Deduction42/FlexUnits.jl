@@ -94,7 +94,20 @@ Populate the unit registry `reg` with the default set of units
 function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnits
     # reg = PermanentDict{Symbol, Units{DEFAULT_DIMENSONS}}()
     Dims = dimtype(U)
-    si_prefixes = (f=1e-15, p=1e-12, n=1e-9, μ=1e-6, u=1e-6, m=1e-3, c=1e-2, d=0.1, k=1e3, M=1e6, G=1e9, T=1e12)
+    si_prefixes = (
+        f=1//Int64(1e15), 
+        p=1//Int64(1e12), 
+        n=1//Int64(1e9), 
+        μ=1//Int64(1e6), 
+        u=1//Int64(1e6), 
+        m=1//1000, 
+        c=1//100, 
+        d=1//0, 
+        k=1000, 
+        M=Int64(1e6), 
+        G=Int64(1e9), 
+        T=Int64(1e12)
+    )
 
     # Internal registration function skips repeated definitions
     function _register_unit(p::Pair)
@@ -110,7 +123,7 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     initialize_registry!(reg, Dims)
 
     _register_unit(:NoDims => Dims())
-    _register_unit(:g => 0.001*Dims(kg=1))
+    _register_unit(:g => (1//1000)*Dims(kg=1))
     _register_unit(:t => 1000*Dims(kg=1))
 
     add_prefixes(:m, si_prefixes[( :f, :p, :n, :μ, :u, :m, :c, :d, :k, :M, :G )])
@@ -130,8 +143,8 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     mol = dimension(reg[:mol])
     K = dimension(reg[:K])
 
-    _register_unit(:percent => 0.01*reg[:NoDims])
-    _register_unit(:L => 0.001*reg[:m]^3)
+    _register_unit(:percent => (1//100)*reg[:NoDims])
+    _register_unit(:L => (1//1000)*reg[:m]^3)
     _register_unit(:Hz => inv(s))
     _register_unit(:N => kg*m/s^2); N = reg[:N]
     _register_unit(:Pa => N/m^2); Pa = reg[:Pa]
@@ -146,11 +159,11 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:H => N*m/A^2)
     _register_unit(:T => N/(A*m))
     _register_unit(:Wb => V*s)
-    _register_unit(:bar => 1e5*Pa)
+    _register_unit(:bar => Int64(1e5)*Pa)
     _register_unit(:atm => 101325*Pa)
-    _register_unit(:cP => 0.001Pa*s)
+    _register_unit(:cP => (1//1000)*Pa*s)
 
-    gn = 9.80665*m/s^2
+    gn = (980665//100000)*m/s^2 #gn = 9.80665 
     _register_unit(:gn => gn)
 
     add_prefixes(:L, si_prefixes[(:μ, :u, :m)])
@@ -175,12 +188,12 @@ function registry_defaults!(reg::AbstractDict{Symbol, U}) where U <:AbstractUnit
     _register_unit(:day => 24*h); day = reg[:day]
     _register_unit(:d => day);
     _register_unit(:wk => 7*day);
-    _register_unit(:yr => 365.25*day);
+    _register_unit(:yr => (365 + 1//4)*day);
 
     # Standard imperial units (yards and pounds are international standards)
     # Non-standardized units will require custom registries
-    lb = 0.45359237*kg
-    yd = 0.9144*m
+    lb = (45359237//100000000)*kg
+    yd = (9144//10000)*m
     inch = (1//36)*yd
     _register_unit(:lb => lb)
     _register_unit(:yd => yd)
