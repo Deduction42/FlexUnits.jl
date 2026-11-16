@@ -18,4 +18,5 @@ TimeRecords = "b543fe20-4c68-4b5f-af79-4641a0d39826"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
+LinearAlgebra = "1.10"
 OrdinaryDiffEqTsit5 = "2.1.5"
