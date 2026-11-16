@@ -4,7 +4,7 @@ version = "0.6.16"
 authors = ["Ruben Gonzalez <ruben.carbonbased@gmail.com> and contributors"]
 
 [workspace]
-projects = ["docs"]
+projects = ["docs", "test"]
 
 [deps]
 ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
