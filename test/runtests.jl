@@ -13,7 +13,7 @@ julia --startup-file=no --depwarn=yes --threads=auto --project=. test/invalidati
 
 using Revise
 using Test
-
+using FlexUnits
 
 include("tests_basic.jl")
 include("test_linear_algebra.jl")
