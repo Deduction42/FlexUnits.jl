@@ -1,4 +1,5 @@
 [deps]
+FlexUnits = "76e01b6b-c995-4ce6-8559-91e72a3d4e95"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -15,3 +16,9 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 TimeRecords = "b543fe20-4c68-4b5f-af79-4641a0d39826"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[compat]
+Test = "1.10"
+TestItems = "1.1.0"
+OrdinaryDiffEqTsit5 = "2.1.5"
+SparseArrays = "1.10"
