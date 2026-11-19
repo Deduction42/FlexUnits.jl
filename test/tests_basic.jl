@@ -8,6 +8,7 @@ using Aqua
 using LinearAlgebra
 using Statistics
 using StaticArrays
+using Dates
 
 import Random
 import Unitful
@@ -394,45 +395,36 @@ end
     @test ismissing(missing / 2u"kPa")
 end
 
-#=
-@testset "UnitfulCallable" begin
-    #Test callable application
-    angle_coords(θ::Real, r::Real) = r.*(cos(θ), sin(θ))
-    unitful_angle_coords = UnitfulCallable(angle_coords, (u"", u"m") => (Dimensions(m=1), Dimensions(m=1)))
-    c = unitful_angle_coords(30u"deg", 6u"cm")
-    @test all(c .≈ (cosd(30), sind(30)).*(ubase(0.06u"m")))
+@testset "Dates" begin
+    #Static dimension conversions
+    @test quantity(D"s", Nanosecond(5)) == quantity(5, u"ns")
+    @test quantity(D"s", Microsecond(5)) == quantity(5, u"μs")
+    @test quantity(D"s", Millisecond(5)) == quantity(5, u"ms")
+    @test quantity(D"s", Second(5)) == quantity(5, u"s")
+    @test quantity(D"s", Minute(5)) == quantity(5, u"min")
+    @test quantity(D"s", Hour(5)) == quantity(5, u"hr")
+    @test quantity(D"s", Day(5)) == quantity(5, u"day")
+    @test quantity(D"s", Week(5)) == quantity(5, u"wk")
 
-    #Test unit_call application
-    function angle_coords(θ::Quantity{<:Real}, r::Quantity{<:Real})
-        u = UnitfulCallable( (u"", unit(r)) => unit(r) )
-        return unitful_call(angle_coords, u, θ, r)
-    end
-    c = angle_coords(30u"deg", 100.0u"cm")
-    @test all(c .≈ 1u"m".*(cosd(30), sind(30)))
-    @test unit(c) == u"cm"
+    #Dynamic dimension conversions
+    @test quantity(Dimensions{FixRat32}, Nanosecond(5)) == quantity(5, ud"ns")
+    @test quantity(Dimensions{FixRat32}, Microsecond(5)) == quantity(5, ud"μs")
+    @test quantity(Dimensions{FixRat32}, Millisecond(5)) == quantity(5, ud"ms")
+    @test quantity(Dimensions{FixRat32}, Second(5)) == quantity(5, ud"s")
+    @test quantity(Dimensions{FixRat32}, Minute(5)) == quantity(5, ud"min")
+    @test quantity(Dimensions{FixRat32}, Hour(5)) == quantity(5, ud"hr")
+    @test quantity(Dimensions{FixRat32}, Day(5)) == quantity(5, ud"day")
+    @test quantity(Dimensions{FixRat32}, Week(5)) == quantity(5, ud"wk")
 
-    #Test rotating arm application
-    struct RotatingArm
-        len :: Float64
-    end
-    angle_coords(arm::RotatingArm, θ::Real) = arm.len.*(cos(θ), sin(θ))
-    angle_coords(arm::Quantity{<:RotatingArm}, θ::Quantity{<:Real}) = UnitfulCallable(Base.Fix1(angle_coords, ustrip(arm)), u""=>unit(arm))(θ)
-    c = angle_coords(Quantity(RotatingArm(1.0), u"m"), 30u"deg")
-    @test all(c .≈ 1u"m".*(cosd(30), sind(30)))
+    #Ensure that there is no quantity function that works without specifying dimension type 
+    @test_throws MethodError quantity(Nanosecond(5))
 
+    #Ensure that a date time difference works 
+    @test quantity(D"s", DateTime("2025-02-15T15:01:32") - DateTime("2025-01-30T12:19:17")) == 1392135000u"ms"
+    @test quantity(D"s", Week(1) + Day(1) + Hour(1) + Second(1) + Millisecond(2)) == 694801002u"ms"
 
-    #Test linear transfomration where x is assumed to be [u"kg/s", u"m^3/s"]
-    heat_rate(x::AbstractVector) = [4.136,0.235]'*x
-    heat_rate(x::AbstractVector{<:Quantity}) = UnitfulCallable(heat_rate, [u"kg/s", u"m^3/s"]=>u"kW")(x)
-    @test heat_rate([1000u"g/s", 1000u"L/s"]) ≈ sum([4.136,0.235])*u"kW"
-
-    #Test no-argument call
-    unitless_const() = 5.0
-    unitful_const() = unitful_call(unitless_const, UnitfulCallable(()=>u"m"))
-    unitful_const()
 
 end
-=#
 
 @testset "Dynamic unit functionality" begin
     x = Quantity(0.2, Dimensions(m=1, kg=2.5, s=-1))

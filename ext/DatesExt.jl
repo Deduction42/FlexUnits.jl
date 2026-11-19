@@ -21,9 +21,9 @@ Base.convert(::Type{P}, q::Quantity) where {P<:FixedPeriod} = P(ustrip(Units{dim
 
 function Units{D}(::Type{P}) where {D<:AbstractDimLike, P<:FixedPeriod}
     u = seconds_unit(D)
-    return Units{D}(dimension(u), AffineTransform(uscale(u)*toseconds(P), 0), usymbol(P))
+    return Units{D}(dimension(u), AffineTransform(toseconds(P, uscale(u)), 0), usymbol(P))
 end
-Units{D}(p::P) where {D<:AbstractDimLike, P<:FixedPeriod} = Units{D}(P)
+Units{D}(p::FixedPeriod) where {D<:AbstractDimLike} = Units{D}(typeof(p))
 
 Base.promote_rule(::Type{Quantity{T,U}}, ::Type{<:FixedPeriod}) where {T,U} = Quantity{promote_type(T,Int),U}
 Base.promote_rule(::Type{Quantity{T,U}}, ::Type{<:CompoundPeriod}) where {T,U} = Quantity{promote_type(T,Int),U}
@@ -62,17 +62,16 @@ Base.ceil(::Type{P}, q::Quantity; kwargs...) where {P<:FixedPeriod} = round(P, q
 Utility functions
 ==============================================================================================================================#
 # Convert all periods to seconds
-toseconds(::Type{Nanosecond}) = 1e-9
-toseconds(::Type{Microsecond}) = 1e-6
-toseconds(::Type{Millisecond}) = 1e-3
-toseconds(::Type{Second}) = true
-toseconds(::Type{Minute}) = 60
-toseconds(::Type{Hour}) = 3600
-toseconds(::Type{Day}) = 86400
-toseconds(::Type{Week}) = 604800
-toseconds(p::FixedPeriod) = toseconds(typeof(p))*p.value
+toseconds(::Type{Nanosecond}, x::Real) = x/(1000^3)
+toseconds(::Type{Microsecond}, x::Real) = x/(1000^2)
+toseconds(::Type{Millisecond}, x::Real) = x/1000
+toseconds(::Type{Second}, x::Real) = x
+toseconds(::Type{Minute}, x::Real) = x*60
+toseconds(::Type{Hour}, x::Real) = x*3600
+toseconds(::Type{Day}, x::Real) = x*86400
+toseconds(::Type{Week}, x::Real) = x*604800
+toseconds(p::FixedPeriod) = toseconds(typeof(p), p.value)
 toseconds(p::CompoundPeriod) = sum(toseconds, p.periods, init=0.0)
-toseconds(p::Second) = p.value
 
 # Extract units
 usymbol(::Type{Nanosecond}) = :ns
