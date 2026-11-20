@@ -2,7 +2,7 @@ module DatesExt
 
 import Dates: Nanosecond, Microsecond, Millisecond, Second, Minute, Hour, Day, Week, FixedPeriod, CompoundPeriod
 import FlexUnits: seconds_unit, ustrip, tobase, usymbol, quantity, ubase, uscale, dimtype, dimension, uconvert
-import FlexUnits: AbstractDimensions, AffineTransform, AbstractDimLike, StaticDims, Quantity, Units, AbstractUnitLike
+import FlexUnits: AbstractDimensions, AffineTransform, AbstractUnitTransform, AbstractDimLike, StaticDims, Quantity, Units, AbstractUnitLike
 
 #==============================================================================================================================
 Constructors and conversions
@@ -19,10 +19,16 @@ Quantity{T,U}(p::FixedPeriod) where {T,U} = Quantity{T,U}(p.value, Units{dimtype
 Base.convert(::Type{Quantity{T,U}}, p::Union{FixedPeriod,CompoundPeriod}) where {T,U} = convert(Quantity{T,U}, quantity(dimtype(U), p))
 Base.convert(::Type{P}, q::Quantity) where {P<:FixedPeriod} = P(ustrip(Units{dimtype(q)}(P), q))
 
+function Units{D,T}(::Type{P}) where {D<:AbstractDimLike, T<:AffineTransform, P<:FixedPeriod}
+    u = seconds_unit(D)
+    return Units{D}(dimension(u), T(toseconds(P, uscale(u)), 0), usymbol(P))
+end
+
 function Units{D}(::Type{P}) where {D<:AbstractDimLike, P<:FixedPeriod}
     u = seconds_unit(D)
     return Units{D}(dimension(u), AffineTransform(toseconds(P, uscale(u)), 0), usymbol(P))
 end
+
 Units{D}(p::FixedPeriod) where {D<:AbstractDimLike} = Units{D}(typeof(p))
 
 Base.promote_rule(::Type{Quantity{T,U}}, ::Type{<:FixedPeriod}) where {T,U} = Quantity{promote_type(T,Int),U}

@@ -423,6 +423,15 @@ end
     @test quantity(D"s", DateTime("2025-02-15T15:01:32") - DateTime("2025-01-30T12:19:17")) == 1392135000u"ms"
     @test quantity(D"s", Week(1) + Day(1) + Hour(1) + Second(1) + Millisecond(2)) == 694801002u"ms"
 
+    #Test units 
+    @test Units{D"s",AffineTransform{Float64}}(Nanosecond) == u"ns"
+    @test Units{D"s",AffineTransform{Float64}}(Microsecond) == u"μs"
+    @test Units{D"s",AffineTransform{Float64}}(Millisecond) == u"ms"
+    @test Units{D"s",AffineTransform{Float64}}(Second) == u"s"
+    @test Units{D"s",AffineTransform{Float64}}(Minute) == u"min"
+    @test Units{D"s",AffineTransform{Float64}}(Hour) == u"hr"
+    @test Units{D"s",AffineTransform{Float64}}(Day) == u"day"
+    @test Units{D"s",AffineTransform{Float64}}(Week) == u"wk"
 
 end
 
