@@ -1,10 +1,6 @@
-Done:
-1.  Added support for rounding
-
 Backlog:
 
-(future)
-1.  Add compatibility layer with Dates 
+1.  Add Dates extension
     -   Create "seconds_unit(::Type{D}) where D<:AbstractDimensions" function (and extend for Units, and StaticDims)
         -   This should return a StaticDims or Unit{StaticDims}
         -   This usually returns StaticDims{D(s=1)}
@@ -13,7 +9,23 @@ Backlog:
         -   convert(::Type{Q}, p::Period) = convert(Q, quantity(toseconds(p), seconds_unit(dimtype(Q))))
     -   Define rounding functions and conversion to Period
 
-2.  Introduce a new object NoDimsVec(len::Integer) <: AbstractVector{NoDims}
+
+(future)
+2.  Revisit factorizations and "views" (like Hessian, LowerTriangular, UpperTriangular) etc
+    -   Dispatch on these types has been broken in Julia v1.13, only works on fundamental dense matrix types
+        -   May be better to enforcing LinmapQuant outputs on view constructors
+            -   UpperTriangular(::LinmapQuant), LowerTriangular(::LinmapQuant), Hermitian(::LinmapQuant), etc should produce LinmapQuant 
+                -   It's a bit evil, but a neccessary evil becuase "uppertriangular" isn't an exported method
+                -   LinmapQuant{::UpperTriangular} is a more efficient factorization than UpperTriangular(LinmapQuant)
+            -   Plain matrix multiplications and uniform vector concatenations still produce LinmapQuant
+    -   Consider "qr", "lq", and other factorizations on LinmapQuant
+    -   Add missing features
+        -   implement a unitful "cholupdate!" and "choldowndate!" if it doesn't work already
+    -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations and nomenclature 
+        -   should the nomenclature be "repeatable", "idempotent" and "symmetric" ?
+        -   or "scalar", "identity", "symmetric" (this is likely preferrable)
+
+3.  Introduce a new object NoDimsVec(len::Integer) <: AbstractVector{NoDims}
         struct NoDimsVec <: AbstractVector{NoDims}
             len :: Int 
         end
@@ -26,39 +38,10 @@ Backlog:
     -   No need for StaticDims in DimsMap
     -   Unit factorization guarantees that uniform dimensions are NoDims
 
-3.  Add other registries
+
+4.  Add other registries
     -   US Customary Units 
     -   British Customary Units
-
-4.  Revisit factorizations and "views" (like Hessian, LowerTriangular, UpperTriangular) etc
-    -   Dispatch on these types has been broken in Julia v1.13, only works on fundamental dense matrix types
-    -   Consider "eigen", "lu", "qr", "lq", "cholesky" on LinmapQuant
-        -   I am considering the removal of FactorQuant and instead move a LinmapQuant inside a factorization
-            Pros:
-            -   Type-Consistency: cholesky(m::LinmapQuant) returns an actual Cholesky factorization, not FactorQuant{Cholesky}
-            -   Integration: Many algorithms subtype onto a Cholesky, or Eigen decomposition
-            Cons:
-            -   Performance (potentially small): Moving a LinmapQuant inside a factorization hides information about the unit structure
-                    It's always better to resolve the units of a matrix/factorization separately due to degrees of freedom
-                    This may be mitigated by specializing on f(m::LinmapQuant) for constructors and getindex(fac::F{LinmapQuant})
-            -   Ambiguity (potentially massive):
-                    Specializing on LinmapQuant can lead to ambiguities with multiple arguments 
-                    Pointing to specializations on inner arguments is tedious and manual, FactorQuant does this automatically
-            Verdict:
-                I lean toward the current implementation strategy. FactorQuant seems like a a more conventional (even if less Julian) 
-                    design approach, where you build a wrapper object and leverage methods that already exist on inner objects
-
-    -   If I continue with FactorQuant, it needs to properly subtype it to "Factorization{T}". For some reason it isn't right now.
-        -   FactorQuant{T, D<:AbstractDimensions, F<:Factorization{T}, U<:AbstractUnitMap{D}} <: Factorization{Quantity{T,D}}
-
-    -   May be better to focus on applying single-argument constructors to LinmapQuant
-        -   UpperTriangular, LowerTriangular, Hermitian, etc
-        -   Plain matrix multiplications and uniform vector concatenations still produce LinmapQuant
-    -   Add missing features
-        -   implement a unitful "cholupdate!" and "choldowndate!" if it doesn't work already
-    -   Look at UnitfulLinearAlgebra, and UnitfulTensors for other factorizations and nomenclature 
-        -   should the nomenclature be "repeatable", "idempotent" and "symmetric" ?
-        -   or "identity", "scalar", "symmetric" (this is likely preferrable)
 
 5.  Add plot recipes
     -   https://github.com/JuliaPlots/Plots.jl/blob/v2/PlotsBase/ext/UnitfulExt.jl
