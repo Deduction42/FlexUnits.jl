@@ -18,7 +18,13 @@ TimeRecords = "b543fe20-4c68-4b5f-af79-4641a0d39826"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
+BenchmarkTools = "1.8.0"
+LinearAlgebra = "1.10"
+Random = "1.10"
+Statistics = "1.10"
 Test = "1.10"
 TestItems = "1.1.0"
 OrdinaryDiffEqTsit5 = "2.1.5"
 SparseArrays = "1.10"
+Unitful = "1.29.0"
+TimeRecords = "2.3.0"
