@@ -37,12 +37,12 @@ Base.promote_rule(::Type{Quantity{T,U}}, ::Type{<:CompoundPeriod}) where {T,U} =
 #==============================================================================================================================
 Common operators
 ==============================================================================================================================#
-for op = (:+, :-, :*, :/, ://, :(==), :isequal, :<, :isless, :≤)
+for op = (:+, :-, :*, :/, :(==), :isequal, :<, :isless, :≤)
     @eval Base.$op(p::Union{FixedPeriod,CompoundPeriod}, q::Quantity) = $op(ubase(dimtype(q), p), q)
     @eval Base.$op(q::Quantity, p::Union{FixedPeriod,CompoundPeriod}) = $op(q, ubase(dimtype(q), p))
 end
 
-for op = (:*, :/, ://)
+for op = (:*, :/)
     @eval Base.$op(p::Union{FixedPeriod,CompoundPeriod}, u::AbstractUnitLike) = $op(ubase(dimtype(u), p), u)
     @eval Base.$op(u::AbstractUnitLike, p::Union{FixedPeriod,CompoundPeriod}) = $op(u, ubase(dimtype(u), p))
 end
@@ -53,7 +53,10 @@ Base.isapprox(q::Quantity, p::Union{FixedPeriod,CompoundPeriod}; kwargs...) = is
 #==============================================================================================================================
 Rounding
 ==============================================================================================================================#
-Base.round(::Type{P}, q::Quantity, r::RoundingMode=RoundNearest; kwargs...) where {P<:FixedPeriod} = P(round(Units{dimtype(q)}(P), q, r), kwargs...)
+function Base.round(::Type{P}, q::Quantity, r::RoundingMode=RoundNearest; kwargs...) where {P<:FixedPeriod}
+    u = Units{dimtype(q)}(P)
+    return P(round(ustrip(u, q), r, kwargs...))
+end
 Base.round(u::AbstractUnitLike, p::FixedPeriod, r::RoundingMode=RoundNearest; kwargs...) = round(u, ubase(dimtype(u), p), r, kwargs...)
 
 Base.trunc(u::AbstractUnitLike, p::FixedPeriod; kwargs...) = round(u, p, RoundToZero; kwargs...)

@@ -396,7 +396,7 @@ end
 end
 
 @testset "Dates" begin
-    #Static dimension conversions
+    # Static dimension conversions
     @test quantity(D"s", Nanosecond(5)) == quantity(5, u"ns")
     @test quantity(D"s", Microsecond(5)) == quantity(5, u"μs")
     @test quantity(D"s", Millisecond(5)) == quantity(5, u"ms")
@@ -406,7 +406,7 @@ end
     @test quantity(D"s", Day(5)) == quantity(5, u"day")
     @test quantity(D"s", Week(5)) == quantity(5, u"wk")
 
-    #Dynamic dimension conversions
+    # Dynamic dimension conversions
     @test quantity(Dimensions{FixRat32}, Nanosecond(5)) == quantity(5, ud"ns")
     @test quantity(Dimensions{FixRat32}, Microsecond(5)) == quantity(5, ud"μs")
     @test quantity(Dimensions{FixRat32}, Millisecond(5)) == quantity(5, ud"ms")
@@ -416,14 +416,14 @@ end
     @test quantity(Dimensions{FixRat32}, Day(5)) == quantity(5, ud"day")
     @test quantity(Dimensions{FixRat32}, Week(5)) == quantity(5, ud"wk")
 
-    #Ensure that there is no quantity function that works without specifying dimension type 
+    # Ensure that there is no quantity function that works without specifying dimension type 
     @test_throws MethodError quantity(Nanosecond(5))
 
-    #Ensure that a date time difference works 
+    # Ensure that a date time difference works 
     @test quantity(D"s", DateTime("2025-02-15T15:01:32") - DateTime("2025-01-30T12:19:17")) == 1392135000u"ms"
     @test quantity(D"s", Week(1) + Day(1) + Hour(1) + Second(1) + Millisecond(2)) == 694801002u"ms"
 
-    #Test units 
+    # Test units 
     @test Units{D"s",AffineTransform{Float64}}(Nanosecond) == u"ns"
     @test Units{D"s",AffineTransform{Float64}}(Microsecond) == u"μs"
     @test Units{D"s",AffineTransform{Float64}}(Millisecond) == u"ms"
@@ -433,6 +433,28 @@ end
     @test Units{D"s",AffineTransform{Float64}}(Day) == u"day"
     @test Units{D"s",AffineTransform{Float64}}(Week) == u"wk"
 
+    # Test basic arithmetic
+    @test Minute(1) + 1u"s" == 61u"s"
+    @test 1u"s" + Minute(1) == 61u"s"
+    @test Minute(1) - 1u"s" == 59u"s"
+    @test 1u"min" - Second(1) == 59u"s"
+    @test Minute(1) / 60u"s" == 1.0 
+    @test 60u"s" / 1u"min" == 1.0
+    @test Minute(1) * 1u"s" == 60u"s^2"
+    @test 1u"s" * Minute(1) == 60u"s^2"
+    @test Minute(1)*u"s" == 60u"s^2"
+    @test Minute(1)/u"s" == 60.0
+
+    # Test rounding
+    @test round(Hour, 1.01u"hr") === Hour(1)
+    @test floor(Hour, 1.01u"hr") === Hour(1)
+    @test ceil(Hour, 1.01u"hr") === Hour(2)
+    @test trunc(Hour, 1.01u"hr") === Hour(1)
+
+    @test round(u"day", Hour(25)) == quantity(1, u"day")
+    @test floor(u"day", Hour(25)) == quantity(1, u"day")
+    @test ceil(u"day", Hour(25)) == quantity(2, u"day")
+    @test trunc(u"day", Hour(25)) == quantity(1, u"day")
 end
 
 @testset "Dynamic unit functionality" begin
